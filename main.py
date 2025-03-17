@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import pyperclip
+
+from build import version
 from logic import CounterpickLogic
 from images_load import load_images, resource_path
 from heroes_bd import heroes, hero_counters
@@ -43,7 +45,7 @@ def create_gui():
     top_frame.pack(side=tk.TOP, fill=tk.X)
 
     # Метка версии слева
-    version_label = tk.Label(top_frame, text=get_text('version'), bg="lightgray")
+    version_label = tk.Label(top_frame, text=get_text('version').replace('1.01', version), bg="lightgray")
     version_label.pack(side=tk.LEFT, padx=5, pady=5)
 
     # Фрейм для кнопки языка
@@ -64,7 +66,7 @@ def create_gui():
     author_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
     def show_author_info():
-        messagebox.showinfo(get_text('about_author'), get_text('author_info'))
+        messagebox.showinfo(get_text('about_author'), get_text('author_info').replace('1.01', version))
 
     def switch_language(lang):
         set_language(lang)
@@ -79,7 +81,7 @@ def create_gui():
         clear_button.config(text=get_text('clear_all'))
         author_button.config(text=get_text('about_author'))
         language_label.config(text=get_text('language'))
-        version_label.config(text=get_text('version'))
+        version_label.config(text=get_text('version').replace('1.01', version))
         if not logic.selected_heroes:
             result_label.config(text=get_text('no_heroes_selected'))
         logic.update_display_language()
