@@ -1,150 +1,130 @@
-# код файла logic.py
-
+# logic.py
 import tkinter as tk
 from heroes_bd import hero_counters
 
-# Глобальные переменные для хранения состояния
-selected_heroes = []
-priority_heroes = []
-current_result_text = ""
+class CounterpickLogic:
+    def __init__(self):
+        self.selected_heroes = []
+        self.priority_heroes = []
+        self.current_result_text = ""
+        self.priority_labels = {}  # Словарь для хранения ссылок на priority_label
 
-# Функция для добавления/удаления героя из списка выбранных
-def toggle_hero(hero, button, selected_heroes_label, buttons, update_counters):
-    if hero in selected_heroes:
-        # Если герой уже выбран, удаляем его
-        selected_heroes.remove(hero)
-        if hero in priority_heroes:
-            priority_heroes.remove(hero)  # Удаляем из приоритетных, если был
-        button.config(relief=tk.RAISED, bg="SystemButtonFace")  # Снимаем выделение
-        for widget in button.winfo_children():
-            if isinstance(widget, tk.Label) and widget.cget("text") == "сильный игрок":
-                widget.destroy()  # Удаляем надпись "сильный игрок"
-    else:
-        if len(selected_heroes) >= 6:
-            # Если уже выбрано 6 героев, заменяем последнего
-            removed_hero = selected_heroes.pop()
-            removed_button = buttons[removed_hero]
-            removed_button.config(relief=tk.RAISED, bg="SystemButtonFace")  # Снимаем выделение
-            if removed_hero in priority_heroes:
-                priority_heroes.remove(removed_hero)  # Удаляем из приоритетных
-            # Удаляем надпись "сильный игрок" у удалённого героя
-            for widget in removed_button.winfo_children():
-                if isinstance(widget, tk.Label) and widget.cget("text") == "сильный игрок":
-                    widget.destroy()  # Удаляем надпись "сильный игрок"
-        selected_heroes.append(hero)
-        button.config(relief=tk.SUNKEN, bg="lightblue")  # Выделяем кнопку синим цветом
-    update_selected_heroes_label(selected_heroes_label)
-    update_counters()  # Обновляем рейтинг контрпиков
+    def set_priority(self, hero, button, hero_frame, update_counters_callback):
+        print(f"set_priority called for hero: {hero}, button text: {button.cget('text')}")
+        if hero not in self.selected_heroes:
+            print(f"Hero {hero} not in selected_heroes, exiting")
+            return
 
-# Функция для выделения героя правой кнопкой мыши
-def set_priority(event, hero, button, update_counters):
-    if hero not in selected_heroes:
-        return  # Правая кнопка работает только на выбранных героях
+        if hero in self.priority_heroes:
+            print(f"Removing priority from {hero}")
+            self.priority_heroes.remove(hero)
+            self._remove_priority_label(button, hero_frame)
+        else:
+            print(f"Adding priority to {hero}")
+            self.priority_heroes.append(hero)
+            if hero in self.priority_labels:
+                self._remove_priority_label(button, hero_frame)
+            if not hasattr(hero_frame, 'priority_frame'):
+                hero_frame.priority_frame = tk.Frame(hero_frame, bg=button.cget('bg'))
+                hero_frame.priority_frame.place(relx=0.5, rely=0.0, anchor="n")  # Сверху посередине
+            priority_label = tk.Label(hero_frame.priority_frame, text="сильный игрок", font=("Arial", 8), fg="black",
+                                      bg="red")
+            priority_label.pack(side=tk.TOP, anchor="center")  # Центрируем метку
+            self.priority_labels[hero] = priority_label
+            print(f"Label added to {hero}, priority_labels: {list(self.priority_labels.keys())}")
 
-    if hero in priority_heroes:
-        # Если герой уже приоритетный, снимаем выделение
-        priority_heroes.remove(hero)
-        for widget in button.winfo_children():
-            if isinstance(widget, tk.Label) and widget.cget("text") == "сильный игрок":
-                widget.destroy()  # Удаляем надпись "сильный игрок"
-    else:
-        # Если герой не приоритетный, добавляем его
-        priority_heroes.append(hero)
-        # Добавляем надпись "сильный игрок" с красным фоном
-        priority_label = tk.Label(button, text="сильный игрок", font=("Arial", 8), fg="black", bg="red")
-        priority_label.pack(side=tk.TOP)
-    update_counters()  # Обновляем рейтинг
+        update_counters_callback()
 
-# Функция для обновления отображения выбранных героев
-def update_selected_heroes_label(selected_heroes_label):
-    selected_heroes_label.config(text=f"Выбрано: {', '.join(selected_heroes)}")
+    def _remove_priority_label(self, button, hero_frame):
+        hero = button.cget("text")
+        if hero in self.priority_labels:
+            print(f"Removing label for {hero}")
+            label = self.priority_labels.pop(hero)
+            label.destroy()
+            if hasattr(hero_frame, 'priority_frame') and not hero_frame.priority_frame.winfo_children():
+                hero_frame.priority_frame.destroy()
+                delattr(hero_frame, 'priority_frame')
 
-# Функция для обновления рейтинга контрпиков
-def update_counters(result_label, result_frame, canvas, images, small_images):
-    global current_result_text
-    if len(selected_heroes) == 0:
-        if result_label.winfo_exists():  # Проверяем, существует ли result_label
-            result_label.config(text="Выберите героев вражеской команды, чтобы увидеть контрпики.")
-        current_result_text = ""  # Очищаем текст рейтинга
-        # Очищаем предыдущий рейтинг
+    def _reset_button(self, button):
+        hero = button.cget("text")
+        button.config(relief=tk.RAISED, bg="SystemButtonFace")
+
+    def toggle_hero(self, hero, buttons, update_counters_callback):
+        if hero in self.selected_heroes:
+            self.selected_heroes.remove(hero)
+            if hero in self.priority_heroes:
+                self.priority_heroes.remove(hero)
+            self._reset_button(buttons[hero])
+            hero_frame = buttons[hero].master
+            self._remove_priority_label(buttons[hero], hero_frame)  # Удаляем метку
+        else:
+            if len(self.selected_heroes) >= 6:
+                removed_hero = self.selected_heroes.pop(0)
+                self._reset_button(buttons[removed_hero])
+                if removed_hero in self.priority_heroes:
+                    self.priority_heroes.remove(removed_hero)
+                hero_frame = buttons[removed_hero].master
+                self._remove_priority_label(buttons[removed_hero], hero_frame)  # Удаляем метку с последнего
+            self.selected_heroes.append(hero)
+            buttons[hero].config(relief=tk.SUNKEN, bg="lightblue")
+        update_counters_callback()
+
+    def clear_all(self, buttons, update_selected_label_callback, update_counters_callback):
+        self.selected_heroes.clear()
+        self.priority_heroes.clear()
+        for hero, button in buttons.items():
+            self._reset_button(button)
+            hero_frame = button.master
+            if hero in self.priority_labels:
+                self._remove_priority_label(button, hero_frame)
+        update_selected_label_callback()
+        update_counters_callback()
+
+
+    def get_selected_heroes_text(self):
+        return f"Выбрано: {', '.join(self.selected_heroes)}"
+
+    def calculate_counter_scores(self):
+        counter_scores = {}
+        for hero in self.selected_heroes:
+            for counter in hero_counters.get(hero, []):
+                score = 2 if hero in self.priority_heroes else 1
+                counter_scores[counter] = counter_scores.get(counter, 0) + score
+
+        for hero in self.selected_heroes:
+            for counter in hero_counters.get(hero, []):
+                if counter in self.selected_heroes:
+                    counter_scores[counter] = max(0, counter_scores.get(counter, 0) - 1)
+
+        return {k: v for k, v in counter_scores.items() if v > 0}
+
+    def generate_counterpick_display(self, result_frame, images, small_images):
+        # Preserve the result_label by only destroying non-label widgets or widgets that aren’t the default text
         for widget in result_frame.winfo_children():
-            widget.destroy()
-        return
+            if not (isinstance(widget, tk.Label) and widget.cget('text') in [
+                "Выберите героев, чтобы увидеть контрпики.", ""]):
+                widget.destroy()
 
-    counter_scores = {}
-    for hero in selected_heroes:
-        for counter in hero_counters.get(hero, []):
-            if counter in counter_scores:
-                # Если герой приоритетный, добавляем 2 балла, иначе 1
-                counter_scores[counter] += 2 if hero in priority_heroes else 1
-            else:
-                counter_scores[counter] = 2 if hero in priority_heroes else 1
+        sorted_counters = sorted(self.calculate_counter_scores().items(), key=lambda x: x[1], reverse=True)
+        self.current_result_text = "Counterpick rating for a given enemy team's lineup:\n"
 
-    # Штраф за уязвимость
-    for hero in selected_heroes:
-        for counter in hero_counters.get(hero, []):
-            if counter in selected_heroes:  # Если контрпик также выбран в команде врага
-                counter_scores[counter] -= 1  # Отнимаем 1 балл за уязвимость
+        for counter, score in sorted_counters:
+            if counter in images:
+                counter_frame = tk.Frame(result_frame)
+                counter_frame.pack(anchor=tk.W)
 
-    # Убираем героев с 0 баллами
-    counter_scores = {k: v for k, v in counter_scores.items() if v > 0}
+                img_label = tk.Label(counter_frame, image=images[counter])
+                img_label.pack(side=tk.LEFT)
 
-    # Сортируем контрпики по количеству баллов
-    sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
+                text_label = tk.Label(counter_frame, text=f"{counter}: {score:.1f} балл(ов)")
+                text_label.pack(side=tk.LEFT)
 
-    # Очищаем предыдущий рейтинг
-    for widget in result_frame.winfo_children():
-        widget.destroy()
+                counter_for_heroes = [hero for hero in self.selected_heroes if counter in hero_counters.get(hero, [])]
+                for hero in counter_for_heroes:
+                    if hero in small_images:
+                        small_img_label = tk.Label(counter_frame, image=small_images[hero])
+                        small_img_label.pack(side=tk.LEFT, padx=2)
 
-    # Выводим результат с картинками
-    result_text = "Counterpick rating for a given enemy team's lineup:\n"
-    for counter, score in sorted_counters:
-        if counter in images:
-            # Создаем фрейм для каждого контрпика
-            counter_frame = tk.Frame(result_frame)
-            counter_frame.pack(anchor=tk.W)
+                self.current_result_text += f"{counter}: {score:.1f} points\n"
 
-            # Добавляем изображение
-            img_label = tk.Label(counter_frame, image=images[counter])
-            img_label.pack(side=tk.LEFT)
 
-            # Добавляем текст (имя и баллы)
-            text_label = tk.Label(counter_frame, text=f"{counter}: {score:.1f} балл(ов)")
-            text_label.pack(side=tk.LEFT)
-
-            # Добавляем мелкие иконки героев, для которых данный герой является контрпиком
-            counter_for_heroes = [hero for hero in selected_heroes if counter in hero_counters.get(hero, [])]
-            for hero in counter_for_heroes:
-                if hero in small_images:
-                    small_img_label = tk.Label(counter_frame, image=small_images[hero])
-                    small_img_label.pack(side=tk.LEFT, padx=2)
-
-            # Добавляем текст в результат для копирования
-            result_text += f"{counter}: {score:.1f} points\n"
-
-    # Сохраняем текст рейтинга для копирования
-    current_result_text = result_text
-
-    # Обновляем scrollregion после добавления нового контента
-    canvas.configure(scrollregion=canvas.bbox("all"))
-
-# Функция для копирования текста рейтинга в буфер обмена
-def copy_to_clipboard():
-    if current_result_text:
-        pyperclip.copy(current_result_text)
-        # messagebox.showinfo("Успех", "Текст рейтинга скопирован в буфер обмена!")
-    else:
-        messagebox.showwarning("Ошибка", "Нет данных для копирования.")
-
-# Функция для очистки всех выбранных героев
-def clear_all(buttons, update_selected_heroes_label, update_counters):
-    global selected_heroes, priority_heroes
-    selected_heroes.clear()
-    priority_heroes.clear()
-    for button in buttons.values():
-        button.config(relief=tk.RAISED, bg="SystemButtonFace")  # Сбрасываем выделение
-        for widget in button.winfo_children():
-            if isinstance(widget, tk.Label) and widget.cget("text") == "сильный игрок":
-                widget.destroy()  # Удаляем надпись "сильный игрок"
-    update_selected_heroes_label()
-    update_counters()

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+# pyinstaller --onefile --windowed --name rivals_counter --add-data "resources;resources" main.py
 
 a = Analysis(
     ['main.py'],
