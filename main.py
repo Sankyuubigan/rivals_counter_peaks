@@ -1,10 +1,11 @@
-# main.py
 import tkinter as tk
+from tkinter import messagebox
 from PIL import Image, ImageTk
 import pyperclip
 from logic import CounterpickLogic
 from images_load import load_images, resource_path
 from heroes_bd import heroes, hero_counters
+from translations import get_text, set_language, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
 
 def validate_heroes():
     invalid_heroes = []
@@ -21,7 +22,7 @@ def validate_heroes():
 
 def create_gui():
     root = tk.Tk()
-    root.title("Подбор контрпиков")
+    root.title(get_text('title'))
     root.geometry("1400x1000")
     root.maxsize(2000, 2000)
 
@@ -36,6 +37,52 @@ def create_gui():
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         else:
             print("Cursor not over canvas or its children")
+
+    # Верхняя панель
+    top_frame = tk.Frame(root, bg="lightgray", height=30)
+    top_frame.pack(side=tk.TOP, fill=tk.X)
+
+    # Метка версии слева
+    version_label = tk.Label(top_frame, text=get_text('version'), bg="lightgray")
+    version_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+    # Фрейм для кнопки языка
+    language_frame = tk.Frame(top_frame, bg="lightgray")
+    language_frame.pack(side=tk.LEFT, padx=5, pady=5)
+
+    # Метка "Язык"
+    language_label = tk.Label(language_frame, text=get_text('language'), bg="lightgray")
+    language_label.pack(side=tk.LEFT)
+
+    # Выпадающий список
+    language_var = tk.StringVar(value=DEFAULT_LANGUAGE)
+    language_menu = tk.OptionMenu(language_frame, language_var, *SUPPORTED_LANGUAGES.keys(), command=lambda lang: switch_language(lang))
+    language_menu.pack(side=tk.LEFT)
+
+    # Информация об авторе (справа)
+    author_button = tk.Button(top_frame, text=get_text('about_author'), command=lambda: show_author_info())
+    author_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
+    def show_author_info():
+        messagebox.showinfo(get_text('about_author'), get_text('author_info'))
+
+    def switch_language(lang):
+        set_language(lang)
+        update_language()
+        update_counters_wrapper()
+
+    def update_language():
+        root.title(get_text('title'))
+        result_label.config(text=get_text('select_heroes'))
+        selected_heroes_label.config(text=get_text('selected'))
+        copy_button.config(text=get_text('copy_rating'))
+        clear_button.config(text=get_text('clear_all'))
+        author_button.config(text=get_text('about_author'))
+        language_label.config(text=get_text('language'))
+        version_label.config(text=get_text('version'))
+        if not logic.selected_heroes:
+            result_label.config(text=get_text('no_heroes_selected'))
+        logic.update_display_language()
 
     main_frame = tk.Frame(root)
     main_frame.pack(fill=tk.BOTH, expand=True)
@@ -81,17 +128,17 @@ def create_gui():
     try:
         images, small_images = load_images()
     except Exception as e:
-        tk.messagebox.showerror("Ошибка загрузки изображений", f"Произошла ошибка: {e}")
+        messagebox.showerror("Ошибка загрузки изображений", f"Произошла ошибка: {e}")
         root.destroy()
         return
 
     buttons = {}
-    result_label = tk.Label(result_frame, text="Выберите героев, чтобы увидеть контрпики.")
+    result_label = tk.Label(result_frame, text=get_text('select_heroes'))
     result_label.pack(anchor=tk.W)
 
     def update_counters_wrapper():
         if logic.selected_heroes:
-            logic.generate_counterpick_display(result_frame, images, small_images)
+            logic.generate_counterpick_display(result_frame, result_label, images, small_images)
             if result_label.winfo_exists():
                 result_label.config(text="")
         else:
@@ -99,7 +146,7 @@ def create_gui():
                 if widget != result_label:
                     widget.destroy()
             if result_label.winfo_exists():
-                result_label.config(text="Выберите героев вражеской команды, чтобы увидеть контрпики.")
+                result_label.config(text=get_text('no_heroes_selected'))
         update_selected_label_wrapper()
         canvas.update_idletasks()
         update_scrollregion()
@@ -118,15 +165,18 @@ def create_gui():
         btn.bind("<Button-3>", lambda event, h=hero, b=btn, f=hero_frame: logic.set_priority(h, b, f, update_counters_wrapper))
         buttons[hero] = btn
 
-    selected_heroes_label = tk.Label(left_frame, text="Выбрано: ", height=2, anchor="w", wraplength=400)
+    selected_heroes_label = tk.Label(left_frame, text=get_text('selected'), height=2, anchor="w", wraplength=400)
     selected_heroes_label.grid(row=num_rows, column=0, columnspan=5, sticky="w", pady=(10, 5))
 
-    copy_button = tk.Button(left_frame, text="Копировать рейтинг", command=lambda: copy_to_clipboard(logic))
+    copy_button = tk.Button(left_frame, text=get_text('copy_rating'), command=lambda: copy_to_clipboard(logic))
     copy_button.grid(row=num_rows + 1, column=0, columnspan=5, sticky="ew", pady=(0, 5))
 
-    clear_button = tk.Button(left_frame, text="Очистить всё",
+    clear_button = tk.Button(left_frame, text=get_text('clear_all'),
                              command=lambda: logic.clear_all(buttons, update_selected_label_wrapper, update_counters_wrapper))
     clear_button.grid(row=num_rows + 2, column=0, columnspan=5, sticky="ew", pady=(0, 5))
+
+    # Инициализация языка
+    update_language()
 
     root.mainloop()
 
@@ -134,7 +184,7 @@ def copy_to_clipboard(logic):
     if logic.current_result_text:
         pyperclip.copy(logic.current_result_text)
     else:
-        tk.messagebox.showwarning("Ошибка", "Нет данных для копирования.")
+        messagebox.showwarning("Ошибка", "Нет данных для копирования.")
 
 if __name__ == "__main__":
     validate_heroes()
