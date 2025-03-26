@@ -1,5 +1,5 @@
 import tkinter as tk
-from heroes_bd import hero_counters, heroes
+from heroes_bd import heroes_counters, heroes
 from translations import get_text
 
 class CounterpickLogic:
@@ -90,19 +90,19 @@ class CounterpickLogic:
 
         # Шаг 1: Добавляем баллы за контрпик (герой справа контрить выбранных героев слева)
         for hero in self.selected_heroes:
-            for counter in hero_counters.get(hero, []):
+            for counter in heroes_counters.get(hero, []):
                 score = 2 if hero in self.priority_heroes else 1
                 counter_scores[counter] = counter_scores.get(counter, 0) + score
 
         # Шаг 2: Уменьшаем счёт для выбранных героев (чтобы их не рекомендовали)
         for hero in self.selected_heroes:
-            for counter in hero_counters.get(hero, []):
+            for counter in heroes_counters.get(hero, []):
                 if counter in self.selected_heroes:
                     counter_scores[counter] = counter_scores.get(counter, 0) - 1
 
         # Шаг 3: Отнимаем баллы за уязвимость (если выбранный герой слева контрить героя справа)
         for counter_hero in counter_scores:
-            counters_of_hero = hero_counters.get(counter_hero, [])
+            counters_of_hero = heroes_counters.get(counter_hero, [])
             for selected_hero in self.selected_heroes:
                 if selected_hero in counters_of_hero:
                     counter_scores[counter_hero] -= 1
@@ -133,7 +133,7 @@ class CounterpickLogic:
                 text_label = tk.Label(counter_frame, text=f"{counter}: {score:.1f} {get_text('points')}")
                 text_label.pack(side=tk.LEFT)
 
-                counter_for_heroes = [hero for hero in self.selected_heroes if counter in hero_counters.get(hero, [])]
+                counter_for_heroes = [hero for hero in self.selected_heroes if counter in heroes_counters.get(hero, [])]
                 for hero in counter_for_heroes:
                     if hero in small_images:
                         small_img_label = tk.Label(counter_frame, image=small_images[hero])

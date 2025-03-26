@@ -6,12 +6,12 @@ import pyperclip
 from build import version
 from logic import CounterpickLogic
 from images_load import load_images, resource_path
-from heroes_bd import heroes, hero_counters
+from heroes_bd import heroes, heroes_counters
 from translations import get_text, set_language, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
 
 def validate_heroes():
     invalid_heroes = []
-    for hero, counters in hero_counters.items():
+    for hero, counters in heroes_counters.items():
         if hero not in heroes:
             invalid_heroes.append(hero)
         for counter in counters:
