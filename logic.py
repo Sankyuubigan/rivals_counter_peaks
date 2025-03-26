@@ -1,6 +1,7 @@
 import tkinter as tk
-from heroes_bd import heroes_counters, heroes
+from heroes_bd import heroes
 from translations import get_text
+from display import generate_counterpick_display  # Импортируем функцию
 
 class CounterpickLogic:
     def __init__(self):
@@ -27,7 +28,8 @@ class CounterpickLogic:
             if not hasattr(hero_frame, 'priority_frame'):
                 hero_frame.priority_frame = tk.Frame(hero_frame, bg=button.cget('bg'))
                 hero_frame.priority_frame.place(relx=0.5, rely=0.0, anchor="n")
-            priority_label = tk.Label(hero_frame.priority_frame, text=get_text('strong_player'), font=("Arial", 8), fg="black", bg="red")
+            priority_label = tk.Label(hero_frame.priority_frame, text=get_text('strong_player'), font=("Arial", 8),
+                                      fg="black", bg="red")
             priority_label.pack(side=tk.TOP, anchor="center")
             self.priority_labels[hero] = priority_label
             print(f"Label added to {hero}, priority_labels: {list(self.priority_labels.keys())}")
@@ -83,24 +85,21 @@ class CounterpickLogic:
         return f"{get_text('selected')}{', '.join(self.selected_heroes) if self.selected_heroes else ''}"
 
     def calculate_counter_scores(self):
+        from heroes_bd import heroes_counters
         counter_scores = {}
-        # Инициализируем всех героев с нулевым счётом
         for hero in heroes:
             counter_scores[hero] = 0
 
-        # Шаг 1: Добавляем баллы за контрпик (герой справа контрить выбранных героев слева)
         for hero in self.selected_heroes:
             for counter in heroes_counters.get(hero, []):
                 score = 2 if hero in self.priority_heroes else 1
                 counter_scores[counter] = counter_scores.get(counter, 0) + score
 
-        # Шаг 2: Уменьшаем счёт для выбранных героев (чтобы их не рекомендовали)
         for hero in self.selected_heroes:
             for counter in heroes_counters.get(hero, []):
                 if counter in self.selected_heroes:
                     counter_scores[counter] = counter_scores.get(counter, 0) - 1
 
-        # Шаг 3: Отнимаем баллы за уязвимость (если выбранный герой слева контрить героя справа)
         for counter_hero in counter_scores:
             counters_of_hero = heroes_counters.get(counter_hero, [])
             for selected_hero in self.selected_heroes:
@@ -109,38 +108,53 @@ class CounterpickLogic:
 
         return counter_scores
 
-    def generate_counterpick_display(self, result_frame, result_label, images, small_images):
-        for widget in result_frame.winfo_children():
-            if widget != result_label:
-                widget.destroy()
+    def calculate_effective_team(self, counter_scores):
+        from heroes_bd import hero_roles, heroes_compositions
 
-        if not self.selected_heroes:
-            self.current_result_text = ""
-            return
-
-        counter_scores = self.calculate_counter_scores()
         sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
-        self.current_result_text = f"{get_text('counterpick_rating')}\n"
+        effective_team = []
+        tanks = 0
+        supports = 0
 
-        for counter, score in sorted_counters:
-            if counter in images:
-                counter_frame = tk.Frame(result_frame)
-                counter_frame.pack(anchor=tk.W)
+        for hero, score in sorted_counters:
+            if hero not in effective_team:
+                if tanks < 1 and hero in hero_roles["tanks"]:
+                    effective_team.append(hero)
+                    tanks += 1
+                elif supports < 1 and hero in hero_roles["supports"]:
+                    effective_team.append(hero)
+                    supports += 1
+                if tanks >= 1 and supports >= 1:
+                    break
 
-                img_label = tk.Label(counter_frame, image=images[counter])
-                img_label.pack(side=tk.LEFT)
+        while len(effective_team) < 6:
+            best_score = -float('inf')
+            best_hero = None
+            for hero, score in sorted_counters:
+                if hero not in effective_team:
+                    adjusted_score = score
+                    for teammate in effective_team:
+                        if hero in heroes_compositions.get(teammate, []):
+                            adjusted_score += 0.5
+                    if adjusted_score > best_score:
+                        if (hero in hero_roles["tanks"] and tanks < 2) or \
+                                (hero in hero_roles["supports"] and supports < 3) or \
+                                (hero in hero_roles["attackers"]):
+                            best_score = adjusted_score
+                            best_hero = hero
 
-                text_label = tk.Label(counter_frame, text=f"{counter}: {score:.1f} {get_text('points')}")
-                text_label.pack(side=tk.LEFT)
+            if best_hero:
+                effective_team.append(best_hero)
+                if best_hero in hero_roles["tanks"]:
+                    tanks += 1
+                elif best_hero in hero_roles["supports"]:
+                    supports += 1
 
-                counter_for_heroes = [hero for hero in self.selected_heroes if counter in heroes_counters.get(hero, [])]
-                for hero in counter_for_heroes:
-                    if hero in small_images:
-                        small_img_label = tk.Label(counter_frame, image=small_images[hero])
-                        small_img_label.pack(side=tk.LEFT, padx=2)
-
-                self.current_result_text += f"{counter}: {score:.1f} {get_text('points')}\n"
+        return effective_team
 
     def update_display_language(self):
         for hero, label in self.priority_labels.items():
             label.config(text=get_text('strong_player'))
+
+# Привязываем метод generate_counterpick_display к классу
+CounterpickLogic.generate_counterpick_display = generate_counterpick_display

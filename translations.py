@@ -1,10 +1,8 @@
 import locale
 
-# Определяем язык по умолчанию на основе системы
 DEFAULT_LANGUAGE = locale.getdefaultlocale()[0] if locale.getdefaultlocale()[0] else 'ru_RU'
 SUPPORTED_LANGUAGES = {'ru_RU': 'Русский', 'en_US': 'English'}
 
-# Словари переводов
 TRANSLATIONS = {
     'ru_RU': {
         'title': 'Подбор контрпиков',
@@ -20,6 +18,12 @@ TRANSLATIONS = {
         'version': 'Версия: 1.01',
         'counterpick_rating': 'Рейтинг контрпиков для выбранной вражеской команды:',
         'points': 'балл(ов)',
+        'hero_rating': 'Рейтинг героев',
+        'hero_rating_title': 'Рейтинг наименее контрящихся персонажей',
+        'donate_info': 'Купить мне кофе (помощь и благодарность за софт):\n'
+                       'Тинькофф: 2200 7007 5813 1881\n'
+                       'Ссылка для донатов из-за рубежа:\n'
+                       'https://www.donationalerts.com/r/nildencorp'
     },
     'en_US': {
         'title': 'Counterpick Selection',
@@ -35,15 +39,19 @@ TRANSLATIONS = {
         'version': 'Version: 1.01',
         'counterpick_rating': 'Counterpick rating for a given enemy team\'s lineup:',
         'points': 'points',
+        'hero_rating': 'Hero Rating',
+        'hero_rating_title': 'Rating of Least Countered Characters',
+        'donate_info': 'Buy me a coffee (support and thanks for the software):\n'
+                       'Tinkoff: 2200 7007 5813 1881\n'
+                       'Link for donations from abroad:\n'
+                       'https://www.donationalerts.com/r/nildencorp'
     }
 }
 
-# Функция для получения текущего текста
 def get_text(key, language=None):
     current_language = language if language else DEFAULT_LANGUAGE
     return TRANSLATIONS.get(current_language, TRANSLATIONS['ru_RU']).get(key, key)
 
-# Функция переключения языка
 def set_language(language):
     global DEFAULT_LANGUAGE
     DEFAULT_LANGUAGE = language

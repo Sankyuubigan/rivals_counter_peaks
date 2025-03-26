@@ -1,4 +1,3 @@
-# Пример данных о контрпиках (каждый герой имеет список контрпиков из того же списка героев)
 heroes_counters = {
     "Hulk": ["Iron Man", "Psylocke", "Storm", "Punisher", "Namor", "Thor", "Peni Parker", "Wolverine", "Mantis",
              "Luna Snow", "Winter Soldier", "Adam Warlock"],
@@ -68,7 +67,7 @@ heroes_counters = {
     "Scarlet Witch": ["Psylocke", "Punisher", "Doctor Strange", "Hawkeye", "Hela", "Peni Parker", "Mantis",
                       "Luna Snow"],
     "Namor": ["Moon Knight", "Hela", "Hawkeye", "Venom", "Magneto", "Doctor Strange", "Punisher", "Winter Soldier",
-              "Loki", "Cloak & Dagger", "Invisible Woman", "Adam Warlock"],
+              "Loki", "Cloak & Dagger", "Adam Warlock"],
     "Iron Fist": ["Namor", "Captain America", "Invisible Woman", "Rocket Racoon", "Loki", "Moon Knight", "Storm",
                   "Luna Snow", "Winter Soldier", "Punisher", "Mantis", "Hulk", "Peni Parker", "Scarlet Witch",
                   "Squirrel Girl", "Magik", "Hela", "Adam Warlock"],
@@ -79,7 +78,7 @@ heroes_counters = {
     "Cloak & Dagger": ["Magneto", "Magik", "Hela", "Hawkeye", "Psylocke", "Wolverine", "Jeff", "Squirrel Girl",
                        "Moon Knight", "Rocket Racoon"],
     "Jeff": ["Iron Man", "Storm", "Spider-Man", "Psylocke", "Peni Parker", "Squirrel Girl", "Magneto", "Hela",
-             "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor"],  # подбрасывание
+             "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor"],
     "Mantis": ["Iron Man", "Punisher", "Iron Fist", "Captain America", "Psylocke", "Jeff", "Magneto", "Hela", "Magik",
                "Black Panther", "Moon Knight", "Squirrel Girl", "The Thing", "Wolverine", "Star-Lord", "Rocket Racoon","Storm"],
     "Luna Snow": ["Iron Man", "Punisher", "Psylocke", "Scarlet Witch", "Captain America", "Loki", "Magneto",
@@ -107,9 +106,6 @@ futures = ["Quicksilver", "Doctor Doom", "Cyclops", "Jean Grey", "Rogue", "Gambi
            "Shadowcat", "Cable", "Deadpool", "Emma Frost", "Juggernaut", "Mystique", "Sabretooth",
            "Silver Surfer", "Vision", ]
 
-
-
-
 heroes_compositions = {
     "Hulk": [],
     "Groot": ["Invisible Woman", "Jeff", "Cloak & Dagger", "Luna Snow"],
@@ -125,7 +121,7 @@ heroes_compositions = {
     "Punisher": ["Doctor Strange", "Rocket Racoon"],
     "Hela": [],
     "Moon Knight": ["Cloak & Dagger"],
-    "Iron Man": ["Hulk"],  # дайверы и фланкеры?
+    "Iron Man": ["Hulk"],
     "Winter Soldier": ["Rocket Racoon"],
     "Psylocke": ["Doctor Strange", "Magik"],
     "Mr. Fantastic": ["Invisible Woman", "Captain America", "Thor", "Hulk", "Venom", "Doctor Strange", "The Thing"],
@@ -153,29 +149,10 @@ heroes_compositions = {
     "Adam Warlock": [],
 }
 
-
-вот код моей программы прикрепил. я бы хотел добавить функционал. нужно поменять местами левую и правую области в программе, так чтобы выбор героев противников был справа а не слева.
-В области где рейтинг героев выводится и их баллы, иконки справа (которые меньшего размера) которые контрит данный герой, нужно этим иконкам сделать толстую рамку зеленого цвета.
-и затем после них такого же размера продолжить список иконок героев но уже в рамке красного цвета (это будут те герои, которые контрят данного героя и являются выбранными героями
-вражеской команды, то есть за них как раз высчитываются сейчас баллы при подсчете).
-также нужно в файле heroes_bd определить роли персонажей. ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America", "Magneto"] - это танки то есть упитанные.
-["Punisher", "Hela", "Moon Knight",
-    "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm", "Black Panther", "Squirrel Girl",
-    "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik", "Black Widow", "Scarlet Witch", "Namor",
-    "Iron Fist", "Human Torch"] - это атакующие персонажи.
-["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow",
-    "Rocket Racoon", "Invisible Woman", "Adam Warlock"] - а это саппорты то есть те кто лечат.
-эти роли нужны для того чтобы программа автоматически по рейтингу составляла наиболее удачный состав команды против выбранной вражеской команды
-(можно назвать такой состав "эффективной командой сопротивления"), учитывая все факторы,
-такие как контр пики и удачные тим апы.
-в списке heroes_compositions находятся удачные тим апы по аналогии с контр пиками. то есть возможные желательные герои для конкретного героя.
-при составлении эффективной команды сопротивления должно соблюдаться правило: минимум 1 танк, минимум 1 хиллер и максимум 3 хиллера. желательно 2 танка и 2 хиллера,
-потому что чаще всего это более стабильно. команда должна состоять из 6 героев. нужно набирать в эффективную команду сопротивления героев с максимальным количеством баллов, чтобы команда набрала как можно больше баллов в сумме по итогу,
-но при этом предпочтительно комбинировать героев по списку heroes_compositions, возможно стоит как то накидывать баллы сверху за удачные связки (например по пол балла), но их лучше учитывать лишь при составлении
-эффективной команды сопротивления, то есть нынешний подсчет баллов в списке рейтинга героев должен остаться как есть и отображаться без изменений.
-результат нужно выводить всё в той же области рейтинга, где сейчас и выводятся баллы, просто давай обводить толстой рамкой синего цвета всю строчку в этом рейтинге,
-если данный герой выбран в качестве эффективной команды сопротивления.
-теперь кнопка "копировать рейтинг" должна копировать не весь рейтинг а лишь эффективную команду сопротивления.
-также давай в верхнюю панель добавим кнопку, по которой отображается окно со списком рейтинга всех героев, где в самом низу будут герои с наибольшим количеством контр пиков,
-а в самом верху будут герои с наименьшим количеством контр пиков. и после имени в скобках будет указано количество. эту кнопку можно назвать "Рейтинг героев".
-в этом окне заголовок такой будет "Рейтинг наименее контрящихся персонажей".
+hero_roles = {
+    "tanks": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America", "Magneto"],
+    "attackers": ["Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm", 
+                  "Black Panther", "Squirrel Girl", "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik", 
+                  "Black Widow", "Scarlet Witch", "Namor", "Iron Fist", "Human Torch"],
+    "supports": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Racoon", "Invisible Woman", "Adam Warlock"]
+}
