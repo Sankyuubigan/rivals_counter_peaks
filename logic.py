@@ -3,6 +3,13 @@ from heroes_bd import heroes
 from translations import get_text
 from display import generate_counterpick_display  # Импортируем функцию
 
+# Константы для минимальных и максимальных значений ролей
+MIN_TANKS = 1    # Минимальное количество танков
+MAX_TANKS = 3    # Максимальное количество танков
+MIN_SUPPORTS = 2 # Минимальное количество саппортов
+MAX_SUPPORTS = 3 # Максимальное количество саппортов
+TEAM_SIZE = 6    # Общий размер команды (для наглядности)
+
 class CounterpickLogic:
     def __init__(self):
         self.selected_heroes = []
@@ -59,7 +66,7 @@ class CounterpickLogic:
             hero_frame = buttons[hero].master
             self._remove_priority_label(buttons[hero], hero_frame)
         else:
-            if len(self.selected_heroes) >= 6:
+            if len(self.selected_heroes) >= TEAM_SIZE:
                 removed_hero = self.selected_heroes.pop(0)
                 self._reset_button(buttons[removed_hero])
                 if removed_hero in self.priority_heroes:
@@ -116,18 +123,20 @@ class CounterpickLogic:
         tanks = 0
         supports = 0
 
+        # Первая фаза: добавляем минимум танков и саппортов
         for hero, score in sorted_counters:
             if hero not in effective_team:
-                if tanks < 1 and hero in hero_roles["tanks"]:
+                if tanks < MIN_TANKS and hero in hero_roles["tanks"]:
                     effective_team.append(hero)
                     tanks += 1
-                elif supports < 1 and hero in hero_roles["supports"]:
+                elif supports < MIN_SUPPORTS and hero in hero_roles["supports"]:
                     effective_team.append(hero)
                     supports += 1
-                if tanks >= 1 and supports >= 1:
+                if tanks >= MIN_TANKS and supports >= MIN_SUPPORTS:
                     break
 
-        while len(effective_team) < 6:
+        # Вторая фаза: заполняем команду до TEAM_SIZE с учетом максимальных ролей
+        while len(effective_team) < TEAM_SIZE:
             best_score = -float('inf')
             best_hero = None
             for hero, score in sorted_counters:
@@ -137,8 +146,8 @@ class CounterpickLogic:
                         if hero in heroes_compositions.get(teammate, []):
                             adjusted_score += 0.5
                     if adjusted_score > best_score:
-                        if (hero in hero_roles["tanks"] and tanks < 2) or \
-                                (hero in hero_roles["supports"] and supports < 3) or \
+                        if (hero in hero_roles["tanks"] and tanks < MAX_TANKS) or \
+                                (hero in hero_roles["supports"] and supports < MAX_SUPPORTS) or \
                                 (hero in hero_roles["attackers"]):
                             best_score = adjusted_score
                             best_hero = hero

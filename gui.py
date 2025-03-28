@@ -63,9 +63,7 @@ def create_gui(root):
         info_text = (f"{get_text('author_info').replace('1.01', version)}\n\n"
                      f"{get_text('donate_info')}")
         text_widget.insert(tk.END, info_text)
-
         text_widget.config(state=tk.NORMAL)
-        text_widget.bind("<Key>", lambda e: "break")
 
         def copy_text():
             try:
@@ -74,7 +72,10 @@ def create_gui(root):
             except tk.TclError:
                 pass
 
+        # Привязываем Ctrl+C напрямую к виджету текста
         text_widget.bind("<Control-c>", lambda e: copy_text())
+
+        # Контекстное меню для правой кнопки мыши
         context_menu = tk.Menu(author_window, tearoff=0)
         context_menu.add_command(label="Copy", command=copy_text)
         text_widget.bind("<Button-3>", lambda event: context_menu.post(event.x_root, event.y_root))
@@ -222,6 +223,18 @@ def create_gui(root):
     selected_heroes_label = tk.Label(right_frame, text=get_text('selected'), height=2, anchor="w", wraplength=400)
     selected_heroes_label.grid(row=num_rows, column=0, columnspan=5, sticky="w", pady=(10, 5))
 
+    # Добавляем возможность копирования текста из selected_heroes_label
+    def copy_selected_text():
+        try:
+            pyperclip.copy(selected_heroes_label.cget("text"))
+        except Exception as e:
+            print(f"Ошибка при копировании: {e}")
+
+    selected_heroes_label.bind("<Control-c>", lambda e: copy_selected_text())
+    context_menu_selected = tk.Menu(right_frame, tearoff=0)
+    context_menu_selected.add_command(label="Copy", command=copy_selected_text)
+    selected_heroes_label.bind("<Button-3>", lambda event: context_menu_selected.post(event.x_root, event.y_root))
+
     copy_button = tk.Button(right_frame, text=get_text('copy_rating'), command=lambda: copy_to_clipboard(logic))
     copy_button.grid(row=num_rows + 1, column=0, columnspan=5, sticky="ew", pady=(0, 5))
 
@@ -234,7 +247,7 @@ def create_gui(root):
 def copy_to_clipboard(logic):
     effective_team = logic.calculate_effective_team(logic.calculate_counter_scores())
     if effective_team:
-        text_to_copy = f"Эффективная команда сопротивления:\n{', '.join(effective_team)}"
+        text_to_copy = f"we need to get these heroes:\n{', '.join(effective_team)}"
         pyperclip.copy(text_to_copy)
     else:
         messagebox.showwarning("Ошибка", "Нет данных для копирования.")
