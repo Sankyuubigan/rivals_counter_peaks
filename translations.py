@@ -23,7 +23,9 @@ TRANSLATIONS = {
         'donate_info': 'Купить мне кофе (помощь и благодарность за софт):\n'
                        'Тинькофф: 2200 7007 5813 1881\n'
                        'Ссылка для донатов из-за рубежа:\n'
-                       'https://www.donationalerts.com/r/nildencorp'
+                       'https://www.donationalerts.com/r/nildencorp\n\n'
+                       'C идеями и предложениями можете обращаться:\n'
+                       'https://t.me/dron_maredon'
     },
     'en_US': {
         'title': 'Counterpick Selection',
@@ -44,7 +46,9 @@ TRANSLATIONS = {
         'donate_info': 'Buy me a coffee (support and thanks for the software):\n'
                        'Tinkoff: 2200 7007 5813 1881\n'
                        'Link for donations from abroad:\n'
-                       'https://www.donationalerts.com/r/nildencorp'
+                       'https://www.donationalerts.com/r/nildencorp\n\n'
+                       'C идеями и предложениями можете обращаться:\n'
+                       'https://t.me/dron_maredon'
     }
 }
 

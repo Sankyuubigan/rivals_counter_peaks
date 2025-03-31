@@ -8,88 +8,89 @@ heroes_counters = {
              "Psylocke", "Winter Soldier", "Luna Snow",
              "Adam Warlock", "Scarlet Witch", "Namor", "Squirrel Girl"],
     "Doctor Strange": ["Wolverine", "Black Panther", "Hulk", "Magik", "Punisher", "Psylocke",
-                       "Invisible Woman", "Mantis", "Luna Snow", "Mr. Fantastic","Winter Soldier"],
+                       "Invisible Woman", "Mantis", "Luna Snow", "Mr. Fantastic", "Winter Soldier"],
     "The Thing": ["Groot", "Iron Man", "Squirrel Girl", "Storm", "Hela", "Adam Warlock", "Scarlet Witch", "Moon Knight",
                   "Doctor Strange", "Star-Lord", "Peni Parker", "Punisher", "Psylocke", "Hawkeye",
                   "Black Widow", "Namor", "Human Torch", "Loki", "Jeff", "Rocket Racoon", "Cloak & Dagger"],
-    "Venom": ["Wolverine","Punisher", "Storm", "Iron Man", "Winter Soldier", "Peni Parker", "Adam Warlock",
+    "Venom": ["Wolverine", "Punisher", "Storm", "Iron Man", "Winter Soldier", "Peni Parker", "Adam Warlock",
               "Scarlet Witch", "Squirrel Girl", "Namor", "Luna Snow", "Mantis", "The Thing"],
     "Peni Parker": ["Iron Man", "Storm", "Punisher", "Star-Lord", "Doctor Strange", "Namor", "Groot", "Loki",
                     "Winter Soldier", "Hela", "Moon Knight", "Psylocke", "Adam Warlock", "Invisible Woman"],
     "Captain America": ["Groot", "Namor", "Hela", "Storm", "Scarlet Witch", "Loki", "Peni Parker", "Iron Man",
                         "Human Torch", "Jeff", "Rocket Racoon", "Adam Warlock", "Scarlet Witch", "The Thing"],
     "Magneto": ["Storm", "Groot", "Magik", "Loki", "Adam Warlock",
-                "Luna Snow", "Mr. Fantastic", "Winter Soldier", "Spider-Man","The Thing"],
+                "Luna Snow", "Mr. Fantastic", "Winter Soldier", "Spider-Man", "The Thing"],
 
-    "Punisher": ["Hela", "Hawkeye", "Iron Fist", "Magik", "Cloak & Dagger", "Black Panther", "Storm",
-                 "Magneto", "Moon Knight", "Squirrel Girl", "Loki"],
+    "Punisher": ["Hela", "Hawkeye", "Iron Fist", "Magik", "Black Panther",
+                 "Magneto", "Moon Knight", "Loki"],
     "Hela": ["Punisher", "Magik", "Doctor Strange", "Luna Snow", "Loki", "Venom", "Captain America", "Black Panther",
              "Invisible Woman", "Rocket Racoon"],
-    "Moon Knight": ["Storm", "Black Panther", "Iron Man", "Spider-Man", "Magneto", "Psylocke", "Magik", "Iron Fist",
+    "Moon Knight": ["Storm", "Black Panther", "Iron Man", "Spider-Man", "Magneto", "Psylocke", "Magik",
                     "Venom", "Star-Lord", "Captain America", "Thor", "Hulk"],
     "Iron Man": [
         "Doctor Strange", "Iron Fist", "Rocket Racoon", "Namor", "Star-Lord",
         "Punisher", "Psylocke", "Spider-Man", "Black Widow", "Hela", "Hawkeye", "Adam Warlock", "Mantis", "Luna Snow",
-        "Hulk", "Scarlet Witch"
+        "Hulk", "Scarlet Witch", "Winter Soldier"
     ],
-    "Winter Soldier": ["Psylocke", "Hela", "Hawkeye", "Namor", "Iron Fist"],
-    "Psylocke": ["Star-Lord", "Venom", "Invisible Woman", "Namor", "Punisher", "Luna Snow", "Mantis",
-                 "Captain America", "Magneto", "Winter Soldier", "Rocket Racoon", "Loki"],
+    "Winter Soldier": ["Hela", "Hawkeye", "Namor", "Iron Fist"],
+    "Psylocke": ["Star-Lord", "Invisible Woman", "Namor", "Punisher", "Luna Snow", "Mantis",
+                 "Captain America", "Magneto", "Rocket Racoon", "Loki", "Cloak & Dagger"],
     "Mr. Fantastic": ["Groot", "Storm", "Punisher", "Iron Man", "Hawkeye", "Hela", "Winter Soldier", "Black Widow",
                       "Squirrel Girl", "Mantis", "Luna Snow", "Adam Warlock", "Cloak & Dagger", "Jeff", "Peni Parker",
                       "Scarlet Witch"],
     "Storm": [
         "Doctor Strange", "Punisher", "Hela", "Namor", "Iron Fist", "Psylocke",
-        "Black Widow", "Luna Snow", "Rocket Racoon", "Spider-Man", "Star-Lord", "Mantis",
-        "Invisible Woman", "Cloak & Dagger", "Hulk", "Scarlet Witch","Winter Soldier"
+        "Black Widow", "Spider-Man", "Star-Lord",
+        "Cloak & Dagger", "Hulk", "Scarlet Witch", "Winter Soldier"
     ],
     "Black Panther": [
-        "The Thing", "Human Torch", "Star-Lord", "Peni Parker", "Iron Man", "Storm", "Namor", "Loki", "Cloak & Dagger",
+        "The Thing", "Human Torch", "Star-Lord", "Peni Parker", "Iron Man", "Storm", "Namor", "Cloak & Dagger",
         "Magneto",
         "Punisher", "Psylocke", "Mantis", "Winter Soldier", "Jeff", "Adam Warlock", "Luna Snow", "Rocket Racoon",
         "Scarlet Witch"
     ],
-    "Squirrel Girl": ["Groot", "Captain America", "Spider-Man", "Hawkeye", "Black Panther", "Storm", "Star-Lord",
-                      "Iron Man", "Scarlet Witch", "Human Torch", "Magneto", "Hulk"],
+    "Squirrel Girl": ["Groot", "Captain America", "Hawkeye", "Storm", "Star-Lord",
+                      "Iron Man", "Scarlet Witch", "Human Torch", "Magneto", "Hulk", "Hela", "Punisher", "Black Widow"],
     "Spider-Man": ["Namor", "Hela", "Hawkeye", "Luna Snow", "Cloak & Dagger",
                    "Adam Warlock", "Rocket Racoon", "Jeff",
-                   "Squirrel Girl", "Peni Parker", "Captain America", "Scarlet Witch", "Winter Soldier","Punisher"],
+                   "Squirrel Girl", "Peni Parker", "Captain America", "Scarlet Witch", "Winter Soldier", "Punisher"],
     "Star-Lord": ["Magneto", "Luna Snow", "Loki", "Doctor Strange", "Hela", "Punisher", "Hawkeye", "Namor", "Mantis",
                   "Invisible Woman", "Hulk", "Scarlet Witch"],
-    "Wolverine": ["Peni Parker", "Iron Man", "Namor", "Storm", "Invisible Woman", "Captain America", "Spider-Man",
-                  "Mantis", "Luna Snow", "Magneto", "Hela", "Adam Warlock", "Scarlet Witch", "The Thing"],
+    "Wolverine": ["Peni Parker", "Iron Man", "Namor", "Storm", "Invisible Woman", "Captain America", "Psylocke",
+                  "Mantis", "Luna Snow", "Magneto", "Hela", "Adam Warlock", "Scarlet Witch", "The Thing",
+                  "Cloak & Dagger"],
     "Hawkeye": ["Psylocke", "Groot", "Spider-Man", "Hela", "Doctor Strange", "Black Panther", "Iron Fist",
                 "Rocket Racoon", "Loki"],
     "Magik": ["Iron Man", "Namor", "Storm", "Doctor Strange", "Luna Snow", "Peni Parker", "Magneto", "Thor",
               "Winter Soldier", "Adam Warlock", "Cloak & Dagger", "Jeff", "Rocket Racoon", "Scarlet Witch"],
     "Black Widow": ["Psylocke", "Magik", "Black Panther", "Doctor Strange", "Venom", "Captain America",
                     "Scarlet Witch"],
-    "Scarlet Witch": ["Punisher", "Doctor Strange", "Hawkeye", "Hela", "Peni Parker", "Mantis",
-                      "Luna Snow"],
-    "Namor": ["Moon Knight", "Hela", "Hawkeye", "Venom", "Magneto", "Doctor Strange", "Punisher", "Winter Soldier",
+    "Scarlet Witch": ["Punisher", "Hawkeye", "Hela", "Peni Parker", "Mantis", "Luna Snow"],
+    "Namor": ["Moon Knight", "Hela", "Hawkeye", "Magneto", "Doctor Strange", "Punisher", "Winter Soldier",
               "Loki", "Cloak & Dagger", "Adam Warlock"],
-    "Iron Fist": ["Namor", "Captain America", "Invisible Woman", "Rocket Racoon", "Loki", "Moon Knight", "Storm",
+    "Iron Fist": ["Namor", "Captain America", "Invisible Woman", "Rocket Racoon", "Loki", "Storm",
                   "Luna Snow", "Winter Soldier", "Punisher", "Mantis", "Hulk", "Peni Parker", "Scarlet Witch",
                   "Squirrel Girl", "Magik", "Hela", "Adam Warlock"],
     "Human Torch": ["Hela", "Hawkeye", "Punisher", "Psylocke", "Spider-Man", "Luna Snow", "Hulk", "Scarlet Witch"],
 
     "Loki": ["Moon Knight", "Iron Man", "Punisher", "Winter Soldier", "Wolverine", "Adam Warlock", "Spider-Man",
-             "Mr. Fantastic", "Captain America", "Thor", "The Thing", "Storm", "Hela", "Jeff","Moon Knight"],
+             "Mr. Fantastic", "Captain America", "Thor", "The Thing", "Storm", "Hela", "Jeff", "Moon Knight"],
     "Cloak & Dagger": ["Magneto", "Magik", "Hela", "Hawkeye", "Psylocke", "Wolverine", "Jeff", "Squirrel Girl",
                        "Moon Knight", "Rocket Racoon"],
-    "Jeff": ["Iron Man", "Storm", "Spider-Man", "Psylocke", "Peni Parker", "Squirrel Girl", "Magneto", "Hela",
+    "Jeff": ["Iron Man", "Storm", "Psylocke", "Peni Parker", "Squirrel Girl", "Magneto", "Hela",
              "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor"],
     "Mantis": ["Iron Man", "Punisher", "Iron Fist", "Captain America", "Psylocke", "Jeff", "Magneto", "Hela", "Magik",
-               "Black Panther", "Moon Knight", "Squirrel Girl", "The Thing", "Wolverine", "Star-Lord", "Rocket Racoon","Storm"],
+               "Black Panther", "Moon Knight", "Squirrel Girl", "The Thing", "Wolverine", "Star-Lord", "Rocket Racoon",
+               "Storm"],
     "Luna Snow": ["Iron Man", "Punisher", "Psylocke", "Scarlet Witch", "Captain America", "Loki", "Magneto",
                   "The Thing", "Magik", "Black Panther", "Mr. Fantastic", "Moon Knight", "Venom", "Thor",
-                  "Hulk", "Rocket Racoon","Storm"],
+                  "Hulk", "Rocket Racoon", "Storm"],
     "Rocket Racoon": ["Star-Lord", "Black Panther", "Iron Man", "Psylocke", "Venom", "Magneto", "Iron Fist",
-                      "Captain America", "Punisher", "Wolverine","Storm"],
+                      "Captain America", "Punisher", "Wolverine"],
     "Invisible Woman": ["Punisher", "Moon Knight", "Squirrel Girl", "Magik", "Spider-Man", "Jeff", "Iron Man",
-                        "Magneto", "Namor", "The Thing", "Rocket Racoon", "Mr. Fantastic","Storm","Black Panther"],
-    "Adam Warlock": [ "Black Panther", "Magneto", "Doctor Strange", "Hela", "Black Widow",
-                     "Winter Soldier", "Squirrel Girl","Storm"],
+                        "Magneto", "Namor", "The Thing", "Rocket Racoon", "Mr. Fantastic", "Storm", "Black Panther"],
+    "Adam Warlock": ["Black Panther", "Magneto", "Doctor Strange", "Hela", "Black Widow",
+                     "Winter Soldier", "Squirrel Girl", "Storm"],
 }
 
 heroes = [
@@ -121,7 +122,7 @@ heroes_compositions = {
     "Punisher": ["Doctor Strange", "Rocket Racoon"],
     "Hela": [],
     "Moon Knight": ["Cloak & Dagger"],
-    "Iron Man": ["Hulk"],
+    "Iron Man": ["Hulk", "Groot"],
     "Winter Soldier": ["Rocket Racoon"],
     "Psylocke": ["Doctor Strange", "Magik"],
     "Mr. Fantastic": ["Invisible Woman", "Captain America", "Thor", "Hulk", "Venom", "Doctor Strange", "The Thing"],
@@ -134,14 +135,14 @@ heroes_compositions = {
     "Hawkeye": [],
     "Magik": [],
     "Black Widow": ["Hawkeye"],
-    "Scarlet Witch": ["Doctor Strange"],
+    "Scarlet Witch": ["Doctor Strange", "Jeff"],
     "Namor": ["Luna Snow"],
     "Iron Fist": [],
     "Human Torch": ["Invisible Woman"],
 
     "Loki": ["Hela"],
     "Cloak & Dagger": [],
-    "Jeff": ["Luna Snow","Groot"],
+    "Jeff": ["Luna Snow", "Groot"],
     "Mantis": ["Captain America", "Adam Warlock"],
     "Luna Snow": ["Hulk", "The Thing", "Groot", "Iron Fist"],
     "Rocket Racoon": ["Captain America"],
@@ -150,19 +151,37 @@ heroes_compositions = {
 }
 
 hero_roles = {
-    "tanks": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America", "Magneto"],
-    "attackers": ["Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm", 
-                  "Black Panther", "Squirrel Girl", "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik", 
+    "tanks": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
+              "Magneto"],
+    "attackers": ["Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm",
+                  "Black Panther", "Squirrel Girl", "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik",
                   "Black Widow", "Scarlet Witch", "Namor", "Iron Fist", "Human Torch"],
-    "supports": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Racoon", "Invisible Woman", "Adam Warlock"]
+    "supports": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Racoon", "Invisible Woman",
+                 "Adam Warlock"]
+}
+teammates_noobs_heal = {
+    "Spider-Man", "Jeff", "Iron Fist", "Scarlet Witch", "Psylocke", "Captain America"
 }
 
-
+# рэнджевики= "Punisher" "Hela" "Hawkeye"  "Black Widow"
+# защита сапов = грут стрендж пени магнето 3хила "Winter Soldier" "Punisher" "Hela" "Psylocke" "Storm" "Hawkeye" "Scarlet Witch" "Namor"
 
 # перепроверить нужно : = [
-#       "Peni Parker", "Punisher", "Hela",
-#     "Iron Man",  "Psylocke", "Mr. Fantastic", "Storm", "Black Panther", "Squirrel Girl",
-#      "Star-Lord", "Wolverine", "Hawkeye", "Magik", "Black Widow",  "Namor",
-#     "Iron Fist", "Human Torch", "Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow",
+#     "Peni Parker", "Hela",
+#     "Iron Man",  "Mr. Fantastic",
+#     "Star-Lord", "Hawkeye", "Magik", "Black Widow",
+#     "Iron Fist", "Human Torch", "Loki", "Cloak & Dagger", "Mantis", "Luna Snow",
 #     "Rocket Racoon", "Invisible Woman", "Adam Warlock",
 # ]
+
+# карты
+# пени паркер, грут - закрытые пространства комнаты коридоры
+#
+# атака - кэп, веном, фистер, пантера
+#
+# оборона - пени паркер
+
+мне нужно чтобы главное окно моей программы всегда было поверх всех других окон других приложений. область справа где выбираем вражеских персонажей должна быть в 2 раза меньше по размеру,
+соответственно иконки героев должны стать тоже в 2 раза меньше по размеру. в верхней панели должен быть ползунок которым мы изменяем прозрачность всего главного окна программы.
+изначальная прозрачность должна быть 20%. окно программы должно стать в 2 раза меньше, и список слева рейтинг с героями тоже стать в 2 раза меньше по размеру. в общем всё надо уменьшить в 2 раза.
+давай синюю рамку в области слева поменяем (уберем рамку эту) на выделение всей плашки точно также цветом как в области справа выделяются выбранные персонажи вражеские.

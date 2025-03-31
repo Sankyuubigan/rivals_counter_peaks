@@ -1,7 +1,7 @@
 import os
 
 # Устанавливаем переменную окружения с версией
-version = "2.02"
+version = "3.01"
 os.environ["APP_VERSION"] = version
 
 # Генерируем команду
