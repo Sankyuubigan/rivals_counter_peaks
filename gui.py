@@ -9,9 +9,12 @@ from heroes_bd import heroes  # Добавляем импорт heroes
 from translations import get_text, set_language, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
 
 def create_gui(root):
-    root.title(get_text('title'))
-    root.geometry("1400x1000")
-    root.maxsize(2000, 2000)
+    # Устанавливаем заголовок окна с версией
+    window_title = f"{get_text('title')} v{version}"
+    root.title(window_title)
+    # Уменьшаем размер окна в 2 раза
+    root.geometry("700x500")
+    root.maxsize(2000, 2000) # Оставим максимальный размер прежним
 
     logic = CounterpickLogic()
 
@@ -20,11 +23,34 @@ def create_gui(root):
         if widget and (widget == canvas or canvas.winfo_containing(event.x_root, event.y_root) == widget):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    top_frame = tk.Frame(root, bg="lightgray", height=30)
+    top_frame = tk.Frame(root, bg="lightgray") # Убрал height=30
     top_frame.pack(side=tk.TOP, fill=tk.X)
 
-    version_label = tk.Label(top_frame, text=get_text('version').replace('1.01', version), bg="lightgray")
-    version_label.pack(side=tk.LEFT, padx=5, pady=5)
+    # --- Ползунок прозрачности ---
+    def update_transparency(val):
+        # Значение ползунка от 10 до 100, преобразуем в 0.1 - 1.0
+        alpha_value = float(val) / 100.0
+        root.attributes('-alpha', alpha_value) # Убрал max(..., 0.1), т.к. from_=10
+
+    # --- Группа ползунка прозрачности ---
+    transparency_frame = tk.Frame(top_frame, bg="lightgray")
+    transparency_frame.pack(side=tk.LEFT, padx=(10, 10), pady=2) # Уменьшил pady
+
+    transparency_label = tk.Label(transparency_frame, text=get_text('transparency', 'Прозрачность:'), bg="lightgray") # Добавил fallback текст
+    transparency_label.pack(side=tk.TOP) # Метка сверху
+
+    # Начальное значение ползунка соответствует начальной прозрачности (20%)
+    transparency_slider = tk.Scale(transparency_frame, from_=10, to=100, orient=tk.HORIZONTAL,
+                                   command=update_transparency, showvalue=0, length=100, 
+                                   bg="lightgray", troughcolor='#d3d3d3', sliderrelief=tk.RAISED,
+                                   highlightthickness=1, highlightbackground='white')
+    transparency_slider.set(100) # Устанавливаем начальное значение 100 (максимум)
+    transparency_slider.pack(side=tk.TOP) # Ползунок под меткой
+    # --- Конец группы ползунка прозрачности ---
+
+    # Убираем метку версии отсюда
+    # version_label = tk.Label(top_frame, text=get_text('version').replace('1.01', version), bg="lightgray")
+    # version_label.pack(side=tk.LEFT, padx=5, pady=5)
 
     language_frame = tk.Frame(top_frame, bg="lightgray")
     language_frame.pack(side=tk.LEFT, padx=5, pady=5)
@@ -36,17 +62,117 @@ def create_gui(root):
     language_menu = tk.OptionMenu(language_frame, language_var, *SUPPORTED_LANGUAGES.keys(), command=lambda lang: switch_language(lang))
     language_menu.pack(side=tk.LEFT)
 
+    # Добавляем переключатель режимов
+    mode_frame = tk.Frame(top_frame, bg="lightgray")
+    mode_frame.pack(side=tk.LEFT, padx=(10, 0), pady=2)
+
+    # Метка над переключателем
+    mode_label = tk.Label(mode_frame, text="Режим:", bg="lightgray")
+    mode_label.pack(side=tk.TOP)
+
+    # Кнопки переключения режимов
+    mode_buttons_frame = tk.Frame(mode_frame, bg="lightgray")
+    mode_buttons_frame.pack(side=tk.TOP)
+
+    mode_var = tk.StringVar(value="middle")  # По умолчанию средний режим
+
+    def switch_mode(mode):
+        mode_var.set(mode)
+        
+        # Устанавливаем размеры окна в зависимости от режима
+        if mode == "min":
+            root.geometry("600x110")
+            author_button.pack_forget()
+            rating_button.pack_forget()
+        elif mode == "middle":
+            root.geometry("950x270") 
+            author_button.pack_forget()
+            rating_button.pack_forget()
+        elif mode == "max":
+            root.geometry("1700x1000")
+            author_button.pack(side=tk.RIGHT, padx=5, pady=5)
+            rating_button.pack(side=tk.RIGHT, padx=5, pady=5)
+            
+        update_interface_for_mode(mode)
+
+    min_button = tk.Button(mode_buttons_frame, text="Компактный", width=10,
+                          command=lambda: switch_mode("min"))
+    min_button.pack(side=tk.LEFT, padx=2)
+
+    middle_button = tk.Button(mode_buttons_frame, text="Средний", width=10,
+                            command=lambda: switch_mode("middle"))
+    middle_button.pack(side=tk.LEFT, padx=2)
+
+    max_button = tk.Button(mode_buttons_frame, text="Большой", width=10,
+                          command=lambda: switch_mode("max"))
+    max_button.pack(side=tk.LEFT, padx=2)
+
     author_button = tk.Button(top_frame, text=get_text('about_author'), command=lambda: show_author_info(root))
     author_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
     rating_button = tk.Button(top_frame, text=get_text('hero_rating'), command=lambda: show_hero_rating(root))
     rating_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
+    def update_interface_for_mode(mode):
+        """Обновляет интерфейс в соответствии с выбранным режимом"""
+        from images_load import get_images_for_mode
+        
+        # Получаем изображения для текущего режима
+        images, small_images = get_images_for_mode(mode)
+        
+        # Обновляем размеры и видимость элементов
+        if mode == "min":
+            right_frame.pack_forget()  # Скрываем правую панель
+            # Используем минимальный режим отображения
+            logic.generate_minimal_display(result_frame, result_label, images)
+        elif mode == "middle":
+            right_frame.pack(side=tk.RIGHT, fill=tk.Y, expand=False)
+            
+            # Обновляем правую панель - 10 колонок x 4 строки, иконки без текста
+            for i in range(10):  # Настраиваем 10 колонок
+                right_frame.columnconfigure(i, minsize=50, weight=0)
+            
+            # Настраиваем 4 строки
+            for i in range(4):
+                right_frame.rowconfigure(i, minsize=50, weight=0)
+            
+            # Очищаем старые кнопки
+            for btn in buttons.values():
+                btn.grid_forget()
+            
+            # Обновляем кнопки героев
+            for hero, btn in buttons.items():
+                btn.config(text="", image=images.get(hero), width=50, height=50)
+                hero_index = heroes.index(hero)
+                btn.grid(row=(hero_index // 10), column=(hero_index % 10), sticky="nsew")
+            
+            # Обновляем левую панель - одинаковый размер иконок
+            # Это будет обработано в generate_counterpick_display через small_images
+            
+        elif mode == "max":
+            right_frame.pack(side=tk.RIGHT, fill=tk.Y, expand=False)
+            
+            # Возвращаем оригинальные размеры (в 2 раза больше текущих)
+            for i in range(5):
+                right_frame.columnconfigure(i, minsize=100, weight=0) # minsize 50 -> 100
+            num_rows = (len(heroes) // 5) + 1
+            for i in range(num_rows):
+                right_frame.rowconfigure(i, minsize=100, weight=0) # minsize 50 -> 100
+            
+            # Обновляем кнопки героев с текстом и увеличенными иконками
+            for hero, btn in buttons.items():
+                btn.config(text=hero, image=images.get(hero), width=90, height=90) # width/height 45 -> 90
+                btn.grid(row=(heroes.index(hero) // 5), column=(heroes.index(hero) % 5))
+        
+        # Обновляем отображение героев
+        if hasattr(logic, 'selected_heroes'):
+            update_counters_wrapper()
+
     def show_author_info(root):
         author_window = tk.Toplevel(root)
         author_window.title(get_text('about_author'))
         author_window.geometry("400x200")
-        author_window.resizable(False, False)
+        author_window.resizable(True, True) # Разрешаем изменение размера
         author_window.transient(root)
         author_window.grab_set()
 
@@ -134,7 +260,9 @@ def create_gui(root):
         clear_button.config(text=get_text('clear_all'))
         author_button.config(text=get_text('about_author'))
         language_label.config(text=get_text('language'))
-        version_label.config(text=get_text('version').replace('1.01', version))
+        transparency_label.config(text=get_text('transparency', 'Прозрачность:')) # Обновляем текст метки ползунка
+        # Обновляем заголовок окна при смене языка
+        root.title(f"{get_text('title')} v{version}")
         rating_button.config(text=get_text('hero_rating'))
         if not logic.selected_heroes:
             result_label.config(text=get_text('no_heroes_selected'))
@@ -144,14 +272,20 @@ def create_gui(root):
     main_frame.pack(fill=tk.BOTH, expand=True)
 
     right_frame = tk.Frame(main_frame)
-    right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False)
+    # Уменьшаем ширину правой панели, делая ее нерасширяемой по X
+    right_frame.pack(side=tk.RIGHT, fill=tk.Y, expand=False) # Изменил fill и expand
 
+    # Уменьшаем размеры ячеек в правой панели в 2 раза
     for i in range(5):
-        right_frame.columnconfigure(i, minsize=100, weight=0)
+        right_frame.columnconfigure(i, minsize=50, weight=0) # minsize 100 -> 50
     num_rows = (len(heroes) // 5) + 1
     for i in range(num_rows):
-        right_frame.rowconfigure(i, minsize=100, weight=0)
-    right_frame.rowconfigure(num_rows, minsize=50, weight=0)
+        right_frame.rowconfigure(i, minsize=50, weight=0) # minsize 100 -> 50
+    # Уменьшаем высоту строк для доп. элементов
+    right_frame.rowconfigure(num_rows, minsize=25, weight=0) # Строка для selected_heroes_label
+    right_frame.rowconfigure(num_rows + 1, minsize=25, weight=0) # Строка для copy_button
+    right_frame.rowconfigure(num_rows + 2, minsize=25, weight=0) # Строка для clear_button
+
 
     left_frame = tk.Frame(main_frame)
     left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -213,15 +347,17 @@ def create_gui(root):
     for i, hero in enumerate(heroes):
         hero_frame = tk.Frame(right_frame)
         hero_frame.grid(row=i // 5, column=i % 5, padx=0, pady=0, sticky="nsew")
+        # Уменьшаем размер кнопок героев в 2 раза
         btn = tk.Button(hero_frame, text=hero, image=images.get(hero), compound=tk.TOP,
                         command=lambda h=hero: logic.toggle_hero(h, buttons, update_counters_wrapper),
-                        width=90, height=90, relief="raised", borderwidth=1, highlightthickness=0)
+                        width=45, height=45, relief="raised", borderwidth=1, highlightthickness=0) # width/height 90 -> 45
         btn.pack(fill=tk.BOTH, expand=True)
         btn.bind("<Button-3>", lambda event, h=hero, b=btn, f=hero_frame: logic.set_priority(h, b, f, update_counters_wrapper))
         buttons[hero] = btn
 
-    selected_heroes_label = tk.Label(right_frame, text=get_text('selected'), height=2, anchor="w", wraplength=400)
-    selected_heroes_label.grid(row=num_rows, column=0, columnspan=5, sticky="w", pady=(10, 5))
+    # Уменьшаем wraplength и паддинги для метки выбранных героев
+    selected_heroes_label = tk.Label(right_frame, text=get_text('selected'), height=2, anchor="w", wraplength=250) # wraplength 400 -> 250 (по ширине 5 кнопок по 50)
+    selected_heroes_label.grid(row=num_rows, column=0, columnspan=5, sticky="nsew", pady=(5, 2)) # Уменьшил pady, sticky="w" -> "nsew"
 
     # Добавляем возможность копирования текста из selected_heroes_label
     def copy_selected_text():
@@ -235,14 +371,16 @@ def create_gui(root):
     context_menu_selected.add_command(label="Copy", command=copy_selected_text)
     selected_heroes_label.bind("<Button-3>", lambda event: context_menu_selected.post(event.x_root, event.y_root))
 
+    # Уменьшаем паддинги для кнопок
     copy_button = tk.Button(right_frame, text=get_text('copy_rating'), command=lambda: copy_to_clipboard(logic))
-    copy_button.grid(row=num_rows + 1, column=0, columnspan=5, sticky="ew", pady=(0, 5))
+    copy_button.grid(row=num_rows + 1, column=0, columnspan=5, sticky="nsew", pady=(0, 2)) # sticky="ew" -> "nsew", pady=(0, 5) -> (0, 2)
 
     clear_button = tk.Button(right_frame, text=get_text('clear_all'),
                              command=lambda: logic.clear_all(buttons, update_selected_label_wrapper, update_counters_wrapper))
-    clear_button.grid(row=num_rows + 2, column=0, columnspan=5, sticky="ew", pady=(0, 5))
+    clear_button.grid(row=num_rows + 2, column=0, columnspan=5, sticky="nsew", pady=(0, 5)) # sticky="ew" -> "nsew", pady=(0, 5) -> (0, 5) - оставим нижний отступ
 
-    update_language()
+    update_language() # Вызываем до update_counters_wrapper, чтобы метки обновились
+    update_counters_wrapper() # Вызываем один раз в конце для инициализации левой панели
 
 def copy_to_clipboard(logic):
     effective_team = logic.calculate_effective_team(logic.calculate_counter_scores())
