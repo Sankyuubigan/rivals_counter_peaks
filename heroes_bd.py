@@ -21,8 +21,9 @@ heroes_counters = {
     "Magneto": ["Storm", "Groot", "Magik", "Loki", "Adam Warlock",
                 "Luna Snow", "Mr. Fantastic", "Winter Soldier", "Spider-Man", "The Thing"],
 
+
     "Punisher": ["Hela", "Hawkeye", "Iron Fist", "Magik", "Black Panther",
-                 "Magneto", "Moon Knight", "Loki"],
+                 "Magneto", "Moon Knight", "Loki","Squirrel Girl"],
     "Hela": ["Punisher", "Magik", "Doctor Strange", "Luna Snow", "Loki", "Venom", "Captain America", "Black Panther",
              "Invisible Woman", "Rocket Racoon"],
     "Moon Knight": ["Storm", "Black Panther", "Iron Man", "Spider-Man", "Magneto", "Psylocke", "Magik",
@@ -50,7 +51,7 @@ heroes_counters = {
         "Scarlet Witch"
     ],
     "Squirrel Girl": ["Groot", "Captain America", "Hawkeye", "Storm", "Star-Lord",
-                      "Iron Man", "Scarlet Witch", "Human Torch", "Magneto", "Hulk", "Hela", "Punisher", "Black Widow"],
+                      "Iron Man", "Scarlet Witch", "Human Torch", "Magneto", "Hulk", "Hela", "Black Widow"],
     "Spider-Man": ["Namor", "Hela", "Hawkeye", "Luna Snow", "Cloak & Dagger",
                    "Adam Warlock", "Rocket Racoon", "Jeff",
                    "Squirrel Girl", "Peni Parker", "Captain America", "Scarlet Witch", "Winter Soldier", "Punisher"],
@@ -58,7 +59,7 @@ heroes_counters = {
                   "Invisible Woman", "Hulk", "Scarlet Witch"],
     "Wolverine": ["Peni Parker", "Iron Man", "Namor", "Storm", "Invisible Woman", "Captain America", "Psylocke",
                   "Mantis", "Luna Snow", "Magneto", "Hela", "Adam Warlock", "Scarlet Witch", "The Thing",
-                  "Cloak & Dagger"],
+                  "Cloak & Dagger","Mr. Fantastic"],
     "Hawkeye": ["Psylocke", "Groot", "Spider-Man", "Hela", "Doctor Strange", "Black Panther", "Iron Fist",
                 "Rocket Racoon", "Loki"],
     "Magik": ["Iron Man", "Namor", "Storm", "Doctor Strange", "Luna Snow", "Peni Parker", "Magneto", "Thor",
@@ -72,6 +73,7 @@ heroes_counters = {
                   "Luna Snow", "Winter Soldier", "Punisher", "Mantis", "Hulk", "Peni Parker", "Scarlet Witch",
                   "Squirrel Girl", "Magik", "Hela", "Adam Warlock"],
     "Human Torch": ["Hela", "Hawkeye", "Punisher", "Psylocke", "Spider-Man", "Luna Snow", "Hulk", "Scarlet Witch"],
+
 
     "Loki": ["Moon Knight", "Iron Man", "Punisher", "Winter Soldier", "Wolverine", "Adam Warlock", "Spider-Man",
              "Mr. Fantastic", "Captain America", "Thor", "The Thing", "Storm", "Hela", "Jeff", "Moon Knight"],
@@ -159,12 +161,15 @@ hero_roles = {
     "supports": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Racoon", "Invisible Woman",
                  "Adam Warlock"]
 }
-teammates_noobs_heal = {
+teammates_healers_noobs = {
     "Spider-Man", "Jeff", "Iron Fist", "Scarlet Witch", "Psylocke", "Captain America"
+}
+need_defend_healers={
+# грут стрендж пени магнето 3хила "Winter Soldier" "Punisher" "Hela" "Psylocke" "Storm" "Hawkeye" "Scarlet Witch" "Namor"
 }
 
 # рэнджевики= "Punisher" "Hela" "Hawkeye"  "Black Widow"
-# защита сапов = грут стрендж пени магнето 3хила "Winter Soldier" "Punisher" "Hela" "Psylocke" "Storm" "Hawkeye" "Scarlet Witch" "Namor"
+
 
 # перепроверить нужно : = [
 #     "Peni Parker", "Hela",
@@ -176,12 +181,13 @@ teammates_noobs_heal = {
 
 # карты
 # пени паркер, грут - закрытые пространства комнаты коридоры
-#
+# торч , паук - открытые пространства
+
 # атака - кэп, веном, фистер, пантера
-#
 # оборона - пени паркер
 
 мне нужно чтобы главное окно моей программы всегда было поверх всех других окон других приложений. область справа где выбираем вражеских персонажей должна быть в 2 раза меньше по размеру,
 соответственно иконки героев должны стать тоже в 2 раза меньше по размеру. в верхней панели должен быть ползунок которым мы изменяем прозрачность всего главного окна программы.
 изначальная прозрачность должна быть 20%. окно программы должно стать в 2 раза меньше, и список слева рейтинг с героями тоже стать в 2 раза меньше по размеру. в общем всё надо уменьшить в 2 раза.
-давай синюю рамку в области слева поменяем (уберем рамку эту) на выделение всей плашки точно также цветом как в области справа выделяются выбранные персонажи вражеские.
+давай синюю рамку в области слева поменяем (уберем рамку эту) на выделение всей плашки точно также цветом голубоватым как в области справа выделяются выбранные персонажи вражеские.
+нужно чтобы у окна "об авторе" можно было изменять размер.
