@@ -1,5 +1,3 @@
-# код файла images_load.py
-
 from PIL import Image, ImageTk
 import os
 import sys

@@ -3,4 +3,4 @@
 *.spec
 .idea/
 dist/
-__pycache__/
+/core/__pycache__/
