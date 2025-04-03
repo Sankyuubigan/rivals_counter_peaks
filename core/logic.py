@@ -1,14 +1,12 @@
-import tkinter as tk
 from heroes_bd import heroes
 from translations import get_text
-from display import generate_counterpick_display  # Импортируем функцию
+from display import generate_counterpick_display, generate_minimal_display, generate_minimal_icon_list
 
-# Константы для минимальных и максимальных значений ролей
-MIN_TANKS = 1    # Минимальное количество танков
-MAX_TANKS = 3    # Максимальное количество танков
-MIN_SUPPORTS = 2 # Минимальное количество саппортов
-MAX_SUPPORTS = 3 # Максимальное количество саппортов
-TEAM_SIZE = 6    # Общий размер команды (для наглядности)
+MIN_TANKS = 1
+MAX_TANKS = 3
+MIN_SUPPORTS = 2
+MAX_SUPPORTS = 3
+TEAM_SIZE = 6
 
 class CounterpickLogic:
     def __init__(self):
@@ -18,73 +16,60 @@ class CounterpickLogic:
         self.priority_labels = {}
 
     def set_priority(self, hero, button, hero_frame, update_counters_callback):
-        print(f"set_priority called for hero: {hero}, button text: {button.cget('text')}")
+        from PySide6.QtWidgets import QLabel
         if hero not in self.selected_heroes:
-            print(f"Hero {hero} not in selected_heroes, exiting")
             return
-
         if hero in self.priority_heroes:
-            print(f"Removing priority from {hero}")
             self.priority_heroes.remove(hero)
-            self._remove_priority_label(button, hero_frame)
+            if hero in self.priority_labels:
+                self.priority_labels[hero].deleteLater()
+                del self.priority_labels[hero]
         else:
-            print(f"Adding priority to {hero}")
             self.priority_heroes.append(hero)
             if hero in self.priority_labels:
-                self._remove_priority_label(button, hero_frame)
-            if not hasattr(hero_frame, 'priority_frame'):
-                hero_frame.priority_frame = tk.Frame(hero_frame, bg=button.cget('bg'))
-                hero_frame.priority_frame.place(relx=0.5, rely=0.0, anchor="n")
-            priority_label = tk.Label(hero_frame.priority_frame, text=get_text('strong_player'), font=("Arial", 8),
-                                      fg="black", bg="red")
-            priority_label.pack(side=tk.TOP, anchor="center")
-            self.priority_labels[hero] = priority_label
-            print(f"Label added to {hero}, priority_labels: {list(self.priority_labels.keys())}")
-
+                self.priority_labels[hero].deleteLater()
+            label = QLabel(get_text('strong_player'))
+            label.setStyleSheet("font-size: 8pt; color: white; background-color: red; padding: 2px;")
+            label.setParent(button)  # Привязываем к кнопке
+            label.move((button.width() - label.width()) // 2, 0)  # Центрируем по горизонтали
+            label.show()  # Убеждаемся, что метка видима
+            self.priority_labels[hero] = label
         update_counters_callback()
 
-    def _remove_priority_label(self, button, hero_frame):
-        hero = button.cget("text")
-        if hero in self.priority_labels:
-            print(f"Removing label for {hero}")
-            label = self.priority_labels.pop(hero)
-            label.destroy()
-            if hasattr(hero_frame, 'priority_frame') and not hero_frame.priority_frame.winfo_children():
-                hero_frame.priority_frame.destroy()
-                delattr(hero_frame, 'priority_frame')
-
-    def _reset_button(self, button):
-        hero = button.cget("text")
-        button.config(relief=tk.RAISED, bg="SystemButtonFace")
-
     def toggle_hero(self, hero, buttons, update_counters_callback):
+        from PySide6.QtGui import QColor
         if hero in self.selected_heroes:
             self.selected_heroes.remove(hero)
             if hero in self.priority_heroes:
                 self.priority_heroes.remove(hero)
-            self._reset_button(buttons[hero])
-            hero_frame = buttons[hero].master
-            self._remove_priority_label(buttons[hero], hero_frame)
+            buttons[hero].setStyleSheet("")
+            if hero in self.priority_labels:
+                self.priority_labels[hero].deleteLater()
+                del self.priority_labels[hero]
         else:
             if len(self.selected_heroes) >= TEAM_SIZE:
                 removed_hero = self.selected_heroes.pop(0)
-                self._reset_button(buttons[removed_hero])
+                buttons[removed_hero].setStyleSheet("")
                 if removed_hero in self.priority_heroes:
                     self.priority_heroes.remove(removed_hero)
-                hero_frame = buttons[removed_hero].master
-                self._remove_priority_label(buttons[removed_hero], hero_frame)
+                if removed_hero in self.priority_labels:
+                    self.priority_labels[removed_hero].deleteLater()
+                    del self.priority_labels[removed_hero]
             self.selected_heroes.append(hero)
-            buttons[hero].config(relief=tk.SUNKEN, bg="lightblue")
+            buttons[hero].setStyleSheet("""
+                background-color: lightblue;
+                border: 2px solid yellow;  /* Добавляем желтую рамку для выделения */
+            """)
         update_counters_callback()
 
     def clear_all(self, buttons, update_selected_label_callback, update_counters_callback):
+        for hero, button in buttons.items():
+            button.setStyleSheet("")
+            if hero in self.priority_labels:
+                self.priority_labels[hero].deleteLater()
+                del self.priority_labels[hero]
         self.selected_heroes.clear()
         self.priority_heroes.clear()
-        for hero, button in buttons.items():
-            self._reset_button(button)
-            hero_frame = button.master
-            if hero in self.priority_labels:
-                self._remove_priority_label(button, hero_frame)
         update_selected_label_callback()
         update_counters_callback()
 
@@ -93,37 +78,28 @@ class CounterpickLogic:
 
     def calculate_counter_scores(self):
         from heroes_bd import heroes_counters
-        counter_scores = {}
-        for hero in heroes:
-            counter_scores[hero] = 0
-
+        counter_scores = {hero: 0 for hero in heroes}
         for hero in self.selected_heroes:
             for counter in heroes_counters.get(hero, []):
                 score = 2 if hero in self.priority_heroes else 1
                 counter_scores[counter] = counter_scores.get(counter, 0) + score
-
         for hero in self.selected_heroes:
             for counter in heroes_counters.get(hero, []):
                 if counter in self.selected_heroes:
                     counter_scores[counter] = counter_scores.get(counter, 0) - 1
-
         for counter_hero in counter_scores:
             counters_of_hero = heroes_counters.get(counter_hero, [])
             for selected_hero in self.selected_heroes:
                 if selected_hero in counters_of_hero:
                     counter_scores[counter_hero] -= 1
-
         return counter_scores
 
     def calculate_effective_team(self, counter_scores):
         from heroes_bd import hero_roles, heroes_compositions
-
         sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
         effective_team = []
         tanks = 0
         supports = 0
-
-        # Первая фаза: добавляем минимум танков и саппортов
         for hero, score in sorted_counters:
             if hero not in effective_team:
                 if tanks < MIN_TANKS and hero in hero_roles["tanks"]:
@@ -134,8 +110,6 @@ class CounterpickLogic:
                     supports += 1
                 if tanks >= MIN_TANKS and supports >= MIN_SUPPORTS:
                     break
-
-        # Вторая фаза: заполняем команду до TEAM_SIZE с учетом максимальных ролей
         while len(effective_team) < TEAM_SIZE:
             best_score = -float('inf')
             best_hero = None
@@ -147,23 +121,26 @@ class CounterpickLogic:
                             adjusted_score += 0.5
                     if adjusted_score > best_score:
                         if (hero in hero_roles["tanks"] and tanks < MAX_TANKS) or \
-                                (hero in hero_roles["supports"] and supports < MAX_SUPPORTS) or \
-                                (hero in hero_roles["attackers"]):
+                           (hero in hero_roles["supports"] and supports < MAX_SUPPORTS) or \
+                           (hero in hero_roles["attackers"]):
                             best_score = adjusted_score
                             best_hero = hero
-
             if best_hero:
                 effective_team.append(best_hero)
                 if best_hero in hero_roles["tanks"]:
                     tanks += 1
                 elif best_hero in hero_roles["supports"]:
                     supports += 1
-
         return effective_team
 
     def update_display_language(self):
         for hero, label in self.priority_labels.items():
-            label.config(text=get_text('strong_player'))
+            label.setText(get_text('strong_player'))
 
-# Привязываем метод generate_counterpick_display к классу
+    def generate_minimal_icon_list(self, result_frame, result_label, left_images):
+        from display import generate_minimal_icon_list
+        generate_minimal_icon_list(self, result_frame, result_label, left_images)
+
 CounterpickLogic.generate_counterpick_display = generate_counterpick_display
+CounterpickLogic.generate_minimal_display = generate_minimal_display
+CounterpickLogic.generate_minimal_icon_list = generate_minimal_icon_list
