@@ -3,7 +3,7 @@ heroes_counters = {
              "Luna Snow", "Winter Soldier", "Adam Warlock"],
     "Groot": ["Punisher", "Hulk", "Venom", "Storm", "Wolverine", "Iron Man", "Winter Soldier", "Hela", "Cloak & Dagger",
               "Captain America", "Thor", "Rocket Racoon", "Luna Snow", "Mantis", "Invisible Woman", "Psylocke",
-              "Star-Lord", "Spider-Man"],
+              "Star-Lord", "Spider-Man", "Emma Frost"],
     "Thor": ["Peni Parker", "Iron Man", "Storm", "Wolverine", "Punisher", "Star-Lord", "Scarlet Witch", "Mantis",
              "Psylocke", "Winter Soldier", "Luna Snow",
              "Adam Warlock", "Scarlet Witch", "Namor", "Squirrel Girl"],
@@ -20,6 +20,7 @@ heroes_counters = {
                         "Human Torch", "Jeff", "Rocket Racoon", "Adam Warlock", "Scarlet Witch", "The Thing"],
     "Magneto": ["Storm", "Groot", "Magik", "Loki", "Adam Warlock",
                 "Luna Snow", "Mr. Fantastic", "Winter Soldier", "Spider-Man", "The Thing"],
+    "Emma Frost": [],
 
 
     "Punisher": ["Hela", "Hawkeye", "Iron Fist", "Magik", "Black Panther",
@@ -78,7 +79,7 @@ heroes_counters = {
     "Loki": ["Moon Knight", "Iron Man", "Punisher", "Winter Soldier", "Wolverine", "Adam Warlock", "Spider-Man",
              "Mr. Fantastic", "Captain America", "Thor", "The Thing", "Storm", "Hela", "Jeff", "Moon Knight"],
     "Cloak & Dagger": ["Magneto", "Magik", "Hela", "Hawkeye", "Psylocke", "Wolverine", "Jeff", "Squirrel Girl",
-                       "Moon Knight", "Rocket Racoon"],
+                       "Moon Knight", "Rocket Racoon","Emma Frost"],
     "Jeff": ["Iron Man", "Storm", "Psylocke", "Peni Parker", "Squirrel Girl", "Magneto", "Hela",
              "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor"],
     "Mantis": ["Iron Man", "Punisher", "Iron Fist", "Captain America", "Psylocke", "Jeff", "Magneto", "Hela", "Magik",
@@ -90,7 +91,7 @@ heroes_counters = {
     "Rocket Racoon": ["Star-Lord", "Black Panther", "Iron Man", "Psylocke", "Venom", "Magneto", "Iron Fist",
                       "Captain America", "Punisher", "Wolverine"],
     "Invisible Woman": ["Punisher", "Moon Knight", "Squirrel Girl", "Magik", "Spider-Man", "Jeff", "Iron Man",
-                        "Magneto", "Namor", "The Thing", "Rocket Racoon", "Mr. Fantastic", "Storm", "Black Panther"],
+                        "Magneto", "Namor", "The Thing", "Rocket Racoon", "Mr. Fantastic", "Storm", "Black Panther","Emma Frost"],
     "Adam Warlock": ["Black Panther", "Magneto", "Doctor Strange", "Hela", "Black Widow",
                      "Winter Soldier", "Squirrel Girl", "Storm"],
 }
@@ -106,7 +107,7 @@ heroes = [
 
 futures = ["Quicksilver", "Doctor Doom", "Cyclops", "Jean Grey", "Rogue", "Gambit", "Beast", "Iceman", "Colossus",
            "Nightcrawler",
-           "Shadowcat", "Cable", "Deadpool", "Emma Frost", "Juggernaut", "Mystique", "Sabretooth",
+           "Shadowcat", "Cable", "Deadpool", "Juggernaut", "Mystique", "Sabretooth",
            "Silver Surfer", "Vision", ]
 
 heroes_compositions = {
