@@ -22,13 +22,14 @@ SIZES = {
     },
     'min': {
         'right': (0, 0),
-        'left': (35, 35),  # Увеличиваем иконки в минимальном режиме
-        'small': (25, 25)  # Увеличиваем маленькие иконки
+        'left': (50, 50),  # Увеличиваем иконки в минимальном режиме
+        'small': (25, 25)
     }
 }
 
 loaded_images = {mode: {'right': {}, 'left': {}, 'small': {}} for mode in SIZES}
 original_images = {}
+default_pixmap = None
 
 def load_original_images():
     from heroes_bd import heroes

@@ -25,7 +25,7 @@ def update_language(window, result_label, selected_heroes_label, logic, author_b
 def switch_language(window, lang, logic, result_label, selected_heroes_label, author_button, rating_button, top_frame, update_counters_wrapper):
     set_language(lang)
     update_language(window, result_label, selected_heroes_label, logic, author_button, rating_button, top_frame)
-    update_counters_wrapper(result_label, selected_heroes_label)
+    update_counters_wrapper()  # Удаляем параметры
 
 def copy_to_clipboard(logic):
     effective_team = logic.calculate_effective_team(logic.calculate_counter_scores())

@@ -14,6 +14,7 @@ class CounterpickLogic:
         self.priority_heroes = []
         self.current_result_text = ""
         self.priority_labels = {}
+        self.effective_team = []
 
     def set_priority(self, hero, button, hero_frame, update_counters_callback):
         from PySide6.QtWidgets import QLabel
@@ -30,9 +31,9 @@ class CounterpickLogic:
                 self.priority_labels[hero].deleteLater()
             label = QLabel(get_text('strong_player'))
             label.setStyleSheet("font-size: 8pt; color: white; background-color: red; padding: 2px;")
-            label.setParent(button)  # Привязываем к кнопке
-            label.move((button.width() - label.width()) // 2, 0)  # Центрируем по горизонтали
-            label.show()  # Убеждаемся, что метка видима
+            label.setParent(button)
+            label.move((button.width() - label.width()) // 2, 0)
+            label.show()
             self.priority_labels[hero] = label
         update_counters_callback()
 
@@ -42,34 +43,32 @@ class CounterpickLogic:
             self.selected_heroes.remove(hero)
             if hero in self.priority_heroes:
                 self.priority_heroes.remove(hero)
-            buttons[hero].setStyleSheet("")
+            buttons[hero].setStyleSheet("border: none;")  # Убираем стиль при снятии выделения
             if hero in self.priority_labels:
                 self.priority_labels[hero].deleteLater()
                 del self.priority_labels[hero]
         else:
             if len(self.selected_heroes) >= TEAM_SIZE:
                 removed_hero = self.selected_heroes.pop(0)
-                buttons[removed_hero].setStyleSheet("")
+                buttons[removed_hero].setStyleSheet("border: none;")
                 if removed_hero in self.priority_heroes:
                     self.priority_heroes.remove(removed_hero)
                 if removed_hero in self.priority_labels:
                     self.priority_labels[removed_hero].deleteLater()
                     del self.priority_labels[removed_hero]
             self.selected_heroes.append(hero)
-            buttons[hero].setStyleSheet("""
-                background-color: lightblue;
-                border: 2px solid yellow;  /* Добавляем желтую рамку для выделения */
-            """)
+            buttons[hero].setStyleSheet("background-color: lightblue; border: none;")  # Убираем жёлтую рамку
         update_counters_callback()
 
     def clear_all(self, buttons, update_selected_label_callback, update_counters_callback):
         for hero, button in buttons.items():
-            button.setStyleSheet("")
+            button.setStyleSheet("border: none;")
             if hero in self.priority_labels:
                 self.priority_labels[hero].deleteLater()
                 del self.priority_labels[hero]
         self.selected_heroes.clear()
         self.priority_heroes.clear()
+        self.effective_team.clear()
         update_selected_label_callback()
         update_counters_callback()
 
@@ -131,6 +130,7 @@ class CounterpickLogic:
                     tanks += 1
                 elif best_hero in hero_roles["supports"]:
                     supports += 1
+        self.effective_team = effective_team
         return effective_team
 
     def update_display_language(self):

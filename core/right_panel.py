@@ -1,7 +1,50 @@
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QGridLayout, QVBoxLayout
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QGridLayout, QVBoxLayout, QScrollArea, QWidget
+from PySide6.QtCore import Qt, Signal
 from heroes_bd import heroes
 from translations import get_text
+
+# Кастомный виджет для кнопки с иконкой и текстом
+class HeroButton(QWidget):
+    clicked = Signal()
+    customContextMenuRequested = Signal(object)  # Для контекстного меню
+
+    def __init__(self, hero, icon, initial_mode):
+        super().__init__()
+        self.hero = hero
+        # Устанавливаем минимальную ширину, но высота будет адаптивной
+        self.setMinimumSize(90 if initial_mode == "max" else 50, 0)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)  # Убираем зазор между иконкой и текстом
+
+        # Иконка
+        self.icon_label = QLabel()
+        self.icon_label.setPixmap(icon)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.icon_label)
+
+        # Текст (имя героя)
+        self.text_label = QLabel(hero if initial_mode == "max" else "")
+        self.text_label.setAlignment(Qt.AlignCenter)
+        # Увеличиваем размер шрифта до 8pt, уменьшаем высоту строки и включаем перенос текста
+        self.text_label.setStyleSheet("font-size: 8pt; line-height: 8pt;")  # Уменьшаем высоту строки
+        self.text_label.setWordWrap(True)  # Включаем перенос текста
+        self.text_label.setMaximumHeight(30 if initial_mode == "max" else 0)  # Ограничиваем высоту текста
+        layout.addWidget(self.text_label)
+
+        # Убираем рамку по умолчанию
+        self.setStyleSheet("border: none;")  # Убираем серую рамку
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.on_context_menu)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+    def on_context_menu(self, pos):
+        self.customContextMenuRequested.emit(pos)
 
 def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, result_label, canvas,
                        update_scrollregion, initial_mode="middle"):
@@ -9,59 +52,72 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
     layout = QVBoxLayout(right_frame)
     layout.setContentsMargins(5, 5, 5, 5)
 
-    grid = QGridLayout()
-    grid.setSpacing(2)  # Уменьшаем расстояние между кнопками
-    layout.addLayout(grid)
+    # Создаём QScrollArea для сетки кнопок
+    scroll_area = QScrollArea(right_frame)
+    scroll_area.setWidgetResizable(True)
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-    def update_counters_wrapper(result_label, selected_heroes_label):
+    # Создаём контейнер для сетки кнопок
+    grid_container = QFrame()
+    grid = QGridLayout(grid_container)
+    grid.setSpacing(2)
+
+    def update_counters_wrapper():
+        print(f"update_counters_wrapper called with result_label: {parent.result_label}")
         current_mode = parent.mode
         if logic.selected_heroes:
             from images_load import get_images_for_mode
             right_images, left_images, small_images = get_images_for_mode(current_mode)
             if current_mode == "min":
-                logic.generate_minimal_icon_list(result_frame, result_label, left_images)
+                logic.generate_minimal_icon_list(parent.result_frame, parent.result_label, left_images)
             else:
-                logic.generate_counterpick_display(result_frame, result_label, left_images, small_images)
-            if result_label and hasattr(result_label, 'isVisible') and result_label.isVisible():
-                result_label.setText("")
+                logic.generate_counterpick_display(parent.result_frame, parent.result_label, left_images, small_images)
+            if parent.result_label and hasattr(parent.result_label, 'isVisible') and parent.result_label.isVisible():
+                parent.result_label.setText("")
         else:
-            for widget in result_frame.findChildren(QFrame):
+            for widget in parent.result_frame.findChildren(QFrame):
                 widget.deleteLater()
-            if result_label and hasattr(result_label, 'isVisible') and result_label.isVisible():
-                result_label.setText(get_text('no_heroes_selected'))
-        update_selected_label_wrapper(selected_heroes_label)
+            if parent.result_label and hasattr(parent.result_label, 'isVisible') and parent.result_label.isVisible():
+                parent.result_label.setText(get_text('no_heroes_selected'))
+        update_selected_label_wrapper()
         update_scrollregion()
+        parent.update_horizontal_icon_list()
 
-    def update_selected_label_wrapper(selected_heroes_label):
-        if selected_heroes_label and hasattr(selected_heroes_label, 'setText'):
-            selected_heroes_label.setText(logic.get_selected_heroes_text())
+    def update_selected_label_wrapper():
+        if parent.selected_heroes_label and hasattr(parent.selected_heroes_label, 'setText'):
+            parent.selected_heroes_label.setText(logic.get_selected_heroes_text())
 
     for i, hero in enumerate(heroes):
-        btn = QPushButton()
-        btn_layout = QVBoxLayout(btn)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setSpacing(2)
-        btn_layout.setAlignment(Qt.AlignCenter)  # Выравниваем содержимое по центру
-
-        # Добавляем текст только в режиме "max"
-        if initial_mode == "max":
-            label = QLabel(hero)
-            label.setAlignment(Qt.AlignCenter)
-            label.setWordWrap(True)
-            btn_layout.addWidget(label)
-
-        btn.clicked.connect(lambda checked, h=hero: logic.toggle_hero(h, buttons, lambda: update_counters_wrapper(parent.result_label, parent.selected_heroes_label)))
-        btn.setContextMenuPolicy(Qt.CustomContextMenu)
+        # Создаём кастомный виджет вместо QPushButton
+        icon = parent.right_images.get(hero, None)
+        if icon is None or icon.isNull():
+            print(f"Предупреждение: Нет валидной иконки для {hero} в режиме '{initial_mode}'")
+            continue
+        btn = HeroButton(hero, icon, initial_mode)
+        btn.clicked.connect(
+            lambda h=hero: logic.toggle_hero(
+                h, buttons, lambda: update_counters_wrapper()
+            )
+        )
         btn.customContextMenuRequested.connect(
-            lambda pos, h=hero, b=btn: logic.set_priority(h, b, b.parent(), lambda: update_counters_wrapper(parent.result_label, parent.selected_heroes_label)))
+            lambda pos, h=hero, b=btn: logic.set_priority(
+                h, b, b.parent(), lambda: update_counters_wrapper()
+            )
+        )
         grid.addWidget(btn, i // 5, i % 5)
         buttons[hero] = btn
 
-    # Устанавливаем максимальную ширину правой панели на основе количества кнопок в ряду
-    button_width = 70 if initial_mode == "max" else 40
-    right_frame.setMaximumWidth(
-        (button_width + grid.spacing()) * 5 + layout.contentsMargins().left() + layout.contentsMargins().right())
+    scroll_area.setWidget(grid_container)
+    layout.addWidget(scroll_area)
 
+    # Устанавливаем минимальную ширину right_frame
+    button_width = 90 if initial_mode == "max" else 50
+    right_frame.setMinimumWidth(
+        (button_width + grid.spacing()) * 5 + layout.contentsMargins().left() + layout.contentsMargins().right() + 10
+    )
+
+    # Добавляем selected_heroes_label после QScrollArea
     selected_heroes_label = QLabel(get_text('selected'))
     selected_heroes_label.setWordWrap(True)
     layout.addWidget(selected_heroes_label)
@@ -72,7 +128,12 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
 
     clear_button = QPushButton(get_text('clear_all'))
     clear_button.clicked.connect(
-        lambda: logic.clear_all(buttons, lambda: update_selected_label_wrapper(parent.selected_heroes_label), lambda: update_counters_wrapper(parent.result_label, parent.selected_heroes_label)))
+        lambda: logic.clear_all(
+            buttons,
+            lambda: update_selected_label_wrapper(),
+            lambda: update_counters_wrapper()
+        )
+    )
     layout.addWidget(clear_button)
 
     return right_frame, selected_heroes_label, update_counters_wrapper, update_selected_label_wrapper
