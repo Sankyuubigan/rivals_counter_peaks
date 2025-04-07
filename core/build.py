@@ -19,6 +19,8 @@ command = (
     f'--add-data "translations.py;." '
     f'--add-data "utils.py;." '
     f'--add-data "display.py;." '
+    f'--add-data "horizontal_list.py;." '  # Added
+    f'--add-data "mode_manager.py;." '     # Added
     f'main.py'
 )
 print(f"Выполняем команду: {command}")

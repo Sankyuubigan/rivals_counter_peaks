@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QGridLayout, QVBoxLay
 from PySide6.QtCore import Qt, Signal
 from heroes_bd import heroes
 from translations import get_text
-
+from horizontal_list import update_horizontal_icon_list  # Добавляем импорт
 
 class HeroButton(QWidget):
     clicked = Signal()
@@ -40,7 +40,6 @@ class HeroButton(QWidget):
 
     def on_context_menu(self, pos):
         self.customContextMenuRequested.emit(pos)
-
 
 def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, result_label, canvas,
                        update_scrollregion, initial_mode="middle"):
@@ -82,7 +81,7 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
         parent.result_frame.update()
         parent.canvas.update()
         print("Вызываем update_horizontal_icon_list для обновления горизонтального списка")
-        parent.update_horizontal_icon_list()
+        update_horizontal_icon_list(parent)  # Исправляем вызов
 
     def update_selected_label_wrapper():
         if parent.selected_heroes_label and hasattr(parent.selected_heroes_label, 'setText'):
@@ -112,7 +111,7 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
 
     button_width = 90 if initial_mode == "max" else 50
     right_frame.setMinimumWidth(
-        (button_width + grid.spacing()) * 5 + layout.contentsMargins().left() + layout.contentsMargins().right() + 10
+        (button_width + grid.spacing()) * 5 + layout.contentsMargins().left() + layout.contentsMargins().right() + 20
     )
 
     selected_heroes_label = QLabel(get_text('selected'))
