@@ -13,21 +13,24 @@ SIZES = {
     'max': {
         'right': (60, 60),
         'left': (50, 50),
-        'small': (35, 35)
+        'small': (35, 35),
+        'horizontal': (25, 25)  # Такой же размер, как в среднем режиме
     },
     'middle': {
         'right': (35, 35),
         'left': (25, 25),
-        'small': (18, 18)
+        'small': (18, 18),
+        'horizontal': (25, 25)
     },
     'min': {
         'right': (0, 0),
-        'left': (50, 50),  # Увеличиваем иконки в минимальном режиме
-        'small': (25, 25)
+        'left': (50, 50),
+        'small': (25, 25),
+        'horizontal': (50, 50)
     }
 }
 
-loaded_images = {mode: {'right': {}, 'left': {}, 'small': {}} for mode in SIZES}
+loaded_images = {mode: {'right': {}, 'left': {}, 'small': {}, 'horizontal': {}} for mode in SIZES}
 original_images = {}
 default_pixmap = None
 
@@ -35,61 +38,65 @@ def load_original_images():
     from heroes_bd import heroes
     if original_images:
         return
-    print("Loading original images...")
+    print("Загрузка оригинальных изображений...")
     for hero in heroes:
         img_path = resource_path(f"resources/{hero.lower().replace(' ', '_')}.png")
-        if os.path.exists(img_path):  # Проверяем, существует ли файл
+        if os.path.exists(img_path):
             pixmap = QPixmap(img_path)
-            if not pixmap.isNull():  # Проверяем, что изображение валидно
+            if not pixmap.isNull():
                 original_images[hero] = pixmap
-                print(f"Loaded image for {hero} from {img_path}")
+                print(f"Изображение для {hero} загружено из {img_path}")
             else:
-                print(f"Image for {hero} at {img_path} is invalid")
-                original_images[hero] = load_default_pixmap()  # Используем запасное изображение
+                print(f"Изображение для {hero} в {img_path} недействительно")
+                original_images[hero] = load_default_pixmap()
         else:
-            print(f"Image file for {hero} not found at {img_path}")
-            original_images[hero] = load_default_pixmap()  # Используем запасное изображение
-    print("Original images loaded.")
+            print(f"Файл изображения для {hero} не найден в {img_path}")
+            original_images[hero] = load_default_pixmap()
+    print("Оригинальные изображения загружены.")
 
 def get_images_for_mode(mode='middle'):
     if not original_images:
         load_original_images()
     if mode not in SIZES:
-        print(f"Warning: Unknown mode '{mode}'. Using 'middle'.")
+        print(f"Предупреждение: Неизвестный режим '{mode}'. Используется 'middle'.")
         mode = 'middle'
-    print(f"Generating images for mode: {mode}")
+    print(f"Генерация изображений для режима: {mode}")
     right_size = SIZES[mode]['right']
     left_size = SIZES[mode]['left']
     small_size = SIZES[mode]['small']
+    horizontal_size = SIZES[mode]['horizontal']
     right_images = {}
     left_images = {}
     small_images = {}
+    horizontal_images = {}
     for hero, img in original_images.items():
         try:
-            if right_size != (0, 0):  # Пропускаем, если размер нулевой (режим min)
+            if right_size != (0, 0):
                 right_images[hero] = img.scaled(*right_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             left_images[hero] = img.scaled(*left_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             small_images[hero] = img.scaled(*small_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            horizontal_images[hero] = img.scaled(*horizontal_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         except Exception as e:
-            print(f"Error resizing image for {hero} in mode {mode}: {e}")
+            print(f"Ошибка изменения размера изображения для {hero} в режиме {mode}: {e}")
             if right_size != (0, 0):
-                right_images[hero] = load_default_pixmap()  # Запасное изображение для right
-            left_images[hero] = load_default_pixmap()  # Запасное изображение для left
-            small_images[hero] = load_default_pixmap()  # Запасное изображение для small
+                right_images[hero] = load_default_pixmap()
+            left_images[hero] = load_default_pixmap()
+            small_images[hero] = load_default_pixmap()
+            horizontal_images[hero] = load_default_pixmap()
     loaded_images[mode]['right'] = right_images
     loaded_images[mode]['left'] = left_images
     loaded_images[mode]['small'] = small_images
-    print(f"Images generated and cached for mode: {mode}")
-    return right_images, left_images, small_images
+    loaded_images[mode]['horizontal'] = horizontal_images
+    print(f"Изображения сгенерированы и кэшированы для режима: {mode}")
+    return right_images, left_images, small_images, horizontal_images
 
 def load_default_pixmap():
     global default_pixmap
     if default_pixmap is None:
-        # Создаем простое серое изображение 1x1 как запасное
         default_pixmap = QPixmap(1, 1)
         default_pixmap.fill(Qt.gray)
     return default_pixmap
 
 def load_images():
-    print("Warning: Direct call to load_images() is deprecated. Use get_images_for_mode().")
+    print("Предупреждение: Прямой вызов load_images() устарел. Используйте get_images_for_mode().")
     return get_images_for_mode('middle')

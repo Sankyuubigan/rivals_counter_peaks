@@ -43,7 +43,7 @@ class CounterpickLogic:
             self.selected_heroes.remove(hero)
             if hero in self.priority_heroes:
                 self.priority_heroes.remove(hero)
-            buttons[hero].setStyleSheet("border: none;")  # Убираем стиль при снятии выделения
+            buttons[hero].setStyleSheet("border: none;")
             if hero in self.priority_labels:
                 self.priority_labels[hero].deleteLater()
                 del self.priority_labels[hero]
@@ -57,7 +57,8 @@ class CounterpickLogic:
                     self.priority_labels[removed_hero].deleteLater()
                     del self.priority_labels[removed_hero]
             self.selected_heroes.append(hero)
-            buttons[hero].setStyleSheet("background-color: lightblue; border: none;")  # Убираем жёлтую рамку
+            buttons[hero].setStyleSheet("background-color: lightblue; border: none;")
+        print(f"После toggle_hero, selected_heroes: {self.selected_heroes}")  # Отладка
         update_counters_callback()
 
     def clear_all(self, buttons, update_selected_label_callback, update_counters_callback):

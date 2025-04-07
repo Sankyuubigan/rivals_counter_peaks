@@ -10,11 +10,12 @@ from images_load import load_images, get_images_for_mode
 from translations import get_text
 from heroes_bd import heroes, hero_roles
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logic = CounterpickLogic()
-        self.mode = "max"  # Инициализируем в максимальном режиме
+        self.mode = "max"
         self.buttons = {}
         self.initial_pos = None
         self.mode_positions = {"max": None, "middle": None, "min": None}
@@ -46,9 +47,8 @@ class MainWindow(QMainWindow):
         self.icons_layout.setContentsMargins(0, 5, 0, 5)
         self.icons_layout.setAlignment(Qt.AlignLeft)
 
-        # Загружаем изображения *до* создания панелей
         try:
-            self.right_images, self.left_images, self.small_images = load_images()
+            self.right_images, self.left_images, self.small_images, self.horizontal_images = load_images()
         except Exception as e:
             print(f"Ошибка загрузки изображений: {e}")
             self.close()
@@ -81,45 +81,58 @@ class MainWindow(QMainWindow):
         update_language(self, self.result_label, self.selected_heroes_label, self.logic, self.author_button,
                         self.rating_button, self.top_frame)
 
-        # Восстанавливаем выбор героев и обновляем рейтинг
         self.restore_hero_selections()
-        self.update_counters_wrapper()  # Явно обновляем рейтинг после инициализации
+        self.update_counters_wrapper()
 
     def update_horizontal_icon_list(self):
+        print("Вызов update_horizontal_icon_list")
         while self.icons_layout.count():
             item = self.icons_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        if not self.logic.selected_heroes:
-            return
-
+        # Рассчитываем рейтинг контрпиков
         counter_scores = self.logic.calculate_counter_scores()
         self.logic.calculate_effective_team(counter_scores)
 
-        sorted_heroes = []
-        for role in ["tanks", "attackers", "supports"]:
-            sorted_heroes.extend([hero for hero in hero_roles[role] if hero in heroes])
+        # Фильтруем героев: оставляем только тех, у кого рейтинг > 0
+        filtered_heroes = [(hero, score) for hero, score in counter_scores.items() if score > 0]
+        # Сортируем по убыванию рейтинга
+        filtered_heroes.sort(key=lambda x: x[1], reverse=True)
+        print(f"Отфильтрованные герои с рейтингом > 0: {filtered_heroes}")
 
-        for hero in sorted_heroes:
-            if hero in self.left_images and self.left_images[hero]:
+        if not filtered_heroes:
+            print("Нет героев с рейтингом > 0, пропускаем обновление горизонтального списка.")
+            return
+
+        print(f"Обновление горизонтального списка с selected_heroes: {self.logic.selected_heroes}")
+        print(f"Размер horizontal_images: {len(self.horizontal_images)}")
+        for hero, score in filtered_heroes:
+            if hero in self.horizontal_images and self.horizontal_images[hero]:
                 img_label = QLabel()
-                img_label.setPixmap(self.left_images[hero])
+                img_label.setPixmap(self.horizontal_images[hero])
+                img_label.setFixedSize(25, 25)  # Фиксированный размер для предотвращения сжатия
                 if hero in self.logic.selected_heroes:
                     img_label.setStyleSheet("border: 2px solid yellow;")
                 if hero in self.logic.effective_team:
                     img_label.setStyleSheet("border: 2px solid lightblue;")
                 self.icons_layout.addWidget(img_label)
+                print(f"Добавлен герой {hero} с рейтингом {score} в горизонтальный список")
+
+        self.icons_frame.update()
+        self.left_container.update()
+        self.main_widget.update()
+        print(f"Видимость icons_frame: {self.icons_frame.isVisible()}")
+        print("Завершено обновление горизонтального списка")
 
     def update_interface_for_mode(self, mode):
         if self.mode in self.mode_positions:
             self.mode_positions[self.mode] = self.pos()
 
-        self.right_images, self.left_images, self.small_images = get_images_for_mode(mode)
+        self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(mode)
         for btn in self.buttons.values():
             btn.setVisible(False)
 
-        # Полностью очищаем inner_layout
         while self.inner_layout.count():
             item = self.inner_layout.takeAt(0)
             if item.widget():
@@ -147,12 +160,11 @@ class MainWindow(QMainWindow):
             self.setMinimumHeight(0)
             self.setMaximumHeight(16777215)
             self.resize(1700, 1000)
-            # Устанавливаем фиксированную ширину для left_container, чтобы избежать накопления stretch
-            self.left_container.setMinimumWidth(600)  # Фиксированная ширина
+            self.left_container.setMinimumWidth(600)
             self.left_container.setMaximumWidth(600)
             self.inner_layout.addWidget(self.left_container)
             self.inner_layout.addWidget(self.right_frame, stretch=1)
-            self.canvas.setVisible(True)  # Явно устанавливаем видимость
+            self.canvas.setVisible(True)
             self.icons_frame.setVisible(True)
             self.left_container.setVisible(True)
             self.right_frame.setVisible(True)
@@ -160,18 +172,17 @@ class MainWindow(QMainWindow):
                 btn = self.buttons[hero]
                 icon = self.right_images.get(hero)
                 if icon is not None and not icon.isNull():
-                    btn.icon_label.setPixmap(icon)  # Обновляем иконку в HeroButton
+                    btn.icon_label.setPixmap(icon)
                 else:
                     print(f"Предупреждение: Нет валидной иконки для {hero} в режиме 'max'")
                 btn.setVisible(True)
             self.author_button.setVisible(True)
             self.rating_button.setVisible(True)
-            # Удаляем вызов generate_counterpick_display здесь, так как он будет вызван в update_counters_wrapper
         elif mode == "middle":
             self.setMinimumHeight(0)
             self.setMaximumHeight(16777215)
-            self.resize(950, 270)
-            self.left_container.setMinimumWidth(0)  # Сбрасываем ограничения ширины
+            self.resize(880, 460)
+            self.left_container.setMinimumWidth(0)
             self.left_container.setMaximumWidth(16777215)
             self.inner_layout.addWidget(self.left_container, stretch=2)
             self.inner_layout.addWidget(self.right_frame, stretch=1)
@@ -183,16 +194,15 @@ class MainWindow(QMainWindow):
                 btn = self.buttons[hero]
                 icon = self.right_images.get(hero)
                 if icon is not None and not icon.isNull():
-                    btn.icon_label.setPixmap(icon)  # Обновляем иконку в HeroButton
+                    btn.icon_label.setPixmap(icon)
                 else:
                     print(f"Предупреждение: Нет валидной иконки для {hero} в режиме 'middle'")
-                btn.text_label.setText("")  # Убираем текст в режиме middle
+                btn.text_label.setText("")
                 btn.setVisible(True)
             self.author_button.setVisible(False)
             self.rating_button.setVisible(False)
-            # Удаляем вызов generate_counterpick_display здесь
         elif mode == "min":
-            self.left_container.setMinimumWidth(0)  # Сбрасываем ограничения ширины
+            self.left_container.setMinimumWidth(0)
             self.left_container.setMaximumWidth(16777215)
             self.inner_layout.addWidget(self.left_container, stretch=1)
             self.author_button.setVisible(False)
@@ -205,9 +215,9 @@ class MainWindow(QMainWindow):
             new_height = top_frame_height + icon_height + margin
             self.setFixedHeight(new_height)
             self.resize(600, new_height)
-            # Удаляем вызов generate_minimal_icon_list здесь
+            self.icons_frame.setVisible(True)
 
-        self.update_counters_wrapper()  # Обновляем рейтинг после смены режима
+        self.update_counters_wrapper()
         self.update_horizontal_icon_list()
 
         if self.mode_positions[mode] is not None:
@@ -231,9 +241,10 @@ class MainWindow(QMainWindow):
                     hero, self.buttons[hero], self.buttons[hero].parent(),
                     lambda: self.update_counters_wrapper()
                 )
-        self.update_counters_wrapper()  # Обновляем рейтинг после восстановления выбора
+        self.update_counters_wrapper()
         self.update_selected_label_wrapper()
         self.update_horizontal_icon_list()
+
 
 def create_gui():
     return MainWindow()
