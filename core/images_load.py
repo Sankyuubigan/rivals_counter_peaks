@@ -45,7 +45,7 @@ def load_original_images():
             pixmap = QPixmap(img_path)
             if not pixmap.isNull():
                 original_images[hero] = pixmap
-                print(f"Изображение для {hero} загружено из {img_path}")
+                print(f"Изображение для {hero} загружено из {img_path}, размер: {pixmap.width()}x{pixmap.height()}")
             else:
                 print(f"Изображение для {hero} в {img_path} недействительно")
                 original_images[hero] = load_default_pixmap()

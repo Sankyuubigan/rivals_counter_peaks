@@ -73,10 +73,10 @@ def update_interface_for_mode(window):
     elif window.mode == "middle":
         window.setMinimumHeight(0)
         window.setMaximumHeight(16777215)
-        window.resize(880, 460)
-        window.left_container.setMinimumWidth(0)
-        window.left_container.setMaximumWidth(16777215)
-        window.inner_layout.addWidget(window.left_container, stretch=2)
+        window.resize(880, 480)
+        window.left_container.setMinimumWidth(600)
+        window.left_container.setMaximumWidth(600)
+        window.inner_layout.addWidget(window.left_container, stretch=0)
         window.inner_layout.addWidget(window.right_frame, stretch=0)
         window.canvas.setVisible(True)
         window.icons_frame.setVisible(True)
@@ -96,7 +96,7 @@ def update_interface_for_mode(window):
     elif window.mode == "min":
         window.left_container.setMinimumWidth(0)
         window.left_container.setMaximumWidth(16777215)
-        window.inner_layout.addWidget(window.left_container, stretch=1)
+        window.inner_layout.addWidget(window.left_container, stretch=0)
         window.author_button.setVisible(False)
         window.rating_button.setVisible(False)
         window.right_frame.setVisible(False)
