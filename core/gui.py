@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logic = CounterpickLogic()
-        self.mode = "max"
+        self.mode = "middle"  # Изменяем начальный режим на "middle"
         self.buttons = {}
         self.initial_pos = None
         self.mode_positions = {"max": None, "middle": None, "min": None}
@@ -129,20 +129,25 @@ class MainWindow(QMainWindow):
         if self.mode in self.mode_positions:
             self.mode_positions[self.mode] = self.pos()
 
-        self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(mode)
-        for btn in self.buttons.values():
-            btn.setVisible(False)
+        # Очищаем словарь buttons перед удалением виджетов
+        self.buttons.clear()
 
+        # Загружаем изображения для нового режима
+        self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(mode)
+
+        # Удаляем старые виджеты из inner_layout
         while self.inner_layout.count():
             item = self.inner_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
+        # Пересоздаём icons_frame и его layout
         self.icons_frame = QFrame(self.main_widget)
         self.icons_layout = QHBoxLayout(self.icons_frame)
         self.icons_layout.setContentsMargins(0, 5, 0, 5)
         self.icons_layout.setAlignment(Qt.AlignLeft)
 
+        # Пересоздаём левые и правые панели
         self.canvas, self.result_frame, self.result_label, self.update_scrollregion = create_left_panel(
             self.main_widget)
         self.right_frame, self.selected_heroes_label, self.update_counters_wrapper, self.update_selected_label_wrapper = create_right_panel(
@@ -150,12 +155,14 @@ class MainWindow(QMainWindow):
             self.canvas, self.update_scrollregion, mode
         )
 
+        # Пересоздаём left_container
         self.left_container = QWidget()
         left_layout = QVBoxLayout(self.left_container)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addWidget(self.icons_frame)
         left_layout.addWidget(self.canvas, stretch=1)
 
+        # Настраиваем интерфейс в зависимости от режима
         if mode == "max":
             self.setMinimumHeight(0)
             self.setMaximumHeight(16777215)
