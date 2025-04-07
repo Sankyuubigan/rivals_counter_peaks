@@ -70,21 +70,19 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
             parent.left_images = left_images
             parent.small_images = small_images
             parent.horizontal_images = horizontal_images  # Обновляем horizontal_images
+            print(f"Обновлены horizontal_images, размер: {len(parent.horizontal_images)}")
             if current_mode == "min":
                 logic.generate_minimal_icon_list(parent.result_frame, parent.result_label, left_images)
             else:
                 logic.generate_counterpick_display(parent.result_frame, parent.result_label, left_images, small_images)
-            if parent.result_label and hasattr(parent.result_label, 'isVisible') and parent.result_label.isVisible():
-                parent.result_label.setText("")
-        else:
-            if parent.result_label and hasattr(parent.result_label, 'isVisible') and parent.result_label.isVisible():
-                parent.result_label.setText(get_text('no_heroes_selected'))
+        # Удаляем код, связанный с result_label
 
         update_selected_label_wrapper()
         update_scrollregion()
-        parent.update_horizontal_icon_list()
         parent.result_frame.update()
         parent.canvas.update()
+        print("Вызываем update_horizontal_icon_list для обновления горизонтального списка")
+        parent.update_horizontal_icon_list()
 
     def update_selected_label_wrapper():
         if parent.selected_heroes_label and hasattr(parent.selected_heroes_label, 'setText'):

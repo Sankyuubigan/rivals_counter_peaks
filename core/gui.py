@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logic = CounterpickLogic()
-        self.mode = "middle"  # Изменяем начальный режим на "middle"
+        self.mode = "middle"
         self.buttons = {}
         self.initial_pos = None
         self.mode_positions = {"max": None, "middle": None, "min": None}
@@ -83,9 +83,32 @@ class MainWindow(QMainWindow):
 
         self.restore_hero_selections()
         self.update_counters_wrapper()
+        self.update_result_label_text()  # Добавляем вызов для начального обновления
+        self.update_horizontal_icon_list()
+
+    def update_result_label_text(self):
+        """Обновляет текст result_label на основе текущего состояния selected_heroes."""
+        print("Вызов update_result_label_text")
+        if not hasattr(self, 'result_label') or self.result_label is None:
+            print("result_label не существует, пропускаем обновление текста")
+            return
+        try:
+            if self.logic.selected_heroes:
+                # Если есть выбранные герои, очищаем текст (логика отображения теперь в generate_... методах)
+                if hasattr(self.result_label, 'isVisible') and self.result_label.isVisible():
+                    self.result_label.setText("")
+            else:
+                # Если герои не выбраны, показываем сообщение
+                if hasattr(self.result_label, 'isVisible') and self.result_label.isVisible():
+                    self.result_label.setText(get_text('no_heroes_selected'))
+        except RuntimeError as e:
+            print(f"Ошибка при обновлении result_label: {e}")
 
     def update_horizontal_icon_list(self):
         print("Вызов update_horizontal_icon_list")
+        print(f"Текущий режим: {self.mode}")
+        print(f"Текущие selected_heroes: {self.logic.selected_heroes}")
+        print(f"Текущие effective_team: {self.logic.effective_team}")
         while self.icons_layout.count():
             item = self.icons_layout.takeAt(0)
             if item.widget():
@@ -93,7 +116,9 @@ class MainWindow(QMainWindow):
 
         # Рассчитываем рейтинг контрпиков
         counter_scores = self.logic.calculate_counter_scores()
+        print(f"Рассчитанные counter_scores: {counter_scores}")
         self.logic.calculate_effective_team(counter_scores)
+        print(f"Обновлённый effective_team: {self.logic.effective_team}")
 
         # Фильтруем героев: оставляем только тех, у кого рейтинг > 0
         filtered_heroes = [(hero, score) for hero, score in counter_scores.items() if score > 0]
@@ -101,8 +126,13 @@ class MainWindow(QMainWindow):
         filtered_heroes.sort(key=lambda x: x[1], reverse=True)
         print(f"Отфильтрованные герои с рейтингом > 0: {filtered_heroes}")
 
+        # Если нет выбранных героев (то есть при старте программы), показываем всех героев
+        if not self.logic.selected_heroes:
+            filtered_heroes = [(hero, 0) for hero in heroes]  # Используем всех героев из heroes_bd
+            print("selected_heroes пуст, показываем всех героев:", filtered_heroes)
+
         if not filtered_heroes:
-            print("Нет героев с рейтингом > 0, пропускаем обновление горизонтального списка.")
+            print("Нет героев для отображения в горизонтальном списке.")
             return
 
         print(f"Обновление горизонтального списка с selected_heroes: {self.logic.selected_heroes}")
@@ -114,15 +144,20 @@ class MainWindow(QMainWindow):
                 img_label.setFixedSize(25, 25)  # Фиксированный размер для предотвращения сжатия
                 if hero in self.logic.selected_heroes:
                     img_label.setStyleSheet("border: 2px solid yellow;")
+                    print(f"Герой {hero} выделен жёлтым (выбран)")
                 if hero in self.logic.effective_team:
                     img_label.setStyleSheet("border: 2px solid lightblue;")
+                    print(f"Герой {hero} выделен голубым (эффективная команда)")
                 self.icons_layout.addWidget(img_label)
                 print(f"Добавлен герой {hero} с рейтингом {score} в горизонтальный список")
+            else:
+                print(f"Пропущен герой {hero}: нет изображения в horizontal_images")
 
         self.icons_frame.update()
         self.left_container.update()
         self.main_widget.update()
         print(f"Видимость icons_frame: {self.icons_frame.isVisible()}")
+        print(f"Количество элементов в icons_layout: {self.icons_layout.count()}")
         print("Завершено обновление горизонтального списка")
 
     def update_interface_for_mode(self, mode):
@@ -166,7 +201,7 @@ class MainWindow(QMainWindow):
         if mode == "max":
             self.setMinimumHeight(0)
             self.setMaximumHeight(16777215)
-            self.resize(1700, 1000)
+            self.resize(1100, 1000)
             self.left_container.setMinimumWidth(600)
             self.left_container.setMaximumWidth(600)
             self.inner_layout.addWidget(self.left_container)
@@ -216,15 +251,46 @@ class MainWindow(QMainWindow):
             self.rating_button.setVisible(False)
             self.right_frame.setVisible(False)
 
-            top_frame_height = 40
-            icon_height = 35
-            margin = 10
-            new_height = top_frame_height + icon_height + margin
+            # Динамически вычисляем высоту окна
+            # 1. Получаем высоту top_frame (верхней панели)
+            top_frame_height = self.top_frame.height()
+            print(f"Высота top_frame: {top_frame_height}")
+
+            # 2. Вызываем update_horizontal_icon_list, чтобы icons_frame был заполнен
+            self.update_horizontal_icon_list()
+
+            # 3. Получаем высоту icons_frame (горизонтального списка)
+            # Учитываем отступы из icons_layout (сверху 5, снизу 5)
+            icons_layout_margins = self.icons_layout.contentsMargins()
+            icon_frame_height = self.icons_frame.height()
+            print(f"Высота icons_frame до корректировки: {icon_frame_height}")
+
+            # Если высота icons_frame равна 0, задаём минимальную высоту на основе размера иконок
+            if icon_frame_height == 0:
+                icon_frame_height = 25 + icons_layout_margins.top() + icons_layout_margins.bottom()  # 25 (иконка) + 5 + 5 (отступы)
+                self.icons_frame.setMinimumHeight(icon_frame_height)
+                print(f"Установлена минимальная высота icons_frame: {icon_frame_height}")
+
+            icon_height_with_margins = icon_frame_height + icons_layout_margins.top() + icons_layout_margins.bottom()
+            print(f"Высота icons_frame с отступами: {icon_height_with_margins}")
+
+            # 4. Учитываем отступы main_layout (сверху и снизу)
+            main_layout_margins = self.main_layout.contentsMargins()
+            total_margins = main_layout_margins.top() + main_layout_margins.bottom()
+            print(f"Отступы main_layout: top={main_layout_margins.top()}, bottom={main_layout_margins.bottom()}")
+
+            # 5. Итоговая высота окна: высота top_frame + высота icons_frame с отступами + отступы main_layout
+            new_height = top_frame_height + icon_height_with_margins + total_margins
+            print(f"Итоговая высота окна: {new_height}")
+
+            # Устанавливаем высоту окна
             self.setFixedHeight(new_height)
             self.resize(600, new_height)
             self.icons_frame.setVisible(True)
+            print(f"Установлена высота окна: {new_height}")
 
         self.update_counters_wrapper()
+        self.update_result_label_text()  # Добавляем вызов после update_counters_wrapper
         self.update_horizontal_icon_list()
 
         if self.mode_positions[mode] is not None:
@@ -250,6 +316,7 @@ class MainWindow(QMainWindow):
                 )
         self.update_counters_wrapper()
         self.update_selected_label_wrapper()
+        self.update_result_label_text()  # Добавляем вызов после обновления
         self.update_horizontal_icon_list()
 
 
