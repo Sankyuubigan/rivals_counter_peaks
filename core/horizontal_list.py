@@ -1,7 +1,7 @@
 # File: horizontal_list.py
 from PySide6.QtWidgets import QLabel
-from PySide6.QtCore import QSize # Добавил QSize
-from heroes_bd import heroes
+from PySide6.QtCore import QSize, Qt # <--- Добавлен импорт Qt
+from translations import get_text # Добавил импорт get_text
 
 def update_horizontal_icon_list(window):
     """
@@ -9,8 +9,6 @@ def update_horizontal_icon_list(window):
     Отображает рекомендуемую эффективную команду.
     """
     # print("Вызов update_horizontal_icon_list")
-    # print(f"Текущий режим: {window.mode}")
-    # print(f"Текущие selected_heroes: {window.logic.selected_heroes}")
 
     if not window.icons_layout or not window.icons_frame:
         print("[!] Ошибка: icons_layout или icons_frame не найдены.")
@@ -22,52 +20,50 @@ def update_horizontal_icon_list(window):
         if item.widget():
             item.widget().deleteLater()
 
-    # Если нет выбранных героев, показываем пустоту
+    # Если нет выбранных героев, показываем пустоту или сообщение
     if not window.logic.selected_heroes:
-        # print("selected_heroes пуст, горизонтальный список пуст")
+        # label = QLabel(get_text("select_enemies_for_recommendations", "Выберите врагов для рекомендаций"))
+        # window.icons_layout.addWidget(label)
         window.icons_frame.update() # Обновляем вид фрейма
         return
 
     # Получаем или пересчитываем эффективную команду
-    if not hasattr(logic := window.logic, 'effective_team') or not logic.effective_team:
-        # print("Пересчет effective_team для горизонтального списка...")
+    logic = window.logic
+    if not hasattr(logic, 'effective_team') or not logic.effective_team:
         counter_scores = logic.calculate_counter_scores()
         logic.calculate_effective_team(counter_scores)
 
     effective_team = logic.effective_team
-    # print(f"Эффективная команда для отображения: {effective_team}")
 
     if not effective_team:
-        # Можно добавить метку "Нет рекомендаций" или оставить пустым
-        # label = QLabel(get_text("no_recommendations", "Нет рекоммендаций"))
-        # window.icons_layout.addWidget(label)
-        # print("Эффективная команда пуста, горизонтальный список пуст.")
+        # Можно добавить метку "Нет рекомендаций"
+        label = QLabel(get_text("no_recommendations", "Нет рекомендаций"))
+        window.icons_layout.addWidget(label)
         window.icons_frame.update()
         return
 
-    # print(f"Обновление горизонтального списка. Изображений: {len(window.horizontal_images)}")
-    icon_size = QSize(25, 25) # Фиксированный размер иконок в этом списке
+    icon_size = QSize(25, 25) # Фиксированный размер иконок
 
     for hero in effective_team:
         if hero in window.horizontal_images and window.horizontal_images[hero]:
             img_label = QLabel()
-            # Масштабируем до нужного размера, если он отличается
+            # Масштабируем до нужного размера
             pixmap = window.horizontal_images[hero].scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
             img_label.setPixmap(pixmap)
-            img_label.setFixedSize(icon_size) # Задаем фиксированный размер виджету
-            img_label.setToolTip(hero) # Подсказка с именем героя
+            img_label.setFixedSize(icon_size)
+            img_label.setToolTip(hero)
 
-            # Подсветка, если герой выбран врагом (желтая)
-            style = "border: 1px solid gray; border-radius: 3px;" # Стиль по умолчанию
+            # Подсветка, если герой выбран врагом (желтая/оранжевая)
+            style = "border: 1px solid gray; border-radius: 3px; padding: 0px;" # Стиль по умолчанию
             if hero in window.logic.selected_heroes:
-                style = "border: 2px solid orange; border-radius: 3px;" # Выделяем выбранных врагов особо
+                style = "border: 2px solid orange; border-radius: 3px; padding: 0px;" # Выделяем выбранных врагов
                 img_label.setToolTip(f"{hero}\n({get_text('enemy_selected_tooltip', 'Выбран врагом')})")
 
             img_label.setStyleSheet(style)
             window.icons_layout.addWidget(img_label)
-            # print(f"Добавлен герой {hero} в горизонтальный список")
         else:
             print(f"Пропущен герой {hero}: нет изображения в horizontal_images")
 
+    # Добавляем растяжение в конец, чтобы иконки не растягивались на всю ширину
+    window.icons_layout.addStretch(1)
     window.icons_frame.update() # Обновляем вид фрейма
-    # print("Завершено обновление горизонтального списка")
