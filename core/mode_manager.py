@@ -52,8 +52,8 @@ def update_interface_for_mode(window):
         window.setMinimumHeight(0)
         window.setMaximumHeight(16777215)
         window.resize(1100, 1000)
-        window.left_container.setMinimumWidth(600)
-        window.left_container.setMaximumWidth(600)
+        window.left_container.setMinimumWidth(700)
+        window.left_container.setMaximumWidth(700)
         window.inner_layout.addWidget(window.left_container)
         window.inner_layout.addWidget(window.right_frame, stretch=0)
         window.canvas.setVisible(True)
@@ -70,6 +70,10 @@ def update_interface_for_mode(window):
             btn.setVisible(True)
         window.author_button.setVisible(True)
         window.rating_button.setVisible(True)
+        window.right_frame.setMaximumWidth(480)
+        window.right_frame.setMaximumHeight(810)
+        window.right_frame.setMinimumWidth(480)
+        window.right_frame.setMinimumHeight(810)
     elif window.mode == "middle":
         window.setMinimumHeight(0)
         window.setMaximumHeight(16777215)
@@ -102,24 +106,19 @@ def update_interface_for_mode(window):
         window.right_frame.setVisible(False)
 
         # Dynamically calculate window height
-        # 1. Get the height of top_frame
         top_frame_height = window.top_frame.height()
         print(f"Высота top_frame: {top_frame_height}")
 
-        # 2. Call update_horizontal_icon_list to populate icons_frame
         update_horizontal_icon_list(window)
 
-        # 3. Force a layout update to ensure icons_frame has the correct size
         window.icons_layout.invalidate()
         window.icons_frame.updateGeometry()
         window.icons_frame.adjustSize()
 
-        # 4. Get the height of icons_frame (horizontal list)
         icons_layout_margins = window.icons_layout.contentsMargins()
         icon_frame_height = window.icons_frame.height()
         print(f"Высота icons_frame до корректировки: {icon_frame_height}")
 
-        # Ensure the height accounts for the icon size (25) + margins (5 + 5)
         expected_icon_frame_height = 25 + icons_layout_margins.top() + icons_layout_margins.bottom()
         if icon_frame_height < expected_icon_frame_height:
             icon_frame_height = expected_icon_frame_height
@@ -129,7 +128,6 @@ def update_interface_for_mode(window):
         icon_height_with_margins = icon_frame_height
         print(f"Высота icons_frame с отступами: {icon_height_with_margins}")
 
-        # 5. Get the height of the canvas (even if empty)
         window.canvas.updateGeometry()
         window.canvas.adjustSize()
         canvas_height = window.canvas.height()
@@ -137,18 +135,15 @@ def update_interface_for_mode(window):
             canvas_height = window.canvas.minimumHeight()
         print(f"Высота canvas: {canvas_height}")
 
-        # 6. Account for left_container's layout margins
         left_layout_margins = window.left_container.layout().contentsMargins()
         left_container_margins = left_layout_margins.top() + left_layout_margins.bottom()
         print(f"Отступы left_container: top={left_layout_margins.top()}, bottom={left_layout_margins.bottom()}")
 
-        # 7. Account for main_layout margins (top and bottom)
         main_layout_margins = window.main_layout.contentsMargins()
         total_margins = main_layout_margins.top() + main_layout_margins.bottom()
         print(f"Отступы main_layout: top={main_layout_margins.top()}, bottom={main_layout_margins.bottom()}")
 
-        # 8. Final window height: top_frame height + icons_frame height + canvas height + all margins + padding
-        padding = 10  # Add some padding to account for window decorations
+        padding = 10
         new_height = (top_frame_height +
                       icon_height_with_margins +
                       canvas_height +
@@ -157,13 +152,11 @@ def update_interface_for_mode(window):
                       padding)
         print(f"Итоговая высота окна: {new_height}")
 
-        # Set the window height
         window.setFixedHeight(new_height)
         window.resize(600, new_height)
         window.icons_frame.setVisible(True)
         print(f"Установлена высота окна: {new_height}")
 
-        # Force a final layout update
         window.left_container.layout().invalidate()
         window.inner_layout.invalidate()
         window.main_widget.updateGeometry()

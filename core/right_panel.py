@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QGridLayout, QVBoxLayout, QScrollArea, QWidget
+from PySide6.QtWidgets import (QFrame, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QScrollArea, QWidget, QHeaderView)  # Убираем QtWidgets, добавляем QHeaderView
 from PySide6.QtCore import Qt, Signal
 from heroes_bd import heroes
 from translations import get_text
@@ -8,9 +9,10 @@ class HeroButton(QWidget):
     clicked = Signal()
     customContextMenuRequested = Signal(object)
 
-    def __init__(self, hero, icon, initial_mode):
+    def __init__(self, hero, icon, initial_mode, logic):
         super().__init__()
         self.hero = hero
+        self.logic = logic
 
         # Задаём минимальные размеры кнопки в зависимости от режима
         if initial_mode == "max":
@@ -18,43 +20,44 @@ class HeroButton(QWidget):
         else:  # "middle" режим
             self.setMinimumSize(35, 35)  # Размер иконки 35x35, текст скрыт
 
+        # Основной layout для кнопки
         layout = QVBoxLayout(self)
-        # Добавляем внутренние отступы (2 пикселя со всех сторон) для красоты
-        layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(0)  # Оставляем расстояние между элементами нулевым
-        # Центрируем содержимое по вертикали
-        layout.setAlignment(Qt.AlignVCenter)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
 
+        # Иконка
         self.icon_label = QLabel()
         self.icon_label.setPixmap(icon)
-        self.icon_label.setAlignment(Qt.AlignCenter)  # Центрируем иконку по горизонтали
-        self.icon_label.setContentsMargins(0, 0, 0, 0)  # Убираем отступы у иконки
-        self.icon_label.setStyleSheet("padding: 0px; margin: 0px;")
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setContentsMargins(0, 0, 0, 0)
+        self.icon_label.setStyleSheet("padding: 0px; margin: 0px; background-color: transparent;")
 
-        # Задаём фиксированные размеры для icon_label, соответствующие ширине кнопки
         if initial_mode == "max":
-            self.icon_label.setFixedSize(60, 60)  # Устанавливаем ширину равной ширине кнопки (60 пикселей)
+            self.icon_label.setMinimumSize(60, 60)
         else:
-            self.icon_label.setFixedSize(35, 35)  # Соответствует SIZES['middle']['right']
+            self.icon_label.setMinimumSize(35, 35)
 
         layout.addWidget(self.icon_label, stretch=0)
 
+        # Текст
         self.text_label = QLabel(hero if initial_mode == "max" else "")
         self.text_label.setAlignment(Qt.AlignCenter)
-        self.text_label.setStyleSheet("font-size: 8pt; line-height: 8pt; padding: 0px; margin: 0px;")
-        self.text_label.setContentsMargins(0, 0, 0, 0)  # Убираем отступы у текста
+        self.text_label.setStyleSheet("font-size: 8pt; line-height: 8pt; padding: 0px; margin: 0px; background-color: transparent;")
+        self.text_label.setContentsMargins(0, 0, 0, 0)
         self.text_label.setWordWrap(True)
 
-        # Устанавливаем ширину text_label равной ширине кнопки и корректируем высоту
         if initial_mode == "max":
-            self.text_label.setFixedWidth(60)  # Ширина равна ширине кнопки
-            self.text_label.setMaximumHeight(30)  # Оставляем максимальную высоту 30
+            self.text_label.setMinimumWidth(60)
+            self.text_label.setMaximumHeight(30)
         else:
             self.text_label.setMaximumHeight(0)
 
         layout.addWidget(self.text_label, stretch=0)
 
-        self.setStyleSheet("border: none;")
+        # Начальный стиль кнопки
+        self.setStyleSheet("background-color: transparent;")
+
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.on_context_menu)
 
@@ -65,6 +68,11 @@ class HeroButton(QWidget):
         print(
             f"HeroButton для {hero}: text_label size = {self.text_label.size().width()}x{self.text_label.size().height()}"
         )
+
+    def update_style(self, selected=False):
+        background_style = "background-color: lightblue;" if selected else "background-color: transparent;"
+        self.setStyleSheet(background_style)
+        print(f"Обновлён стиль для {self.hero}: {self.styleSheet()}")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -85,20 +93,46 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
     scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
     scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-    grid_container = QFrame()
-    grid = QGridLayout(grid_container)
-    grid.setContentsMargins(0, 0, 0, 0)  # Убираем отступы у сетки
-    if initial_mode == "max":
-        grid.setSpacing(2)  # В "max" режиме оставляем spacing 2
-    else:  # "middle" режим
-        grid.setSpacing(0)  # В "middle" режиме убираем spacing для компактности
+    # Заменяем QGridLayout на QTableWidget
+    table_widget = QTableWidget()
+    table_widget.setShowGrid(True)  # Включаем отображение сетки
+    table_widget.setStyleSheet("""
+        QTableWidget {
+            background-color: white;
+            border: 1px solid #d3d3d3;
+            gridline-color: #d3d3d3;
+        }
+        QTableWidget::item {
+            border: none;  /* Убираем границы ячеек, оставляем только сетку */
+        }
+    """)
 
+    # Устанавливаем количество строк и столбцов
+    cols = 5
+    rows = (len(heroes) + cols - 1) // cols  # Округляем вверх
+    table_widget.setRowCount(rows)
+    table_widget.setColumnCount(cols)
+
+    # Устанавливаем минимальные размеры ячеек
     if initial_mode == "max":
-        grid_container.setFixedSize(500, 800)  # Фиксированные размеры для "max" режима
-        print(f"Установлены размеры grid_container для режима max: 500x800 пикселей")
-    else:  # "middle" режим
-        grid_container.setFixedSize(250, 350)  # Фиксированные размеры для "middle" режима
-        print(f"Установлены размеры grid_container для режима middle: 250x350 пикселей")
+        for i in range(rows):
+            table_widget.setRowHeight(i, 100)  # Высота строки (иконка + текст)
+        for j in range(cols):
+            table_widget.setColumnWidth(j, 80)  # Минимальная ширина столбца
+        print(f"Установлены минимальные размеры ячеек для режима max")
+    else:
+        for i in range(rows):
+            table_widget.setRowHeight(i, 40)  # Высота строки (только иконка)
+        for j in range(cols):
+            table_widget.setColumnWidth(j, 40)  # Минимальная ширина столбца
+        print(f"Установлены минимальные размеры ячеек для режима middle")
+
+    # Делаем столбцы растягиваемыми
+    table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Используем QHeaderView
+
+    # Отключаем заголовки таблицы
+    table_widget.horizontalHeader().setVisible(False)
+    table_widget.verticalHeader().setVisible(False)
 
     def update_counters_wrapper():
         print(f"update_counters_wrapper вызвана с selected_heroes: {logic.selected_heroes}")
@@ -133,12 +167,15 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
             right_frame.setMinimumWidth(new_width)
             print(f"Обновлена минимальная ширина правой панели: {new_width} пикселей")
 
+    # Размещаем кнопки в таблице
     for i, hero in enumerate(heroes):
+        row = i // cols
+        col = i % cols
         icon = parent.right_images.get(hero, None)
         if icon is None or icon.isNull():
             print(f"Предупреждение: Нет валидной иконки для {hero} в режиме '{initial_mode}'")
             continue
-        btn = HeroButton(hero, icon, initial_mode)
+        btn = HeroButton(hero, icon, initial_mode, logic)
         btn.clicked.connect(
             lambda h=hero: logic.toggle_hero(
                 h, buttons, lambda: update_counters_wrapper()
@@ -149,10 +186,10 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
                 h, b, b.parent(), lambda: update_counters_wrapper()
             )
         )
-        grid.addWidget(btn, i // 5, i % 5)  # 5 столбцов
+        table_widget.setCellWidget(row, col, btn)
         buttons[hero] = btn
 
-    scroll_area.setWidget(grid_container)
+    scroll_area.setWidget(table_widget)
     layout.addWidget(scroll_area)
 
     selected_heroes_label = QLabel(get_text('selected'))
@@ -177,33 +214,26 @@ def create_right_panel(parent, logic, buttons, copy_to_clipboard, result_frame, 
     copy_button.adjustSize()
     clear_button.adjustSize()
 
-    grid_width = grid_container.width()
-    scrollbar_width = scroll_area.verticalScrollBar().sizeHint().width()
-    scroll_area_frame_width = 4
-
+    # Устанавливаем минимальную ширину правой панели на основе содержимого
     label_width = selected_heroes_label.sizeHint().width()
     copy_button_width = copy_button.sizeHint().width()
     clear_button_width = clear_button.sizeHint().width()
     extra_elements_width = max(label_width, copy_button_width, clear_button_width)
 
-    total_width = (max(grid_width, extra_elements_width) +
-                   layout.contentsMargins().left() + layout.contentsMargins().right() +
-                   scrollbar_width + scroll_area_frame_width + 10)
-    right_frame.setMinimumWidth(total_width)
-    print(f"Минимальная ширина правой панели ({initial_mode}): {total_width} пикселей")
+    # Минимальная ширина правой панели
+    min_width = extra_elements_width + layout.contentsMargins().left() + layout.contentsMargins().right() + 20
+    right_frame.setMinimumWidth(min_width)
+    print(f"Минимальная ширина правой панели ({initial_mode}): {min_width} пикселей")
 
-    grid_height = grid_container.height()
-    scrollbar_height = scroll_area.horizontalScrollBar().sizeHint().height()
-    scroll_area_frame_height = 4
-
-    total_height = (grid_height +
-                    selected_heroes_label.sizeHint().height() +
-                    copy_button.sizeHint().height() +
-                    clear_button.sizeHint().height() +
-                    layout.contentsMargins().top() + layout.contentsMargins().bottom() +
-                    layout.spacing() * 2 +
-                    scroll_area_frame_height +
-                    scrollbar_height)
+    # Минимальная высота правой панели
+    total_height = (
+        sum(table_widget.rowHeight(i) for i in range(rows)) +
+        selected_heroes_label.sizeHint().height() +
+        copy_button.sizeHint().height() +
+        clear_button.sizeHint().height() +
+        layout.contentsMargins().top() + layout.contentsMargins().bottom() +
+        layout.spacing() * 2
+    )
     right_frame.setMinimumHeight(total_height)
     print(f"Минимальная высота правой панели ({initial_mode}): {total_height} пикселей")
 

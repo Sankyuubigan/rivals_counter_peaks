@@ -10,6 +10,7 @@ from images_load import load_images
 from translations import get_text
 from mode_manager import change_mode, update_interface_for_mode
 from horizontal_list import update_horizontal_icon_list
+from heroes_bd import heroes
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -19,7 +20,7 @@ class MainWindow(QMainWindow):
         self.buttons = {}
         self.initial_pos = None
         self.mode_positions = {"max": None, "middle": None, "min": None}
-        self.copy_to_clipboard = copy_to_clipboard  # Store the function as an instance variable
+        self.copy_to_clipboard = copy_to_clipboard
         self.init_ui()
 
     def init_ui(self):
@@ -88,18 +89,15 @@ class MainWindow(QMainWindow):
         update_horizontal_icon_list(self)
 
     def update_result_label_text(self):
-        """Обновляет текст result_label на основе текущего состояния selected_heroes."""
         print("Вызов update_result_label_text")
         if not hasattr(self, 'result_label') or self.result_label is None:
             print("result_label не существует, пропускаем обновление текста")
             return
         try:
             if self.logic.selected_heroes:
-                # Если есть выбранные герои, очищаем текст (логика отображения теперь в generate_... методах)
                 if hasattr(self.result_label, 'isVisible') and self.result_label.isVisible():
                     self.result_label.setText("")
             else:
-                # Если герои не выбраны, показываем сообщение
                 if hasattr(self.result_label, 'isVisible') and self.result_label.isVisible():
                     self.result_label.setText(get_text('no_heroes_selected'))
         except RuntimeError as e:
@@ -111,7 +109,7 @@ class MainWindow(QMainWindow):
     def restore_hero_selections(self):
         for hero in self.logic.selected_heroes:
             if hero in self.buttons:
-                self.buttons[hero].setStyleSheet("background-color: lightblue; border: none;")
+                self.buttons[hero].update_style(selected=True)
         for hero in self.logic.priority_heroes:
             if hero in self.buttons:
                 self.logic.set_priority(

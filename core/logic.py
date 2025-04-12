@@ -38,32 +38,35 @@ class CounterpickLogic:
         update_counters_callback()
 
     def toggle_hero(self, hero, buttons, update_counters_callback):
-        from PySide6.QtGui import QColor
         if hero in self.selected_heroes:
             self.selected_heroes.remove(hero)
             if hero in self.priority_heroes:
                 self.priority_heroes.remove(hero)
-            buttons[hero].setStyleSheet("border: none;")
+            buttons[hero].update_style(selected=False)
+            print(f"Снято выделение с кнопки {hero}: background-color: transparent;")
             if hero in self.priority_labels:
                 self.priority_labels[hero].deleteLater()
                 del self.priority_labels[hero]
         else:
             if len(self.selected_heroes) >= TEAM_SIZE:
                 removed_hero = self.selected_heroes.pop(0)
-                buttons[removed_hero].setStyleSheet("border: none;")
+                buttons[removed_hero].update_style(selected=False)
+                print(f"Снято выделение с кнопки {removed_hero}: background-color: transparent;")
                 if removed_hero in self.priority_heroes:
                     self.priority_heroes.remove(removed_hero)
                 if removed_hero in self.priority_labels:
                     self.priority_labels[removed_hero].deleteLater()
                     del self.priority_labels[removed_hero]
             self.selected_heroes.append(hero)
-            buttons[hero].setStyleSheet("background-color: lightblue; border: none;")
-        print(f"После toggle_hero, selected_heroes: {self.selected_heroes}")  # Отладка
+            buttons[hero].update_style(selected=True)
+            print(f"Установлено выделение для кнопки {hero}: background-color: lightblue;")
+        print(f"После toggle_hero, selected_heroes: {self.selected_heroes}")
         update_counters_callback()
 
     def clear_all(self, buttons, update_selected_label_callback, update_counters_callback):
         for hero, button in buttons.items():
-            button.setStyleSheet("border: none;")
+            button.update_style(selected=False)
+            print(f"Снято выделение с кнопки {hero} при очистке: background-color: transparent;")
             if hero in self.priority_labels:
                 self.priority_labels[hero].deleteLater()
                 del self.priority_labels[hero]

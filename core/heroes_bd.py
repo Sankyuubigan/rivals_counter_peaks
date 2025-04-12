@@ -81,7 +81,7 @@ heroes_counters = {
     "Cloak & Dagger": ["Magneto", "Magik", "Hela", "Hawkeye", "Psylocke", "Wolverine", "Jeff", "Squirrel Girl",
                        "Moon Knight", "Rocket Racoon","Emma Frost"],
     "Jeff": ["Iron Man", "Storm", "Psylocke", "Peni Parker", "Squirrel Girl", "Magneto", "Hela",
-             "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor"],
+             "Cloak & Dagger", "Iron Fist", "Luna Snow", "Mantis", "The Thing", "Namor","Emma Frost"],
     "Mantis": ["Iron Man", "Punisher", "Iron Fist", "Captain America", "Psylocke", "Jeff", "Magneto", "Hela", "Magik",
                "Black Panther", "Moon Knight", "Squirrel Girl", "The Thing", "Wolverine", "Star-Lord", "Rocket Racoon",
                "Storm"],
@@ -97,11 +97,12 @@ heroes_counters = {
 }
 
 heroes = [
-    "Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America", "Magneto",
-    "Punisher", "Hela", "Moon Knight",
-    "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm", "Black Panther", "Squirrel Girl",
-    "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik", "Black Widow", "Scarlet Witch", "Namor",
-    "Iron Fist", "Human Torch", "Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow",
+    "Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
+    "Magneto","Emma Frost",
+    "Punisher", "Hela", "Moon Knight","Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm",
+    "Black Panther", "Squirrel Girl", "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik", "Black Widow",
+    "Scarlet Witch", "Namor", "Iron Fist", "Human Torch",
+    "Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow",
     "Rocket Racoon", "Invisible Woman", "Adam Warlock",
 ]
 
