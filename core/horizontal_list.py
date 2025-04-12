@@ -1,12 +1,15 @@
 # File: horizontal_list.py
 from PySide6.QtWidgets import QLabel
-from PySide6.QtCore import QSize, Qt # <--- Добавлен импорт Qt
+from PySide6.QtCore import QSize, Qt
 from translations import get_text # Добавил импорт get_text
+# Импортируем константу размера из images_load
+from images_load import TOP_HORIZONTAL_ICON_SIZE
 
 def update_horizontal_icon_list(window):
     """
     Обновляет горизонтальный список иконок в icons_frame.
     Отображает рекомендуемую эффективную команду.
+    Использует TOP_HORIZONTAL_ICON_SIZE для размера иконок.
     """
     # print("Вызов update_horizontal_icon_list")
 
@@ -19,6 +22,9 @@ def update_horizontal_icon_list(window):
         item = window.icons_layout.takeAt(0)
         if item.widget():
             item.widget().deleteLater()
+        elif item.spacerItem(): # Удаляем и растяжку
+             window.icons_layout.removeItem(item)
+
 
     # Если нет выбранных героев, показываем пустоту или сообщение
     if not window.logic.selected_heroes:
@@ -29,28 +35,34 @@ def update_horizontal_icon_list(window):
 
     # Получаем или пересчитываем эффективную команду
     logic = window.logic
-    if not hasattr(logic, 'effective_team') or not logic.effective_team:
-        counter_scores = logic.calculate_counter_scores()
-        logic.calculate_effective_team(counter_scores)
+    # Пересчитываем всегда, т.к. она могла измениться
+    counter_scores = logic.calculate_counter_scores()
+    effective_team = logic.calculate_effective_team(counter_scores)
+    # print(f"Эффективная команда для отображения: {effective_team}")
 
-    effective_team = logic.effective_team
 
     if not effective_team:
         # Можно добавить метку "Нет рекомендаций"
         label = QLabel(get_text("no_recommendations", "Нет рекомендаций"))
+        label.setStyleSheet("color: gray;") # Серый цвет для сообщения
         window.icons_layout.addWidget(label)
         window.icons_frame.update()
         return
 
-    icon_size = QSize(25, 25) # Фиксированный размер иконок
+    # Используем размер иконок из константы
+    icon_size = TOP_HORIZONTAL_ICON_SIZE
 
     for hero in effective_team:
+        # Используем window.horizontal_images, которые должны быть созданы с нужным размером
         if hero in window.horizontal_images and window.horizontal_images[hero]:
             img_label = QLabel()
-            # Масштабируем до нужного размера
-            pixmap = window.horizontal_images[hero].scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            pixmap = window.horizontal_images[hero] # Берем уже отмасштабированный pixmap
+            # Убедимся, что размер pixmap соответствует icon_size (на случай изменений)
+            if pixmap.size() != icon_size:
+                 pixmap = pixmap.scaled(icon_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+
             img_label.setPixmap(pixmap)
-            img_label.setFixedSize(icon_size)
+            img_label.setFixedSize(icon_size) # Задаем фиксированный размер виджету QLabel
             img_label.setToolTip(hero)
 
             # Подсветка, если герой выбран врагом (желтая/оранжевая)

@@ -3,9 +3,31 @@ from PySide6.QtWidgets import QFrame, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt, QSize
 from right_panel import create_right_panel
 from left_panel import create_left_panel
-from images_load import get_images_for_mode
+from images_load import get_images_for_mode, TOP_HORIZONTAL_ICON_SIZE
 from horizontal_list import update_horizontal_icon_list
 from heroes_bd import heroes
+
+# --- МИНИМАЛЬНАЯ ШИРИНА ПАНЕЛЕЙ ДЛЯ РАЗНЫХ РЕЖИМОВ ---
+# Здесь вы регулируете МИНИМАЛЬНУЮ ширину левой и правой части
+PANEL_MIN_WIDTHS = {
+    'max':    {'left': 600, 'right': 480},
+    'middle': {'left': 400, 'right': 300},
+    'min':    {'left': 0,   'right': 0}  # В min режиме правая панель не создается
+}
+# ----------------------------------------------------
+
+# --- ПРЕДПОЧТИТЕЛЬНЫЕ РАЗМЕРЫ ОКНА ДЛЯ КАЖДОГО РЕЖИМА ---
+# Здесь вы можете задать ЖЕЛАЕМЫЕ ширину и высоту окна при переключении на режим.
+# Пользователь сможет изменить размер окна после переключения (кроме высоты в 'min').
+# ВНИМАНИЕ: Значение 'height' для 'min' будет ИГНОРИРОВАТЬСЯ,
+#           т.к. высота в этом режиме рассчитывается автоматически.
+MODE_DEFAULT_WINDOW_SIZES = {
+    'max':    {'width': 1100, 'height': 800},
+    'middle': {'width': 950,  'height': 600},
+    'min':    {'width': 600,  'height': 0} # Укажите желаемую ширину для min режима
+}
+# -------------------------------------------------------
+
 
 def change_mode(window, mode):
     """Инициирует смену режима отображения."""
@@ -25,28 +47,22 @@ def update_interface_for_mode(window):
     print(f"--- Начало перестроения UI для режима: {window.mode} ---")
 
     # --- Очистка только left/right панелей внутри main_widget ---
-    print("Очистка старого UI (left/right)...")
+    # print("Очистка старого UI (left/right)...")
     if window.inner_layout:
         while window.inner_layout.count():
-            item = window.inner_layout.takeAt(0)
-            widget = item.widget()
+            item = window.inner_layout.takeAt(0); widget = item.widget()
             if widget: widget.deleteLater()
-    else: # Создаем, если layout нет
-        if window.main_widget:
-             window.inner_layout = QHBoxLayout(window.main_widget)
-             window.inner_layout.setContentsMargins(0, 0, 0, 0)
-             window.inner_layout.setSpacing(0)
+    else:
+        if window.main_widget: window.inner_layout = QHBoxLayout(window.main_widget); window.inner_layout.setContentsMargins(0,0,0,0); window.inner_layout.setSpacing(0)
         else: print("[!] Ошибка: main_widget не найден."); return
 
-    # Сброс ссылок на виджеты внутри left/right
-    window.left_container = None
-    window.canvas = None; window.result_frame = None; window.result_label = None
-    window.right_frame = None; window.selected_heroes_label = None
-    window.right_list_widget = None; window.hero_items.clear()
+    # Сброс ссылок
+    window.left_container=None; window.canvas=None; window.result_frame=None; window.result_label=None
+    window.right_frame=None; window.selected_heroes_label=None; window.right_list_widget=None; window.hero_items.clear()
 
     # --- Загрузка ресурсов ---
     try:
-        print(f"Загрузка изображений для режима: {window.mode}")
+        # print(f"Загрузка изображений для режима: {window.mode}")
         window.right_images, window.left_images, window.small_images, window.horizontal_images = get_images_for_mode(window.mode)
     except Exception as e: print(f"Критическая ошибка загрузки изображений: {e}"); return
 
@@ -55,70 +71,92 @@ def update_interface_for_mode(window):
     left_layout = QVBoxLayout(window.left_container); left_layout.setContentsMargins(0,0,0,0); left_layout.setSpacing(0)
     window.canvas, window.result_frame, window.result_label, window.update_scrollregion = create_left_panel(window.left_container)
     left_layout.addWidget(window.canvas, stretch=1)
-    print("Левая панель пересоздана.")
+    window.left_container.setMinimumWidth(PANEL_MIN_WIDTHS[window.mode]['left']) # <--- Установка мин. ширины ЛЕВОЙ панели
+    # print("Левая панель пересоздана.")
 
     # --- Пересоздание/Скрытие правой панели ---
     if window.mode != "min":
         window.right_frame, window.selected_heroes_label = create_right_panel(window, window.mode)
-        print(f"Правая панель пересоздана для режима {window.mode}.")
-    else: # Скрываем правую часть в min режиме
-        window.right_frame = None # Убедимся, что ссылки нет
-        print("Правая панель не создается (режим min).")
+        window.right_frame.setMinimumWidth(PANEL_MIN_WIDTHS[window.mode]['right']) # <--- Установка мин. ширины ПРАВОЙ панели
+        # print(f"Правая панель пересоздана для режима {window.mode}.")
+    else:
+        window.right_frame = None
+        # print("Правая панель не создается (режим min).")
 
     # --- Сборка UI (добавление панелей в inner_layout) ---
     window.inner_layout.addWidget(window.left_container, stretch=2 if window.mode != 'min' else 1)
     if window.right_frame:
         window.inner_layout.addWidget(window.right_frame, stretch=1)
-        window.right_frame.setVisible(True) # Убедимся, что она видима
-        window.left_container.setVisible(True) # И левая тоже
-        window.main_widget.setVisible(True) # Весь контейнер видим
+        window.right_frame.setVisible(True)
+        window.left_container.setVisible(True)
+        window.main_widget.setVisible(True)
+    elif window.mode == 'min':
+         window.left_container.setVisible(True) # Левая панель видима в min режиме (для minimal_icon_list)
+         window.main_widget.setVisible(True)
 
-    # --- Настройка видимости и размеров ---
-    print(f"Настройка видимости и размеров для режима '{window.mode}'...")
+    # --- Настройка видимости и размеров ОКНА/ПАНЕЛЕЙ ---
+    # print(f"Настройка видимости и размеров для режима '{window.mode}'...")
     top_h = window.top_frame.sizeHint().height() if window.top_frame else 40
-    icons_h = window.icons_frame.sizeHint().height() if window.icons_frame else 30
-    margins = window.main_layout.contentsMargins()
-    spacing = window.main_layout.spacing()
-    # Базовая высота нескрываемой части (top + icons + отступы/spacing между ними)
-    base_h = top_h + icons_h + spacing # + margins.top() + margins.bottom()
+    icons_h = TOP_HORIZONTAL_ICON_SIZE.height() + window.icons_layout.contentsMargins().top() + window.icons_layout.contentsMargins().bottom() + 4
+    window.icons_frame.setFixedHeight(icons_h)
 
-    # Сбрасываем ограничения по высоте перед установкой новых
+    spacing = window.main_layout.spacing() if window.main_layout.spacing() >= 0 else 0
+    base_h = top_h + icons_h + spacing
+
+    # Сбрасываем ограничения по высоте
     window.setMinimumHeight(0)
     window.setMaximumHeight(16777215)
 
+    calculated_fixed_min_height = 0 # Для хранения расчетной высоты min режима
+
     if window.mode == "max":
-        if window.right_frame: window.right_frame.show()
-        window.left_container.show()
         window.main_widget.show()
-        window.setMinimumHeight(base_h + 300) # Минимум для контента
+        calculated_fixed_min_height = base_h + 300 # Минимальная высота для контента
+        window.setMinimumHeight(calculated_fixed_min_height)
         if window.author_button: window.author_button.setVisible(True)
         if window.rating_button: window.rating_button.setVisible(True)
     elif window.mode == "middle":
-        if window.right_frame: window.right_frame.show()
-        window.left_container.show()
         window.main_widget.show()
-        window.setMinimumHeight(base_h + 200) # Минимум для контента
+        calculated_fixed_min_height = base_h + 200 # Минимальная высота для контента
+        window.setMinimumHeight(calculated_fixed_min_height)
         if window.author_button: window.author_button.setVisible(False)
         if window.rating_button: window.rating_button.setVisible(False)
     elif window.mode == "min":
-        # Скрываем main_widget, содержащий left/right панели
-        window.main_widget.hide()
-        # Фиксируем высоту окна = высота top + icons + отступы
-        fixed_h = base_h + 5 # Добавим небольшой запас
-        window.setMinimumHeight(fixed_h)
-        window.setMaximumHeight(fixed_h)
-        window.resize(window.width(), fixed_h) # Принудительно ставим высоту
-        print(f"Установлена ФИКСИРОВАННАЯ высота для min режима: {fixed_h}")
+        window.main_widget.hide() # Скрываем left/right панели
+        calculated_fixed_min_height = base_h + 5 # Фиксированная высота = top + icons + запас
+        window.setMinimumHeight(calculated_fixed_min_height)
+        window.setMaximumHeight(calculated_fixed_min_height) # ФИКСИРУЕМ высоту
+        print(f"Установлена ФИКСИРОВАННАЯ высота для min режима: {calculated_fixed_min_height}")
         if window.author_button: window.author_button.setVisible(False)
         if window.rating_button: window.rating_button.setVisible(False)
 
-    # --- Финальное обновление ---
-    window.update_language() # Обновляем язык
+    # --- Финальное обновление Layout'ов и Геометрии (ПЕРЕД RESIZE) ---
+    window.update_language()
     window.left_container.layout().activate()
     if window.right_frame: window.right_frame.layout().activate()
     window.inner_layout.activate()
     window.main_layout.activate()
-    window.updateGeometry() # Обновляем геометрию
+    window.updateGeometry() # Важно обновить геометрию перед resize
+
+    # --- Установка РАЗМЕРА ОКНА из словаря ---
+    target_size = MODE_DEFAULT_WINDOW_SIZES.get(window.mode, {'width': 800, 'height': 600}) # Размер по умолчанию, если режим не найден
+    target_w = target_size['width']
+    target_h = target_size['height']
+
+    if window.mode == 'min':
+        # Для min режима используем РАССЧИТАННУЮ высоту и ширину из словаря
+        print(f"Установка размера окна для 'min': {target_w}x{calculated_fixed_min_height}")
+        window.resize(target_w, calculated_fixed_min_height)
+    else:
+        # Для других режимов используем ширину и высоту из словаря
+        # Убедимся, что размер не меньше минимально допустимого
+        min_w = window.minimumSizeHint().width() # Минимально возможная ширина
+        actual_min_h = window.minimumHeight()    # Рассчитанная минимальная высота
+        final_w = max(target_w, min_w)
+        final_h = max(target_h, actual_min_h)
+        print(f"Установка размера окна для '{window.mode}': {final_w}x{final_h} (Target: {target_w}x{target_h}, Min: {min_w}x{actual_min_h})")
+        window.resize(final_w, final_h)
+    # ----------------------------------------------
 
     # Восстанавливаем состояние UI
     window.restore_hero_selections()
