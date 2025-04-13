@@ -1,6 +1,7 @@
+# File: build.py
 import os
 
-version = "3.01"
+version = "3.01" # Или актуальная версия
 os.environ["APP_VERSION"] = version
 
 output_name = f"rivals_counter_{os.environ['APP_VERSION']}"
@@ -19,8 +20,10 @@ command = (
     f'--add-data "translations.py;." '
     f'--add-data "utils.py;." '
     f'--add-data "display.py;." '
-    f'--add-data "horizontal_list.py;." '  # Added
-    f'--add-data "mode_manager.py;." '     # Added
+    f'--add-data "horizontal_list.py;." '
+    f'--add-data "mode_manager.py;." '
+    # Убедитесь, что delegate.py УДАЛЕН или закомментирован
+    # f'--add-data "delegate.py;." '
     f'main.py'
 )
 print(f"Выполняем команду: {command}")
