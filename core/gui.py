@@ -3,10 +3,9 @@ import time
 import threading
 import keyboard
 
-# --- ИСПРАВЛЕНИЕ: Добавляем QComboBox ---
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QFrame,
                                QLabel, QPushButton, QApplication, QListWidget, QListWidgetItem, QMenu,
-                               QAbstractItemView, QStyle, QComboBox)
+                               QAbstractItemView, QStyle, QComboBox) # Добавили QComboBox
 from PySide6.QtCore import Qt, QSize, Signal, Slot, QTimer, QPoint, QModelIndex
 from PySide6.QtGui import QColor, QPalette, QIcon, QBrush
 from top_panel import create_top_panel
@@ -18,7 +17,7 @@ from logic import CounterpickLogic, TEAM_SIZE # Используем испра�
 from images_load import get_images_for_mode, TOP_HORIZONTAL_ICON_SIZE
 from translations import get_text, set_language, DEFAULT_LANGUAGE, TRANSLATIONS, SUPPORTED_LANGUAGES
 from mode_manager import change_mode, update_interface_for_mode
-from horizontal_list import update_horizontal_icon_list
+from horizontal_list import update_horizontal_icon_list # Используем обновленный
 from heroes_bd import heroes
 from display import generate_counterpick_display, generate_minimal_icon_list
 
@@ -26,6 +25,7 @@ from display import generate_counterpick_display, generate_minimal_icon_list
 class MainWindow(QMainWindow):
     move_cursor_signal = Signal(str)
     toggle_selection_signal = Signal()
+    toggle_mode_signal = Signal() # Сигнал для смены режима
 
     def __init__(self):
         super().__init__()
@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
         self.hotkey_cursor_index = -1
         self._keyboard_listener_thread = None
         self._stop_keyboard_listener_flag = threading.Event()
-        self._num_columns_cache = 1
+        self._num_columns_cache = 1 # Кэш для количества колонок
 
         self.init_ui()
         self.start_keyboard_listener()
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         self.icons_layout = QHBoxLayout(self.icons_frame)
         self.icons_layout.setContentsMargins(5, 2, 5, 2)
         self.icons_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        icons_frame_height = self.top_horizontal_icon_size.height() + 8
+        icons_frame_height = self.top_horizontal_icon_size.height() + 12 # Высота для иконок с рейтингом
         self.icons_frame.setFixedHeight(icons_frame_height)
         self.icons_frame.setStyleSheet("background-color: #f0f0f0;")
         self.main_layout.addWidget(self.icons_frame)
@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.canvas, stretch=1)
         self.inner_layout.addWidget(self.left_container, stretch=2)
 
+        # Создаем правую панель (она установит делегат)
         self.right_frame, self.selected_heroes_label = create_right_panel(self, self.mode)
         self.inner_layout.addWidget(self.right_frame, stretch=1)
 
@@ -110,33 +111,47 @@ class MainWindow(QMainWindow):
 
         self.move_cursor_signal.connect(self._handle_move_cursor)
         self.toggle_selection_signal.connect(self._handle_toggle_selection)
+        self.toggle_mode_signal.connect(self._handle_toggle_mode) # Подключаем сигнал
 
         if self.right_list_widget and self.right_list_widget.count() > 0 and self.mode != 'min':
             self.hotkey_cursor_index = 0
-            # Устанавливаем подсказку и запрашиваем обновление для начальной отрисовки
             QTimer.singleShot(100, lambda: self._update_hotkey_highlight(None))
 
     # --- HOTKEY RELATED METHODS ---
 
     def _calculate_columns(self):
-        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': return 1
+        # Вычисляем количество колонок ДИНАМИЧЕСКИ
+        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min':
+            self._num_columns_cache = 1
+            return 1
         try:
             vp_width = self.right_list_widget.viewport().width()
             grid_w = self.right_list_widget.gridSize().width()
             spacing = self.right_list_widget.spacing()
-            if grid_w <= 0: return 1; eff_grid_w = grid_w + spacing
-            if eff_grid_w <= 0: return 1; cols = max(1, int(vp_width / eff_grid_w))
-            self._num_columns_cache = cols; return cols
-        except Exception as e: print(f"[ERROR] Calculating columns: {e}"); return self._num_columns_cache
+            if grid_w <= 0: return self._num_columns_cache
+            eff_grid_w = grid_w + spacing
+            if eff_grid_w <= 0: return self._num_columns_cache
+            cols = max(1, int(vp_width / eff_grid_w))
+            # print(f"[DEBUG] Calculated columns: vp_width={vp_width}, grid_w={grid_w}, spacing={spacing}, eff_grid_w={eff_grid_w}, cols={cols}")
+            self._num_columns_cache = cols
+            return cols
+        except Exception as e:
+            print(f"[ERROR] Calculating columns: {e}")
+            return self._num_columns_cache
+
+    def _trigger_update_for_index(self, index):
+        """Запрашивает перерисовку элемента с указанным индексом через viewport().update()."""
+        if self.right_list_widget and 0 <= index < self.right_list_widget.count():
+            # print(f"[LOG] Triggering viewport update (for index {index})") # LOG
+            self.right_list_widget.viewport().update()
 
     def _update_hotkey_highlight(self, old_index=None):
         """
-        Обновляет ПОДСКАЗКУ элемента и запрашивает обновление viewport'а.
-        Не меняет свойства элемента напрямую.
+        Обновляет ПОДСКАЗКУ элемента и запрашивает обновление viewport'а,
+        чтобы делегат перерисовал рамку.
         """
         # print(f"[LOG] _update_hotkey_highlight called: old={old_index}, new={self.hotkey_cursor_index}") # LOG
         if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min':
-            # print("[LOG] _update_hotkey_highlight: skipped (widget hidden or mode=min)") # LOG
             return
 
         list_widget = self.right_list_widget
@@ -150,11 +165,13 @@ class MainWindow(QMainWindow):
             try:
                 old_item = list_widget.item(old_index)
                 if old_item:
+                    # Восстанавливаем подсказку
                     hero_name = old_item.data(HERO_NAME_ROLE)
                     if hero_name and old_item.toolTip() != hero_name:
-                        # print(f"[LOG] Restoring tooltip for index {old_index}") # LOG
                         old_item.setToolTip(hero_name)
-                        needs_viewport_update = True # Обновляем, т.к. подсказка влияет на отображение? (на всякий случай)
+                        needs_viewport_update = True # Изменилась подсказка
+                    # Запрашиваем обновление для старого индекса, чтобы делегат его перерисовал без рамки
+                    # self._trigger_update_for_index(old_index) # Убрано, обновляем viewport в конце
             except Exception as e:
                 print(f"[ERROR] processing old item index {old_index}: {e}")
 
@@ -167,48 +184,62 @@ class MainWindow(QMainWindow):
                     hero_name = new_item.data(HERO_NAME_ROLE)
                     focus_tooltip = f">>> {hero_name} <<<"
                     if hero_name and new_item.toolTip() != focus_tooltip:
-                        # print(f"[LOG] Setting focus tooltip for index {new_index}") # LOG
                         new_item.setToolTip(focus_tooltip)
                         needs_viewport_update = True
                     list_widget.scrollToItem(new_item, QAbstractItemView.ScrollHint.EnsureVisible)
+                    # Запрашиваем обновление для нового индекса, чтобы делегат нарисовал рамку
+                    # self._trigger_update_for_index(new_index) # Убрано, обновляем viewport в конце
             except Exception as e:
                  print(f"[ERROR] processing new item index {new_index}: {e}")
 
         # --- Обновляем viewport ОДИН РАЗ, если что-то изменилось ---
-        if needs_viewport_update:
-            # print("[LOG] Calling list_widget.viewport().update()") # LOG
-            list_widget.viewport().update() # Вызываем обновление видимой области
+        # Это должно заставить делегата перерисовать и старый, и новый элементы
+        if needs_viewport_update or old_index != new_index: # Обновляем всегда при смене индекса
+             # print("[LOG] Calling list_widget.viewport().update()") # LOG
+             list_widget.viewport().update()
 
 
     @Slot(str)
     def _handle_move_cursor(self, direction):
+        """Обрабатывает перемещение фокуса горячими клавишами."""
         if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': return
         list_widget = self.right_list_widget
         count = list_widget.count()
         if count == 0: return
+
         old_index = self.hotkey_cursor_index
-        num_columns = self._calculate_columns()
+        num_columns = self._calculate_columns() # Получаем АКТУАЛЬНОЕ число колонок
+        # print(f"[LOG] _handle_move_cursor: direction={direction}, old_index={old_index}, num_columns={num_columns}") # LOG
+
         if self.hotkey_cursor_index < 0: new_index = 0
         else:
             current_row = self.hotkey_cursor_index // num_columns
             current_col = self.hotkey_cursor_index % num_columns
             new_index = self.hotkey_cursor_index
-            if direction == 'left': new_index -= 1
-            elif direction == 'right': new_index += 1
-            elif direction == 'up': new_index -= num_columns
-            elif direction == 'down': new_index += num_columns
-            if new_index < 0:
-                 if direction == 'up': last_row_start_index = (count - 1) // num_columns * num_columns; temp_index = last_row_start_index + current_col; new_index = min(temp_index, count - 1)
-                 else: new_index = count - 1
-            elif new_index >= count:
-                 if direction == 'down': new_index = current_col;
-                 if new_index >= count: new_index = 0
-                 else: new_index = 0
-            new_index = max(0, min(count - 1, new_index))
 
+            # --- ЛОГИКА ПЕРЕМЕЩЕНИЯ ---
+            if direction == 'left':
+                if current_col > 0: new_index -= 1
+                else: new_index += (num_columns - 1); new_index = min(new_index, count - 1)
+            elif direction == 'right':
+                if current_col < num_columns - 1: new_index += 1
+                else: new_index -= (num_columns - 1)
+                new_index = min(new_index, count - 1)
+            elif direction == 'up':
+                new_index -= num_columns
+                if new_index < 0:
+                    last_row_index = (count - 1) // num_columns
+                    potential_index = last_row_index * num_columns + current_col
+                    new_index = potential_index if potential_index < count else count - 1
+            elif direction == 'down':
+                new_index += num_columns
+                if new_index >= count:
+                    new_index = current_col
+                    if new_index >= count: new_index = 0
+            new_index = max(0, min(count - 1, new_index))
+        # print(f"[LOG] --> new_index={new_index}") # LOG
         if old_index != new_index:
             self.hotkey_cursor_index = new_index
-            # Вызываем обновление подсказок и viewport'а
             self._update_hotkey_highlight(old_index)
         elif 0 <= self.hotkey_cursor_index < count:
              current_item = list_widget.item(self.hotkey_cursor_index)
@@ -217,32 +248,75 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _handle_toggle_selection(self):
+        """Обрабатывает выбор/снятие выбора горячей клавишей."""
         if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': return
         if 0 <= self.hotkey_cursor_index < self.right_list_widget.count():
             item = self.right_list_widget.item(self.hotkey_cursor_index)
             if item:
-                try: item.setSelected(not item.isSelected())
+                try:
+                    # print(f"[LOG] Toggling selection for index {self.hotkey_cursor_index}") # LOG
+                    item.setSelected(not item.isSelected())
                 except Exception as e: print(f"Error toggling selection: {e}")
 
+    @Slot()
+    def _handle_toggle_mode(self):
+        """Переключает режим между min и middle по горячей клавише."""
+        print("[LOG] _handle_toggle_mode called") # LOG
+        if self.mode == "min":
+            print("[LOG] --> Switching to middle mode") # LOG
+            self.change_mode("middle")
+        else: # Включая middle и max
+            print("[LOG] --> Switching to min mode") # LOG
+            self.change_mode("min")
 
     # --- Keyboard Listener Loop and Start/Stop/Close ---
     def _keyboard_listener_loop(self):
         print("Keyboard listener thread started.")
+        # --- Функции-обертки для проверки режима "Поверх окон" ---
+        def run_if_topmost(func):
+            def wrapper(*args, **kwargs):
+                is_topmost = bool(self.windowFlags() & Qt.WindowStaysOnTopHint)
+                if is_topmost:
+                    try: func(*args, **kwargs)
+                    except Exception as e: print(f"[ERROR] Exception in hotkey callback: {e}")
+            return wrapper
+
+        @run_if_topmost
+        def on_up(): self.move_cursor_signal.emit('up')
+        @run_if_topmost
+        def on_down(): self.move_cursor_signal.emit('down')
+        @run_if_topmost
+        def on_left(): self.move_cursor_signal.emit('left')
+        @run_if_topmost
+        def on_right(): self.move_cursor_signal.emit('right')
+        @run_if_topmost
+        def on_select(): self.toggle_selection_signal.emit()
+        @run_if_topmost
+        def on_toggle_mode(): self.toggle_mode_signal.emit()
+
         hooks = []
         try:
-            hooks.append(keyboard.add_hotkey('up', lambda: self.move_cursor_signal.emit('up'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('down', lambda: self.move_cursor_signal.emit('down'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('left', lambda: self.move_cursor_signal.emit('left'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('right', lambda: self.move_cursor_signal.emit('right'), suppress=True, trigger_on_release=False))
-            try: hooks.append(keyboard.add_hotkey('num 0', lambda: self.toggle_selection_signal.emit(), suppress=True, trigger_on_release=False))
+            # <<< ИЗМЕНЕНИЕ: Горячие клавиши с Tab >>>
+            hooks.append(keyboard.add_hotkey('tab+up', on_up, suppress=True, trigger_on_release=False))
+            hooks.append(keyboard.add_hotkey('tab+down', on_down, suppress=True, trigger_on_release=False))
+            hooks.append(keyboard.add_hotkey('tab+left', on_left, suppress=True, trigger_on_release=False))
+            hooks.append(keyboard.add_hotkey('tab+right', on_right, suppress=True, trigger_on_release=False))
+            try: hooks.append(keyboard.add_hotkey('tab+num 0', on_select, suppress=True, trigger_on_release=False))
             except ValueError:
-                try: hooks.append(keyboard.add_hotkey('keypad 0', lambda: self.toggle_selection_signal.emit(), suppress=True, trigger_on_release=False))
-                except ValueError: print("Warning: Could not hook Numpad 0.")
+                try: hooks.append(keyboard.add_hotkey('tab+keypad 0', on_select, suppress=True, trigger_on_release=False))
+                except ValueError: print("[WARN] Could not hook Tab + Numpad 0.")
+            try: hooks.append(keyboard.add_hotkey('tab+delete', on_toggle_mode, suppress=True, trigger_on_release=False))
+            except ValueError:
+                 try: hooks.append(keyboard.add_hotkey('tab+del', on_toggle_mode, suppress=True, trigger_on_release=False))
+                 except ValueError:
+                     try: hooks.append(keyboard.add_hotkey('tab+.', on_toggle_mode, suppress=True, trigger_on_release=False)) # Numpad .
+                     except ValueError: print("[WARN] Could not hook Tab + Delete/Numpad .")
+
             print("Hotkeys registered.")
             self._stop_keyboard_listener_flag.wait()
             print("Keyboard listener stop signal received.")
-        except ImportError: print("\nERROR: 'keyboard' library requires root/admin privileges.\n")
-        except Exception as e: print(f"Error setting up keyboard hooks: {e}")
+        except ImportError: print("\n[ERROR] 'keyboard' library requires root/admin privileges.\n")
+        except Exception as e: print(f"[ERROR] setting up keyboard hooks: {e}")
         finally:
             print("Unhooking keyboard...")
             for hook in hooks:
@@ -406,16 +480,8 @@ class MainWindow(QMainWindow):
         """Изменяет режим и сбрасывает фокус."""
         print(f"[LOG] Attempting to change mode to: {mode}") # LOG
         if self.mode == mode: print("[LOG] Mode is already set."); return
-        # Сбрасываем фокус на старом элементе перед сменой режима
-        old_index = self.hotkey_cursor_index
-        if old_index >= 0 and self.right_list_widget:
-            try:
-                old_item = self.right_list_widget.item(old_index)
-                if old_item and old_item.data(Qt.UserRole + 10) == True:
-                    # print(f"[LOG] Resetting focus property for old index {old_index} before mode change") # LOG
-                    old_item.setData(Qt.UserRole + 10, False)
-            except Exception as e: print(f"[ERROR] resetting old focus property before mode change: {e}")
-        self.hotkey_cursor_index = -1 # Сбрасываем индекс
+        # Сбрасываем индекс фокуса перед сменой режима
+        self.hotkey_cursor_index = -1
         change_mode(self, mode) # Перестраивает UI
         # Отложенный вызов для установки фокуса ПОСЛЕ перестройки
         QTimer.singleShot(250, self._reset_hotkey_cursor_after_mode_change)
@@ -429,6 +495,7 @@ class MainWindow(QMainWindow):
                 self.hotkey_cursor_index = 0
                 self._calculate_columns()
                 # print("[LOG] --> Calling _update_hotkey_highlight(None) to set initial focus") # LOG
+                # Запрашиваем обновление для отрисовки рамки делегатом
                 self._update_hotkey_highlight(None)
             else: self.hotkey_cursor_index = -1
         else: self.hotkey_cursor_index = -1
@@ -486,13 +553,10 @@ class MainWindow(QMainWindow):
     def _update_top_panel_lang(self):
         # --- ИСПРАВЛЕНИЕ ОШИБКИ ИМПОРТА ---
         try:
-            # Находим элементы более надежно по имени объекта, если возможно
-            # Или используем старый метод поиска по тексту
             lang_label = self.top_frame.findChild(QLabel, "language_label") or self._find_object_by_text_keys(QLabel, ['language'])
             mode_label = self.top_frame.findChild(QLabel, "mode_label") or self._find_object_by_text_keys(QLabel, ['mode'])
-            if lang_label: lang_label.setText(get_text('language')); lang_label.setObjectName("language_label") # Добавляем имя объекта для будущего поиска
+            if lang_label: lang_label.setText(get_text('language')); lang_label.setObjectName("language_label")
             if mode_label: mode_label.setText(get_text('mode')); mode_label.setObjectName("mode_label")
-
             min_button = self.top_frame.findChild(QPushButton, "min_button") or self._find_object_by_text_keys(QPushButton,['mode_min'])
             middle_button = self.top_frame.findChild(QPushButton, "middle_button") or self._find_object_by_text_keys(QPushButton,['mode_middle'])
             max_button = self.top_frame.findChild(QPushButton, "max_button") or self._find_object_by_text_keys(QPushButton,['mode_max'])
@@ -504,27 +568,15 @@ class MainWindow(QMainWindow):
                 is_topmost = bool(self.windowFlags() & Qt.WindowStaysOnTopHint)
                 topmost_button.setText(get_text('topmost_on') if is_topmost else get_text('topmost_off'))
                 topmost_button.setObjectName("topmost_button")
-
             if self.author_button: self.author_button.setText(get_text('about_author'))
             if self.rating_button: self.rating_button.setText(get_text('hero_rating'))
-
-            # Обработка QComboBox
             lang_combo = self.top_frame.findChild(QComboBox) # Используем QComboBox напрямую
             if lang_combo:
-                current_lang_text = lang_combo.currentText()
-                current_lang_code = DEFAULT_LANGUAGE # По умолчанию
+                current_lang_text = lang_combo.currentText(); current_lang_code = DEFAULT_LANGUAGE
                 for code, name in SUPPORTED_LANGUAGES.items():
-                    if name == current_lang_text:
-                        current_lang_code = code
-                        break
-                lang_combo.blockSignals(True)
-                lang_combo.clear()
-                lang_combo.addItems(SUPPORTED_LANGUAGES.values())
-                lang_combo.setCurrentText(SUPPORTED_LANGUAGES[current_lang_code])
-                lang_combo.blockSignals(False)
-            else:
-                print("[WARN] QComboBox for language not found in top panel.")
-
+                    if name == current_lang_text: current_lang_code = code; break
+                lang_combo.blockSignals(True); lang_combo.clear(); lang_combo.addItems(SUPPORTED_LANGUAGES.values()); lang_combo.setCurrentText(SUPPORTED_LANGUAGES[current_lang_code]); lang_combo.blockSignals(False)
+            else: print("[WARN] QComboBox for language not found in top panel.")
         except Exception as e: print(f"[ERROR] updating top panel language: {e}")
 
     def _find_object_by_text_keys(self, obj_type, keys, parent_widget=None):
@@ -532,8 +584,7 @@ class MainWindow(QMainWindow):
         parent = parent_widget if parent_widget else self.top_frame
         if not parent: return None
         for widget in parent.findChildren(obj_type):
-            current_text = ""
-            widget_text_func = getattr(widget, "text", None)
+            current_text = ""; widget_text_func = getattr(widget, "text", None)
             if callable(widget_text_func): current_text = widget_text_func()
             if not current_text: continue
             for key in keys:

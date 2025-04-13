@@ -22,8 +22,8 @@ command = (
     f'--add-data "display.py;." '
     f'--add-data "horizontal_list.py;." '
     f'--add-data "mode_manager.py;." '
-    # Убедитесь, что delegate.py УДАЛЕН или закомментирован
-    # f'--add-data "delegate.py;." '
+    # --- ДОБАВЛЯЕМ delegate.py ---
+    f'--add-data "delegate.py;." '
     f'main.py'
 )
 print(f"Выполняем команду: {command}")

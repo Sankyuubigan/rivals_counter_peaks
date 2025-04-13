@@ -16,6 +16,7 @@ def create_right_panel(window, initial_mode="middle"):
     """
     Создает правую панель с QListWidget.
     Использует делегат ТОЛЬКО для отрисовки рамки фокуса.
+    Множественный выбор должен работать.
     """
     logic = window.logic
 
@@ -39,14 +40,20 @@ def create_right_panel(window, initial_mode="middle"):
     list_widget.setWordWrap(True)
 
     # --- Размеры иконок и сетки ---
+    # <<< ИЗМЕНЕНИЕ: Уменьшаем grid_size для middle режима >>>
     if initial_mode == "max":
         icon_size = QSize(60, 60); grid_size = QSize(85, 95); list_widget.setSpacing(10)
     else: # middle
-        icon_size = QSize(35, 35); grid_size = QSize(55, 50); list_widget.setSpacing(5)
+        icon_size = QSize(40, 40) # Иконка чуть больше для наглядности
+        # Уменьшаем grid_size, чтобы было меньше пустого места вокруг иконки
+        # Оставляем небольшой запас (например, 4px с каждой стороны)
+        grid_size = QSize(icon_size.width() + 8, icon_size.height() + 8)
+        list_widget.setSpacing(4) # Отступ между элементами
     list_widget.setIconSize(icon_size); list_widget.setGridSize(grid_size)
+    # -------------------------------------------------------
 
     # --- Стили для ListWidget ---
-    # Убираем правила для [hotkeyFocus="true"]
+    # Убираем правила для [hotkeyFocus="true"], делегат сам рисует рамку
     list_widget.setStyleSheet("""
         QListWidget {
             background-color: white;
@@ -54,20 +61,24 @@ def create_right_panel(window, initial_mode="middle"):
             outline: 0;
         }
         QListWidget::item {
-            padding: 2px;
-            margin: 1px;
+            /* Убираем padding, чтобы иконка занимала все место */
+            padding: 0px;
+            margin: 1px; /* Маленький отступ между элементами */
             color: black;
             border-radius: 3px;
+            /* Рамка теперь рисуется делегатом или стандартная */
             border: 1px solid transparent;
             background-color: transparent;
         }
         QListWidget::item:selected {
             background-color: #3399ff;
             color: white;
+            /* Рамка выделения, будет перекрыта рамкой делегата, если есть фокус */
             border: 1px solid #2d8ae5;
         }
         QListWidget::item:!selected:hover {
             background-color: #e0f7ff;
+            /* Рамка ховера, будет перекрыта рамкой делегата, если есть фокус */
             border: 1px solid #cceeff;
         }
     """)
@@ -93,7 +104,8 @@ def create_right_panel(window, initial_mode="middle"):
 
         item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
         item.setData(HERO_NAME_ROLE, hero) # Имя героя
-        # Больше не устанавливаем свойство hotkeyFocus здесь
+        # --- Свойство hotkeyFocus больше не используется ---
+        # item.setData(Qt.UserRole + 10, False)
         item.setToolTip(hero) # Базовая подсказка
 
         if hero in logic.selected_heroes: item.setSelected(True)

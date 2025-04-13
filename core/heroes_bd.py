@@ -156,7 +156,7 @@ heroes_compositions = {
 
 hero_roles = {
     "tanks": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
-              "Magneto"],
+              "Magneto","Emma Frost"],
     "attackers": ["Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mr. Fantastic", "Storm",
                   "Black Panther", "Squirrel Girl", "Spider-Man", "Star-Lord", "Wolverine", "Hawkeye", "Magik",
                   "Black Widow", "Scarlet Witch", "Namor", "Iron Fist", "Human Torch"],
