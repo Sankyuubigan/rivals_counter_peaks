@@ -3,18 +3,19 @@ import time
 import threading
 import keyboard
 
+# <<< ИЗМЕНЕНИЕ: Добавляем QScrollArea >>>
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QFrame,
                                QLabel, QPushButton, QApplication, QListWidget, QListWidgetItem, QMenu,
-                               QAbstractItemView, QStyle, QComboBox) # Добавили QComboBox
-from PySide6.QtCore import Qt, QSize, Signal, Slot, QTimer, QPoint, QModelIndex
-from PySide6.QtGui import QColor, QPalette, QIcon, QBrush
+                               QAbstractItemView, QStyle, QComboBox, QScrollArea)
+from PySide6.QtCore import Qt, QSize, Signal, Slot, QTimer, QPoint, QModelIndex, QEvent
+from PySide6.QtGui import QColor, QPalette, QIcon, QBrush, QMouseEvent
 from top_panel import create_top_panel
 from right_panel import create_right_panel, HERO_NAME_ROLE
 from left_panel import create_left_panel
 from utils_gui import copy_to_clipboard
 from build import version
-from logic import CounterpickLogic, TEAM_SIZE # Используем исправленную логику
-from images_load import get_images_for_mode, TOP_HORIZONTAL_ICON_SIZE
+from logic import CounterpickLogic, TEAM_SIZE
+from images_load import get_images_for_mode, SIZES # Используем SIZES
 from translations import get_text, set_language, DEFAULT_LANGUAGE, TRANSLATIONS, SUPPORTED_LANGUAGES
 from mode_manager import change_mode, update_interface_for_mode
 from horizontal_list import update_horizontal_icon_list # Используем обновленный
@@ -25,7 +26,8 @@ from display import generate_counterpick_display, generate_minimal_icon_list
 class MainWindow(QMainWindow):
     move_cursor_signal = Signal(str)
     toggle_selection_signal = Signal()
-    toggle_mode_signal = Signal() # Сигнал для смены режима
+    toggle_mode_signal = Signal()
+    clear_all_signal = Signal() # Сигнал для очистки
 
     def __init__(self):
         super().__init__()
@@ -37,10 +39,13 @@ class MainWindow(QMainWindow):
 
         # Атрибуты UI
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
-        self.top_horizontal_icon_size = TOP_HORIZONTAL_ICON_SIZE
         self.top_frame, self.author_button, self.rating_button = None, None, None
         self.main_widget, self.inner_layout, self.left_container = None, None, None
-        self.icons_frame, self.icons_layout = None, None
+        # <<< ИЗМЕНЕНИЕ: icons_frame -> icons_scroll_area, добавляем content_widget и layout >>>
+        self.icons_scroll_area = None # Замена icons_frame
+        self.icons_scroll_content = None # Виджет внутри ScrollArea
+        self.icons_scroll_content_layout = None # QHBoxLayout внутри icons_scroll_content
+        # -------------------------------------------------------------------------
         self.canvas, self.result_frame, self.result_label = None, None, None
         self.update_scrollregion = lambda: None
         self.right_frame, self.selected_heroes_label = None, None
@@ -52,56 +57,82 @@ class MainWindow(QMainWindow):
         self.hotkey_cursor_index = -1
         self._keyboard_listener_thread = None
         self._stop_keyboard_listener_flag = threading.Event()
-        self._num_columns_cache = 1 # Кэш для количества колонок
+        self._num_columns_cache = 1
+
+        # Для перемещения окна
+        self._mouse_pressed = False
+        self._old_pos = None
 
         self.init_ui()
         self.start_keyboard_listener()
 
+    # --- Перемещение окна без рамки ---
+    def mousePressEvent(self, event: QMouseEvent):
+        if self.mode == "min" and self.top_frame.underMouse():
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._mouse_pressed = True; self._old_pos = event.globalPosition().toPoint(); event.accept()
+        else: self._mouse_pressed = False; super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.mode == "min" and self._mouse_pressed and self._old_pos is not None:
+            delta = event.globalPosition().toPoint() - self._old_pos; self.move(self.pos() + delta); self._old_pos = event.globalPosition().toPoint(); event.accept()
+        else: super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton:
+            self._mouse_pressed = False; self._old_pos = None; event.accept()
+        else: super().mouseReleaseEvent(event)
+    # ------------------------------------
+
     def init_ui(self):
         self.setWindowTitle(f"{get_text('title')} v{version}")
-        self.setGeometry(100, 100, 950, 350)
-        self.setMinimumSize(400, 100)
-        self.initial_pos = self.pos()
-        self.mode_positions["middle"] = self.pos()
+        self.setGeometry(100, 100, 950, 350); self.setMinimumSize(400, 100)
+        self.initial_pos = self.pos(); self.mode_positions["middle"] = self.pos()
 
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-        self.main_layout = QVBoxLayout(central_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
+        central_widget = QWidget(self); self.setCentralWidget(central_widget)
+        self.main_layout = QVBoxLayout(central_widget); self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
 
-        (self.top_frame, self.author_button, self.rating_button,
-         self.switch_mode_cb) = create_top_panel(self, self.change_mode, self.logic)
+        (self.top_frame, self.author_button, self.rating_button, self.switch_mode_cb) = create_top_panel(self, self.change_mode, self.logic)
         self.main_layout.addWidget(self.top_frame)
 
-        self.icons_frame = QFrame(self)
-        self.icons_layout = QHBoxLayout(self.icons_frame)
-        self.icons_layout.setContentsMargins(5, 2, 5, 2)
-        self.icons_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        icons_frame_height = self.top_horizontal_icon_size.height() + 12 # Высота для иконок с рейтингом
-        self.icons_frame.setFixedHeight(icons_frame_height)
-        self.icons_frame.setStyleSheet("background-color: #f0f0f0;")
-        self.main_layout.addWidget(self.icons_frame)
+        # <<< ИЗМЕНЕНИЕ: Создаем QScrollArea для иконок >>>
+        self.icons_scroll_area = QScrollArea()
+        self.icons_scroll_area.setWidgetResizable(True)
+        self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff) # Убираем горизонтальную полосу
+        self.icons_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff) # Убираем вертикальную полосу
+        self.icons_scroll_area.setStyleSheet("QScrollArea { border: none; background-color: #f0f0f0; }") # Стилизуем
 
-        self.main_widget = QWidget()
-        self.inner_layout = QHBoxLayout(self.main_widget)
-        self.inner_layout.setContentsMargins(0, 0, 0, 0)
-        self.inner_layout.setSpacing(0)
+        # Виджет-контейнер для layout'а внутри ScrollArea
+        self.icons_scroll_content = QWidget()
+        self.icons_scroll_content_layout = QHBoxLayout(self.icons_scroll_content) # Layout принадлежит контейнеру
+        self.icons_scroll_content_layout.setContentsMargins(5, 2, 5, 2)
+        self.icons_scroll_content_layout.setSpacing(4) # Отступ между иконками
+        self.icons_scroll_content_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.icons_scroll_area.setWidget(self.icons_scroll_content) # Устанавливаем контейнер в ScrollArea
+        # ---------------------------------------------------
+
+        # Расчет высоты icons_scroll_area
+        try:
+            # Загружаем изображения ДО расчета высоты
+            self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(self.mode)
+            h_icon_h = SIZES[self.mode]['horizontal'][1] if self.mode in SIZES and 'horizontal' in SIZES[self.mode] else 30
+            icons_frame_height = h_icon_h + 12 # Добавляем верт. отступы + запас на рейтинг
+        except Exception as e:
+            print(f"[ERROR] Ошибка загрузки изображений в init_ui: {e}"); icons_frame_height = 42
+            self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
+
+        self.icons_scroll_area.setFixedHeight(icons_frame_height)
+        self.main_layout.addWidget(self.icons_scroll_area) # Добавляем ScrollArea в главный layout
+
+        self.main_widget = QWidget(); self.inner_layout = QHBoxLayout(self.main_widget); self.inner_layout.setContentsMargins(0, 0, 0, 0); self.inner_layout.setSpacing(0)
         self.main_layout.addWidget(self.main_widget, stretch=1)
 
-        try:
-            self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(self.mode)
-        except Exception as e: print(f"Критическая ошибка загрузки изображений: {e}"); self.close(); return
+        # Изображения уже загружены
 
-        self.left_container = QWidget()
-        left_layout = QVBoxLayout(self.left_container)
-        left_layout.setContentsMargins(0,0,0,0)
-        left_layout.setSpacing(0)
+        self.left_container = QWidget(); left_layout = QVBoxLayout(self.left_container); left_layout.setContentsMargins(0,0,0,0); left_layout.setSpacing(0)
         self.canvas, self.result_frame, self.result_label, self.update_scrollregion = create_left_panel(self.left_container)
-        left_layout.addWidget(self.canvas, stretch=1)
-        self.inner_layout.addWidget(self.left_container, stretch=2)
+        left_layout.addWidget(self.canvas, stretch=1); self.inner_layout.addWidget(self.left_container, stretch=2)
 
-        # Создаем правую панель (она установит делегат)
         self.right_frame, self.selected_heroes_label = create_right_panel(self, self.mode)
         self.inner_layout.addWidget(self.right_frame, stretch=1)
 
@@ -111,7 +142,8 @@ class MainWindow(QMainWindow):
 
         self.move_cursor_signal.connect(self._handle_move_cursor)
         self.toggle_selection_signal.connect(self._handle_toggle_selection)
-        self.toggle_mode_signal.connect(self._handle_toggle_mode) # Подключаем сигнал
+        self.toggle_mode_signal.connect(self._handle_toggle_mode)
+        self.clear_all_signal.connect(self._handle_clear_all) # Подключаем сигнал очистки
 
         if self.right_list_widget and self.right_list_widget.count() > 0 and self.mode != 'min':
             self.hotkey_cursor_index = 0
@@ -120,62 +152,37 @@ class MainWindow(QMainWindow):
     # --- HOTKEY RELATED METHODS ---
 
     def _calculate_columns(self):
-        # Вычисляем количество колонок ДИНАМИЧЕСКИ
-        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min':
-            self._num_columns_cache = 1
-            return 1
+        # ... (без изменений) ...
+        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': self._num_columns_cache = 1; return 1
         try:
-            vp_width = self.right_list_widget.viewport().width()
-            grid_w = self.right_list_widget.gridSize().width()
-            spacing = self.right_list_widget.spacing()
-            if grid_w <= 0: return self._num_columns_cache
-            eff_grid_w = grid_w + spacing
-            if eff_grid_w <= 0: return self._num_columns_cache
-            cols = max(1, int(vp_width / eff_grid_w))
-            # print(f"[DEBUG] Calculated columns: vp_width={vp_width}, grid_w={grid_w}, spacing={spacing}, eff_grid_w={eff_grid_w}, cols={cols}")
-            self._num_columns_cache = cols
-            return cols
-        except Exception as e:
-            print(f"[ERROR] Calculating columns: {e}")
-            return self._num_columns_cache
-
-    def _trigger_update_for_index(self, index):
-        """Запрашивает перерисовку элемента с указанным индексом через viewport().update()."""
-        if self.right_list_widget and 0 <= index < self.right_list_widget.count():
-            # print(f"[LOG] Triggering viewport update (for index {index})") # LOG
-            self.right_list_widget.viewport().update()
+            vp_width = self.right_list_widget.viewport().width(); grid_w = self.right_list_widget.gridSize().width(); spacing = self.right_list_widget.spacing();
+            if grid_w <= 0: return self._num_columns_cache; eff_grid_w = grid_w + spacing
+            if eff_grid_w <= 0: return self._num_columns_cache; cols = max(1, int(vp_width / eff_grid_w))
+            self._num_columns_cache = cols; return cols
+        except Exception as e: print(f"[ERROR] Calculating columns: {e}"); return self._num_columns_cache
 
     def _update_hotkey_highlight(self, old_index=None):
         """
         Обновляет ПОДСКАЗКУ элемента и запрашивает обновление viewport'а,
         чтобы делегат перерисовал рамку.
         """
-        # print(f"[LOG] _update_hotkey_highlight called: old={old_index}, new={self.hotkey_cursor_index}") # LOG
-        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min':
-            return
-
-        list_widget = self.right_list_widget
-        count = list_widget.count()
+        if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': return
+        list_widget = self.right_list_widget; count = list_widget.count()
         if count == 0: return
 
-        needs_viewport_update = False # Флаг, чтобы вызвать update только один раз
+        needs_viewport_update = False
 
-        # --- Восстановление подсказки старого элемента ---
+        # Восстановление подсказки старого элемента
         if old_index is not None and 0 <= old_index < count:
             try:
                 old_item = list_widget.item(old_index)
                 if old_item:
-                    # Восстанавливаем подсказку
                     hero_name = old_item.data(HERO_NAME_ROLE)
                     if hero_name and old_item.toolTip() != hero_name:
-                        old_item.setToolTip(hero_name)
-                        needs_viewport_update = True # Изменилась подсказка
-                    # Запрашиваем обновление для старого индекса, чтобы делегат его перерисовал без рамки
-                    # self._trigger_update_for_index(old_index) # Убрано, обновляем viewport в конце
-            except Exception as e:
-                print(f"[ERROR] processing old item index {old_index}: {e}")
+                        old_item.setToolTip(hero_name); needs_viewport_update = True
+            except Exception as e: print(f"[ERROR] processing old item index {old_index}: {e}")
 
-        # --- Установка подсказки нового элемента ---
+        # Установка подсказки нового элемента
         new_index = self.hotkey_cursor_index
         if 0 <= new_index < count:
             try:
@@ -184,27 +191,21 @@ class MainWindow(QMainWindow):
                     hero_name = new_item.data(HERO_NAME_ROLE)
                     focus_tooltip = f">>> {hero_name} <<<"
                     if hero_name and new_item.toolTip() != focus_tooltip:
-                        new_item.setToolTip(focus_tooltip)
-                        needs_viewport_update = True
+                        new_item.setToolTip(focus_tooltip); needs_viewport_update = True
                     list_widget.scrollToItem(new_item, QAbstractItemView.ScrollHint.EnsureVisible)
-                    # Запрашиваем обновление для нового индекса, чтобы делегат нарисовал рамку
-                    # self._trigger_update_for_index(new_index) # Убрано, обновляем viewport в конце
-            except Exception as e:
-                 print(f"[ERROR] processing new item index {new_index}: {e}")
+            except Exception as e: print(f"[ERROR] processing new item index {new_index}: {e}")
 
-        # --- Обновляем viewport ОДИН РАЗ, если что-то изменилось ---
-        # Это должно заставить делегата перерисовать и старый, и новый элементы
-        if needs_viewport_update or old_index != new_index: # Обновляем всегда при смене индекса
+        # Обновляем viewport ОДИН РАЗ, если нужно
+        if needs_viewport_update or old_index != new_index:
              # print("[LOG] Calling list_widget.viewport().update()") # LOG
-             list_widget.viewport().update()
+             list_widget.viewport().update() # Вызываем обновление видимой области
 
 
     @Slot(str)
     def _handle_move_cursor(self, direction):
         """Обрабатывает перемещение фокуса горячими клавишами."""
         if not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode == 'min': return
-        list_widget = self.right_list_widget
-        count = list_widget.count()
+        list_widget = self.right_list_widget; count = list_widget.count()
         if count == 0: return
 
         old_index = self.hotkey_cursor_index
@@ -213,8 +214,7 @@ class MainWindow(QMainWindow):
 
         if self.hotkey_cursor_index < 0: new_index = 0
         else:
-            current_row = self.hotkey_cursor_index // num_columns
-            current_col = self.hotkey_cursor_index % num_columns
+            current_row = self.hotkey_cursor_index // num_columns; current_col = self.hotkey_cursor_index % num_columns
             new_index = self.hotkey_cursor_index
 
             # --- ЛОГИКА ПЕРЕМЕЩЕНИЯ ---
@@ -269,6 +269,24 @@ class MainWindow(QMainWindow):
             print("[LOG] --> Switching to min mode") # LOG
             self.change_mode("min")
 
+    # <<< НОВЫЙ СЛОТ для очистки >>>
+    @Slot()
+    def _handle_clear_all(self):
+        """Обрабатывает сигнал очистки от горячей клавиши."""
+        print("[LOG] _handle_clear_all called") # LOG
+        self.logic.clear_all()
+        self.update_ui_after_logic_change()
+        # Сброс фокуса хоткея
+        if self.right_list_widget and self.mode != 'min':
+            old_index = self.hotkey_cursor_index
+            self.hotkey_cursor_index = 0 if self.right_list_widget.count() > 0 else -1
+            if self.hotkey_cursor_index != old_index:
+                 self._update_hotkey_highlight(old_index)
+            elif self.hotkey_cursor_index != -1: # Если индекс не сменился, но он валиден
+                 self._update_hotkey_highlight(None) # Обновить подсказку и перерисовать
+        else:
+            self.hotkey_cursor_index = -1
+
     # --- Keyboard Listener Loop and Start/Stop/Close ---
     def _keyboard_listener_loop(self):
         print("Keyboard listener thread started.")
@@ -293,10 +311,12 @@ class MainWindow(QMainWindow):
         def on_select(): self.toggle_selection_signal.emit()
         @run_if_topmost
         def on_toggle_mode(): self.toggle_mode_signal.emit()
+        @run_if_topmost
+        def on_clear(): self.clear_all_signal.emit() # <<< Вызов нового сигнала >>>
 
         hooks = []
         try:
-            # <<< ИЗМЕНЕНИЕ: Горячие клавиши с Tab >>>
+            # Горячие клавиши с Tab
             hooks.append(keyboard.add_hotkey('tab+up', on_up, suppress=True, trigger_on_release=False))
             hooks.append(keyboard.add_hotkey('tab+down', on_down, suppress=True, trigger_on_release=False))
             hooks.append(keyboard.add_hotkey('tab+left', on_left, suppress=True, trigger_on_release=False))
@@ -311,6 +331,14 @@ class MainWindow(QMainWindow):
                  except ValueError:
                      try: hooks.append(keyboard.add_hotkey('tab+.', on_toggle_mode, suppress=True, trigger_on_release=False)) # Numpad .
                      except ValueError: print("[WARN] Could not hook Tab + Delete/Numpad .")
+            # <<< НОВАЯ ГОРЯЧАЯ КЛАВИША ОЧИСТКИ >>>
+            try: hooks.append(keyboard.add_hotkey('tab+num -', on_clear, suppress=True, trigger_on_release=False))
+            except ValueError:
+                try: hooks.append(keyboard.add_hotkey('tab+keypad -', on_clear, suppress=True, trigger_on_release=False)) # Пробуем keypad
+                except ValueError:
+                    try: hooks.append(keyboard.add_hotkey('tab+-', on_clear, suppress=True, trigger_on_release=False)) # Пробуем просто минус
+                    except ValueError: print("[WARN] Could not hook Tab + Numpad - / Keypad - / -.")
+            # --------------------------------------
 
             print("Hotkeys registered.")
             self._stop_keyboard_listener_flag.wait()
@@ -384,8 +412,7 @@ class MainWindow(QMainWindow):
              try:
                  item_index = list_widget.row(item)
                  is_priority = hero in self.logic.priority_heroes
-                 # Проверяем, что ЭТОТ элемент НЕ имеет фокус
-                 is_hotkey_focused = (item_index == focused_index)
+                 is_hotkey_focused = (item_index == focused_index) # Проверяем по индексу
                  target_brush = QBrush(priority_color) if is_priority else default_brush
                  if is_priority and not item.isSelected() and not is_hotkey_focused: # Только если приоритет, не выделен и не фокус
                      if item.background() != target_brush: item.setBackground(target_brush)
@@ -406,6 +433,7 @@ class MainWindow(QMainWindow):
         try:
             layout = self.result_frame.layout(); need_add_label = False
             if not layout: layout = QVBoxLayout(self.result_frame); layout.setAlignment(Qt.AlignmentFlag.AlignTop); self.result_frame.setLayout(layout); need_add_label = True
+            # --- Улучшенная очистка layout'а ---
             while layout.count():
                  item = layout.takeAt(0)
                  if item:
@@ -416,6 +444,7 @@ class MainWindow(QMainWindow):
                          if sub_item and sub_item.widget(): sub_item.widget().deleteLater()
                          layout.removeItem(item)
                      elif item.spacerItem(): layout.removeItem(item)
+            # -----------------------------------
             if not self.logic.selected_heroes:
                 if self.result_label:
                     self.result_label.setText(get_text('no_heroes_selected')); self.result_label.show()
@@ -493,7 +522,7 @@ class MainWindow(QMainWindow):
             count = self.right_list_widget.count()
             if count > 0:
                 self.hotkey_cursor_index = 0
-                self._calculate_columns()
+                self._calculate_columns() # Пересчитываем колонки для нового режима
                 # print("[LOG] --> Calling _update_hotkey_highlight(None) to set initial focus") # LOG
                 # Запрашиваем обновление для отрисовки рамки делегатом
                 self._update_hotkey_highlight(None)
@@ -551,7 +580,7 @@ class MainWindow(QMainWindow):
                  current_focused_item.setToolTip(focused_hero_tooltip)
 
     def _update_top_panel_lang(self):
-        # --- ИСПРАВЛЕНИЕ ОШИБКИ ИМПОРТА ---
+        # Исправлена ошибка с QComboBox
         try:
             lang_label = self.top_frame.findChild(QLabel, "language_label") or self._find_object_by_text_keys(QLabel, ['language'])
             mode_label = self.top_frame.findChild(QLabel, "mode_label") or self._find_object_by_text_keys(QLabel, ['mode'])
@@ -576,7 +605,7 @@ class MainWindow(QMainWindow):
                 for code, name in SUPPORTED_LANGUAGES.items():
                     if name == current_lang_text: current_lang_code = code; break
                 lang_combo.blockSignals(True); lang_combo.clear(); lang_combo.addItems(SUPPORTED_LANGUAGES.values()); lang_combo.setCurrentText(SUPPORTED_LANGUAGES[current_lang_code]); lang_combo.blockSignals(False)
-            else: print("[WARN] QComboBox for language not found in top panel.")
+            # else: print("[WARN] QComboBox for language not found in top panel.")
         except Exception as e: print(f"[ERROR] updating top panel language: {e}")
 
     def _find_object_by_text_keys(self, obj_type, keys, parent_widget=None):

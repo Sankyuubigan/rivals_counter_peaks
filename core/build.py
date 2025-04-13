@@ -22,7 +22,7 @@ command = (
     f'--add-data "display.py;." '
     f'--add-data "horizontal_list.py;." '
     f'--add-data "mode_manager.py;." '
-    # --- ДОБАВЛЯЕМ delegate.py ---
+    # --- Убедимся, что delegate.py добавлен ---
     f'--add-data "delegate.py;." '
     f'main.py'
 )
