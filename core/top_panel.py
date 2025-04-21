@@ -96,25 +96,25 @@ class TopPanel:
         self.max_button.clicked.connect(lambda: self.switch_mode_callback("max"))
 
         # Кнопка поверх окон
-    def update_topmost_visual_state():
-            is_topmost = self.parent._is_win_topmost
-            self.topmost_button.setText(get_text('topmost_on', language=self.logic.DEFAULT_LANGUAGE) if is_topmost else get_text('topmost_off', language=self.logic.DEFAULT_LANGUAGE))
-            bg_color = "#4CAF50" if is_topmost else "gray"
-            border_color = "#388E3C" if is_topmost else "#666666"
-            hover_bg_color = "#45a049" if is_topmost else "#757575"
-            self.topmost_button.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 10pt; padding: 2px;
-                background-color: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                color: white;
-                min-width: 80px;
-            }}
-            QPushButton:hover {{
-                background-color: {hover_bg_color};
-            }}
-        """)
+        def update_topmost_visual_state():
+                is_topmost = self.parent._is_win_topmost
+                self.topmost_button.setText(get_text('topmost_on', language=self.logic.DEFAULT_LANGUAGE) if is_topmost else get_text('topmost_off', language=self.logic.DEFAULT_LANGUAGE))
+                bg_color = "#4CAF50" if is_topmost else "gray"
+                border_color = "#388E3C" if is_topmost else "#666666"
+                hover_bg_color = "#45a049" if is_topmost else "#757575"
+                self.topmost_button.setStyleSheet(f"""
+                QPushButton {{
+                    font-size: 10pt; padding: 2px;
+                    background-color: {bg_color};
+                    border: 1px solid {border_color};
+                    border-radius: 4px;
+                    color: white;
+                    min-width: 80px;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover_bg_color};
+                }}
+            """)
         setattr(self.topmost_button, '_update_visual_state', update_topmost_visual_state)
         self.topmost_button.clicked.connect(self.parent.toggle_topmost_winapi)
         self.parent.set_topmost_winapi(False)
@@ -157,7 +157,8 @@ class TopPanel:
         self._insert_close_button()
 
     def _insert_close_button(self):
-    stretch_index = -1
+        
+        stretch_index = -1
         for i in range(self.layout.count()):
             item = self.layout.itemAt(i)
             if isinstance(item, QSpacerItem) and item.spacerItem().expandingDirections() & Qt.Orientation.Horizontal:

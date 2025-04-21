@@ -66,6 +66,7 @@ class WinApiManager:
 
     def _set_window_topmost(self, hwnd):
         """Устанавливает окну состояние Topmost."""
+        
         success = self._set_window_pos(hwnd, HWND_TOPMOST, SWP_NOMOVE | SWP_NOSIZE)
         if success:
             print(f"[API] SetWindowPos успешно: Topmost включен.")

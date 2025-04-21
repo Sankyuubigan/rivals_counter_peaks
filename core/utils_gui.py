@@ -65,8 +65,12 @@ def calculate_columns(self):
 
         item_width = self._get_item_width()
         num_columns = self._calculate_num_columns(list_width, item_width)
+        if self.right_list_widget.count() < num_columns:
+            if num_columns > 1:
+                num_columns -= 1
+        
         return self._update_cache(num_columns)
-
+       
     except Exception as e:
         print(f"[ERROR] Calculating columns: {e}")
         return num_columns_cache
