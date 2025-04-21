@@ -1,5 +1,5 @@
 # File: core/win_api.py
-from PySide6.QtWidgets import QPushButton, QApplication
+from PySide6.QtWidgets import QPushButton, QApplication, QWidget
 from PySide6.QtCore import Qt
 import sys
 if sys.platform == 'win32':
@@ -44,10 +44,9 @@ class WinApiManager:
             return False
         return self.is_win_topmost
 
-    def _get_hwnd(self):
+    def _get_hwnd(self) -> int:
         """Получает HWND окна."""
-        hwnd = self.main_window.winId()
-        # Ждем HWND, если его нет сразу (окно может еще не быть полностью создано)
+        hwnd: int = self.main_window.winId()
         wait_count = 0
         while not hwnd and wait_count < 10:  # Ждем до 1 секунды (10 * 100мс)
             print("[WARN] HWND не получен, ожидание...")
@@ -95,7 +94,7 @@ class WinApiManager:
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
                 self.is_win_topmost = enable
                 # Показываем окно, чтобы флаг применился
-                try:if self.main_window.isVisible(): self.main_window.show()
+                if self.main_window.isVisible(): self.main_window.show()
                 except RuntimeError: pass # Игнорируем ошибку, если виджет уже удален
             # Обновляем кнопку в любом случае
             self._update_topmost_button_visuals()
@@ -129,8 +128,8 @@ class WinApiManager:
             flag_set = bool(current_flags & Qt.WindowStaysOnTopHint)
             if enable != flag_set:
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
-                self._is_win_topmost = enable
-                self.is_win_topmost = enable;try:if self.main_window.isVisible(): self.main_window.show()
+                self.is_win_topmost = enable
+                if self.main_window.isVisible(): self.main_window.show()
                 except RuntimeError: pass
             else: # Если флаг уже был в нужном состоянии
                 self.is_win_topmost = enable # Устанавливаем флаг в соответствии с попыткой

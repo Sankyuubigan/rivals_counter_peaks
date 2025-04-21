@@ -226,15 +226,15 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
             layout.setSpacing(1)
             result_frame.setLayout(layout)
         clear_layout(layout)
-        result_label_found = result_frame.parentWidget().findChild(QLabel, "result_label") if result_frame.parentWidget() and isinstance(result_frame.parentWidget(), QScrollArea) else None
-    else:
+        result_label_found = result_frame.parentWidget().findChild(QLabel, "result_label") if result_frame.parentWidget() and isinstance(result_frame.parentWidget(), QScrollArea) else None        
+        return layout, result_label_found
+    if result_label_found:
         # Если после фильтрации не осталось элементов для отображения
-        if result_label_found:
-            result_label_found.setText(get_text('no_recommendations', language=logic.DEFAULT_LANGUAGE))
-            result_label_found.show()
-            if layout.indexOf(result_label_found) == -1:
-                layout.addWidget(result_label_found)
-            layout.addStretch(1)
+        result_label_found.setText(get_text('no_recommendations', language=logic.DEFAULT_LANGUAGE))
+        result_label_found.show()
+        if layout.indexOf(result_label_found) == -1:
+            layout.addWidget(result_label_found)
+        layout.addStretch(1)
 
 
 # --- generate_minimal_icon_list ---
