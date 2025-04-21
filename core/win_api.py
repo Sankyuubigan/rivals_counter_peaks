@@ -1,6 +1,6 @@
 # File: core/win_api.py
-from PySide6.QtWidgets import QPushButton
-from PySide6.QtCore import Qt, QApplication
+from PySide6.QtWidgets import QPushButton, QApplication
+from PySide6.QtCore import Qt
 import sys
 if sys.platform == 'win32':
     import ctypes
@@ -30,7 +30,6 @@ if sys.platform == 'win32':
 else:
     user32 = None # Не Windows
 
-from PySide6.QtCore import Qt, QApplication
 import time
 
 class WinApiManager:
@@ -95,9 +94,8 @@ class WinApiManager:
             if enable != flag_set:
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
                 self.is_win_topmost = enable
-                # Показываем окно, чтобы флаг применился, но делаем это безопасно
-                try:
-                    if self.main_window.isVisible(): self.main_window.show()
+                # Показываем окно, чтобы флаг применился
+                try:if self.main_window.isVisible(): self.main_window.show()
                 except RuntimeError: pass # Игнорируем ошибку, если виджет уже удален
             # Обновляем кнопку в любом случае
             self._update_topmost_button_visuals()
@@ -112,8 +110,7 @@ class WinApiManager:
             flag_set = bool(current_flags & Qt.WindowStaysOnTopHint)
             self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
             self.is_win_topmost = enable
-            try: if self.main_window.isVisible(): self.main_window.show()
-            except RuntimeError: pass
+            if self.main_window.isVisible(): self.main_window.show()
             self._update_topmost_button_visuals()
             return
 
@@ -133,9 +130,7 @@ class WinApiManager:
             if enable != flag_set:
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
                 self._is_win_topmost = enable
-                self.is_win_topmost = enable
-                try:
-                    if self.main_window.isVisible(): self.main_window.show()
+                self.is_win_topmost = enable;try:if self.main_window.isVisible(): self.main_window.show()
                 except RuntimeError: pass
             else: # Если флаг уже был в нужном состоянии
                 self.is_win_topmost = enable # Устанавливаем флаг в соответствии с попыткой
@@ -155,4 +150,7 @@ class WinApiManager:
         except Exception as e:
             print(f"[WARN] Не удалось обновить вид кнопки topmost: {e}")
 
-    
+def is_window_topmost(window):
+    if sys.platform != 'win32':
+        return False
+    return window.is_win_topmost
