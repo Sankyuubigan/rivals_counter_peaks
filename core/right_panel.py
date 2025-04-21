@@ -95,11 +95,11 @@ class RightPanel:
         """
         # --- Настройка QListWidget ---
         # Делегат отвечает за отрисовку рамки фокуса хоткея
-        delegate = HotkeyFocusDelegate(self.window)
+        delegate = HotkeyFocusDelegate(self.window)        
         self.list_widget.setItemDelegate(delegate)
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)  # Иконки сеткой
         self.list_widget.setResizeMode(
-            QListView.ResizeMode.Adjust
+           QListView.ResizeMode.Adjust
         )  # Автоподстройка колонок
         self.list_widget.setMovement(QListView.Movement.Static) 
         self.list_widget.setSelectionMode(
@@ -109,8 +109,7 @@ class RightPanel:
         self.list_widget.setUniformItemSizes(True)  # Оптимизация, если все элементы одного размера
     # -------------------------------------------------------
 
-    # --- Стили для ListWidget ---
-    list_widget.setStyleSheet("""
+        self.list_widget.setStyleSheet("""
         QListWidget {
             background-color: white;
             border: 1px solid #d3d3d3; /* Рамка самого списка */
@@ -146,7 +145,7 @@ class RightPanel:
              outline: 0;
         }
     """)
-        self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Убираем фокус самого виджета
+        self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)# Убираем фокус самого виджета
         self.list_widget.itemSelectionChanged.connect(
             self.window.handle_selection_changed
         )
