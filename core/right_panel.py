@@ -89,8 +89,8 @@ class RightPanel:
             self.list_widget.addItem(item)
             self.hero_items[hero] = item
 
-       def _setup_widgets(self):
-        """
+    def _setup_widgets(self):
+       """
         Настройка виджетов.
         """
         # --- Настройка QListWidget ---
