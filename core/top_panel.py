@@ -18,17 +18,18 @@ if TYPE_CHECKING:
 
 
 # <<< ИЗМЕНЕНИЕ: parent теперь типизирован как MainWindow >>>
-def create_top_panel(parent: 'MainWindow', switch_mode_callback, logic):
+def create_top_panel(parent: 'MainWindow', switch_mode_callback, logic, app_version):
 # <<< ------------------------------------------------- >>>
     top_frame = QFrame(parent); top_frame.setObjectName("top_frame"); top_frame.setStyleSheet("background-color: lightgray;"); top_frame.setFixedHeight(40)
-    panel = TopPanel(parent, switch_mode_callback, logic)
+    panel = TopPanel(parent, switch_mode_callback, logic, app_version)
     return panel.top_frame, panel.author_button, panel.rating_button, switch_mode_callback
 
 
 class TopPanel:
-    def __init__(self, parent: 'MainWindow', switch_mode_callback, logic):
+    def __init__(self, parent: 'MainWindow', switch_mode_callback, logic, app_version):
         self.parent = parent
         self.switch_mode_callback = switch_mode_callback
+        self.app_version = app_version
         self.logic = logic
         self.top_frame = QFrame(parent)
         self.author_button = None
@@ -66,7 +67,7 @@ class TopPanel:
         self.author_button.setObjectName("author_button")
         self.rating_button = QPushButton(get_text('hero_rating'))
         self.rating_button.setObjectName("rating_button")
-        self.version_label = QLabel(f"v{self.parent.app_version}")
+        self.version_label = QLabel(f"v{self.app_version}")
         self.version_label.setObjectName("version_label")
         self.close_button = QPushButton("X")
         self.close_button.setObjectName("close_button")
@@ -121,10 +122,10 @@ class TopPanel:
         update_topmost_visual_state()
 
         self.author_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.author_button.clicked.connect(lambda: show_author_info(self.parent))
+        self.author_button.clicked.connect(lambda: show_author_info(self.parent, self.app_version))
         self.author_button.setVisible(False)
         self.rating_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.rating_button.clicked.connect(lambda: show_hero_rating(self.parent))
+        self.rating_button.clicked.connect(lambda: show_hero_rating(self.parent, self.app_version))
         self.rating_button.setVisible(False)
 
         self.version_label.setStyleSheet("font-size: 9pt; color: grey; margin-left: 10px; margin-right: 5px;")
@@ -157,7 +158,6 @@ class TopPanel:
         self._insert_close_button()
 
     def _insert_close_button(self):
-        
         stretch_index = -1
         for i in range(self.layout.count()):
             item = self.layout.itemAt(i)

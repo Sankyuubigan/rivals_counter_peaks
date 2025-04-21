@@ -1,9 +1,7 @@
 # File: dialogs.py
 from PySide6.QtWidgets import QDialog, QTextEdit, QPushButton, QVBoxLayout
 from PySide6.QtCore import Qt
-from heroes_bd import heroes_counters, heroes
 from translations import get_text, TRANSLATIONS # Импортируем полные переводы для форматирования ссылок
-from build import version # Предполагается, что версия берется из build.py
 import pyperclip
 
 class AuthorDialog(QDialog):
@@ -14,12 +12,8 @@ class AuthorDialog(QDialog):
         self.setModal(True)
         self.center_on_parent()
 
+
         layout = QVBoxLayout(self)
-        try:
-            app_version = parent.logic.APP_VERSION  # Получаем версию из logic, если она там есть
-        except AttributeError:
-             app_version = version # Используем версию из build.py как fallback
-        author_text = get_text('author_info', version=app_version)
 
         # Получаем ключи URL из основного словаря (не из get_text, т.к. нам нужен сам URL)
         # Используем язык по умолчанию из logic, если он там есть
@@ -27,7 +21,7 @@ class AuthorDialog(QDialog):
         if hasattr(parent, 'logic') and hasattr(parent.logic, 'DEFAULT_LANGUAGE'):
              current_lang = parent.logic.DEFAULT_LANGUAGE
         translations = TRANSLATIONS.get(current_lang, TRANSLATIONS['ru_RU'])
-
+        
 
         tinkoff_card = translations.get('donate_tinkoff_card', 'N/A')
         donationalerts_url = translations.get('donate_donationalerts_url', '#')
@@ -44,6 +38,10 @@ class AuthorDialog(QDialog):
         donate_html += f"{get_text('contact_suggestions_label')}<br><a href='{telegram_contact}'>{telegram_contact}</a>"
 
         # Объединяем тексты (авторский текст как обычный, остальное HTML)
+        app_version = parent.app_version
+        author_text = get_text('author_info', version=app_version)
+
+        
         full_html_text = f"<p>{author_text.replace(chr(10), '<br>')}</p><hr><p>{donate_html}</p>"
         self._create_widgets(full_html_text)
         self._setup_widgets(layout)
@@ -82,12 +80,14 @@ class AuthorDialog(QDialog):
 
 
 class HeroRatingDialog(QDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, app_version):
         super().__init__(parent)
-        self.setWindowTitle(get_text('hero_rating_title'))
+        self.setWindowTitle(get_text('hero_rating_title', version=app_version))
         self.setGeometry(0, 0, 400, 600) # Начальные размеры
         self.setModal(True)
         self.center_on_parent() # Центрируем после установки геометрии
+
+        from heroes_bd import heroes_counters, heroes
 
         layout = QVBoxLayout(self)
         text_edit = QTextEdit()
@@ -125,12 +125,12 @@ class HeroRatingDialog(QDialog):
             center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
-def show_author_info(parent):
+def show_author_info(parent, app_version):
     """Показывает диалог 'Об авторе'."""
     dialog = AuthorDialog(parent)
     dialog.exec() # Используем exec() для модальных диалогов
 
-def show_hero_rating(parent):
+def show_hero_rating(parent, app_version):
     """Показывает диалог 'Рейтинг героев'."""
-    dialog = HeroRatingDialog(parent)
+    dialog = HeroRatingDialog(parent, app_version)
     dialog.exec() # Используем exec() для модальных диалогов

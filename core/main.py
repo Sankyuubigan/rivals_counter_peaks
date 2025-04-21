@@ -1,11 +1,16 @@
 from PySide6.QtWidgets import QApplication
 import sys
+import datetime
 
 from settings import LOGGING_ENABLED
 from core.gui import MainWindow
 from core.utils import validate_heroes
 from core.hotkeys import Hotkeys
 from core.win_api import WinApiManager
+
+now = datetime.datetime.now()
+app_version = f"{now.month}.{now.day}"
+
 from core.images_load import load_hero_templates, load_original_images
 
 class MainWindow(MainWindow):
@@ -14,6 +19,7 @@ class MainWindow(MainWindow):
 
     def _setup_hotkeys(self):
         """Настраивает горячие клавиши."""
+
         print("Настройка горячих клавиш...")
         self.hotkeys = Hotkeys()
         self.hotkeys.register_hotkeys(self.mode_manager, self.ui_update, self.winapi)
@@ -78,7 +84,7 @@ if __name__ == "__main__":
     # Создание и запуск GUI
     print("Создание MainWindow...")
     try:
-        window = MainWindow()
+        window = MainWindow(app_version)
         print("Отображение MainWindow...")
         window.show()
         print("Запуск главного цикла событий...")

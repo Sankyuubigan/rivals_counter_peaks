@@ -1,6 +1,7 @@
 # File: build.py
 import os
 import sys
+import datetime
 import shutil
 # import importlib.util # Убираем, т.к. --paths не помог
 
@@ -17,7 +18,9 @@ main_script = os.path.join(project_root, "main.py") # Главный скрип�
 hooks_dir = script_dir
 # ------------------------------------------------------------------
 
-version = "4.14" # Актуальная версия
+now = datetime.datetime.now()
+version = f"{now.month}.{now.day}"
+
 os.environ["APP_VERSION"] = version
 
 output_name = f"rivals_counter_{os.environ['APP_VERSION']}"

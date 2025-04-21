@@ -23,6 +23,7 @@ from horizontal_list import update_horizontal_icon_list
 from core.hotkeys import HotkeyManager # Добавлен импорт HotkeyManager
 from heroes_bd import heroes
 from core.utils_gui import calculate_columns
+from typing import TYPE_CHECKING
 from display import generate_counterpick_display, generate_minimal_icon_list
 # <<< ДОБАВЛЕНО: Импорты для распознавания >>>
 from utils import capture_screen_area, RECOGNITION_AREA, RECOGNITION_THRESHOLD
@@ -39,14 +40,15 @@ class MainWindow(QMainWindow):
     recognition_complete_signal = Signal(list)
     # <<< -------------------------------------------------------- >>>
 
-
-    def __init__(self):
+    if TYPE_CHECKING:
+        from main import app_version
+    def __init__(self, app_version):
         super().__init__()
         # Получаем версию из переменной окружения, установленной в build.py
-        self.app_version = os.environ.get("APP_VERSION", "N/A")
+        self.app_version = app_version
         self.logic = CounterpickLogic()
         # Передаем версию в logic
-        self.logic.APP_VERSION = self.app_version
+        self.logic.APP_VERSION = self.app_version #  
 
         #self.mode = "middle" # Начальный режим
         self.initial_pos = None # Начальная позиция окна
@@ -150,7 +152,7 @@ class MainWindow(QMainWindow):
     def _create_layout(self):
         """Создает макеты (layouts) для главного окна."""
         # Создаем верхнюю панель
-        (self.top_frame, self.author_button, self.rating_button, _) = create_top_panel(self, self.change_mode, self.logic) # self.mode_manager.change_mode
+        (self.top_frame, self.author_button, self.rating_button, _) = create_top_panel(self, self.change_mode, self.logic, self.app_version) # self.mode_manager.change_mode
         self.main_layout.addWidget(self.top_frame)
 
         # Создаем панель для горизонтального списка иконок
