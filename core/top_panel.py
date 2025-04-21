@@ -36,23 +36,36 @@ def create_top_panel(parent, switch_mode_callback, logic):
     topmost_button.clicked.connect(lambda: [parent.setWindowFlag(Qt.WindowStaysOnTopHint, not bool(parent.windowFlags() & Qt.WindowStaysOnTopHint)), parent.show(), update_topmost_state()])
     update_topmost_state(); layout.addWidget(topmost_button)
 
-    # Растяжка перед правыми элементами
+    # --- Растяжка перед правыми элементами ---
     layout.addStretch(1)
 
-    # Кнопки Об авторе / Рейтинг
+    # --- Кнопки Об авторе / Рейтинг ---
     author_button = QPushButton(get_text('about_author')); author_button.setStyleSheet("font-size: 10pt; padding: 2px;"); author_button.clicked.connect(lambda: show_author_info(parent)); author_button.setVisible(False)
     rating_button = QPushButton(get_text('hero_rating')); rating_button.setStyleSheet("font-size: 10pt; padding: 2px;"); rating_button.clicked.connect(lambda: show_hero_rating(parent)); rating_button.setVisible(False)
     layout.addWidget(rating_button)
     layout.addWidget(author_button)
 
-    # Версия
+    # --- Версия (скрывается в min режиме) ---
     version_label = QLabel(f"v{version}"); version_label.setObjectName("version_label"); version_label.setStyleSheet("font-size: 9pt; color: grey; margin-left: 10px; margin-right: 5px;")
     layout.addWidget(version_label)
 
-    # Кнопка Закрыть
+    # --- Кнопка Закрыть (только для Frameless) ---
     close_button = QPushButton("X"); close_button.setObjectName("close_button"); close_button.setFixedSize(25, 25)
     close_button.setStyleSheet("font-size: 10pt; font-weight: bold; padding: 1px; color: black; background-color: #ff605c; border-radius: 5px; margin-left: 5px;")
     close_button.clicked.connect(parent.close); close_button.setVisible(False)
-    layout.addWidget(close_button)
+    # <<< ИЗМЕНЕНИЕ: Добавляем кнопку через insertWidget перед растяжкой, чтобы она была справа >>>
+    # layout.addWidget(close_button) # Удаляем старое добавление
+    # Находим индекс растяжки
+    stretch_index = -1
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        if isinstance(item, QSpacerItem) and item.spacerItem().expandingDirections() & Qt.Orientation.Horizontal:
+            stretch_index = i
+            break
+    if stretch_index != -1:
+        layout.insertWidget(stretch_index + 1, close_button) # Вставляем после растяжки
+    else:
+        layout.addWidget(close_button) # Добавляем в конец, если растяжка не найдена
+    # ---------------------------------------------------------------
 
     return top_frame, author_button, rating_button, switch_mode_callback

@@ -3,8 +3,7 @@ from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QFrame
 from PySide6.QtCore import QSize, Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QBrush, QPixmap
 from translations import get_text
-# Размер берется из images_load
-import math # Для округления
+import math
 
 # --- Вспомогательный виджет для иконки с рейтингом ---
 class IconWithRatingWidget(QWidget):
@@ -17,26 +16,35 @@ class IconWithRatingWidget(QWidget):
         self.setFixedSize(pixmap.size())
         self.font = QFont(); self.font.setPointSize(10); self.font.setBold(True)
         self.fm = QFontMetrics(self.font)
-        self.border_pen = QPen(QColor("gray"), 1) # Серая рамка по умолчанию
+        # <<< ИЗМЕНЕНИЕ: Перо по умолчанию делаем "без пера" >>>
+        self.border_pen = QPen(Qt.PenStyle.NoPen) # Изначально без рамки
+        self.border_width = 1 # Ширина по умолчанию
+        self.is_enemy = False
 
     def set_border(self, color_name: str, width: int):
         """Устанавливает цвет и толщину рамки для отрисовки."""
         self.border_pen = QPen(QColor(color_name), width)
-        self.update() # Запросить перерисовку при смене рамки
+        self.border_width = width # Сохраняем ширину для расчета отступа иконки
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self); painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        # Рисуем рамку
+
+        # 1. Рисуем иконку с отступом, равным половине ширины рамки
+        # Это предотвратит перекрытие иконкой толстой рамки
+        inset = self.border_width / 2.0
+        icon_rect = self.rect().adjusted(inset, inset, -inset, -inset)
+        if icon_rect.isValid(): # Проверяем валидность прямоугольника
+            painter.drawPixmap(icon_rect, self.pixmap)
+
+        # 2. Рисуем рамку ПОВЕРХ иконки
         if self.border_pen.style() != Qt.PenStyle.NoPen:
             painter.setBrush(Qt.BrushStyle.NoBrush); painter.setPen(self.border_pen)
+            # Рисуем рамку по границам виджета, учитывая ширину пера
             border_rect = self.rect().adjusted(self.border_pen.widthF() / 2, self.border_pen.widthF() / 2, -self.border_pen.widthF() / 2, -self.border_pen.widthF() / 2)
             painter.drawRoundedRect(border_rect, 3, 3)
-        # Рисуем иконку чуть внутри рамки
-        inset = self.border_pen.width()
-        icon_rect = self.rect().adjusted(inset, inset, -inset, -inset)
-        if icon_rect.width() > 0 and icon_rect.height() > 0: # Рисуем только если есть место
-            painter.drawPixmap(icon_rect, self.pixmap)
-        # Рисуем рейтинг
+
+        # 3. Рисуем рейтинг
         painter.setFont(self.font)
         text_width = self.fm.horizontalAdvance(self.rating_text); text_height = self.fm.height()
         padding_x = 3; padding_y = 1
@@ -54,13 +62,12 @@ class IconWithRatingWidget(QWidget):
         painter.drawText(text_x, text_y, self.rating_text)
         painter.end()
 
-# <<< Убедимся, что имя функции правильное >>>
 def update_horizontal_icon_list(window):
     """
     Обновляет горизонтальный список.
     Показывает всех героев с рейтингом >= 1 и/или из effective_team.
     Сортирует по убыванию рейтинга.
-    Выделяет рамкой: оранжевой - врагов, синей - топ-6 (если не враг).
+    Выделяет рамкой: оранжевой - врагов, синей - топ-6 (если не враг), серой - остальных.
     """
     if not window.icons_scroll_content_layout or not window.icons_scroll_area:
         print("[!] Ошибка: icons_scroll_content_layout или icons_scroll_area не найдены.")
@@ -68,16 +75,8 @@ def update_horizontal_icon_list(window):
     layout = window.icons_scroll_content_layout
 
     # Очистка
-    while layout.count():
-        item = layout.takeAt(0)
-        if item is None: continue
-        widget = item.widget(); layout_item = item.layout(); spacer = item.spacerItem()
-        if widget: widget.deleteLater()
-        elif layout_item:
-             while layout_item.count(): sub_item = layout_item.takeAt(0)
-             if sub_item and sub_item.widget(): sub_item.widget().deleteLater()
-             layout.removeItem(layout_item)
-        elif spacer: layout.removeItem(spacer)
+    while layout.count(): item = layout.takeAt(0); widget = item.widget(); layout_item = item.layout(); spacer = item.spacerItem();
+    if widget: widget.deleteLater(); elif layout_item: layout.removeItem(layout_item); elif spacer: layout.removeItem(spacer)
 
     if not window.logic.selected_heroes: window.icons_scroll_area.update(); return
 
@@ -107,15 +106,16 @@ def update_horizontal_icon_list(window):
             # Создаем виджет
             icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, tooltip)
 
-            # Устанавливаем рамку через метод
-            border_color = "gray"; border_width = 1
+            # --- Устанавливаем параметры рамки через метод ---
+            border_color = "gray"; border_width = 1 # По умолчанию серая тонкая
             if is_enemy:
                 border_color = "orange"; border_width = 2
                 tooltip += f"\n({get_text('enemy_selected_tooltip', 'Выбран врагом')})"
-                icon_widget.setToolTip(tooltip)
+                icon_widget.setToolTip(tooltip) # Обновляем тултип
             elif is_in_effective_team:
-                 border_color = "blue"; border_width = 2
+                 border_color = "blue"; border_width = 2 # Синяя толстая для топ-6
             icon_widget.set_border(border_color, border_width)
+            # -----------------------------------------------
 
             layout.addWidget(icon_widget)
         else:
