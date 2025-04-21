@@ -7,7 +7,7 @@ from left_panel import create_left_panel
 from right_panel import create_right_panel
 from images_load import get_images_for_mode, SIZES
 from translations import get_text
-from core.mode import Mode
+from .mode import Mode
 
 
 PANEL_MIN_WIDTHS = {
