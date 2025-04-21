@@ -8,6 +8,15 @@ PANEL_MIN_WIDTHS = {
     'min': {'left': 0, 'right': 0}
 }
 MODE_DEFAULT_WINDOW_SIZES = {
+    'max': {'width': 1100, 'height': 800}, 'middle': {'width': 950, 'height': 600}, 'min': {'width': 600, 'height': 0}}
+
+
+class Mode:
+    """Data model for different modes."""
+
+    def __init__(self, name, pos, size, none):        self.name = name
+        self.pos = pos
+        self.size = size
     'max': {'width': 1100, 'height': 800},
     'middle': {'width': 950, 'height': 600},
     'min': {'width': 600, 'height': 0}  # Высота будет переопределена в update_interface_for_mode
@@ -15,36 +24,26 @@ MODE_DEFAULT_WINDOW_SIZES = {
 
 class ModeManager:
     def __init__(self, main_window):
-
-        # --- Вспомогательная функция для очистки layout ---
-        def clear_layout_recursive(layout):
-            if layout is None:
-                return
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                if widget is not None:
-                    # print(f"Deleting widget: {widget.objectName()} ({type(widget).__name__})")
-                    widget.deleteLater()
-                else:
-                    sub_layout = item.layout()
-                    if sub_layout is not None:
-                        # print(f"Clearing sub-layout: {sub_layout.objectName()} ({type(sub_layout).__name__})")
-                        clear_layout_recursive(sub_layout)  # Рекурсивно очищаем вложенный layout
-                        # Удаляем сам объект QLayout
-                        sub_layout.deleteLater()
-                    else:
-                        spacer = item.spacerItem()
-                        if spacer is not None:
-                            # print("Removing spacer")
-                            layout.removeItem(item)  # Удаляем spacer item
         self.current_mode = "middle"
-        self.modes = {
-            "min": Mode("min", None, None, None),
-            "middle": Mode("middle", None, None, None),
-            "max": Mode("max", None, None, None),
-        }
+        self.modes = {"min": Mode("min", None, None, None), "middle": Mode("middle", None, None, None), "max": Mode("max", None, None, None),}
         self.main_window = main_window
+    def clear_layout_recursive(self, layout):
+        if layout is None: return
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                sub_layout = item.layout()
+                if sub_layout is not None:
+                    self.clear_layout_recursive(sub_layout)  # Рекурсивно очищаем вложенный layout
+                    sub_layout.deleteLater()
+                else:
+                    spacer = item.spacerItem()
+                    if spacer is not None:
+                        layout.removeItem(item)
+        self.current_mode = "middle"
 
     def _validate_mode_name(self, mode_name: str) -> None:
         if mode_name not in self.modes:
@@ -52,30 +51,21 @@ class ModeManager:
     
     def _get_mode(self, mode_name: str) -> Mode:
         self._validate_mode_name(mode_name)
-        return self.modes[mode_name]
+        return self.modes[mode_name]    
     
     def _get_mode_by_name(self, mode_name: str) -> Mode:
         return self._get_mode(mode_name)
-    
+        
     def _update_current_mode(self, mode_name):
         self.current_mode = mode_name
-    
+        
     def _set_window_geometry(self, window, mode_name):
         mode = self._get_mode_by_name(mode_name)
         if mode.pos is not None:
-            window.move(mode.pos)
+            window.move(mode.pos)    
 
     def _change_mode(self, window, mode):
         "\"\"\"Инициирует смену режима отображения.\"\"\""
 
     def change_mode(self, window, mode):
         self._change_mode(window, mode)
-        
-
-class Mode:    
-     """Data model for different modes."""
-    def __init__(self, name, pos, size, none):
-        self.name = name
-        self.pos = pos
-        self.size = size
-        self.none = none

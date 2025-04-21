@@ -3,28 +3,11 @@ from PySide6.QtCore import Qt
 import time
 import gc
 
-from core.mode import Mode, ModeManager
-
 from left_panel import create_left_panel
 from right_panel import create_right_panel
 from images_load import get_images_for_mode, SIZES
 from translations import get_text
-def clear_layout_recursive(layout): # --- Вспомогательная функция для очистки layout ---
-    if layout is None: return # Проверка на None
-    while layout.count(): # Проходимся по всем элементам
-        item = layout.takeAt(0) # Извлекаем элемент
-        widget = item.widget() # Получаем виджет из элемента
-        if widget is not None:
-            widget.deleteLater() # Удаляем виджет
-        else:
-            sub_layout = item.layout() # Получаем layout из элемента
-            if sub_layout is not None:
-                clear_layout_recursive(sub_layout) # Рекурсивно вызываем функцию для вложенного layout
-                sub_layout.deleteLater() # Удаляем layout
-            else:
-                spacer = item.spacerItem() # Получаем spacer из элемента
-                if spacer is not None:
-                    layout.removeItem(item) # Удаляем spacer
+from core.mode import Mode
 
 
 PANEL_MIN_WIDTHS = {
@@ -45,7 +28,7 @@ def update_interface_for_mode(window):
     t1 = time.time()
     if window.inner_layout:
         # print("Clearing inner_layout...")
-        clear_layout_recursive(window.inner_layout)
+        window.mode_manager.clear_layout_recursive(window.inner_layout)
     else: # Если inner_layout еще не создан
         if window.main_widget:
             window.inner_layout = QHBoxLayout(window.main_widget)
