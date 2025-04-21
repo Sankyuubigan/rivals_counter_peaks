@@ -1,6 +1,6 @@
 # File: utils_gui.py
 from PySide6.QtWidgets import QMessageBox, QLabel, QPushButton
-from translations import get_text
+from translations import get_text, translate_text
 import pyperclip
 # Импорт build убран
 
@@ -44,3 +44,41 @@ def copy_to_clipboard(logic):
         # Если команда пуста (не рассчитана или нет рекомендаций)
         print("Нет данных для копирования (effective_team пуст или не рассчитана).")
         QMessageBox.warning(None, get_text('warning', language=logic.DEFAULT_LANGUAGE), get_text('no_data_to_copy', language=logic.DEFAULT_LANGUAGE))
+
+
+def calculate_columns(hero_count):
+    """
+    Рассчитывает оптимальное количество колонок для отображения героев.
+
+    Args:
+        hero_count (int): Общее количество героев.
+
+    Returns:
+        int: Количество колонок.
+    """
+    # Рассчитываем количество колонок в зависимости от количества героев
+    if hero_count <= 5:
+        # Если героев 5 и меньше, то 1 колонка
+        columns = 1
+    elif hero_count <= 10:
+        # Если героев от 6 до 10, то 2 колонки
+        columns = 2
+    elif hero_count <= 15:
+        # Если героев от 11 до 15, то 3 колонки
+        columns = 3
+    elif hero_count <= 20:
+        # Если героев от 16 до 20, то 4 колонки
+        columns = 4
+    elif hero_count <= 30:
+        columns = 5
+    elif hero_count <= 40:
+        columns = 6
+    elif hero_count <= 50:
+        columns = 7
+    elif hero_count <= 60:
+        columns = 8
+    elif hero_count <= 70:
+        columns = 9
+    else:
+        columns = 10
+    return columns

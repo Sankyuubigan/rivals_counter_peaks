@@ -1,32 +1,38 @@
 # File: main.py
 from PySide6.QtWidgets import QApplication
 import sys
+
+from settings import LOGGING_ENABLED
 from gui import create_gui
 from utils import validate_heroes
 # <<< ИЗМЕНЕНИЕ: Импорты разделены >>>
 from images_load import load_hero_templates, load_original_images
 # <<< ----------------------------- >>>
 
+def configure_output_streams():
+    """Configures stdout and stderr for line buffering if possible."""
+    if LOGGING_ENABLED:
+        if sys.stdout:
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except AttributeError:
+                 # In some environments reconfigure might be missing, ignore
+                 print("[WARN] sys.stdout.reconfigure is not supported.")
+                 pass
+        if sys.stderr:
+            try:
+                sys.stderr.reconfigure(line_buffering=True)
+            except AttributeError:
+                 print("[WARN] sys.stderr.reconfigure is not supported.")
+                 pass
 
 if __name__ == "__main__":
-    # <<< ИЗМЕНЕНИЕ: Добавлена проверка перед reconfigure >>>
-    # Отключаем буферизацию stdout и stderr для немедленного вывода print(),
-    # только если эти потоки существуют (т.е. запуск не в --windowed режиме без консоли)
-    if sys.stdout:
-        try:
-            sys.stdout.reconfigure(line_buffering=True)
-        except AttributeError:
-             # В некоторых средах reconfigure может отсутствовать, игнорируем
-             print("[WARN] sys.stdout.reconfigure не поддерживается.")
-             pass
-    if sys.stderr:
-        try:
-            sys.stderr.reconfigure(line_buffering=True)
-        except AttributeError:
-             print("[WARN] sys.stderr.reconfigure не поддерживается.")
-             pass
-    # <<< КОНЕЦ ИЗМЕНЕНИЯ >>>
+    
+    #configure streams
+    configure_output_streams()
+    
 
+    
     print("--- Запуск приложения ---")
     validate_heroes()
 
