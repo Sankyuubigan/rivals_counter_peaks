@@ -1,16 +1,34 @@
-# File: core/recognition.py
-from PySide6.QtCore import QObject, Signal, Slot, QThread
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QObject, Signal, Slot, QThread, Qt
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QMessageBox, QWidget, QLabel
+import pyautogui
+import pytesseract
+import cv2
+import numpy as np
+
+from heroes_bd import heroes
 from images_load import load_hero_templates
-from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD
-from gui import RecognitionWorker
+from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD, check_if_all_elements_in_list
 from translations import get_text
-class RecognitionManager(QObject):
-    recognize_heroes_signal = Signal()
+
+
+class RecognitionWorker(QObject):
+    """
+    Воркер для распознавания героев.
+    """
+
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, logic, recognition_area, recognition_threshold, templates):
+        super().__init__()
+        self.logic = logic
+        self.recognition_area = recognition_area
+        self.recognition_threshold = recognition_threshold
+        self.templates = templates
 
     def _get_screenshot(self):
         """Делает скриншот."""
-        print("[INFO] Делаю скриншот...")
         try:
             return pyautogui.screenshot()
         except Exception as e:
@@ -18,9 +36,60 @@ class RecognitionManager(QObject):
 
     def _get_region(self, image):
         """Вырезает область для распознавания из скриншота."""
+        try:
+            left, top, width, height = self.recognition_area
+            return image.crop((left, top, left + width, top + height))
+        except Exception as e:
+            raise Exception(f"Ошибка при вырезании области из скриншота: {e}")
+
+    def _template_matching(self, region_cv2):
+        """Распознает героев по шаблонам."""
+        try:
+            recognized_heroes = []
+            for hero, template in self.templates.items():
+                # Метод cv2.matchTemplate выполняет поиск шаблона template в изображении region_cv2
+                # Метод возвращает карту соответствия, где каждый пиксель показывает, насколько хорошо шаблон соответствует
+                #   этому месту изображения. Чем выше значение, тем лучше соответствие.
+                result = cv2.matchTemplate(region_cv2, template, cv2.TM_CCOEFF_NORMED)
+                # Находим все пиксели в карте соответствия, где значение выше threshold
+                locations = np.where(result >= self.recognition_threshold)
+                # Если такие пиксели есть, считаем, что герой распознан
+                if len(locations[0]) > 0:
+                    recognized_heroes.append(hero)
+            return recognized_heroes
+        except Exception as e:
+            raise Exception(f"Ошибка при распознавании героев: {e}")
+
+    def run(self):
+        """Основной метод, который выполняется в отдельном потоке."""
+        try:
+            print("[INFO] Поток распознавания запущен.")
+            image = self._get_screenshot()
+            region = self._get_region(image)
+            region_cv2 = np.array(region)
+            recognized_heroes = self._template_matching(region_cv2)
+            print(f"[RESULT] Распознавание завершено. Распознанные герои: {recognized_heroes}")
+            self.logic.set_selection(set(recognized_heroes))
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
+
+class RecognitionManager(QObject):
+    recognize_heroes_signal = Signal()
+
+    def _get_screenshot(self):
+        """Делает скриншот."""
+        print("[INFO] Делаю скриншот...")
+        try:
+            return self._get_screenshot()
+        except Exception as e:
+            raise Exception(f"Ошибка при создании скриншота: {e}")
+
+    def _get_region(self, image):
+        """Вырезает область для распознавания из скриншота."""
         print("[INFO] Вырезаю область для распознавания из скриншота...")
         try:
-            left, top, width, height = RECOGNITION_AREA
+            left, top, width, height = self.RECOGNITION_AREA
             return image.crop((left, top, left + width, top + height))
         except Exception as e:
             raise Exception(f"Ошибка при вырезании области из скриншота: {e}")
@@ -30,7 +99,7 @@ class RecognitionManager(QObject):
         print("[INFO] Распознаю текст на изображении...")
         try:
             text = pytesseract.image_to_string(region, lang='eng',)
-            return text.splitlines()
+            return self.text.splitlines()
         except Exception as e:
             raise Exception(f"Ошибка распознавания текста: {e}")
 
@@ -88,7 +157,7 @@ class RecognitionManager(QObject):
         # Создаем и запускаем поток
         self._recognition_worker = RecognitionWorker(
             self.logic,
-            RECOGNITION_AREA,
+            self.RECOGNITION_AREA,
             RECOGNITION_THRESHOLD,
             self.hero_templates
         )

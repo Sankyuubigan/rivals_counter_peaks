@@ -1,44 +1,30 @@
-# File: mode_manager.py
-from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-                               QListWidget, QComboBox, QScrollArea)
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QLabel, QComboBox, QPushButton)
+from PySide6.QtCore import Qt
+import time
+import gc
 
-from core.mode import Mode
+from core.mode import Mode, ModeManager
 
 from left_panel import create_left_panel
 from right_panel import create_right_panel
 from images_load import get_images_for_mode, SIZES
-from horizontal_list import update_horizontal_icon_list
-from heroes_bd import heroes
 from translations import get_text
-
-# from build import version # Версия теперь берется из MainWindow
-import time
-import gc  # Для сборки мусора
-
-
-# --- Вспомогательная функция для очистки layout ---
-def clear_layout_recursive(layout):
-    if layout is None: return
-    while layout.count():
-        item = layout.takeAt(0)
-        widget = item.widget()
+def clear_layout_recursive(layout): # --- Вспомогательная функция для очистки layout ---
+    if layout is None: return # Проверка на None
+    while layout.count(): # Проходимся по всем элементам
+        item = layout.takeAt(0) # Извлекаем элемент
+        widget = item.widget() # Получаем виджет из элемента
         if widget is not None:
-            # print(f"Deleting widget: {widget.objectName()} ({type(widget).__name__})")
-            widget.deleteLater()
+            widget.deleteLater() # Удаляем виджет
         else:
-            sub_layout = item.layout()
+            sub_layout = item.layout() # Получаем layout из элемента
             if sub_layout is not None:
-                # print(f"Clearing sub-layout: {sub_layout.objectName()} ({type(sub_layout).__name__})")
-                clear_layout_recursive(sub_layout) # Рекурсивно очищаем вложенный layout
-                # Удаляем сам объект QLayout
-                sub_layout.deleteLater()
+                clear_layout_recursive(sub_layout) # Рекурсивно вызываем функцию для вложенного layout
+                sub_layout.deleteLater() # Удаляем layout
             else:
-                spacer = item.spacerItem()
+                spacer = item.spacerItem() # Получаем spacer из элемента
                 if spacer is not None:
-                    # print("Removing spacer")
-                    layout.removeItem(item) # Удаляем spacer item
+                    layout.removeItem(item) # Удаляем spacer
 
 
 PANEL_MIN_WIDTHS = {
@@ -47,67 +33,8 @@ PANEL_MIN_WIDTHS = {
     'min': {'left': 0, 'right': 0}  # Левая панель видима, но мин. ширина не важна
 }
 MODE_DEFAULT_WINDOW_SIZES = {
-    'max': {'width': 1100, 'height': 800},
-    'middle': {'width': 950, 'height': 600},
-    'min': {'width': 600, 'height': 0}  # Высота будет переопределена в update_interface_for_mode
+    'max': {'width': 1100, 'height': 800}, 'middle': {'width': 950, 'height': 600},'min': {'width': 600, 'height': 0} # Высота будет переопределена в update_interface_for_mode
 }
-
-
-class ModeManager:
-    def __init__(self, main_window):
-        self.current_mode = "middle"
-        self.modes = {
-            "min": Mode("min", None, None, None),
-            "middle": Mode("middle", None, None, None),
-            "max": Mode("max", None, None, None),
-        }
-        self.main_window = main_window
-
-    def _validate_mode_name(self, mode_name: str) -> None:
-        if mode_name not in self.modes:
-            raise ValueError(f"Неизвестный режим: {mode_name}")
-
-    def _get_mode(self, mode_name: str) -> Mode:
-        self._validate_mode_name(mode_name)
-        return self.modes[mode_name]
-
-    def _get_mode_by_name(self, mode_name: str) -> Mode:
-        return self._get_mode(mode_name)
-
-    def _update_current_mode(self, mode_name):
-        self.current_mode = mode_name
-
-    def _set_window_geometry(self, window, mode_name):
-        mode = self._get_mode_by_name(mode_name)
-        if mode.pos is not None:
-            window.move(mode.pos)
-
-    def _get_mode(self, mode_name):
-        self._validate_mode_name(mode_name)
-        return self.modes[mode_name]    
-
-    def change_mode(self, window, mode):
-        self._change_mode(window, mode)
-
-    def _change_mode(self, window, mode):
-        """Инициирует смену режима отображения."""
-
-    """Инициирует смену режима отображения."""
-    print(f"--- Попытка смены режима на: {mode} ---")
-    start_time = time.time()
-    if window.mode == mode: print("Режим уже установлен."); return
-    # Сохраняем текущую позицию окна для старого режима
-    if window.mode in window.mode_positions and window.isVisible():
-        window.mode_positions[window.mode] = window.pos()
-    self._update_current_mode(mode)
-    update_interface_for_mode(window)
-    self._set_window_geometry(window, mode)
-    end_time = time.time()
-
-    print(f"--- Смена режима на {mode} ЗАВЕРШЕНА (заняло: {end_time - start_time:.4f} сек) ---")
-    # Запускаем сборщик мусора после перестройки UI
-    gc.collect()
-    print("--- Сборка мусора запущена ---")
 
 def update_interface_for_mode(window):
     """Перестраивает интерфейс для нового режима."""
@@ -186,8 +113,7 @@ def update_interface_for_mode(window):
     window.icons_scroll_area.setFixedHeight(icons_h) # Устанавливаем высоту панели иконок
 
     spacing = window.main_layout.spacing() if window.main_layout and window.main_layout.spacing() >= 0 else 0
-    base_h = top_h + icons_h + spacing
-
+    base_h = top_h + icons_h + spacing # Складываем все высоты
     # Сбрасываем ограничения высоты перед расчетом новых
     window.setMinimumHeight(0); window.setMaximumHeight(16777215)
 
@@ -257,8 +183,7 @@ def update_interface_for_mode(window):
     # Вызываем show() только если флаг frameless изменился, чтобы перерисовать рамку
     if frameless_changed:
         print("[LOG] Frameless flag changed, calling window.show()")
-        window.show()
-    t2 = time.time(); # print(f"[TIMING] -> Setup visibility/frameless: {t2-t1:.4f} s")
+        window.show() # Показываем окно
 
     # --- 7. Обновление языка и геометрии ---
     t1 = time.time()

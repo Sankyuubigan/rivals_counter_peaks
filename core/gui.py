@@ -30,7 +30,7 @@ from utils import capture_screen_area, RECOGNITION_AREA, RECOGNITION_THRESHOLD
 from core.win_api import WinApiManager
 # <<< КОНЕЦ ДОБАВЛЕННОГО >>>
 
-from recognition import RecognitionManager, RecognitionWorker
+from recognition import RecognitionManager
 
 # --- Класс MainWindow ---
 class MainWindow(QMainWindow):

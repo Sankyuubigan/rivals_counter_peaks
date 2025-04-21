@@ -1,9 +1,16 @@
 # File: left_panel.py
+# File: left_panel.py
 from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
 from core.horizontal_list import HorizontalList
+
+def create_left_panel(window):
+    """Создает левую панель."""
+    left_panel = LeftPanel(window)
+    return left_panel.left_frame
+
 
 class LeftPanel:
     def __init__(self, parent: QWidget):
