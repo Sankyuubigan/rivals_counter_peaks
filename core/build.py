@@ -14,7 +14,7 @@ main_script = "main.py" # Главный скрипт в папке core
 hooks_dir = script_dir
 # ------------------------------------------------------------------
 
-version = "4.14" # Актуальная версия
+version = "4.20" # Актуальная версия
 os.environ["APP_VERSION"] = version
 
 output_name = f"rivals_counter_{os.environ['APP_VERSION']}"

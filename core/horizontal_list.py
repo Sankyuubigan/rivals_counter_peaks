@@ -7,25 +7,26 @@ import math
 
 # --- Вспомогательный виджет для иконки с рейтингом ---
 class IconWithRatingWidget(QWidget):
-    def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, tooltip: str, parent=None):
+    def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, is_enemy: bool, tooltip: str, parent=None):
         super().__init__(parent)
         self.pixmap = pixmap
-        self.rating_text = f"{math.ceil(rating)}" if rating > 0 else f"{math.floor(rating)}"
+        # Отображаем рейтинг как целое число
+        self.rating_text = f"{math.ceil(rating) if rating > 0 else math.floor(rating)}"
         self.is_in_effective_team = is_in_effective_team
+        self.is_enemy = is_enemy
         self.setToolTip(tooltip)
-        self.setFixedSize(pixmap.size())
+        self.setFixedSize(pixmap.size()) # Размер виджета равен размеру иконки
         self.font = QFont(); self.font.setPointSize(10); self.font.setBold(True)
         self.fm = QFontMetrics(self.font)
-        # <<< ИЗМЕНЕНИЕ: Перо по умолчанию делаем "без пера" >>>
-        self.border_pen = QPen(Qt.PenStyle.NoPen) # Изначально без рамки
+        # Перо по умолчанию "без пера"
+        self.border_pen = QPen(Qt.PenStyle.NoPen)
         self.border_width = 1 # Ширина по умолчанию
-        self.is_enemy = False
 
     def set_border(self, color_name: str, width: int):
         """Устанавливает цвет и толщину рамки для отрисовки."""
         self.border_pen = QPen(QColor(color_name), width)
         self.border_width = width # Сохраняем ширину для расчета отступа иконки
-        self.update()
+        self.update() # Перерисовываем виджет с новой рамкой
 
     def paintEvent(self, event):
         painter = QPainter(self); painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -37,35 +38,44 @@ class IconWithRatingWidget(QWidget):
         if icon_rect.isValid(): # Проверяем валидность прямоугольника
             painter.drawPixmap(icon_rect, self.pixmap)
 
-        # 2. Рисуем рамку ПОВЕРХ иконки
+        # 2. Рисуем рамку ПОВЕРХ иконки, если она задана
         if self.border_pen.style() != Qt.PenStyle.NoPen:
             painter.setBrush(Qt.BrushStyle.NoBrush); painter.setPen(self.border_pen)
             # Рисуем рамку по границам виджета, учитывая ширину пера
             border_rect = self.rect().adjusted(self.border_pen.widthF() / 2, self.border_pen.widthF() / 2, -self.border_pen.widthF() / 2, -self.border_pen.widthF() / 2)
-            painter.drawRoundedRect(border_rect, 3, 3)
+            painter.drawRoundedRect(border_rect, 3, 3) # Скругленные углы
 
-        # 3. Рисуем рейтинг
+        # 3. Рисуем рейтинг в правом нижнем углу
         painter.setFont(self.font)
         text_width = self.fm.horizontalAdvance(self.rating_text); text_height = self.fm.height()
-        padding_x = 3; padding_y = 1
+        padding_x = 3; padding_y = 1 # Отступы внутри фона
         bg_width = text_width + 2 * padding_x; bg_height = text_height + 2 * padding_y
+        # Позиция фона справа внизу с небольшим отступом
         bg_rect_x = self.width() - bg_width - 2; bg_rect_y = self.height() - bg_height - 2
         bg_rect = QRect(bg_rect_x, bg_rect_y, bg_width, bg_height)
-        # Рисуем белый фон
+
+        # Рисуем полупрозрачный белый фон для рейтинга
         painter.setPen(Qt.PenStyle.NoPen); painter.setBrush(QBrush(QColor(255, 255, 255, 200)))
         painter.drawRoundedRect(bg_rect, 4, 4)
-        # Цвет текста
-        text_color = QColor("darkGreen") if self.is_in_effective_team else QColor("blue")
+
+        # Выбираем цвет текста рейтинга
+        if self.is_enemy:
+             text_color = QColor("darkRed") # Красный для врагов
+        elif self.is_in_effective_team:
+             text_color = QColor("darkGreen") # Зеленый для рекомендованных
+        else:
+             text_color = QColor("blue") # Синий для остальных
+
         painter.setPen(QPen(text_color))
-        # Рисуем текст
+        # Рисуем текст рейтинга
         text_x = bg_rect.left() + padding_x; text_y = bg_rect.top() + padding_y + self.fm.ascent()
         painter.drawText(text_x, text_y, self.rating_text)
         painter.end()
 
 def update_horizontal_icon_list(window):
     """
-    Обновляет горизонтальный список.
-    Показывает всех героев с рейтингом >= 1 и/или из effective_team.
+    Обновляет горизонтальный список иконок.
+    Показывает врагов и рекомендованных героев (score >= 1 или в effective_team).
     Сортирует по убыванию рейтинга.
     Выделяет рамкой: оранжевой - врагов, синей - топ-6 (если не враг), серой - остальных.
     """
@@ -74,43 +84,75 @@ def update_horizontal_icon_list(window):
         return
     layout = window.icons_scroll_content_layout
 
-    # Очистка
-    while layout.count(): item = layout.takeAt(0); widget = item.widget(); layout_item = item.layout(); spacer = item.spacerItem();
-    if widget: widget.deleteLater(); elif layout_item: layout.removeItem(layout_item); elif spacer: layout.removeItem(spacer)
+    # Очистка layout перед заполнением
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget(); layout_item = item.layout(); spacer = item.spacerItem();
+        if widget: widget.deleteLater()
+        elif layout_item: layout.removeItem(layout_item) # Удаляем сам layout item
+        elif spacer: layout.removeItem(spacer) # Удаляем spacer item
 
-    if not window.logic.selected_heroes: window.icons_scroll_area.update(); return
+    logic = window.logic;
+    # Получаем очки и команду только если есть выбранные герои
+    counter_scores = {}
+    effective_team_set = set()
+    selected_heroes_set = set(logic.selected_heroes) # Множество выбранных героев
 
-    logic = window.logic; counter_scores = logic.calculate_counter_scores()
-    effective_team = logic.calculate_effective_team(counter_scores); effective_team_set = set(effective_team)
+    if selected_heroes_set:
+        counter_scores = logic.calculate_counter_scores()
+        if counter_scores: # Проверка, что счет не пустой
+             effective_team = logic.calculate_effective_team(counter_scores);
+             effective_team_set = set(effective_team)
+    else: # Если враги не выбраны, показываем сообщение
+        label = QLabel(get_text("select_enemies_for_recommendations", language=logic.DEFAULT_LANGUAGE));
+        label.setStyleSheet("color: gray; margin-left: 5px;")
+        layout.addWidget(label); layout.addStretch(1); window.icons_scroll_area.update(); return
 
+    # Формируем словарь героев для отображения {hero: score}
     heroes_to_display_map = {}
-    for hero in effective_team: heroes_to_display_map[hero] = counter_scores.get(hero, -99)
-    for hero, score in counter_scores.items():
-        if score >= 1.0 and hero not in heroes_to_display_map: heroes_to_display_map[hero] = score
+    if counter_scores:
+        # Добавляем всех выбранных врагов
+        for hero in selected_heroes_set:
+             heroes_to_display_map[hero] = counter_scores.get(hero, -99) # Используем реальный score или -99
+        # Добавляем рекомендованных (в effective_team или score >= 1), если они еще не добавлены
+        for hero in effective_team_set:
+             if hero not in heroes_to_display_map:
+                 heroes_to_display_map[hero] = counter_scores.get(hero, -99)
+        for hero, score in counter_scores.items():
+            if score >= 1.0 and hero not in selected_heroes_set and hero not in effective_team_set:
+                 heroes_to_display_map[hero] = score
+    else: # Если нет counter_scores (хотя selected_heroes есть), показываем сообщение
+         label = QLabel(get_text("no_recommendations", language=logic.DEFAULT_LANGUAGE));
+         label.setStyleSheet("color: gray; margin-left: 5px;")
+         layout.addWidget(label); layout.addStretch(1); window.icons_scroll_area.update(); return
 
-    sorted_heroes = sorted(heroes_to_display_map.keys(), key=lambda h: heroes_to_display_map[h], reverse=True)
+    # Сортируем героев по убыванию рейтинга
+    # Враги с отрицательным рейтингом будут в конце
+    sorted_heroes = sorted(heroes_to_display_map.keys(), key=lambda h: heroes_to_display_map.get(h, -99), reverse=True)
 
     if not sorted_heroes:
-        label = QLabel(get_text("no_recommendations", "Нет рекомендаций")); label.setStyleSheet("color: gray;")
+        label = QLabel(get_text("no_recommendations", language=logic.DEFAULT_LANGUAGE));
+        label.setStyleSheet("color: gray; margin-left: 5px;")
         layout.addWidget(label); layout.addStretch(1); window.icons_scroll_area.update(); return
 
     # Отображаем список
     for hero in sorted_heroes:
-        if hero in window.horizontal_images and window.horizontal_images[hero]:
+        # Проверяем наличие изображения для этого героя
+        if hero in window.horizontal_images and window.horizontal_images.get(hero):
             pixmap = window.horizontal_images[hero]
-            rating = counter_scores.get(hero, 0.0)
+            rating = heroes_to_display_map.get(hero, 0.0) # Берем рейтинг из нашего словаря
             is_in_effective_team = hero in effective_team_set
+            is_enemy = hero in selected_heroes_set
             tooltip = f"{hero}\nRating: {rating:.1f}"
-            is_enemy = hero in window.logic.selected_heroes
 
-            # Создаем виджет
-            icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, tooltip)
+            # Создаем виджет иконки с рейтингом
+            icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, is_enemy, tooltip)
 
             # --- Устанавливаем параметры рамки через метод ---
             border_color = "gray"; border_width = 1 # По умолчанию серая тонкая
             if is_enemy:
                 border_color = "orange"; border_width = 2
-                tooltip += f"\n({get_text('enemy_selected_tooltip', 'Выбран врагом')})"
+                tooltip += f"\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})"
                 icon_widget.setToolTip(tooltip) # Обновляем тултип
             elif is_in_effective_team:
                  border_color = "blue"; border_width = 2 # Синяя толстая для топ-6
@@ -118,8 +160,8 @@ def update_horizontal_icon_list(window):
             # -----------------------------------------------
 
             layout.addWidget(icon_widget)
-        else:
-            print(f"Пропущен герой {hero}: нет изображения в horizontal_images")
+        # else:
+            # print(f"Пропущен герой {hero}: нет изображения в horizontal_images")
 
-    layout.addStretch(1)
-    window.icons_scroll_area.update()
+    layout.addStretch(1) # Добавляем растяжку в конец
+    window.icons_scroll_area.update() # Обновляем область прокрутки

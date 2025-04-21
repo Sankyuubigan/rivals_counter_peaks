@@ -23,7 +23,8 @@ class HotkeyFocusDelegate(QStyledItemDelegate):
         super().paint(painter, option, index)
 
         # 2. Проверяем, нужно ли рисовать рамку фокуса
-        if not self.main_window or not self.main_window.right_list_widget or self.main_window.mode == 'min':
+        # Добавлена проверка на main_window.right_list_widget.isVisible()
+        if not self.main_window or not self.main_window.right_list_widget or not self.main_window.right_list_widget.isVisible() or self.main_window.mode == 'min':
             return
 
         hotkey_index = self.main_window.hotkey_cursor_index

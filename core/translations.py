@@ -17,11 +17,11 @@ TRANSLATIONS = {
         'author_info': 'Автор: Nilden\nВерсия: {version}',
         'language': 'Язык',
         'strong_player': 'сильный игрок',
-        'version': 'Версия: {version}',
+        'version': 'Версия: {version}', # Используется в author_info
         'counterpick_rating': 'Рейтинг контрпиков для вражеской команды:',
         'points': 'балл(ов)',
         'hero_rating': 'Рейтинг героев',
-        'hero_rating_title': 'Рейтинг неуязвимости героев',
+        'hero_rating_title': 'Рейтинг уязвимости героев', # Изменено название для ясности
 
         # --- Donate/Contact Info ---
         'donate_info_title': 'Купить мне кофе (помощь и благодарность за софт):',
@@ -56,6 +56,12 @@ TRANSLATIONS = {
         'enemy_selected_tooltip': 'Выбран врагом',
         'no_recommendations': 'Нет рекомендаций',
         'select_enemies_for_recommendations': 'Выберите врагов для рекомендаций', # Для горизонтального списка
+        # <<< ДОБАВЛЕНЫ ПЕРЕВОДЫ ДЛЯ РАСПОЗНАВАНИЯ >>>
+        'recognition_error_prefix': 'Ошибка распознавания:',
+        'recognition_no_screenshot': 'Не удалось сделать скриншот.',
+        'recognition_no_templates': 'Шаблоны героев не загружены.',
+        'recognition_failed': 'Не удалось распознать героев на скриншоте.',
+        # <<< --------------------------------------- >>>
     },
     'en_US': {
         'title': 'Counterpick Selection',
@@ -72,7 +78,7 @@ TRANSLATIONS = {
         'counterpick_rating': 'Counterpick rating for the enemy team:',
         'points': 'points',
         'hero_rating': 'Hero Rating',
-        'hero_rating_title': 'Hero Invulnerability Rating',
+        'hero_rating_title': 'Hero Vulnerability Rating', # Changed title for clarity
 
         # --- Donate/Contact Info ---
         'donate_info_title': 'Buy me a coffee (support and thanks for the software):',
@@ -107,6 +113,12 @@ TRANSLATIONS = {
         'enemy_selected_tooltip': 'Selected Enemy',
         'no_recommendations': 'No recommendations',
         'select_enemies_for_recommendations': 'Select enemies for recommendations',
+         # <<< ДОБАВЛЕНЫ ПЕРЕВОДЫ ДЛЯ РАСПОЗНАВАНИЯ >>>
+        'recognition_error_prefix': 'Recognition Error:',
+        'recognition_no_screenshot': 'Failed to capture screenshot.',
+        'recognition_no_templates': 'Hero templates not loaded.',
+        'recognition_failed': 'Could not recognize heroes in the screenshot.',
+        # <<< --------------------------------------- >>>
     }
 }
 
@@ -119,25 +131,27 @@ def get_text(key, default_text=None, language=None, **kwargs):
     Поддерживает форматирование строки с помощью kwargs.
     Использует кэш для форматированных строк.
     """
-    global DEFAULT_LANGUAGE
+    # Используем язык, переданный аргументом, или глобальный язык по умолчанию
     current_language = language if language else DEFAULT_LANGUAGE
 
+    # Формируем ключи для кэша
     cache_key_base = (current_language, key)
+    # Ключ для форматированной строки должен учитывать значения kwargs
     cache_key_formatted = (current_language, key, tuple(sorted(kwargs.items())))
 
-    # Сначала проверяем кэш для форматированной строки
+    # Проверяем кэш
     if kwargs and cache_key_formatted in formatted_text_cache:
         return formatted_text_cache[cache_key_formatted]
-    # Затем проверяем кэш для неформатированной строки (если нет kwargs)
     if not kwargs and cache_key_base in formatted_text_cache:
         return formatted_text_cache[cache_key_base]
 
-    # Получаем базовый перевод
-    translations_for_lang = TRANSLATIONS.get(current_language, TRANSLATIONS['ru_RU'])
+    # Получаем базовый перевод для нужного языка
+    translations_for_lang = TRANSLATIONS.get(current_language, TRANSLATIONS['ru_RU']) # Fallback на русский
     base_text = translations_for_lang.get(key)
 
+    # Если ключ не найден, используем текст по умолчанию или сам ключ
     if base_text is None:
-        base_text = default_text if default_text is not None else key
+        base_text = default_text if default_text is not None else f"_{key}_" # Возвращаем ключ в _подчеркиваниях_
 
     # Выполняем форматирование, если переданы аргументы
     try:
@@ -159,11 +173,14 @@ def get_text(key, default_text=None, language=None, **kwargs):
 
 
 def set_language(language):
-    """Устанавливает текущий язык и очищает кэш переводов."""
+    """Устанавливает глобальный язык по умолчанию и очищает кэш переводов."""
     global DEFAULT_LANGUAGE
     if language in SUPPORTED_LANGUAGES:
-        DEFAULT_LANGUAGE = language
-        formatted_text_cache.clear() # Очищаем кэш при смене языка
-        print(f"Language set to: {language}")
+        if DEFAULT_LANGUAGE != language:
+            DEFAULT_LANGUAGE = language
+            formatted_text_cache.clear() # Очищаем кэш при смене языка
+            print(f"Global language set to: {language}")
+        # else:
+            # print(f"Global language is already {language}")
     else:
         print(f"Warning: Unsupported language '{language}'. Keeping '{DEFAULT_LANGUAGE}'.")
