@@ -56,29 +56,32 @@ def calculate_columns(hero_count):
     Returns:
         int: Количество колонок.
     """
-    # Рассчитываем количество колонок в зависимости от количества героев
-    if hero_count <= 5:
-        # Если героев 5 и меньше, то 1 колонка
-        columns = 1
-    elif hero_count <= 10:
-        # Если героев от 6 до 10, то 2 колонки
-        columns = 2
-    elif hero_count <= 15:
-        # Если героев от 11 до 15, то 3 колонки
-        columns = 3
-    elif hero_count <= 20:
-        # Если героев от 16 до 20, то 4 колонки
-        columns = 4
-    elif hero_count <= 30:
-        columns = 5
-    elif hero_count <= 40:
-        columns = 6
-    elif hero_count <= 50:
-        columns = 7
-    elif hero_count <= 60:
-        columns = 8
-    elif hero_count <= 70:
-        columns = 9
-    else:
-        columns = 10
-    return columns
+    num_columns_cache = 1
+    try:
+        # Рассчитываем количество колонок в зависимости от количества героев
+        if hero_count <= 5:
+            # Если героев 5 и меньше, то 1 колонка
+            columns = 1
+        elif hero_count <= 10:
+            # Если героев от 6 до 10, то 2 колонки
+            columns = 2
+        elif hero_count <= 15:
+            # Если героев от 11 до 15, то 3 колонки
+            columns = 3
+        elif hero_count <= 20:
+            # Если героев от 16 до 20, то 4 колонки
+            columns = 4
+        elif hero_count <= 30:
+            columns = 5
+        elif hero_count <= 40:
+            columns = 6
+        elif hero_count <= 50:
+            columns = 7
+        elif hero_count <= 60:
+            columns = 8
+        elif hero_count <= 70:
+            columns = 9
+        else:
+            columns = 10
+        return columns
+    except Exception as e: print(f"[ERROR] Calculating columns: {e}"); return num_columns_cache
