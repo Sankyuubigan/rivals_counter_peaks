@@ -70,6 +70,13 @@ def validate_heroes():
         print("Проверка имен героев в heroes_counters пройдена успешно.")
 
 
+def check_if_all_elements_in_list(target_list, check_list):
+    """Проверяет, что все элементы из check_list присутствуют в target_list."""
+    for element in check_list:
+        if element not in target_list: return False
+    return True
+
+
 # <<< ДОБАВЛЕНО: Функция захвата области экрана >>>
 def capture_screen_area(area: dict):
     """

@@ -95,6 +95,7 @@ class WinApiManager:
                 self.is_win_topmost = enable
                 # Показываем окно, чтобы флаг применился
                 if self.main_window.isVisible(): self.main_window.show()
+                
                 except RuntimeError: pass # Игнорируем ошибку, если виджет уже удален
             # Обновляем кнопку в любом случае
             self._update_topmost_button_visuals()
@@ -130,6 +131,7 @@ class WinApiManager:
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
                 self.is_win_topmost = enable
                 if self.main_window.isVisible(): self.main_window.show()
+                
                 except RuntimeError: pass
             else: # Если флаг уже был в нужном состоянии
                 self.is_win_topmost = enable # Устанавливаем флаг в соответствии с попыткой
