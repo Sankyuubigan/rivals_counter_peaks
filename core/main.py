@@ -1,14 +1,29 @@
-# File: main.py
 from PySide6.QtWidgets import QApplication
 import sys
 
 from settings import LOGGING_ENABLED
-from gui import create_gui
-from utils import validate_heroes
-# <<< ИЗМЕНЕНИЕ: Импорты разделены >>>
-from images_load import load_hero_templates, load_original_images
-# <<< ----------------------------- >>>
+from core.gui import MainWindow
+from core.utils import validate_heroes
+from core.hotkeys import Hotkeys
+from core.win_api import WinApiManager
+from core.images_load import load_hero_templates, load_original_images
 
+class MainWindow(MainWindow):
+    def __init__(self):
+        super().__init__()
+
+    def _setup_hotkeys(self):
+        """Настраивает горячие клавиши."""
+        print("Настройка горячих клавиш...")
+        self.hotkeys = Hotkeys()
+        self.hotkeys.register_hotkeys(self.mode_manager, self.ui_update, self.winapi)
+
+
+
+    def create_gui(self):
+        """Создает и настраивает GUI."""
+        self._setup_ui()
+        self._setup_hotkeys()
 def configure_output_streams():
     """Configures stdout and stderr for line buffering if possible."""
     if LOGGING_ENABLED:
@@ -63,7 +78,7 @@ if __name__ == "__main__":
     # Создание и запуск GUI
     print("Создание MainWindow...")
     try:
-        window = create_gui()
+        window = MainWindow()
         print("Отображение MainWindow...")
         window.show()
         print("Запуск главного цикла событий...")

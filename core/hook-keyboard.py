@@ -1,12 +1,50 @@
-# File: core/hook-keyboard.py
-# Этот файл должен лежать в той же папке, что и build.py
+import keyboard
 
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from core.win_api import WinApiManager
 
-# Собираем все подмодули библиотеки keyboard
-hiddenimports = collect_submodules('keyboard')
-print(f"[Hook-Keyboard] Found hidden imports: {hiddenimports}")
 
-# На всякий случай попробуем собрать и файлы данных (если они есть)
-# datas = collect_data_files('keyboard')
-# print(f"[Hook-Keyboard] Found data files: {datas}")
+class HookKeyboard:
+    def __init__(self, hotkeys: Hotkeys):
+        self._hotkeys = hotkeys
+
+    def _check_topmost_key(self, key):
+        """
+        Проверяет, нажата ли клавиша для переключения topmost.
+        """
+        if key == self._hotkeys.topmost_key:
+            WinApiManager.toggle_topmost_winapi()
+            return True
+        return False
+
+    def _check_recognition_key(self, key):
+        """
+        Проверяет, нажата ли клавиша для распознавания.
+        """
+        if key == self._hotkeys.recognition_key:
+            self._hotkeys.trigger_recognition()
+            return True
+        return False
+
+    def _check_change_mode_key(self, key):
+        """
+        Проверяет, нажата ли клавиша для смены режима.
+        """
+        if key == self._hotkeys.change_mode_key:
+            self._hotkeys.change_mode()
+            return True
+        return False
+
+    def _on_press(self, event):
+        """
+        Обработчик события нажатия клавиши.
+        """
+        key = event.name
+        if self._check_topmost_key(key):
+            return
+        if self._check_recognition_key(key):
+            return
+        if self._check_change_mode_key(key):
+            return
+
+    def listen(self):
+        keyboard.on_press(self._on_press)

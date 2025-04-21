@@ -27,8 +27,6 @@ from display import generate_counterpick_display, generate_minimal_icon_list
 # <<< ДОБАВЛЕНО: Импорты для распознавания >>>
 from utils import capture_screen_area, RECOGNITION_AREA, RECOGNITION_THRESHOLD
 from core.win_api import WinApiManager
-else:
-    pass
 # <<< КОНЕЦ ДОБАВЛЕННОГО >>>
 
 from recognition import RecognitionManager, RecognitionWorker
@@ -128,22 +126,29 @@ class MainWindow(QMainWindow):
             return
         super().mouseReleaseEvent(event)
     # ------------------------------------
+
+    def _create_lists(self):
+        """Создаёт списки для главного окна."""
+        # Создание правой панели (со списком героев)
+        self.right_list_widget = QListWidget()
+        self.right_list_widget.setObjectName("right_list_widget")
+
+    def _create_panels(self):
+        """Создаёт панели для главного окна."""
+        # Создаем левую панель с контрпиками
+        self.result_frame = QFrame()
+        self.result_frame.setObjectName("result_frame")
+        self.result_frame.setMinimumWidth(150)
+
+
+    def _create_ui_elements(self):
+        self._create_panels()
+        self._create_lists()
     def _update_topmost_button_visuals(topmost_button): #deleted self
-        if topmost_button:
-            update_func = getattr(topmost_button, '_update_visual_state', None)
-            if callable(update_func):
-                update_func()
+        if topmost_button: update_func = getattr(topmost_button, '_update_visual_state', None);  callable(update_func) and update_func()
 
-
-    def init_ui(self):
-        self.setWindowTitle(f"{get_text('title')} v{self.app_version}") # Используем версию из атрибута
-        self.setGeometry(100, 100, 950, 350); self.setMinimumSize(400, 100)
-        self.initial_pos = self.pos(); self.mode_positions["middle"] = self.pos() # Сохраняем начальную позицию для среднего режима
-
-        central_widget = QWidget(self); self.setCentralWidget(central_widget)
-        self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
-        self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
-
+    def _create_layout(self):
+        """Создает макеты (layouts) для главного окна."""
         # Создаем верхнюю панель
         (self.top_frame, self.author_button, self.rating_button, _) = create_top_panel(self, self.change_mode, self.logic) # self.mode_manager.change_mode
         self.main_layout.addWidget(self.top_frame)
@@ -178,8 +183,34 @@ class MainWindow(QMainWindow):
         self.inner_layout.setContentsMargins(0, 0, 0, 0); self.inner_layout.setSpacing(0) # Без отступов и расстояний
         self.main_layout.addWidget(self.main_widget, stretch=1) # Этот виджет будет растягиваться
 
-        # Создание левой и правой панелей происходит в update_interface_for_mode
-        # Мы вызываем ее в конце init_ui
+
+    def _setup_widgets(self):
+        """Настраивает виджеты (стили, привязки)."""
+        # Стилизация левой панели с контрпиками
+        self.result_frame.setStyleSheet("QFrame { background-color: #e0e0e0; }")
+        self.result_frame.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
+
+        # Стилизация правой панели
+        self.right_list_widget.setStyleSheet("""
+             QListWidget { background-color: #ffffff; }
+             QListWidget::item { padding: 5px; }
+             QListWidget::item:selected { background-color: #c0c0c0; }
+        """)
+        self.right_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+    def init_ui(self):
+        self.setWindowTitle(f"{get_text('title')} v{self.app_version}") # Используем версию из атрибута
+        self.setGeometry(100, 100, 950, 350); self.setMinimumSize(400, 100)
+        self.initial_pos = self.pos(); self.mode_positions["middle"] = self.pos() # Сохраняем начальную позицию для среднего режима
+
+        central_widget = QWidget(self); self.setCentralWidget(central_widget)
+        self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
+        self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
+
+        self._create_widgets()
+        self._create_ui_elements()
+        self._setup_widgets()
+        self._create_layout()
+
 
         # Callback для смены языка (сохраняем в атрибуте)
         self.switch_language_callback = lambda lang: self.switch_language(lang)
@@ -194,12 +225,10 @@ class MainWindow(QMainWindow):
         if self.right_list_widget and self.right_list_widget.count() > 0 and self.mode != 'min':
             self.hotkey_cursor_index = 0
             # Обновляем подсветку с небольшой задержкой, чтобы UI успел отрисоваться
-            QTimer.singleShot(100, lambda: self._update_hotkey_highlight(None))
+            QTimer.singleShot(100, lambda: self._update_hotkey_highlight(None))    
 
-    # --- HOTKEY RELATED METHODS ---
 
-        except Exception as e: print(f"[ERROR] Calculating columns: {e}"); return self._num_columns_cache
-
+        self.right_list_widget = QListWidget(); self.right_list_widget.setObjectName("right_list_widget")
 
     def _update_hotkey_highlight(self, old_index=None):
         """Обновляет подсветку (через делегата) и тултип элемента под фокусом хоткея."""
@@ -262,6 +291,8 @@ class MainWindow(QMainWindow):
         self.hotkey_manager.stop_keyboard_listener()
         super().closeEvent(event) # Вызываем стандартный обработчик закрытия
     # --- END HOTKEY METHODS ---
+
+
 
     # --- Existing Methods ---
 

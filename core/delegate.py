@@ -1,7 +1,8 @@
 # File: delegate.py
-from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
-from PySide6.QtGui import QPen, QColor, Qt, QPainter
-from PySide6.QtCore import QModelIndex, QRect
+from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QComboBox
+from PySide6.QtGui import QPen, QColor, Qt, QPainter, QStandardItemModel
+from PySide6.QtCore import QModelIndex, QRect, QEvent
+from logic import CounterpickLogic
 
 class HotkeyFocusDelegate(QStyledItemDelegate):
     """
@@ -47,3 +48,34 @@ class HotkeyFocusDelegate(QStyledItemDelegate):
             painter.restore()
         # else:
             # print(f"[Delegate Paint] No border for index {index.row()}") # DEBUG LOG
+
+
+class CounterpickDelegate(QStyledItemDelegate):
+    def __init__(self, logic: CounterpickLogic, parent=None):
+        super().__init__(parent)
+        self.logic = logic
+
+    def _create_combo_box(self, parent):
+        combo_box = QComboBox(parent)
+        combo_box.installEventFilter(self)
+        return combo_box
+
+    def _setup_combo_box(self, combo_box, index):
+        items = self._get_items(index)
+        combo_box.addItems(items)
+        combo_box.setCurrentText(index.data(Qt.DisplayRole))
+        return combo_box
+
+    def _get_items(self, index):
+        hero_name = index.model().data(index.model().index(index.row(), 0), Qt.DisplayRole)
+        return self.logic.get_counters(hero_name)
+
+    def createEditor(self, parent, option, index):
+        combo_box = self._create_combo_box(parent)
+        return self._setup_combo_box(combo_box, index)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.KeyPress and obj.hasFocus():
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape):
+                obj.close()
+        return False

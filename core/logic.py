@@ -26,7 +26,6 @@ class CounterpickLogic:
         # Получаем версию из окружения (устанавливается в build.py)
         self.APP_VERSION = os.environ.get("APP_VERSION", "N/A")
 
-
     def set_selection(self, desired_selection):
         """
         Обновляет внутренний список выбранных героев (deque),
@@ -46,20 +45,20 @@ class CounterpickLogic:
         heroes_added_from_desired = set()
 
         # 1. Добавляем существующих героев из старого deque, если они есть в новом наборе
-        for hero in list(self.selected_heroes): # Итерируемся по копии старого deque
+        for hero in list(self.selected_heroes):  # Итерируемся по копии старого deque
             if hero in desired_set:
                 new_deque.append(hero)
                 heroes_added_from_desired.add(hero)
 
         # 2. Добавляем новых героев (которые есть в desired, но не были в старом deque) в конец
         for hero in desired_iterable:
-             if hero not in heroes_added_from_desired:
-                 # Проверяем, есть ли место в deque перед добавлением
-                 if len(new_deque) < TEAM_SIZE:
-                      new_deque.append(hero) # deque сам обработает maxlen, но лучше проверить явно
-                 else:
-                      print(f"[Logic] WARN: Превышен лимит команды ({TEAM_SIZE}). Герой '{hero}' не добавлен.")
-                      break # Прерываем добавление, если достигли лимита
+            if hero not in heroes_added_from_desired:
+                # Проверяем, есть ли место в deque перед добавлением
+                if len(new_deque) < TEAM_SIZE:
+                    new_deque.append(hero)  # deque сам обработает maxlen, но лучше проверить явно
+                else:
+                    print(f"[Logic] WARN: Превышен лимит команды ({TEAM_SIZE}). Герой '{hero}' не добавлен.")
+                    break  # Прерываем добавление, если достигли лимита
 
 
         # 3. Обновляем основной deque
@@ -72,8 +71,7 @@ class CounterpickLogic:
         print(f"[Logic] Final priority: {self.priority_heroes}")
 
         # Сбрасываем эффективную команду, т.к. выбор изменился
-        self.effective_team = []
-
+        self.effective_team = []   
 
     def clear_all(self):
         """Очищает все выборы и приоритеты."""
@@ -81,7 +79,6 @@ class CounterpickLogic:
         self.selected_heroes.clear()
         self.priority_heroes.clear()
         self.effective_team = []
-
 
     def set_priority(self, hero):
         """Устанавливает или снимает приоритет героя."""
@@ -100,14 +97,45 @@ class CounterpickLogic:
 
 
     def get_selected_heroes_text(self):
-        """Возвращает текст для метки 'Выбрано: ...'."""
+        """Возвращает текст для метки 'Выбрано: ...'."""        
         count = len(self.selected_heroes)
-        heroes_list = list(self.selected_heroes) # Преобразуем deque в список для join
+        heroes_list = list(self.selected_heroes)  # Преобразуем deque в список для join
         if not heroes_list:
-            return get_text('selected', language=self.DEFAULT_LANGUAGE) # "Выбрано"
+            return get_text('selected', language=self.DEFAULT_LANGUAGE)  # "Выбрано"
         else:
             header = f"{get_text('selected', language=self.DEFAULT_LANGUAGE)} ({count}/{TEAM_SIZE}): "
             return f"{header}{', '.join(heroes_list)}"
+    
+    def _calculate_counter_score(self, selected_enemy):
+        """Рассчитывает очки за контрпики для одного выбранного врага."""
+        counter_scores = {}
+        for counter_pick in heroes_counters.get(selected_enemy, []):
+            # Увеличиваем очки: +2 за приоритетного врага, +1 за обычного
+            score_increase = 2.0 if selected_enemy in self.priority_heroes else 1.0            
+            counter_scores.setdefault(counter_pick, 0.0)
+            counter_scores[counter_pick] += score_increase
+        return counter_scores
+    
+    def _sort_counters(self, hero, current_selection_set, counter_scores):
+        """Применяет штрафы к рейтингу контрпиков."""
+        if hero not in counter_scores: return # Штрафуем только тех, кто есть в списке героев
+
+        # Штраф, если потенциальный пик сам является выбранным врагом
+        if hero in current_selection_set:
+            counter_scores[hero] -= 5.0  # Большой штраф
+
+        # Штраф за каждого врага, который контрит потенциальный пик
+        counters_for_potential_pick = heroes_counters.get(hero, [])
+        for selected_enemy in self.selected_heroes:
+            if selected_enemy in counters_for_potential_pick:
+                # Уменьшаем очки: -1.5 за контру от приоритетного врага, -1 за контру от обычного
+                score_decrease = 1.5 if selected_enemy in self.priority_heroes else 1.0
+                counter_scores[hero] -= score_decrease
+        
+    def _find_best_counter_by_hero(self, counter_scores, current_selection_set):
+        for potential_pick in heroes:
+             self._sort_counters(potential_pick, current_selection_set, counter_scores)            
+
 
     def calculate_counter_scores(self):
         """Рассчитывает рейтинг контрпиков."""
@@ -115,36 +143,19 @@ class CounterpickLogic:
             return {} # Возвращаем пустой словарь, если нет выбранных
 
         counter_scores = {hero: 0.0 for hero in heroes}
-        current_selection_set = set(self.selected_heroes) # Для быстрой проверки
+        current_selection_set = set(self.selected_heroes)  # Для быстрой проверки
 
         # Шаг 1: Начисляем очки за контру выбранных врагов
         for selected_enemy in self.selected_heroes:
-            for counter_pick in heroes_counters.get(selected_enemy, []):
-                if counter_pick in counter_scores:
-                    # Увеличиваем очки: +2 за приоритетного врага, +1 за обычного
-                    score_increase = 2.0 if selected_enemy in self.priority_heroes else 1.0
-                    counter_scores[counter_pick] += score_increase
+            new_counter_scores = self._calculate_counter_score(selected_enemy)
+            counter_scores.update(new_counter_scores)
 
-        # Шаг 2: Применяем штрафы
-        for potential_pick in heroes:
-            if potential_pick not in counter_scores: continue # Штрафуем только тех, кто есть в списке героев
-
-            # Штраф, если потенциальный пик сам является выбранным врагом
-            if potential_pick in current_selection_set:
-                counter_scores[potential_pick] -= 5.0 # Большой штраф
-
-            # Штраф за каждого врага, который контрит потенциальный пик
-            counters_for_potential_pick = heroes_counters.get(potential_pick, [])
-            for selected_enemy in self.selected_heroes:
-                if selected_enemy in counters_for_potential_pick:
-                    # Уменьшаем очки: -1.5 за контру от приоритетного врага, -1 за контру от обычного
-                    score_decrease = 1.5 if selected_enemy in self.priority_heroes else 1.0
-                    counter_scores[potential_pick] -= score_decrease
-
+        self._find_best_counter_by_hero(counter_scores, current_selection_set)
+        
         return counter_scores
 
 
-    def calculate_effective_team(self, counter_scores):
+    def calculate_effective_team(self, counter_scores):        
         """Рассчитывает рекомендуемую команду с учетом ролей и синергии."""
         # print("--- Logic: Calculating effective team ---")
         # Отбираем кандидатов: не враги с положительным рейтингом
@@ -177,7 +188,7 @@ class CounterpickLogic:
         # Добавляем минимум 1 танка
         for hero, score in role_sorted_candidates:
              if tanks_count < MIN_TANKS and hero in hero_roles.get("tanks", []):
-                 effective_team.append(hero); added_heroes_set.add(hero); tanks_count += 1
+                 effective_team.append(hero); added_heroes_set.add(hero); tanks_count += 1                
                  break # Добавили одного - выходим
 
         # Добавляем минимум 2 саппортов
@@ -185,7 +196,7 @@ class CounterpickLogic:
         for hero, score in role_sorted_candidates:
              # Проверяем, что герой еще не добавлен
              if hero not in added_heroes_set and support_added_count_step1 < MIN_SUPPORTS and hero in hero_roles.get("supports", []):
-                 effective_team.append(hero); added_heroes_set.add(hero); supports_count += 1; support_added_count_step1 += 1
+                 effective_team.append(hero); added_heroes_set.add(hero); supports_count += 1; support_added_count_step1 += 1                
                  if support_added_count_step1 >= MIN_SUPPORTS: break # Добавили нужное количество - выходим
 
         # Шаг 2: Добор до полной команды по рейтингу с учетом ролей и синергии
@@ -226,7 +237,7 @@ class CounterpickLogic:
                 effective_team.append(best_hero_to_add)
                 added_heroes_set.add(best_hero_to_add)
                 # Обновляем счетчики ролей
-                if best_hero_to_add in hero_roles.get("tanks", []): tanks_count += 1
+                if best_hero_to_add in hero_roles.get("tanks", []): tanks_count += 1                
                 elif best_hero_to_add in hero_roles.get("supports", []): supports_count += 1
                 elif best_hero_to_add in hero_roles.get("attackers", []): attackers_count += 1
                 # Удаляем добавленного героя из списка кандидатов
@@ -265,7 +276,7 @@ class CounterpickLogic:
         recognized_heroes = set()
         # Преобразуем изображение в оттенки серого для matchTemplate
         image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
-
+        
         print(f"[RECOGNIZE] Начало распознавания. Изображение: {image_gray.shape}, Шаблонов: {len(hero_templates)}, Порог: {threshold}")
 
         # Проходим по каждому герою и его шаблонам
@@ -289,7 +300,7 @@ class CounterpickLogic:
                     # Проверка: шаблон не должен быть больше изображения
                     if h > image_gray.shape[0] or w > image_gray.shape[1]:
                          # print(f"[WARN][recognize] Шаблон {i} для {hero_name} ({w}x{h}) больше изображения ({image_gray.shape[1]}x{image_gray.shape[0]}). Пропуск.")
-                         continue
+                         continue                        
 
                     # Сопоставление шаблона методом TM_CCOEFF_NORMED
                     # Результат - карта совпадений, где самое яркое место - лучшее совпадение

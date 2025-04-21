@@ -10,10 +10,14 @@ from collections import defaultdict
 from heroes_bd import heroes as ALL_HERO_NAMES # Импортируем список героев
 # <<< --------------------------------------- >>>
 
+
 def resource_path(relative_path):
-    """ Получаем абсолютный путь к ресурсу, работает для обычного запуска и PyInstaller """
-    try: base_path = sys._MEIPASS # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
-    except AttributeError: base_path = os.path.abspath(".") # Обычный запуск из скрипта
+    """Получаем абсолютный путь к ресурсу, работает для обычного запуска и PyInstaller"""
+    try:
+        base_path = sys._MEIPASS  # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")  # Обычный запуск из скрипта
+
     return os.path.join(base_path, relative_path)
 
 # Размеры для разных панелей в разных режимах
@@ -38,14 +42,16 @@ SIZES = {
     }
 }
 
+
 # Глобальные кэши
-loaded_images = {mode: {'right': {}, 'left': {}, 'small': {}, 'horizontal': {}} for mode in SIZES}
-original_images = {} # {hero_name: QPixmap}
-default_pixmap = None # Базовая заглушка 1x1
-loaded_hero_templates = None # {hero_name: [template1_cv2, ...]}
+loaded_images = {mode: {"right": {}, "left": {}, "small": {}, "horizontal": {}} for mode in SIZES}
+original_images = {}  # {hero_name: QPixmap}
+default_pixmap = None  # Базовая заглушка 1x1
+loaded_hero_templates = None  # {hero_name: [template1_cv2, ...]}
+
 
 def load_original_images():
-    """Загружает оригинальные изображения героев из папки resources."""
+    """Загружает оригинальные изображения героев из папки resources."""  # noqa
     global original_images
     if original_images: return # Не загружаем повторно
     print("Загрузка оригинальных изображений...")
@@ -78,8 +84,8 @@ def load_original_images():
             missing_heroes.append(hero)
 
     original_images = temp_original_images # Присваиваем глобальной переменной
-    print(f"Оригинальные изображения загружены: {loaded_count} / {len(ALL_HERO_NAMES)}")
-    if missing_heroes:
+    print(f"Оригинальные изображения загружены: {loaded_count} / {len(ALL_HERO_NAMES)}")  # noqa
+    if missing_heroes:  # noqa
         print(f"[WARN] Отсутствуют или недействительны изображения для: {', '.join(missing_heroes)}")
 
 
@@ -107,7 +113,7 @@ def get_images_for_mode(mode='middle'):
             if (size[0] > 0 and size[1] > 0) and (key not in cached_data or not cached_data[key]):
                 cache_complete = False
                 break
-        if cache_complete:
+        if cache_complete:  # noqa
             # print(f"Изображения для режима {mode} взяты из кэша.")
             return cached_data['right'], cached_data['left'], cached_data['small'], cached_data['horizontal']
 
@@ -150,9 +156,11 @@ def get_images_for_mode(mode='middle'):
     print(f"Изображения сгенерированы и кэшированы для режима: {mode}")
     return right_images, left_images, small_images, horizontal_images
 
-def load_default_pixmap(size=(1,1)):
+
+def load_default_pixmap(size=(1, 1)):
     """Создает или возвращает масштабированную серую заглушку QPixmap."""
     global default_pixmap
+
     # Создаем базовую заглушку 1x1 один раз
     if default_pixmap is None:
          dp = QPixmap(1,1)
@@ -164,6 +172,28 @@ def load_default_pixmap(size=(1,1)):
         return default_pixmap.scaled(QSize(*size), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.FastTransformation)
     else:
         return default_pixmap # Возвращаем базовую 1x1
+
+
+def load_image(base_filename):
+    """Загружает изображение героя."""
+    img_path = _get_image_path(base_filename)
+    return _load_image_from_file(img_path)
+
+
+def _get_image_path(base_filename):
+    """Формирует путь к файлу изображения."""
+    img_path_png = resource_path(f"resources/{base_filename}.png")
+    img_path_jpg = resource_path(f"resources/{base_filename}.jpg")
+    if os.path.exists(img_path_png):
+        return img_path_png
+    elif os.path.exists(img_path_jpg):
+        return img_path_jpg
+    return None
+
+
+def _load_image_from_file(img_path):
+    """Загружает изображение из файла по указанному пути."""
+    return QPixmap(img_path) if img_path else None
 
 # <<< ДОБАВЛЕНО: Функция загрузки шаблонов >>>
 def load_hero_templates():
@@ -211,9 +241,9 @@ def load_hero_templates():
                     # Ищем совпадение имени героя (без учета регистра)
                     matched_hero_name = None
                     for known_hero in ALL_HERO_NAMES:
-                         if known_hero.lower() == hero_name_parsed.lower():
-                             matched_hero_name = known_hero
-                             break
+                        if known_hero.lower() == hero_name_parsed.lower():
+                            matched_hero_name = known_hero
+                            break
 
                     if matched_hero_name:
                         template_path = os.path.join(templates_dir, filename)
@@ -234,7 +264,7 @@ def load_hero_templates():
                     skipped_load_error += 1
             else:
                  # print(f"[DEBUG] Пропущен файл (неверный формат имени - ожидался 'Имя_Номер'): {filename}")
-                 skipped_bad_name += 1
+                skipped_bad_name += 1
 
     print(f"Обработано файлов изображений: {files_found}")
     print(f"Успешно загружено шаблонов: {templates_loaded} для {len(hero_templates)} героев.")
@@ -249,4 +279,4 @@ def load_hero_templates():
     # Сохраняем результат в кэш (даже если он пустой)
     loaded_hero_templates = dict(hero_templates)
     return loaded_hero_templates
-# <<< КОНЕЦ Функции загрузки шаблонов >>>
+# <<< КОНЕЦ Функции загрузки шаблонов >>>  # noqa

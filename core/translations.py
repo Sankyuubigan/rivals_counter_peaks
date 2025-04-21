@@ -125,49 +125,48 @@ TRANSLATIONS = {
 # Кэш для форматированных строк
 formatted_text_cache = {}
 
+
+def _get_translation_table(language):
+    """Получает таблицу переводов для указанного языка или таблицу для русского языка как запасной вариант."""
+    return TRANSLATIONS.get(language, TRANSLATIONS['ru_RU']),
+
+
+def _validate_key(key, translations_for_lang, default_text):
+    """Проверяет наличие ключа в таблице переводов, возвращает перевод или текст по умолчанию."""
+    base_text = translations_for_lang.get(key)
+    if base_text is None:
+        base_text = default_text if default_text is not None else f"_{key}_"  # Возвращаем ключ в _подчеркиваниях_
+    return base_text
+
+
 def get_text(key, default_text=None, language=None, **kwargs):
     """
-    Получает перевод по ключу для указанного или текущего языка.
-    Поддерживает форматирование строки с помощью kwargs.
-    Использует кэш для форматированных строк.
+    Получает переведенный текст по ключу, с возможностью форматирования.
     """
-    # Используем язык, переданный аргументом, или глобальный язык по умолчанию
     current_language = language if language else DEFAULT_LANGUAGE
 
-    # Формируем ключи для кэша
     cache_key_base = (current_language, key)
-    # Ключ для форматированной строки должен учитывать значения kwargs
     cache_key_formatted = (current_language, key, tuple(sorted(kwargs.items())))
 
-    # Проверяем кэш
     if kwargs and cache_key_formatted in formatted_text_cache:
         return formatted_text_cache[cache_key_formatted]
     if not kwargs and cache_key_base in formatted_text_cache:
         return formatted_text_cache[cache_key_base]
 
-    # Получаем базовый перевод для нужного языка
-    translations_for_lang = TRANSLATIONS.get(current_language, TRANSLATIONS['ru_RU']) # Fallback на русский
-    base_text = translations_for_lang.get(key)
+    translations_for_lang = _get_translation_table(current_language)
+    base_text = _validate_key(key, translations_for_lang, default_text)
 
-    # Если ключ не найден, используем текст по умолчанию или сам ключ
-    if base_text is None:
-        base_text = default_text if default_text is not None else f"_{key}_" # Возвращаем ключ в _подчеркиваниях_
-
-    # Выполняем форматирование, если переданы аргументы
     try:
         result_text = base_text.format(**kwargs) if kwargs else base_text
     except KeyError as e:
-        print(f"[!] Warning: Missing key '{e}' for formatting text '{key}' in lang '{current_language}'")
-        result_text = base_text # Возвращаем неформатированный текст при ошибке
-    except ValueError as e: # Обработка ошибок форматирования (например, неверные спецификаторы)
-        print(f"[!] Warning: Formatting error for text '{key}' in lang '{current_language}': {e}")
+        print(f"[!] Warning: Missing key '{e}' for formatting text '{key}' in lang '{current_language}'")  # noqa
+        result_text = base_text
+    except ValueError as e:
+        print(f"[!] Warning: Formatting error for text '{key}' in lang '{current_language}': {e}")  # noqa
         result_text = base_text
 
-    # Кэшируем результат
-    if kwargs:
-        formatted_text_cache[cache_key_formatted] = result_text
-    else:
-        formatted_text_cache[cache_key_base] = result_text
+    cache_key = cache_key_formatted if kwargs else cache_key_base
+    formatted_text_cache[cache_key] = result_text
 
     return result_text
 
@@ -178,7 +177,7 @@ def set_language(language):
     if language in SUPPORTED_LANGUAGES:
         if DEFAULT_LANGUAGE != language:
             DEFAULT_LANGUAGE = language
-            formatted_text_cache.clear() # Очищаем кэш при смене языка
+            formatted_text_cache.clear()  # Очищаем кэш при смене языка
             print(f"Global language set to: {language}")
         # else:
             # print(f"Global language is already {language}")

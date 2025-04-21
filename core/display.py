@@ -1,7 +1,8 @@
 # File: display.py
-from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollArea
-from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollArea, QMessageBox
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
+
 from heroes_bd import heroes_counters
 from translations import get_text
 
@@ -26,6 +27,53 @@ def clear_layout(layout):
                  spacer = item.spacerItem()
                  if spacer is not None:
                      layout.removeItem(item)
+
+
+class Display:
+    def __init__(self):
+        pass
+
+    def display_heroes_info(self, logic, result_frame, left_images, small_images):
+        """Отображает информацию о контрпиках."""
+        heroes_info = self._get_heroes_info(logic)
+
+        if heroes_info is None:
+            return
+
+        self._format_heroes_info(
+            logic,
+            result_frame,
+            left_images,
+            small_images,
+            heroes_info,
+        )
+
+    def _get_heroes_info(self, logic):
+        """Получает информацию о героях."""
+        if not logic.selected_heroes:
+            return None
+        counter_scores = logic.calculate_counter_scores()
+        if not counter_scores:
+            return None
+        sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
+        effective_team = logic.calculate_effective_team(counter_scores)
+        selected_heroes_set = set(logic.selected_heroes)
+        return sorted_counters, effective_team, selected_heroes_set
+
+    def _format_heroes_info(self, logic, result_frame, left_images, small_images, heroes_info):
+        """Форматирует информацию о героях."""
+        layout, result_label_found = self._setup_layout(result_frame)
+
+        if not heroes_info:
+            return
+        sorted_counters, effective_team, selected_heroes_set = heroes_info
+
+        for counter, score in sorted_counters:
+            self._show_dialog(logic, result_frame, left_images, small_images, counter, score, effective_team, selected_heroes_set,)
+
+        if not result_frame.children()[0].children():
+            result_label_found.setText(get_text('no_recommendations', language=logic.DEFAULT_LANGUAGE))
+            result_label_found.show()
 
 
 def generate_counterpick_display(logic, result_frame, left_images, small_images):
@@ -99,7 +147,9 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
 
         # --- Стилизация строки ---
         bg_color_str = "background-color: transparent;"
+        # bg_color_str = "background-color: #b2b2b2;"
         border_style = "border: none;"
+        # border_style = "border: 1px solid black;"
         text_color = "color: black;"
 
         if is_enemy:
@@ -158,6 +208,25 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
     # Добавляем растяжку в конце списка, если есть элементы
     if items_added > 0:
         layout.addStretch(1)
+    elif result_label_found:
+        # Если после фильтрации не осталось элементов для отображения
+        result_label_found.setText(get_text('no_recommendations', language=logic.DEFAULT_LANGUAGE))
+        result_label_found.show()
+        if layout.indexOf(result_label_found) == -1:
+            layout.addWidget(result_label_found)
+        layout.addStretch(1)
+
+    def _setup_layout(self, result_frame):
+        layout = result_frame.layout()
+        if not layout:
+            layout = QVBoxLayout(result_frame)
+            layout.setObjectName("result_layout")
+            layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            layout.setContentsMargins(2, 2, 2, 2)
+            layout.setSpacing(1)
+            result_frame.setLayout(layout)
+        clear_layout(layout)
+        result_label_found = result_frame.parentWidget().findChild(QLabel, "result_label") if result_frame.parentWidget() and isinstance(result_frame.parentWidget(), QScrollArea) else None
     else:
         # Если после фильтрации не осталось элементов для отображения
         if result_label_found:

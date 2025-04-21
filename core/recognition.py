@@ -7,6 +7,34 @@ from gui import RecognitionWorker
 from translations import get_text
 class RecognitionManager(QObject):
     recognize_heroes_signal = Signal()
+
+    def _get_screenshot(self):
+        """Делает скриншот."""
+        print("[INFO] Делаю скриншот...")
+        try:
+            return pyautogui.screenshot()
+        except Exception as e:
+            raise Exception(f"Ошибка при создании скриншота: {e}")
+
+    def _get_region(self, image):
+        """Вырезает область для распознавания из скриншота."""
+        print("[INFO] Вырезаю область для распознавания из скриншота...")
+        try:
+            left, top, width, height = RECOGNITION_AREA
+            return image.crop((left, top, left + width, top + height))
+        except Exception as e:
+            raise Exception(f"Ошибка при вырезании области из скриншота: {e}")
+
+    def _ocr(self, region):
+        """Распознает текст на изображении."""
+        print("[INFO] Распознаю текст на изображении...")
+        try:
+            text = pytesseract.image_to_string(region, lang='eng',)
+            return text.splitlines()
+        except Exception as e:
+            raise Exception(f"Ошибка распознавания текста: {e}")
+
+
     recognition_complete_signal = Signal(list)
 
     def __init__(self, main_window, logic):
@@ -30,6 +58,18 @@ class RecognitionManager(QObject):
         except Exception as e:
             print(f"[ERROR] Критическая ошибка при загрузке шаблонов: {e}")
             self.hero_templates = {}  # Очищаем на случай ошибки
+
+    def _get_text_from_region(self):
+        """Распознает текст в заданной области на экране."""
+        try:
+            image = self._get_screenshot()
+            region = self._get_region(image)
+            text = self._ocr(region)
+            return text
+        except Exception as e:
+            print(f"[ERROR] Ошибка при распознавании текста: {e}")
+            return []
+
 
     @Slot()
     def _handle_recognize_heroes(self):

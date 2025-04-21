@@ -127,50 +127,59 @@ class HotkeyManager(QObject):
         @run_if_topmost_gui
         def _emit_recognize(): self.parent_window.recognize_heroes_signal.emit()
 
-        hooks = []
+        self._register_topmost_hotkey(_emit_move, hooks=[])
+        self._register_recognition_hotkey(_emit_recognize, hooks=[])
+        self._register_change_mode_hotkey(_emit_toggle_mode, _emit_clear, _emit_toggle_select, hooks=[])
+
+        print("Hotkeys registered successfully.")
+        self._stop_keyboard_listener_flag.wait()
+        print("Keyboard listener stop signal received.")
+
+    def _register_topmost_hotkey(self, _emit_move, hooks):
         print(f"Регистрация хуков клавиатуры...")
         try:
             hooks.append(keyboard.add_hotkey('tab+up', lambda: _emit_move('up'), suppress=True, trigger_on_release=False))
             hooks.append(keyboard.add_hotkey('tab+down', lambda: _emit_move('down'), suppress=True, trigger_on_release=False))
             hooks.append(keyboard.add_hotkey('tab+left', lambda: _emit_move('left'), suppress=True, trigger_on_release=False))
             hooks.append(keyboard.add_hotkey('tab+right', lambda: _emit_move('right'), suppress=True, trigger_on_release=False))
+        except Exception as e: print(f"[ERROR] setting up keyboard topmost hooks: {e}")
+
+    def _register_recognition_hotkey(self, _emit_recognize, hooks):
+        try:
+            hooks.append(keyboard.add_hotkey('tab+num /', _emit_recognize, suppress=True, trigger_on_release=False))
+            print("[INFO] Hooked Tab + Num /")
+        except ValueError:
+            try:
+                hooks.append(keyboard.add_hotkey('tab+keypad /', _emit_recognize, suppress=True, trigger_on_release=False))
+                print("[INFO] Hooked Tab + Keypad /")
+            except ValueError:
+                try:
+                     hooks.append(keyboard.add_hotkey('tab+/', _emit_recognize, suppress=True, trigger_on_release=False))
+                     print("[INFO] Hooked Tab + /")
+                except ValueError:
+                     print("[WARN] Could not hook Tab + Num / or Keypad / or /.")
+        except Exception as e: print(f"[ERROR] setting up keyboard recognition hooks: {e}")
+
+    def _register_change_mode_hotkey(self, _emit_toggle_mode, _emit_clear, _emit_toggle_select, hooks):
+        try:
             try: hooks.append(keyboard.add_hotkey('tab+num 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
             except ValueError:
                 try: hooks.append(keyboard.add_hotkey('tab+keypad 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
                 except ValueError: print("[WARN] Could not hook Tab + Numpad 0 / Keypad 0.")
             try: hooks.append(keyboard.add_hotkey('tab+delete', _emit_toggle_mode, suppress=True, trigger_on_release=False))
             except ValueError:
-                 try: hooks.append(keyboard.add_hotkey('tab+del', _emit_toggle_mode, suppress=True, trigger_on_release=False))
-                 except ValueError:
-                     try: hooks.append(keyboard.add_hotkey('tab+.', _emit_toggle_mode, suppress=True, trigger_on_release=False))
-                     except ValueError: print("[WARN] Could not hook Tab + Delete / Del / Numpad .")
+                try: hooks.append(keyboard.add_hotkey('tab+del', _emit_toggle_mode, suppress=True, trigger_on_release=False))
+                except ValueError:
+                    try: hooks.append(keyboard.add_hotkey('tab+.', _emit_toggle_mode, suppress=True, trigger_on_release=False))
+                    except ValueError: print("[WARN] Could not hook Tab + Delete / Del / Numpad .")
             try: hooks.append(keyboard.add_hotkey('tab+num -', _emit_clear, suppress=True, trigger_on_release=False))
             except ValueError:
                 try: hooks.append(keyboard.add_hotkey('tab+keypad -', _emit_clear, suppress=True, trigger_on_release=False))
                 except ValueError:
                     try: hooks.append(keyboard.add_hotkey('tab+-', _emit_clear, suppress=True, trigger_on_release=False))
                     except ValueError: print("[WARN] Could not hook Tab + Num - / Keypad - / -.")
-
-            try:
-                hooks.append(keyboard.add_hotkey('tab+num /', _emit_recognize, suppress=True, trigger_on_release=False))
-                print("[INFO] Hooked Tab + Num /")
-            except ValueError:
-                try:
-                    hooks.append(keyboard.add_hotkey('tab+keypad /', _emit_recognize, suppress=True, trigger_on_release=False))
-                    print("[INFO] Hooked Tab + Keypad /")
-                except ValueError:
-                    try:
-                         hooks.append(keyboard.add_hotkey('tab+/', _emit_recognize, suppress=True, trigger_on_release=False))
-                         print("[INFO] Hooked Tab + /")
-                    except ValueError:
-                         print("[WARN] Could not hook Tab + Num / or Keypad / or /.")
-
-            print("Hotkeys registered successfully.")
-            self._stop_keyboard_listener_flag.wait()
-            print("Keyboard listener stop signal received.")
-
         except ImportError: print("\n[ERROR] 'keyboard' library requires root/admin privileges.\n")
-        except Exception as e: print(f"[ERROR] setting up keyboard hooks: {e}")
+        except Exception as e: print(f"[ERROR] setting up keyboard change mode hooks: {e}")
         finally:
             print("Unhooking keyboard...")
             keyboard.unhook_all()

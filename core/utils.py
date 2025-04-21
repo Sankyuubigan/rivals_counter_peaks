@@ -27,12 +27,24 @@ RECOGNITION_THRESHOLD = 0.8
 # ================================================================
 # <<< --------------------------------------- >>>
 
+def _get_file_path():
+    """Получает путь к файлу скрипта или исполняемому файлу."""
+    return os.path.abspath(".")
+
+
+def _get_root_path():
+    """Получает базовый путь к ресурсам (для PyInstaller или обычного запуска)."""
+    try:
+        base_path = sys._MEIPASS  # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
+    except AttributeError:
+        base_path = _get_file_path()  # Обычный запуск из скрипта
+    return base_path
 
 def resource_path(relative_path):
     """ Получаем абсолютный путь к ресурсу, работает для обычного запуска и PyInstaller """
-    try: base_path = sys._MEIPASS # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
-    except AttributeError: base_path = os.path.abspath(".") # Обычный запуск из скрипта
+    base_path = _get_root_path()
     return os.path.join(base_path, relative_path)
+
 
 def validate_heroes():
     """Проверяет, что все герои из heroes_counters существуют в списке heroes."""

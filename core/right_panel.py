@@ -1,15 +1,19 @@
 # File: right_panel.py
-from PySide6.QtWidgets import (QFrame, QLabel, QPushButton, QListWidget, QListWidgetItem, QVBoxLayout,
-                               QListView, QAbstractItemView, QMenu)
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
-from heroes_bd import heroes
-from translations import get_text
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QFrame,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QListView,
+    QPushButton,
+    QVBoxLayout,
+)
+
 # Импортируем делегат
 from delegate import HotkeyFocusDelegate
-
-# Константа для хранения имени героя в данных элемента
-HERO_NAME_ROLE = Qt.UserRole + 1
 
 # Принимаем 'window' для доступа к logic и right_images
 def create_right_panel(window, initial_mode="middle"):
@@ -18,48 +22,91 @@ def create_right_panel(window, initial_mode="middle"):
     Использует делегат ТОЛЬКО для отрисовки рамки фокуса.
     Множественный выбор должен работать.
     """
-    logic = window.logic
-
-    right_frame = QFrame(window)
-    right_frame.setObjectName("right_frame") # Имя объекта
-    # Убираем рамку у самого QFrame
-    right_frame.setFrameShape(QFrame.Shape.NoFrame)
-    layout = QVBoxLayout(right_frame)
-    layout.setObjectName("right_panel_layout")
-    layout.setContentsMargins(5, 5, 5, 5) # Отступы внутри панели
-    layout.setSpacing(5) # Расстояние между элементами
-
-    list_widget = QListWidget()
-    window.right_list_widget = list_widget # Сохраняем ссылку в окне
-    list_widget.setObjectName("right_list_widget") # Имя объекта
+    right_panel = RightPanel(window, initial_mode)
+    return right_panel.frame, right_panel.selected_heroes_label
 
 
-    # --- Создание и установка делегата ---
-    # Делегат отвечает за отрисовку рамки фокуса хоткея
-    delegate = HotkeyFocusDelegate(window)
-    list_widget.setItemDelegate(delegate)
-    # ------------------------------------
+class RightPanel:
+    """
+    Класс для создания и управления правой панелью.
+    """
+    HERO_NAME_ROLE = Qt.UserRole + 1
 
-    # --- Настройка QListWidget ---
-    list_widget.setViewMode(QListView.ViewMode.IconMode) # Иконки сеткой
-    list_widget.setResizeMode(QListView.ResizeMode.Adjust) # Автоподстройка колонок
-    list_widget.setMovement(QListView.Movement.Static) # Элементы неперемещаемые
-    list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection) # Множественный выбор
-    list_widget.setWordWrap(True) # Перенос текста под иконкой (для max режима)
-    list_widget.setUniformItemSizes(True) # Оптимизация, если все элементы одного размера
+    def __init__(self, window, initial_mode="middle"):
+        """
+        Инициализация правой панели.
+        """
+        self.window = window
+        self.logic = window.logic
+        self.initial_mode = initial_mode
+        self.frame = QFrame(window)
+        self.frame.setObjectName("right_frame")
+        self.selected_heroes_label = QLabel(self.logic.get_text("selected"))
+        self.setup_ui()
 
-    # --- Размеры иконок и сетки ---
-    if initial_mode == "max":
-        icon_size = QSize(60, 60); grid_size = QSize(85, 95); list_widget.setSpacing(10)
-    else: # middle
-        icon_size = QSize(40, 40)
-        # grid_size должен быть чуть больше иконки + место для текста (если он есть)
-        # Рассчитываем примерно: иконка + отступы + место под текст (если нужно)
-        grid_width = icon_size.width() + 15 # Запас по ширине
-        grid_height = icon_size.height() + 10 # Небольшой запас по высоте
-        grid_size = QSize(grid_width, grid_height)
-        list_widget.setSpacing(4) # Отступ между элементами сетки
-    list_widget.setIconSize(icon_size); list_widget.setGridSize(grid_size)
+    def setup_ui(self):
+        """
+        Настройка пользовательского интерфейса.
+        """
+        self._create_widgets()
+        self._setup_widgets()
+        self._create_layout()
+        self._setup_layout()
+
+    def _create_widgets(self):
+        """
+        Создание виджетов.
+        """
+        from heroes_bd import heroes
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.layout = QVBoxLayout(self.frame)
+        self.list_widget = QListWidget()
+        self.selected_heroes_label.setWordWrap(True)
+        self.selected_heroes_label.setObjectName("selected_heroes_label")
+        self.window.right_list_widget = self.list_widget
+        self.list_widget.setObjectName("right_list_widget")
+        self.copy_button = QPushButton(self.logic.get_text("copy_rating"))
+        self.copy_button.setObjectName("copy_button")      
+        self.clear_button = QPushButton(self.logic.get_text("clear_all"))
+        self.clear_button.setObjectName("clear_button")
+        self.hero_items = {}
+        self.window.hero_items = self.hero_items
+        for hero in heroes:
+            item = QListWidgetItem()
+            item_text = hero if self.initial_mode == "max" else ""
+            item.setText(item_text)
+            item.setTextAlignment(
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter
+            )
+            icon_pixmap = self.window.right_images.get(hero)
+            if icon_pixmap and not icon_pixmap.isNull():
+                item.setIcon(QIcon(icon_pixmap))
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            item.setData(self.HERO_NAME_ROLE, hero)
+            item.setToolTip(hero)
+            if hero in self.logic.selected_heroes:
+                item.setSelected(True)
+            self.list_widget.addItem(item)
+            self.hero_items[hero] = item
+
+       def _setup_widgets(self):
+        """
+        Настройка виджетов.
+        """
+        # --- Настройка QListWidget ---
+        # Делегат отвечает за отрисовку рамки фокуса хоткея
+        delegate = HotkeyFocusDelegate(self.window)
+        self.list_widget.setItemDelegate(delegate)
+        self.list_widget.setViewMode(QListView.ViewMode.IconMode)  # Иконки сеткой
+        self.list_widget.setResizeMode(
+            QListView.ResizeMode.Adjust
+        )  # Автоподстройка колонок
+        self.list_widget.setMovement(QListView.Movement.Static) 
+        self.list_widget.setSelectionMode(
+            QAbstractItemView.SelectionMode.MultiSelection
+        )  # Множественный выбор
+        self.list_widget.setWordWrap(True)  # Перенос текста под иконкой (для max режима)
+        self.list_widget.setUniformItemSizes(True)  # Оптимизация, если все элементы одного размера
     # -------------------------------------------------------
 
     # --- Стили для ListWidget ---
@@ -99,70 +146,39 @@ def create_right_panel(window, initial_mode="middle"):
              outline: 0;
         }
     """)
-    list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus) # Убираем фокус самого виджета
+        self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Убираем фокус самого виджета
+        self.list_widget.itemSelectionChanged.connect(
+            self.window.handle_selection_changed
+        )
+        self.list_widget.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.list_widget.customContextMenuRequested.connect(
+            self.window.show_priority_context_menu
+        )
+        if self.initial_mode == "max":
+            icon_size = QSize(60, 60); grid_size = QSize(85, 95); self.list_widget.setSpacing(10)
+        else:  # middle
+            icon_size = QSize(40, 40)
+            grid_size = QSize(icon_size.width() + 15, icon_size.height() + 10)
+            self.list_widget.setSpacing(4)
+        self.list_widget.setIconSize(icon_size); self.list_widget.setGridSize(grid_size)
+        self.copy_button.clicked.connect(self.window.copy_to_clipboard)
+        self.clear_button.clicked.connect(self.window._handle_clear_all)
 
-    # Метка для отображения выбранных героев
-    selected_heroes_label = QLabel(get_text('selected', language=logic.DEFAULT_LANGUAGE))
-    selected_heroes_label.setWordWrap(True)
-    selected_heroes_label.setObjectName("selected_heroes_label") # Имя объекта
+    def _create_layout(self):
+        """
+        Создание компоновки.
+        """
+        self.layout.setObjectName("right_panel_layout")
+        self.layout.setContentsMargins(5, 5, 5, 5)
+        self.layout.setSpacing(5)
 
-
-    # --- Создание QListWidgetItem для каждого героя ---
-    hero_items = {} # Очищаем словарь перед заполнением
-    window.hero_items = hero_items # Сохраняем ссылку на словарь в главном окне
-
-    for i, hero in enumerate(heroes):
-        item = QListWidgetItem()
-        # Текст элемента: имя героя в max режиме, пусто в middle
-        item_text = hero if initial_mode == "max" else ""
-        item.setText(item_text)
-        # Выравнивание текста: под иконкой по центру
-        item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
-
-        # Установка иконки
-        icon_pixmap = window.right_images.get(hero)
-        if icon_pixmap and not icon_pixmap.isNull():
-            item.setIcon(QIcon(icon_pixmap))
-        else:
-            # print(f"Предупреждение: Нет иконки для {hero} в right_images")
-            # Можно установить заглушку, но лучше убедиться, что изображения загружены
-            pass
-
-        # Флаги элемента: включен и выбираемый
-        item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-        # Сохраняем имя героя в пользовательских данных
-        item.setData(HERO_NAME_ROLE, hero)
-        # Устанавливаем подсказку с именем героя
-        item.setToolTip(hero)
-
-        # Устанавливаем начальное состояние выделения на основе логики
-        if hero in logic.selected_heroes:
-            item.setSelected(True)
-
-        list_widget.addItem(item)
-        hero_items[hero] = item # Сохраняем ссылку на элемент
-
-    # --- Подключаем сигналы ---
-    # Сигнал изменения выделения (срабатывает при клике или setSelected)
-    list_widget.itemSelectionChanged.connect(window.handle_selection_changed)
-    # Включаем пользовательское контекстное меню
-    list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-    # Подключаем сигнал для показа меню
-    list_widget.customContextMenuRequested.connect(window.show_priority_context_menu)
-
-    layout.addWidget(list_widget, stretch=1) # ListWidget занимает основное место
-    layout.addWidget(selected_heroes_label)
-
-    # Кнопки Копировать и Очистить
-    copy_button = QPushButton(get_text('copy_rating', language=logic.DEFAULT_LANGUAGE))
-    copy_button.setObjectName("copy_button") # Имя объекта
-    copy_button.clicked.connect(window.copy_to_clipboard)
-    layout.addWidget(copy_button)
-
-    clear_button = QPushButton(get_text('clear_all', language=logic.DEFAULT_LANGUAGE))
-    clear_button.setObjectName("clear_button") # Имя объекта
-    # Вызываем _handle_clear_all для сброса фокуса хоткея и обновления UI
-    clear_button.clicked.connect(window._handle_clear_all)
-    layout.addWidget(clear_button)
-
-    return right_frame, selected_heroes_label
+    def _setup_layout(self):
+        """
+        Настройка компоновки.
+        """
+        self.layout.addWidget(self.list_widget, stretch=1)        
+        self.layout.addWidget(self.selected_heroes_label)
+        self.layout.addWidget(self.copy_button)
+        self.layout.addWidget(self.clear_button)

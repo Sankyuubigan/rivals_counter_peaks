@@ -3,19 +3,23 @@ from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout, QLabel
                                QListWidget, QComboBox, QScrollArea)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
-from right_panel import create_right_panel
+
+from core.mode import Mode
+
 from left_panel import create_left_panel
+from right_panel import create_right_panel
 from images_load import get_images_for_mode, SIZES
 from horizontal_list import update_horizontal_icon_list
 from heroes_bd import heroes
 from translations import get_text
+
 # from build import version # Версия теперь берется из MainWindow
 import time
-import gc # Для сборки мусора
+import gc  # Для сборки мусора
+
 
 # --- Вспомогательная функция для очистки layout ---
 def clear_layout_recursive(layout):
-    """Рекурсивно удаляет все виджеты и layout'ы из заданного layout'а."""
     if layout is None: return
     while layout.count():
         item = layout.takeAt(0)
@@ -36,18 +40,58 @@ def clear_layout_recursive(layout):
                     # print("Removing spacer")
                     layout.removeItem(item) # Удаляем spacer item
 
+
 PANEL_MIN_WIDTHS = {
-    'max':    {'left': 600, 'right': 480},
+    'max': {'left': 600, 'right': 480},
     'middle': {'left': 400, 'right': 300},
-    'min':    {'left': 0,   'right': 0} # Левая панель видима, но мин. ширина не важна
+    'min': {'left': 0, 'right': 0}  # Левая панель видима, но мин. ширина не важна
 }
 MODE_DEFAULT_WINDOW_SIZES = {
-    'max':    {'width': 1100, 'height': 800},
-    'middle': {'width': 950,  'height': 600},
-    'min':    {'width': 600,  'height': 0} # Высота будет переопределена в update_interface_for_mode
+    'max': {'width': 1100, 'height': 800},
+    'middle': {'width': 950, 'height': 600},
+    'min': {'width': 600, 'height': 0}  # Высота будет переопределена в update_interface_for_mode
 }
 
-def change_mode(window, mode):
+
+class ModeManager:
+    def __init__(self, main_window):
+        self.current_mode = "middle"
+        self.modes = {
+            "min": Mode("min", None, None, None),
+            "middle": Mode("middle", None, None, None),
+            "max": Mode("max", None, None, None),
+        }
+        self.main_window = main_window
+
+    def _validate_mode_name(self, mode_name: str) -> None:
+        if mode_name not in self.modes:
+            raise ValueError(f"Неизвестный режим: {mode_name}")
+
+    def _get_mode(self, mode_name: str) -> Mode:
+        self._validate_mode_name(mode_name)
+        return self.modes[mode_name]
+
+    def _get_mode_by_name(self, mode_name: str) -> Mode:
+        return self._get_mode(mode_name)
+
+    def _update_current_mode(self, mode_name):
+        self.current_mode = mode_name
+
+    def _set_window_geometry(self, window, mode_name):
+        mode = self._get_mode_by_name(mode_name)
+        if mode.pos is not None:
+            window.move(mode.pos)
+
+    def _get_mode(self, mode_name):
+        self._validate_mode_name(mode_name)
+        return self.modes[mode_name]    
+
+    def change_mode(self, window, mode):
+        self._change_mode(window, mode)
+
+    def _change_mode(self, window, mode):
+        """Инициирует смену режима отображения."""
+
     """Инициирует смену режима отображения."""
     print(f"--- Попытка смены режима на: {mode} ---")
     start_time = time.time()
@@ -55,9 +99,11 @@ def change_mode(window, mode):
     # Сохраняем текущую позицию окна для старого режима
     if window.mode in window.mode_positions and window.isVisible():
         window.mode_positions[window.mode] = window.pos()
-    window.mode = mode # Устанавливаем новый режим
-    update_interface_for_mode(window) # Перестраиваем интерфейс
+    self._update_current_mode(mode)
+    update_interface_for_mode(window)
+    self._set_window_geometry(window, mode)
     end_time = time.time()
+
     print(f"--- Смена режима на {mode} ЗАВЕРШЕНА (заняло: {end_time - start_time:.4f} сек) ---")
     # Запускаем сборщик мусора после перестройки UI
     gc.collect()
@@ -66,7 +112,7 @@ def change_mode(window, mode):
 def update_interface_for_mode(window):
     """Перестраивает интерфейс для нового режима."""
     t0 = time.time()
-    print(f"[TIMING] update_interface_for_mode: Start for mode '{window.mode}'")
+    print(f"[TIMING] update_interface_for_mode: Start for mode '{window.mode_manager.current_mode}'")
 
     # --- 1. Очистка основного layout'а (inner_layout) ---
     t1 = time.time()
@@ -92,10 +138,11 @@ def update_interface_for_mode(window):
     t1 = time.time()
     try:
         # Функция get_images_for_mode использует кэш
-        # print(f"Getting images for mode: {window.mode}")
-        window.right_images, window.left_images, window.small_images, window.horizontal_images = get_images_for_mode(window.mode)
-    except Exception as e: print(f"Критическая ошибка загрузки изображений для режима {window.mode}: {e}"); return
-    t2 = time.time(); # print(f"[TIMING] -> Load/Get images: {t2-t1:.4f} s")
+        # print(f"Getting images for mode: {window.mode_manager.current_mode}")
+        window.right_images, window.left_images, window.small_images, window.horizontal_images = get_images_for_mode(
+            window.mode_manager.current_mode)
+    except Exception as e: print(f"Критическая ошибка загрузки изображений для режима {window.mode_manager.current_mode}: {e}"); return
+    t2 = time.time();  # print(f"[TIMING] -> Load/Get images: {t2-t1:.4f} s")
 
     # --- 4. Пересоздание левой панели (всегда видима) ---
     t1 = time.time()
@@ -106,19 +153,21 @@ def update_interface_for_mode(window):
     # Создаем ScrollArea, ResultFrame и ResultLabel внутри контейнера
     window.canvas, window.result_frame, window.result_label, window.update_scrollregion = create_left_panel(window.left_container)
     left_layout.addWidget(window.canvas, stretch=1) # ScrollArea занимает все место
-    # Устанавливаем минимальную ширину левой панели
-    window.left_container.setMinimumWidth(PANEL_MIN_WIDTHS.get(window.mode, {}).get('left', 0))
+    # Устанавливаем минимальную ширину левой панели # window.mode
+    window.left_container.setMinimumWidth(PANEL_MIN_WIDTHS.get(window.mode_manager.current_mode, {}).get('left', 0))
     # Добавляем левую панель в основной layout (inner_layout)
     window.inner_layout.addWidget(window.left_container, stretch=1) # Начальный stretch=1
-    t2 = time.time(); # print(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
+    t2 = time.time();  # print(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
 
     # --- 5. Пересоздание/Скрытие правой панели ---
     t1 = time.time()
-    if window.mode != "min":
+    if window.mode_manager.current_mode != "min":
         # print("Creating right panel...")
-        window.right_frame, window.selected_heroes_label = create_right_panel(window, window.mode)
-        window.right_frame.setMinimumWidth(PANEL_MIN_WIDTHS.get(window.mode, {}).get('right', 0))
+        window.right_frame, window.selected_heroes_label = create_right_panel(window, window.mode_manager.current_mode)
+        window.right_frame.setMinimumWidth(PANEL_MIN_WIDTHS.get(window.mode_manager.current_mode, {}).get('right', 0))
         window.inner_layout.addWidget(window.right_frame, stretch=1) # Добавляем правую панель
+
+
         # Устанавливаем растяжение: левая панель в 2 раза шире правой
         window.inner_layout.setStretch(0, 2) # Индекс 0 - левая панель
         window.inner_layout.setStretch(1, 1) # Индекс 1 - правая панель
@@ -126,13 +175,13 @@ def update_interface_for_mode(window):
         # print("Skipping right panel creation (min mode).")
         window.right_frame = None; window.selected_heroes_label = None; window.right_list_widget = None
     t2 = time.time(); # print(f"[TIMING] -> Create/Hide right panel: {t2-t1:.4f} s")
-
+    window.mode = window.mode_manager.current_mode
     # --- 6. Настройка окна (Frameless, Title, Min/Max Height) и видимости элементов TopPanel ---
     t1 = time.time()
     # print("Configuring window and top panel...")
     # Рассчитываем базовую высоту (TopPanel + IconsPanel)
     top_h = window.top_frame.sizeHint().height() if window.top_frame else 40
-    h_icon_h = SIZES[window.mode]['horizontal'][1] if window.mode in SIZES and 'horizontal' in SIZES[window.mode] else 30
+    h_icon_h = SIZES[window.mode_manager.current_mode]['horizontal'][1] if window.mode_manager.current_mode in SIZES and 'horizontal' in SIZES[window.mode_manager.current_mode] else 30
     icons_h = h_icon_h + 12 # Добавляем отступы
     window.icons_scroll_area.setFixedHeight(icons_h) # Устанавливаем высоту панели иконок
 
@@ -149,7 +198,7 @@ def update_interface_for_mode(window):
     close_button = window.top_frame.findChild(QPushButton, "close_button")
 
 
-    is_min_mode = (window.mode == "min")
+    is_min_mode = (window.mode_manager.current_mode == "min")
     current_flags = window.windowFlags()
     frameless_changed = False # Флаг для отслеживания изменения frameless
 
@@ -190,12 +239,12 @@ def update_interface_for_mode(window):
         if close_button: close_button.hide() # Скрываем кнопку закрытия
         window.setWindowTitle(f"{get_text('title')} v{window.app_version}") # Восстанавливаем заголовок
         # Показываем основные панели
-        if window.main_widget: window.main_widget.show()
         if window.left_container: window.left_container.show()
         if window.right_frame: window.right_frame.show() # Правая панель видима
         # Устанавливаем минимальную высоту и видимость кнопок автора/рейтинга
-        if window.mode == "max":
-            calculated_min_h = base_h + 300 # Примерная минимальная высота для контента
+        if window.mode_manager.current_mode == "max":
+            calculated_min_h = base_h + 300  # Примерная минимальная высота для контента
+
             window.setMinimumHeight(calculated_min_h)
             if window.author_button: window.author_button.show()
             if window.rating_button: window.rating_button.show()
@@ -223,11 +272,11 @@ def update_interface_for_mode(window):
 
     # --- 8. Установка размера окна ---
     t1 = time.time()
-    target_size = MODE_DEFAULT_WINDOW_SIZES.get(window.mode, {'width': 800, 'height': 600})
+    target_size = MODE_DEFAULT_WINDOW_SIZES.get(window.mode_manager.current_mode, {'width': 800, 'height': 600})
     target_w = target_size['width']; target_h = target_size['height']
 
     # Получаем актуальные минимальные размеры ПОСЛЕ всех перестроек
-    min_w = window.minimumSizeHint().width(); actual_min_h = window.minimumHeight()
+    min_w = window.minimumSizeHint().width(); actual_min_h = window.minimumHeight()# window.mode
 
     # Для min режима используем рассчитанную фиксированную высоту
     if window.mode == 'min':

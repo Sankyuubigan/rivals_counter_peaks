@@ -15,10 +15,8 @@ class AuthorDialog(QDialog):
         self.center_on_parent()
 
         layout = QVBoxLayout(self)
-
-        # Получаем тексты
         try:
-            app_version = parent.logic.APP_VERSION # Получаем версию из logic, если она там есть
+            app_version = parent.logic.APP_VERSION  # Получаем версию из logic, если она там есть
         except AttributeError:
              app_version = version # Используем версию из build.py как fallback
         author_text = get_text('author_info', version=app_version)
@@ -46,23 +44,10 @@ class AuthorDialog(QDialog):
         donate_html += f"{get_text('contact_suggestions_label')}<br><a href='{telegram_contact}'>{telegram_contact}</a>"
 
         # Объединяем тексты (авторский текст как обычный, остальное HTML)
-        # Используем replace для переносов строк в авторском тексте
         full_html_text = f"<p>{author_text.replace(chr(10), '<br>')}</p><hr><p>{donate_html}</p>"
+        self._create_widgets(full_html_text)
+        self._setup_widgets(layout)
 
-
-        text_edit = QTextEdit()
-        text_edit.setHtml(full_html_text) # Устанавливаем HTML
-        text_edit.setReadOnly(True)
-        # Этот флаг включает обработку ссылок и их активацию
-        text_edit.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction | Qt.TextInteractionFlag.LinksAccessibleByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
-        # Включаем открытие внешних ссылок в браузере
-        text_edit.setOpenExternalLinks(True)
-
-        layout.addWidget(text_edit)
-
-        close_button = QPushButton("OK") # Используем стандартный текст "OK"
-        close_button.clicked.connect(self.accept) # self.accept закрывает QDialog с результатом Accepted
-        layout.addWidget(close_button)
 
     def center_on_parent(self):
         """Центрирует диалог относительно родительского окна."""
@@ -75,6 +60,25 @@ class AuthorDialog(QDialog):
             center_point.setX(max(screen_geometry.left(), min(center_point.x(), screen_geometry.right() - self.width())))
             center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
+
+    def _create_widgets(self, full_html_text):
+        """Создает виджеты."""
+        self.text_edit = QTextEdit() # удаляем запятую
+        self.text_edit.setHtml(full_html_text)
+        self.text_edit.setReadOnly(True)
+        self.text_edit.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction |
+            Qt.TextInteractionFlag.LinksAccessibleByKeyboard |
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+        self.text_edit.setOpenExternalLinks(True)
+
+    def _setup_widgets(self, layout):
+        """Настраивает виджеты."""
+        layout.addWidget(self.text_edit)
+        close_button = QPushButton("OK")
+        close_button.clicked.connect(self.accept)
+        layout.addWidget(close_button)
 
 
 class HeroRatingDialog(QDialog):
@@ -95,7 +99,7 @@ class HeroRatingDialog(QDialog):
         counter_counts = {hero: 0 for hero in heroes}
         for counters_list in heroes_counters.values():
             for counter_hero in counters_list:
-                 if counter_hero in counter_counts:
+                if counter_hero in counter_counts:
                      counter_counts[counter_hero] += 1
 
         # Сортируем героев по возрастанию количества раз, когда они являются контрпиком

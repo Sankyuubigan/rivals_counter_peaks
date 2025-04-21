@@ -1,53 +1,70 @@
 # File: left_panel.py
 from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget
 
-def create_left_panel(parent):
-    """Создает левую панель (ScrollArea + ResultFrame + ResultLabel)."""
-    left_frame = QFrame(parent)
-    left_frame.setObjectName("left_frame_container") # Имя для контейнера левой панели
-    layout = QVBoxLayout(left_frame)
-    layout.setObjectName("left_frame_layout")
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(0) # Убираем расстояние между ScrollArea и другими элементами (если будут)
+from core.horizontal_list import HorizontalList
 
-    scroll_area = QScrollArea(left_frame)
-    scroll_area.setObjectName("left_scroll_area")
-    scroll_area.setWidgetResizable(True)
-    # Убираем рамку у ScrollArea
-    scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-    layout.addWidget(scroll_area)
+class LeftPanel:
+    def __init__(self, parent: QWidget):
+        self.parent = parent
+        self.left_frame = None
+        self.scroll_area = None
+        self.result_frame = None
+        self.heroes_list = None
+        self.result_label = None
+        self.setup_ui()
 
-    # Frame внутри ScrollArea, где будут отображаться результаты
-    result_frame = QFrame()
-    result_frame.setObjectName("result_frame")
-    # Убираем рамку у result_frame, стилизуем через display.py
-    result_frame.setFrameShape(QFrame.Shape.NoFrame)
-    scroll_area.setWidget(result_frame)
+    def setup_ui(self):
+        self._create_widgets()
+        self._setup_widgets()
+        self._create_layout()
+        self._setup_layout()
 
-    # Layout для result_frame (создается здесь, но заполняется в display.py)
-    result_layout = QVBoxLayout(result_frame)
-    result_layout.setObjectName("result_layout")
-    result_layout.setAlignment(Qt.AlignmentFlag.AlignTop) # Элементы добавляются сверху вниз
-    result_layout.setContentsMargins(2, 2, 2, 2) # Небольшие отступы внутри
-    result_layout.setSpacing(1) # Минимальное расстояние между элементами
-    result_frame.setLayout(result_layout) # Устанавливаем layout для frame
+    def _create_widgets(self):
+        """Создает виджеты: QFrame, QScrollArea, QLabel."""
+        self.left_frame = QFrame(self.parent)
+        self.scroll_area = QScrollArea(self.left_frame)
+        self.result_frame = QFrame()
+        self.heroes_list = HorizontalList()
+        self.result_label = QLabel("Выберите героев")
 
-    # Метка, которая показывается, когда герои не выбраны
-    # Она создается здесь, но добавляется/скрывается в display.py
-    result_label = QLabel("Выберите героев") # Начальный текст
-    result_label.setObjectName("result_label") # Имя объекта для поиска
-    result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    result_label.setStyleSheet("color: gray; padding: 10px;") # Стиль для метки
-    result_label.hide() # Скрываем по умолчанию
-    result_layout.addWidget(result_label) # Добавляем в layout, чтобы ее можно было найти
+    def _setup_widgets(self):
+        """Настраивает виджеты."""
+        self.left_frame.setObjectName("left_frame_container")
+        self.scroll_area.setObjectName("left_scroll_area")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.result_frame.setObjectName("result_frame")
+        self.result_frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setWidget(self.result_frame)
+        self.result_label.setObjectName("result_label")
+        self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.result_label.setStyleSheet("color: gray; padding: 10px;")
+        self.result_label.hide()
+        self.heroes_list.setObjectName("left_heroes_list")
 
-    def update_scrollregion():
+    def _create_layout(self):
+        """Создает layout."""
+        self.layout = QVBoxLayout(self.left_frame)
+        self.result_layout = QVBoxLayout(self.result_frame)
+
+    def _setup_layout(self):
+        """Настраивает layout."""
+        self.layout.setObjectName("left_frame_layout")
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(self.scroll_area, )
+        self.result_layout.setObjectName("result_layout")
+        self.result_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.result_layout.setContentsMargins(2, 2, 2, 2)
+        self.result_layout.setSpacing(1)
+        self.result_frame.setLayout(self.result_layout)
+        self.result_layout.addWidget(self.result_label)
+        self.result_layout.addWidget(self.heroes_list)
+    def update_scrollregion(self):
         """Обновляет геометрию ScrollArea."""
-        # print("[DEBUG] update_scrollregion called")
-        scroll_area.updateGeometry()
-        # Можно добавить прокрутку вверх, если нужно
-        # scroll_area.verticalScrollBar().setValue(0)
+        self.scroll_area.updateGeometry()
 
-    # Возвращаем ScrollArea (холст), Frame для результатов, Метку и функцию обновления
-    return scroll_area, result_frame, result_label, update_scrollregion
+    def get_widgets(self):
+        return self.scroll_area, self.result_frame, self.result_label, self.update_scrollregion
