@@ -7,7 +7,7 @@ from left_panel import create_left_panel
 from right_panel import create_right_panel
 from images_load import get_images_for_mode, SIZES
 from translations import get_text
-from .mode import Mode
+from core.mode import Mode
 
 
 PANEL_MIN_WIDTHS = {
@@ -19,6 +19,14 @@ MODE_DEFAULT_WINDOW_SIZES = {
     'max': {'width': 1100, 'height': 800}, 'middle': {'width': 950, 'height': 600},'min': {'width': 600, 'height': 0} # Высота будет переопределена в update_interface_for_mode
 }
 
+def change_mode(window, mode_name):
+    """Переключает режим работы приложения."""
+    print(f"[ACTION] Запрос на смену режима на: {mode_name}")
+    if mode_name != window.mode_manager.current_mode:
+        print(f"[MODE_CHANGE] Меняю режим на: {mode_name}")
+        window.mode_manager.change_mode(mode_name)
+        update_interface_for_mode(window) # Обновляем UI
+
 def update_interface_for_mode(window):
     """Перестраивает интерфейс для нового режима."""
     t0 = time.time()
@@ -28,7 +36,7 @@ def update_interface_for_mode(window):
     t1 = time.time()
     if window.inner_layout:
         # print("Clearing inner_layout...")
-        window.mode_manager.clear_layout_recursive(window.inner_layout)
+        window.mode_manager.clear_layout_recursive(window.inner_layout) # Теперь вызываем метод mode_manager
     else: # Если inner_layout еще не создан
         if window.main_widget:
             window.inner_layout = QHBoxLayout(window.main_widget)

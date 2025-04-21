@@ -93,7 +93,7 @@ class RightPanel:
             self.hero_items[hero] = item
 
     def _setup_widgets(self):
-       """
+        """
         Настройка виджетов.
         """
         # --- Настройка QListWidget ---
@@ -160,7 +160,7 @@ class RightPanel:
         )
         if self.initial_mode == "max":
             icon_size = QSize(60, 60); grid_size = QSize(85, 95); self.list_widget.setSpacing(10)
-        else:  # middle
+        else:
             icon_size = QSize(40, 40)
             grid_size = QSize(icon_size.width() + 15, icon_size.height() + 10)
             self.list_widget.setSpacing(4)

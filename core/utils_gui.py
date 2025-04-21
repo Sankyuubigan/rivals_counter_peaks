@@ -6,6 +6,7 @@ import pyperclip
 
 HERO_ICON_WIDTH = 60
 ITEM_SPACING = 6
+
 def copy_to_clipboard(logic):
     """Копирует рекомендуемую команду (effective_team) в буфер обмена."""
     print("Получение эффективной команды для копирования...")
@@ -16,11 +17,11 @@ def copy_to_clipboard(logic):
         effective_team = logic.effective_team
     # Иначе, если есть выбранные герои, то считаем команду
     elif logic.selected_heroes:
-         print("Пересчет эффективной команды для копирования...")
-         counter_scores = logic.calculate_counter_scores()
-         effective_team = logic.calculate_effective_team(counter_scores)
+        print("Пересчет эффективной команды для копирования...")
+        counter_scores = logic.calculate_counter_scores()
+        effective_team = logic.calculate_effective_team(counter_scores)
     else:
-         print("Нет выбранных героев, команда не может быть рассчитана.")
+        print("Нет выбранных героев, команда не может быть рассчитана.")
 
     print(f"Эффективная команда для копирования: {effective_team}")
 
@@ -33,22 +34,21 @@ def copy_to_clipboard(logic):
             QMessageBox.information(None, # parent=None, чтобы сообщение было поверх всего
                                      get_text('success', language=logic.DEFAULT_LANGUAGE),
                                      get_text('copied_to_clipboard', language=logic.DEFAULT_LANGUAGE))
-        except pyperclip.PyperclipException as e:
-             print(f"Ошибка pyperclip при копировании: {e}")
-             QMessageBox.warning(None,
-                                 get_text('error', language=logic.DEFAULT_LANGUAGE),
-                                 get_text('copy_error_detailed', e=str(e), language=logic.DEFAULT_LANGUAGE))
+        except pyperclip.PyperclipException as e: 
+            print(f"Ошибка pyperclip при копировании: {e}")
+            QMessageBox.warning(None,
+                                get_text('error', language=logic.DEFAULT_LANGUAGE),
+                                get_text('copy_error_detailed', e=str(e), language=logic.DEFAULT_LANGUAGE))
         except Exception as e:
-             print(f"Неожиданная ошибка при копировании: {e}")
-             QMessageBox.warning(None, get_text('error', language=logic.DEFAULT_LANGUAGE), get_text('copy_error', language=logic.DEFAULT_LANGUAGE))
-
+            print(f"Неожиданная ошибка при копировании: {e}")
+            QMessageBox.warning(None, get_text('error', language=logic.DEFAULT_LANGUAGE), get_text('copy_error', language=logic.DEFAULT_LANGUAGE))
     else:
         # Если команда пуста (не рассчитана или нет рекомендаций)
         print("Нет данных для копирования (effective_team пуст или не рассчитана).")
         QMessageBox.warning(None, get_text('warning', language=logic.DEFAULT_LANGUAGE), get_text('no_data_to_copy', language=logic.DEFAULT_LANGUAGE))
 
-
-def calculate_columns(self):
+def calculate_columns(self): 
+    
     """Рассчитывает оптимальное количество колонок для QListWidget.
 
     Возвращает:
@@ -67,14 +67,13 @@ def calculate_columns(self):
         num_columns = self._calculate_num_columns(list_width, item_width)
         if self.right_list_widget.count() < num_columns:
             if num_columns > 1:
-                num_columns -= 1
-        
+                num_columns -= 1   
         return self._update_cache(num_columns)
-       
     except Exception as e:
         print(f"[ERROR] Calculating columns: {e}")
         return num_columns_cache
 
+    
 def _check_min_mode(self):
     """Проверяет, находится ли приложение в режиме min или список скрыт."""
     return not self.right_list_widget or not self.right_list_widget.isVisible() or self.mode_manager.current_mode == 'min'
@@ -104,10 +103,3 @@ def _update_cache(self, num_columns):
         self._num_columns_cache = num_columns  # Обновляем кэш
 
     return num_columns
-
-
-
-
-
-        else:
-            pass
