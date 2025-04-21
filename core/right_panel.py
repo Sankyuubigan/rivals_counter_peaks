@@ -1,5 +1,6 @@
 # File: right_panel.py
 from PySide6.QtCore import QSize, Qt
+
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -14,6 +15,9 @@ from PySide6.QtWidgets import (
 
 # Импортируем делегат
 from delegate import HotkeyFocusDelegate
+
+# Используется для передачи имени героя
+HERO_NAME_ROLE = Qt.UserRole + 1
 
 # Принимаем 'window' для доступа к logic и right_images
 def create_right_panel(window, initial_mode="middle"):
@@ -30,7 +34,6 @@ class RightPanel:
     """
     Класс для создания и управления правой панелью.
     """
-    HERO_NAME_ROLE = Qt.UserRole + 1
 
     def __init__(self, window, initial_mode="middle"):
         """
