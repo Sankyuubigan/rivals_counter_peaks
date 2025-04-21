@@ -1,8 +1,6 @@
-# File: translations.py
-import locale
 
 # Определяем язык по умолчанию, с фолбэком на ru_RU
-DEFAULT_LANGUAGE = locale.getdefaultlocale()[0] if locale.getdefaultlocale() and locale.getdefaultlocale()[0] in ['ru_RU', 'en_US'] else 'ru_RU'
+DEFAULT_LANGUAGE = 'ru_RU'
 SUPPORTED_LANGUAGES = {'ru_RU': 'Русский', 'en_US': 'English'}
 
 TRANSLATIONS = {

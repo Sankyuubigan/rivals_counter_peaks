@@ -1,6 +1,6 @@
 # File: utils_gui.py
 from PySide6.QtWidgets import QMessageBox, QLabel, QPushButton
-from translations import get_text, translate_text
+from translations import get_text
 import pyperclip
 # Импорт build убран
 
