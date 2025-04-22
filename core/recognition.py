@@ -24,7 +24,7 @@ class RecognitionWorker(QObject):
         self.logic = logic
         self.recognition_area = recognition_area
         self.recognition_threshold = recognition_threshold
-        self.templates = templates
+        self.templates = templates  # Передаём шаблоны
 
     def _get_screenshot(self):
         """Делает скриншот."""
@@ -105,17 +105,15 @@ class RecognitionManager(QObject):
 
     recognition_complete_signal = Signal(list)
 
-    def __init__(self, main_window, logic, hero_templates):
+    def __init__(self, main_window, logic):
         print(f"[LOG] RecognitionManager.__init__ called from file {__file__}")
         print(f"[LOG] RecognitionManager.__init__ called with arguments: {locals()}")
         print("[LOG] RecognitionManager.__init__ started")
         super().__init__()
         self.main_window = main_window
         self.logic = logic
-        self._recognition_thread = None
-        self._recognition_worker = None
-        print(f"Загружено шаблонов: {len(hero_templates)}")
-        self.hero_templates = hero_templates
+        self._recognition_thread = None  # Инициализируем атрибуты
+        self._recognition_worker = None  # Инициализируем атрибуты
 
         print("[LOG] RecognitionManager.__init__ finished")
     def _get_text_from_region(self):
@@ -139,17 +137,12 @@ class RecognitionManager(QObject):
             QMessageBox.information(self.main_window, "Распознавание", "Процесс распознавания уже выполняется.")
             return
 
-        if not self.hero_templates:
-            print("[ERROR] Шаблоны героев не загружены. Распознавание невозможно.")
-            QMessageBox.warning(self.main_window, get_text('error'), get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
-            return
-
-        # Создаем и запускаем поток
+         # Создаем и запускаем поток
         self._recognition_worker = RecognitionWorker(
             self.logic,
             self.RECOGNITION_AREA,
             RECOGNITION_THRESHOLD,
-            self.hero_templates
+            self.main_window.hero_templates # Берём шаблоны из main_window
         )
         self._recognition_thread = QThread(self.main_window) # Указываем родителя для управления жизненным циклом
         self._recognition_worker.moveToThread(self._recognition_thread)
@@ -163,6 +156,7 @@ class RecognitionManager(QObject):
         self._recognition_worker.finished.connect(self._recognition_thread.quit)
         self._recognition_worker.finished.connect(self._recognition_worker.deleteLater)  # Удаляем воркер
         self._recognition_thread.finished.connect(self._recognition_thread.deleteLater)  # Удаляем поток
+
         self._recognition_thread.finished.connect(self._reset_recognition_thread)  # Сбрасываем ссылки
 
         self._recognition_thread.start()

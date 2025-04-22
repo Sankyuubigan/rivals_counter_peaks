@@ -15,14 +15,13 @@ class MainWindow(QMainWindow):
             logic: Экземпляр класса CounterpickLogic.
             hero_templates (dict): Шаблоны для распознавания героев.
         """
-        print("[LOG] MainWindow.__init__ started")
+        print(f"[LOG] MainWindow.__init__ started with hero_templates: {len(hero_templates)}")
         super().__init__()
         self.logic = logic  # экземпляр логики, инициализированный в main.py
         self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
         self.setWindowIcon(QIcon(load_default_pixmap()))
 
-        # Загрузка шаблонов
-        self.hero_templates = load_hero_templates()
+        self.hero_templates = hero_templates
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
 
