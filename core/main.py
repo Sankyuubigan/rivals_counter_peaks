@@ -75,7 +75,7 @@ if __name__ == "__main__":
     print("[LOG] main() - About to create MainWindow")
 
     try:
-        window = MainWindow(logic)
+        window = MainWindow(logic, hero_templates)
         print("[LOG] main() - MainWindow created")
         print("Отображение MainWindow...")
 
