@@ -1,109 +1,142 @@
+# File: core/top_panel.py
 from PySide6.QtWidgets import (
-    QFrame,
-    QLabel,
-    QSlider,
-    QComboBox,
-    QPushButton,
-    QHBoxLayout,
-    QSpacerItem,
+    QFrame, QLabel, QSlider, QComboBox, QPushButton, QHBoxLayout, QSpacerItem, QSizePolicy, QWidget
 )
 from PySide6.QtCore import Qt
-from translations import get_text, SUPPORTED_LANGUAGES
-from dialogs import show_author_info, show_hero_rating
+from core.translations import get_text, SUPPORTED_LANGUAGES
+from core.dialogs import show_author_info, show_hero_rating
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from gui import MainWindow  # Только для type hinting, избегаем циклического импорта
-# <<< ------------------------------------------------- >>>
-
-
-# <<< ИЗМЕНЕНИЕ: parent теперь типизирован как MainWindow >>>
-def create_top_panel(parent: 'MainWindow', switch_mode_callback, logic, app_version):
-# <<< ------------------------------------------------- >>>
-    top_frame = QFrame(parent); top_frame.setObjectName("top_frame"); top_frame.setStyleSheet("background-color: lightgray;"); top_frame.setFixedHeight(40)
-    panel = TopPanel(parent, switch_mode_callback, logic, app_version)
-    return panel.top_frame
+    from .main_window import MainWindow # Используем относительный импорт для type hinting
 
 
 class TopPanel:
+    """Класс для создания и управления верхней панелью."""
+
     def __init__(self, parent: 'MainWindow', switch_mode_callback, logic, app_version):
         self.parent = parent
         self.switch_mode_callback = switch_mode_callback
-        self.app_version = app_version
         self.logic = logic
+        self.app_version = app_version
+
+        # Создаем основной QFrame
         self.top_frame = QFrame(parent)
-        self.author_button = None
-        self.rating_button = None
-        self.setup_ui()
-
-    def setup_ui(self):
-        self._create_widgets()
-        self._setup_widgets()
-        self._create_layout()
-        self._setup_layout()
-
-    def _create_widgets(self):
         self.top_frame.setObjectName("top_frame")
-        self.top_frame.setStyleSheet("background-color: lightgray;")
+        self.top_frame.setStyleSheet("QFrame#top_frame { background-color: lightgray; }") # Стиль с ID селектором
         self.top_frame.setFixedHeight(40)
 
-        self.transparency_slider = QSlider(Qt.Orientation.Horizontal)
-        self.transparency_slider.setObjectName("transparency_slider")
-        self.language_label = QLabel(get_text('language'))
-        self.language_label.setObjectName("language_label")
-        self.language_combo = QComboBox()
-        self.language_combo.setObjectName("language_combo")
-        self.mode_label = QLabel(get_text('mode'))
-        self.mode_label.setObjectName("mode_label")
-        self.min_button = QPushButton(get_text('mode_min'))
-        self.min_button.setObjectName("min_button")
-        self.middle_button = QPushButton(get_text('mode_middle'))
-        self.middle_button.setObjectName("middle_button")
-        self.max_button = QPushButton(get_text('mode_max'))
-        self.max_button.setObjectName("max_button")
-        self.topmost_button = QPushButton()
-        self.topmost_button.setObjectName("topmost_button")
-        self.author_button = QPushButton(get_text('about_author'))
-        self.author_button.setObjectName("author_button")
-        self.rating_button = QPushButton(get_text('hero_rating'))
-        self.rating_button.setObjectName("rating_button")
-        self.version_label = QLabel(f"v{self.app_version}")
-        self.version_label.setObjectName("version_label")
-        self.close_button = QPushButton("X")
-        self.close_button.setObjectName("close_button")
+        # Атрибуты для кнопок, которые могут скрываться/показываться
+        self.author_button: QPushButton | None = None
+        self.rating_button: QPushButton | None = None
 
-    def _setup_widgets(self):
+        # Создаем и настраиваем layout и виджеты
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Создает layout и виджеты для панели."""
+        layout = QHBoxLayout(self.top_frame)
+        layout.setContentsMargins(5, 2, 5, 2)
+        layout.setSpacing(5)
+
+        # --- Виджеты ---
         # Прозрачность
-        self.transparency_slider.setRange(10, 100)
-        self.transparency_slider.setValue(100)
-        self.transparency_slider.setFixedWidth(100)
-        self.transparency_slider.setStyleSheet(""" QSlider { height: 15px; } QSlider::groove:horizontal { border: 1px solid #999; height: 6px; background: #d3d3d3; margin: 0px; } QSlider::handle:horizontal { background: #4CAF50; border: 1px solid #388E3C; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; } QSlider::handle:horizontal:hover { background: #45a049; } """)
-        self.transparency_slider.valueChanged.connect(lambda val: self.parent.setWindowOpacity(val / 100.0))
+        self.transparency_slider = self._create_slider()
+        layout.addWidget(self.transparency_slider)
 
         # Язык
+        self.language_label = QLabel(get_text('language', language=self.logic.DEFAULT_LANGUAGE))
+        self.language_label.setObjectName("language_label")
         self.language_label.setStyleSheet("font-size: 10pt;")
-        self.language_combo.addItems(SUPPORTED_LANGUAGES.values())
-        self.language_combo.setCurrentText(SUPPORTED_LANGUAGES[self.logic.DEFAULT_LANGUAGE])
-        self.language_combo.setStyleSheet("font-size: 10pt;")
-        self.language_combo.currentTextChanged.connect(lambda text: self.parent.switch_language_callback(list(SUPPORTED_LANGUAGES.keys())[list(SUPPORTED_LANGUAGES.values()).index(text)]))
+        self.language_combo = self._create_language_combo()
+        layout.addWidget(self.language_label)
+        layout.addWidget(self.language_combo)
 
         # Режим
+        self.mode_label = QLabel(get_text('mode', language=self.logic.DEFAULT_LANGUAGE))
+        self.mode_label.setObjectName("mode_label")
         self.mode_label.setStyleSheet("font-size: 10pt;")
-        self.min_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.min_button.clicked.connect(lambda: self.switch_mode_callback("min"))
-        self.middle_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.middle_button.clicked.connect(lambda: self.switch_mode_callback("middle"))
-        self.max_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.max_button.clicked.connect(lambda: self.switch_mode_callback("max"))
+        self.min_button = self._create_mode_button('mode_min', "min")
+        self.middle_button = self._create_mode_button('mode_middle', "middle")
+        self.max_button = self._create_mode_button('mode_max', "max")
+        layout.addWidget(self.mode_label)
+        layout.addWidget(self.min_button)
+        layout.addWidget(self.middle_button)
+        layout.addWidget(self.max_button)
 
-        # Кнопка поверх окон
-        def update_topmost_visual_state():
-                is_topmost = self.parent._is_win_topmost
-                self.topmost_button.setText(get_text('topmost_on', language=self.logic.DEFAULT_LANGUAGE) if is_topmost else get_text('topmost_off', language=self.logic.DEFAULT_LANGUAGE))
-                bg_color = "#4CAF50" if is_topmost else "gray"
-                border_color = "#388E3C" if is_topmost else "#666666"
-                hover_bg_color = "#45a049" if is_topmost else "#757575"
-                self.topmost_button.setStyleSheet(f"""
+        # Поверх окон
+        self.topmost_button = self._create_topmost_button()
+        layout.addWidget(self.topmost_button)
+
+        # Растяжка
+        layout.addStretch(1)
+
+        # Кнопки Об авторе / Рейтинг
+        self.rating_button = self._create_info_button('hero_rating', lambda: show_hero_rating(self.parent, self.app_version))
+        self.author_button = self._create_info_button('about_author', lambda: show_author_info(self.parent, self.app_version))
+        layout.addWidget(self.rating_button)
+        layout.addWidget(self.author_button)
+
+        # Версия
+        self.version_label = QLabel(f"v{self.app_version}")
+        self.version_label.setObjectName("version_label")
+        self.version_label.setStyleSheet("font-size: 9pt; color: grey; margin-left: 10px; margin-right: 5px;")
+        layout.addWidget(self.version_label)
+
+        # Кнопка Закрыть
+        self.close_button = self._create_close_button()
+        # Вставляем кнопку закрытия после растяжки
+        self._insert_widget_after_stretch(layout, self.close_button)
+
+    def _create_slider(self) -> QSlider:
+        """Создает слайдер прозрачности."""
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setObjectName("transparency_slider")
+        slider.setRange(10, 100); slider.setValue(100); slider.setFixedWidth(100)
+        slider.setStyleSheet("""
+            QSlider { height: 15px; }
+            QSlider::groove:horizontal { border: 1px solid #999; height: 6px; background: #d3d3d3; margin: 0px; border-radius: 3px;}
+            QSlider::handle:horizontal { background: #4CAF50; border: 1px solid #388E3C; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }
+            QSlider::handle:horizontal:hover { background: #45a049; }
+        """)
+        slider.valueChanged.connect(lambda val: self.parent.setWindowOpacity(val / 100.0))
+        return slider
+
+    def _create_language_combo(self) -> QComboBox:
+        """Создает комбо-бокс выбора языка."""
+        combo = QComboBox()
+        combo.setObjectName("language_combo")
+        combo.addItems(SUPPORTED_LANGUAGES.values())
+        combo.setCurrentText(SUPPORTED_LANGUAGES[self.logic.DEFAULT_LANGUAGE])
+        combo.setStyleSheet("font-size: 10pt;")
+        # Используем lambda для передачи аргумента в switch_language_callback
+        combo.currentTextChanged.connect(
+            lambda text: self.parent.switch_language(
+                list(SUPPORTED_LANGUAGES.keys())[list(SUPPORTED_LANGUAGES.values()).index(text)]
+            )
+        )
+        return combo
+
+    def _create_mode_button(self, text_key: str, mode_name: str) -> QPushButton:
+        """Создает кнопку для переключения режима."""
+        button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE))
+        button.setObjectName(f"{mode_name}_mode_button") # Используем имя режима в objectName
+        button.setStyleSheet("font-size: 10pt; padding: 2px;")
+        button.clicked.connect(lambda: self.switch_mode_callback(mode_name)) # switch_mode_callback - это self.change_mode из MainWindow
+        return button
+
+    def _create_topmost_button(self) -> QPushButton:
+        """Создает кнопку переключения 'Поверх окон'."""
+        button = QPushButton()
+        button.setObjectName("topmost_button")
+
+        def update_visual_state():
+            is_topmost = self.parent._is_win_topmost
+            button.setText(get_text('topmost_on' if is_topmost else 'topmost_off', language=self.logic.DEFAULT_LANGUAGE))
+            bg_color = "#4CAF50" if is_topmost else "gray"
+            border_color = "#388E3C" if is_topmost else "#666666"
+            hover_bg_color = "#45a049" if is_topmost else "#757575"
+            button.setStyleSheet(f"""
                 QPushButton {{
                     font-size: 10pt; padding: 2px;
                     background-color: {bg_color};
@@ -112,58 +145,67 @@ class TopPanel:
                     color: white;
                     min-width: 80px;
                 }}
-                QPushButton:hover {{
-                    background-color: {hover_bg_color};
-                }}
+                QPushButton:hover {{ background-color: {hover_bg_color}; }}
             """)
-        setattr(self.topmost_button, '_update_visual_state', update_topmost_visual_state)
-        self.topmost_button.clicked.connect(self.parent.set_topmost_winapi)
-        update_topmost_visual_state() # Обновление состояния после добавления
 
-        self.author_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.author_button.clicked.connect(lambda: show_author_info(self.parent, self.app_version))
-        self.author_button.setVisible(False)
-        self.rating_button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        self.rating_button.clicked.connect(lambda: show_hero_rating(self.parent, self.app_version))
-        self.rating_button.setVisible(False)
+        setattr(button, '_update_visual_state', update_visual_state) # Сохраняем функцию обновления
+        button.clicked.connect(self.parent.toggle_topmost_winapi) # Подключаем к методу MainWindow
+        update_visual_state() # Устанавливаем начальный вид
+        return button
 
-        self.version_label.setStyleSheet("font-size: 9pt; color: grey; margin-left: 10px; margin-right: 5px;")
+    def _create_info_button(self, text_key: str, callback) -> QPushButton:
+        """Создает кнопки 'Об авторе' и 'Рейтинг героев'."""
+        button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE))
+        button.setObjectName(f"{text_key}_button")
+        button.setStyleSheet("font-size: 10pt; padding: 2px;")
+        button.clicked.connect(callback)
+        button.setVisible(False) # Скрыты по умолчанию
+        return button
 
-        self.close_button.setFixedSize(25, 25)
-        self.close_button.setStyleSheet("QPushButton { font-size: 10pt; font-weight: bold; padding: 1px; color: black; background-color: #ff605c; border-radius: 5px; margin-left: 5px; } QPushButton:hover { background-color: #e04340; }")
-        self.close_button.clicked.connect(self.parent.close)
-        self.close_button.setVisible(False)
+    def _create_close_button(self) -> QPushButton:
+        """Создает кнопку закрытия окна (для min режима)."""
+        button = QPushButton("X")
+        button.setObjectName("close_button")
+        button.setFixedSize(25, 25)
+        button.setStyleSheet("""
+            QPushButton { font-size: 10pt; font-weight: bold; padding: 1px; color: black; background-color: #ff605c; border-radius: 5px; margin-left: 5px; border: 1px solid #E04340; }
+            QPushButton:hover { background-color: #e04340; }
+            QPushButton:pressed { background-color: #c0302c; }
+        """)
+        button.clicked.connect(self.parent.close)
+        button.setVisible(False) # Скрыта по умолчанию
+        return button
 
-    def _create_layout(self):
-        self.layout = QHBoxLayout(self.top_frame)
-
-    def _setup_layout(self):
-        self.layout.setContentsMargins(5, 2, 5, 2)
-        self.layout.setSpacing(5)
-        self.layout.addWidget(self.transparency_slider)
-        self.layout.addWidget(self.language_label,)
-        self.layout.addWidget(self.language_combo)
-        self.layout.addWidget(self.mode_label)
-        self.layout.addWidget(self.min_button)
-        self.layout.addWidget(self.middle_button)
-        self.layout.addWidget(self.max_button)
-        self.layout.addWidget(self.topmost_button)
-        self.layout.addStretch(1)
-        self.layout.addWidget(self.rating_button)
-        self.layout.addWidget(self.author_button)
-        self.layout.addWidget(self.version_label)
-
-        # Вставка close_button после растяжки
-        self._insert_close_button()
-
-    def _insert_close_button(self):
+    def _insert_widget_after_stretch(self, layout: QHBoxLayout, widget: QWidget):
+        """Вставляет виджет в layout после первого горизонтального QSpacerItem."""
         stretch_index = -1
-        for i in range(self.layout.count()):
-            item = self.layout.itemAt(i)
+        for i in range(layout.count()):
+            item = layout.itemAt(i)
             if isinstance(item, QSpacerItem) and item.spacerItem().expandingDirections() & Qt.Orientation.Horizontal:
                 stretch_index = i
                 break
         if stretch_index != -1:
-            self.layout.insertWidget(stretch_index + 1, self.close_button)
+            layout.insertWidget(stretch_index + 1, widget)
         else:
-            self.layout.addWidget(self.close_button)
+            layout.addWidget(widget) # Добавляем в конец, если растяжки нет
+
+    def update_language(self):
+        """Обновляет тексты элементов на панели."""
+        # Обновляем тексты всех статичных меток и кнопок
+        self.language_label.setText(get_text('language', language=self.logic.DEFAULT_LANGUAGE))
+        self.mode_label.setText(get_text('mode', language=self.logic.DEFAULT_LANGUAGE))
+        self.min_button.setText(get_text('mode_min', language=self.logic.DEFAULT_LANGUAGE))
+        self.middle_button.setText(get_text('mode_middle', language=self.logic.DEFAULT_LANGUAGE))
+        self.max_button.setText(get_text('mode_max', language=self.logic.DEFAULT_LANGUAGE))
+        # Обновляем текст кнопки topmost через ее метод
+        update_func = getattr(self.topmost_button, '_update_visual_state', None)
+        if update_func: update_func()
+        # Обновляем тексты информационных кнопок
+        if self.author_button: self.author_button.setText(get_text('about_author', language=self.logic.DEFAULT_LANGUAGE))
+        if self.rating_button: self.rating_button.setText(get_text('hero_rating', language=self.logic.DEFAULT_LANGUAGE))
+        # Обновляем комбо-бокс языка
+        current_lang_code = self.logic.DEFAULT_LANGUAGE
+        current_text = SUPPORTED_LANGUAGES.get(current_lang_code, "N/A")
+        self.language_combo.blockSignals(True)
+        self.language_combo.setCurrentText(current_text)
+        self.language_combo.blockSignals(False)

@@ -1,12 +1,6 @@
-# File: core/hook-keyboard.py
-# Этот файл должен лежать в той же папке, что и build.py
-
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+# File: build_scripts/hook-keyboard.py
+from PyInstaller.utils.hooks import collect_submodules
 
 # Собираем все подмодули библиотеки keyboard
 hiddenimports = collect_submodules('keyboard')
-print(f"[Hook-Keyboard] Found hidden imports: {hiddenimports}")
-
-# На всякий случай попробуем собрать и файлы данных (если они есть)
-# datas = collect_data_files('keyboard')
-# print(f"[Hook-Keyboard] Found data files: {datas}")
+print(f"[hook-keyboard.py] Найденные скрытые импорты для 'keyboard': {hiddenimports}")
