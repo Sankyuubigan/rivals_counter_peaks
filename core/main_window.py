@@ -50,16 +50,16 @@ class MainWindow(QMainWindow):
         print("[LOG] _handle_clear_all called")
         self.logic.clear_all()
         self.update_ui_after_logic_change()
-        if self.right_list_widget and self.right_list_widget.isVisible() and self.mode != 'min':
-        """
-        Показывает контекстное меню для назначения/снятия приоритета с героя.
-        """
-        menu = QMenu()
-        # Добавьте действия в меню, например:
-        menu.addAction("Назначить приоритет")
-        menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
-    
+        if self.right_list_widget and self.right_list_widget.isVisible() and self.mode != 'min':            
+            old_index = self.hotkey_cursor_index
+            count = self.right_list_widget.count()
+            self.hotkey_cursor_index = 0 if count > 0 else -1
+            if self.hotkey_cursor_index != old_index or old_index == -1:
+                self._update_hotkey_highlight(old_index)
+        else:
+            self.hotkey_cursor_index = -1    
     def copy_to_clipboard(self):
+        
         """
         Копирует выбранные имена героев в буфер обмена.
         """
@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
         self.right_images = load_right_panel_images()
         super().__init__()
         
+        self.hotkey_cursor_index = -1
         self.get_text = get_text
         
         self.logic = logic  # экземпляр логики, инициализированный в main.py
