@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from core.translations import get_text
+
 # Импортируем делегат
 from delegate import HotkeyFocusDelegate
 
@@ -44,7 +46,7 @@ class RightPanel:
         self.initial_mode = initial_mode
         self.frame = QFrame(window)
         self.frame.setObjectName("right_frame")
-        self.selected_heroes_label = QLabel(self.logic.get_text("selected"))
+        self.selected_heroes_label = QLabel(get_text("selected"))
         self.setup_ui()
 
     def setup_ui(self):
@@ -69,9 +71,9 @@ class RightPanel:
         self.window.right_list_widget = self.list_widget
         self.list_widget.setObjectName("right_list_widget")
         self.copy_button = QPushButton(self.logic.get_text("copy_rating"))
-        self.copy_button.setObjectName("copy_button")      
+        self.copy_button.setObjectName("copy_button")
         self.clear_button = QPushButton(self.logic.get_text("clear_all"))
-        self.clear_button.setObjectName("clear_button")
+        self.clear_button.setObjectName("clear_button")        
         self.hero_items = {}
         self.window.hero_items = self.hero_items
         for hero in heroes:
@@ -98,14 +100,14 @@ class RightPanel:
         """
         # --- Настройка QListWidget ---
         # Делегат отвечает за отрисовку рамки фокуса хоткея
-        delegate = HotkeyFocusDelegate(self.window)        
+        delegate = HotkeyFocusDelegate(self.window)
         self.list_widget.setItemDelegate(delegate)
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)  # Иконки сеткой
         self.list_widget.setResizeMode(
            QListView.ResizeMode.Adjust
         )  # Автоподстройка колонок
-        self.list_widget.setMovement(QListView.Movement.Static) 
-        self.list_widget.setSelectionMode(
+        self.list_widget.setMovement(QListView.Movement.Static)
+        self.list_widget.setSelectionMode(            
             QAbstractItemView.SelectionMode.MultiSelection
         )  # Множественный выбор
         self.list_widget.setWordWrap(True)  # Перенос текста под иконкой (для max режима)
@@ -180,7 +182,7 @@ class RightPanel:
         """
         Настройка компоновки.
         """
-        self.layout.addWidget(self.list_widget, stretch=1)        
+        self.layout.addWidget(self.list_widget, stretch=1)
         self.layout.addWidget(self.selected_heroes_label)
         self.layout.addWidget(self.copy_button)
         self.layout.addWidget(self.clear_button)
