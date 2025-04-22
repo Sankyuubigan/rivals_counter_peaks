@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(load_default_pixmap()))
 
         self.hero_templates = hero_templates
-        self.mode_manager = ModeManager()
+        self.mode_manager = ModeManager(self)
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
         self.win_api_manager = WinApiManager(self)

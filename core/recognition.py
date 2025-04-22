@@ -103,7 +103,7 @@ class RecognitionManager(QObject):
 
     recognition_complete_signal = Signal(list)
 
-    def __init__(self, main_window, logic, win_api_manager, mode_manager):
+    def __init__(self, main_window, logic, win_api_manager):
         # print(f"[LOG] RecognitionManager.__init__ called from file {__file__}")
         # print(f"[LOG] RecognitionManager.__init__ called with arguments: {locals()}")
         print("[LOG] RecognitionManager.__init__ started")
