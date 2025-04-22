@@ -26,10 +26,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(load_default_pixmap()))
         
         # Загрузка шаблонов
-        print("[LOG] MainWindow.__init__ before load_hero_templates")
-        self.hero_templates = load_hero_templates()
-        print("[LOG] MainWindow.__init__ after load_hero_templates")
-        
+        # print("[LOG] MainWindow.__init__ before load_hero_templates")
+        # self.hero_templates = load_hero_templates()
+        # print("[LOG] MainWindow.__init__ after load_hero_templates")
+
         # Создаем RecognitionManager, передавая ему экземпляр логики
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
         self.rec_manager = RecognitionManager(logic=self.logic)
