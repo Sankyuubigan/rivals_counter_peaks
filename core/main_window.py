@@ -2,6 +2,8 @@ from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
 from PySide6.QtGui import QIcon
 
 from core.logic import CounterpickLogic
+from core.mode import ModeManager
+from core.win_api import WinApiManager
 from core.images_load import load_hero_templates, load_default_pixmap
 from core.recognition import RecognitionManager
 
@@ -31,13 +33,17 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(load_default_pixmap()))
 
         self.hero_templates = hero_templates
+        self.mode_manager = ModeManager()
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
+        self.win_api_manager = WinApiManager(self)
         
+
         # Создаем RecognitionManager, передавая ему экземпляр логики
         # print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager with: logic={self.logic}, hero_templates={self.hero_templates}")
         print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager from file {RecognitionManager.__module__}")
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
+
         self.rec_manager = RecognitionManager(main_window=self,logic=self.logic, win_api_manager = self.win_api_manager)
         self.ui_update_manager = UiUpdateManager(self, self.rec_manager.win_api_manager, self)
         print(f"[LOG] MainWindow.__init__ - RecognitionManager created: {self.rec_manager}")

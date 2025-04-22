@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from core.main_window import MainWindow
 from core.utils import validate_heroes
 
-from core.win_api import WinApiManager
 
 import subprocess
 
@@ -64,9 +63,7 @@ if __name__ == "__main__":
     print("[LOG] Загрузка ресурсов завершена.")
 
     print("[LOG] main() - About to create MainWindow")
-    # print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
     window = MainWindow(logic, hero_templates)
-    win_api_manager = WinApiManager(window)
     if not window:
         print("[ERROR] Не удалось создать экземпляр MainWindow.")
         QMessageBox.critical(None, "Критическая ошибка", "Не удалось инициализировать главное окно.")
