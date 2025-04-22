@@ -8,11 +8,14 @@ from core.recognition import RecognitionManager
 from core.top_panel import create_top_panel
 from core.left_panel import create_left_panel
 from core.right_panel import create_right_panel
-from core.ui_update import update_ui
+from core.ui_update import UiUpdateManager
 
 
 
 class MainWindow(QMainWindow):
+    def switch_mode(self):
+        print("switch_mode callback")
+        
     def __init__(self, logic: CounterpickLogic, hero_templates):
         """
         Инициализирует главное окно приложения.
@@ -36,10 +39,11 @@ class MainWindow(QMainWindow):
         print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager from file {RecognitionManager.__module__}")
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
         self.rec_manager = RecognitionManager(main_window=self,logic=self.logic)
+        self.ui_update_manager = UiUpdateManager(self, self.rec_manager.win_api_manager, self.rec_manager.mode_manager)
         print(f"[LOG] MainWindow.__init__ - RecognitionManager created: {self.rec_manager}")
         
         self.create_main_ui()
-        update_ui(self)
+        self.ui_update_manager.update_ui()
         print("[LOG] MainWindow.__init__ finished")
 
     def create_main_ui(self):
@@ -48,7 +52,7 @@ class MainWindow(QMainWindow):
         """
         print("[LOG] MainWindow.create_main_ui() started")
         # Создаем панели
-        self.top_panel = create_top_panel(self)
+        self.top_panel = create_top_panel(self, self.switch_mode, self.logic, '0.1.0')
         self.left_panel = create_left_panel(self)
         self.right_panel = create_right_panel(self)
 

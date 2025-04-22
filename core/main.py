@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     # Проверяем доступность стиля Fusion перед попыткой его установить
     available_styles = QApplication.style()
-    if "Fusion" is available_styles.name():
+    if "Fusion" == available_styles.name():
         print("[LOG] Стиль Fusion доступен. Устанавливаем.")
         app.setStyle("Fusion")
     else:
