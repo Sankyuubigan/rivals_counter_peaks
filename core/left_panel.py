@@ -49,7 +49,6 @@ class LeftPanel:
         self.result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.result_label.setStyleSheet("color: gray; padding: 10px;")
         self.result_label.hide()
-        self.heroes_list.setObjectName("left_heroes_list")
 
     def _create_layout(self):
         """Создает layout."""

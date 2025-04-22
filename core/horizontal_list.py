@@ -82,10 +82,12 @@ def update_horizontal_icon_list(window) -> None:
     _update_horizontal_icon_list(window)
 
 class HorizontalList:
-    def __init__(self, layout) -> None:
+    def __init__(self, layout):
         self.layout = layout
+        self.widget = QWidget()
 
     def set_items(self, items) -> None:
+        self.widget.setLayout(self.layout)
         self._clear_layout()
         self._add_items_to_layout(items)
 
@@ -151,13 +153,14 @@ def _update_horizontal_icon_list(window) -> None:
         return
     
     horizontal_list = HorizontalList(layout)
-    horizontal_list.set_items(sorted_heroes)
+    horizontal_list.set_items(sorted_heroes) # Создаём виджет и заполняем список
 
     layout.addStretch(1) # Добавляем растяжку в конец
     window.icons_scroll_area.update() # Обновляем область прокрутки
 
     
 class HorizontalList:
+
 
     def __init__(self, layout):
         self.layout = layout
@@ -172,6 +175,7 @@ class HorizontalList:
             elif spacer: layout.removeItem(spacer) # Удаляем spacer item
 
     def _add_items_to_layout(self, sorted_heroes):
+
         for hero in sorted_heroes:
             self._add_item(hero)
 
