@@ -106,6 +106,7 @@ class RecognitionManager(QObject):
     recognition_complete_signal = Signal(list)
 
     def __init__(self, main_window, logic, hero_templates):
+        print("[LOG] RecognitionManager.__init__ started")
         super().__init__()
         self.main_window = main_window
         self.logic = logic
@@ -113,6 +114,7 @@ class RecognitionManager(QObject):
         self._recognition_worker = None
         self.hero_templates = hero_templates
 
+        print("[LOG] RecognitionManager.__init__ finished")
     def _get_text_from_region(self):
         """Распознает текст в заданной области на экране."""
         try:

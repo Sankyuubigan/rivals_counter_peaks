@@ -3,6 +3,7 @@ import sys
 import datetime
 import os
 
+
 # Добавляем путь к корневой папке проекта в sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
@@ -63,13 +64,17 @@ def configure_output_streams():
 
 if __name__ == "__main__":
     print("[LOG] if __name__ == '__main__': started")
+    print("[LOG] main() started")
     
     #configure streams
     #configure_output_streams()
     
 
     
+
     print("--- Запуск приложения ---")
+    
+    
     validate_heroes()
 
     # Создаем QApplication ПЕРЕД загрузкой ресурсов Qt
@@ -82,7 +87,9 @@ if __name__ == "__main__":
         print(f"[WARN] Не удалось установить стиль Fusion: {e}")
 
     # Загрузка ресурсов ПОСЛЕ QApplication
-    print("Предварительная загрузка ресурсов...")
+    print("[LOG] Загрузка оригинальных изображений... started")
+
+    
     try:
         load_original_images() # Загружаем QPixmap
         print("Загрузка ресурсов завершена.")
@@ -98,10 +105,13 @@ if __name__ == "__main__":
          sys.exit(1) # Выход
 
     # Создание и запуск GUI
-    print("Создание MainWindow...")
+    print("[LOG] Создание MainWindow... started")
+    
     try:
         window = MainWindow(app_version)
+        print("[LOG] MainWindow created")
         print("Отображение MainWindow...")
+        
         window.show()
         print("Запуск главного цикла событий...")
         exit_code = app.exec()
@@ -114,6 +124,6 @@ if __name__ == "__main__":
             print(f"[LOG] Пытаюсь импортировать PySide6.QtWidgets")
 
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.critical(None, "Критическая ошибка", f"Не удалось запустить приложение:\n{e}")
+            QMessageBox.critical(None, "Критическая ошибка", f"Не удалось запустить приложение:\n{e}\n{type(e)}")
         except: pass
         sys.exit(1)

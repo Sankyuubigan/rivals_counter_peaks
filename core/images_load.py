@@ -202,12 +202,14 @@ def load_hero_templates():
     Возвращает словарь: {hero_name: [template1_cv2, template2_cv2, ...]}
     Использует кэш.
     """
-    global loaded_hero_templates
     print("[LOG] load_hero_templates() called")
+    global loaded_hero_templates
     if loaded_hero_templates is not None: # Возвращаем кэш, если уже загружали
         print("[LOG] load_hero_templates() using cache")
         return loaded_hero_templates
 
+
+    print("[LOG] load_hero_templates() about to start loading templates")
     templates_dir = resource_path("resources/templates")
     hero_templates = defaultdict(list)
     print(f"[LOG] load_hero_templates() templates_dir: {templates_dir}")
@@ -229,6 +231,7 @@ def load_hero_templates():
     skipped_load_error = 0
 
     for filename in os.listdir(templates_dir):
+        print(f"[LOG] load_hero_templates() about to process filename: {filename}")
         # Проверяем расширение файла (без учета регистра)
         print(f"[LOG] load_hero_templates() filename: {filename}")
         if filename.lower().endswith(valid_extensions):
