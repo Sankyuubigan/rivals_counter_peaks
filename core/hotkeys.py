@@ -75,14 +75,16 @@ class HotkeyManager(QObject):
     @Slot()
     def _handle_toggle_selection(self):
         if not self.parent_window.right_list_widget or not self.parent_window.right_list_widget.isVisible() or self.parent_window.mode == 'min': return
-        
-        if 0 <= self.parent_window.hotkey_cursor_index < self.parent_window.right_list_widget.count():
-            try:
-                item = self.parent_window.right_list_widget.item(self.parent_window.hotkey_cursor_index)
-                if item:
-                    item.setSelected(not item.isSelected())
-            except RuntimeError: pass
-            except Exception as e: print(f"Error toggling selection: {e}")
+
+        list_count = self.parent_window.right_list_widget.count()
+        if not (0 <= self.parent_window.hotkey_cursor_index < list_count):
+            return
+
+        item = self.parent_window.right_list_widget.item(self.parent_window.hotkey_cursor_index)
+        if item:
+            item.setSelected(not item.isSelected())
+        else:
+            print("[WARN] Item is None.")
 
     @Slot()
     def _handle_toggle_mode(self):

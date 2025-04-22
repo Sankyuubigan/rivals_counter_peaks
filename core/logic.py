@@ -292,38 +292,37 @@ class CounterpickLogic:
                     # print(f"[WARN][recognize] Пропущен пустой шаблон {i} для героя {hero_name}")
                     continue
 
-                try:
-                    # Шаблон тоже преобразуем в серый
-                    template_gray = cv2.cvtColor(template_cv2, cv2.COLOR_BGR2GRAY)
-                    h, w = template_gray.shape
+                # Шаблон тоже преобразуем в серый
+                template_gray = cv2.cvtColor(template_cv2, cv2.COLOR_BGR2GRAY)
+                if template_gray is None:
+                    print(f"[WARN][recognize] template_gray is None.")
+                    continue
+                h, w = template_gray.shape
 
-                    # Проверка: шаблон не должен быть больше изображения
-                    if h > image_gray.shape[0] or w > image_gray.shape[1]:
-                         # print(f"[WARN][recognize] Шаблон {i} для {hero_name} ({w}x{h}) больше изображения ({image_gray.shape[1]}x{image_gray.shape[0]}). Пропуск.")
-                         continue                        
+                # Проверка: шаблон не должен быть больше изображения
+                if h > image_gray.shape[0] or w > image_gray.shape[1]:
+                     # print(f"[WARN][recognize] Шаблон {i} для {hero_name} ({w}x{h}) больше изображения ({image_gray.shape[1]}x{image_gray.shape[0]}). Пропуск.")
+                     continue                        
 
-                    # Сопоставление шаблона методом TM_CCOEFF_NORMED
-                    # Результат - карта совпадений, где самое яркое место - лучшее совпадение
-                    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED)
-                    # Находим максимальное значение совпадения на карте
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+                # Сопоставление шаблона методом TM_CCOEFF_NORMED
+                # Результат - карта совпадений, где самое яркое место - лучшее совпадение
+                res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+                if res is None:
+                    print(f"[WARN][recognize] res is None.")
+                    continue
+                # Находим максимальное значение совпадения на карте
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-                    # Обновляем лучшее значение для этого героя (для отладки)
-                    if max_val > best_match_val:
-                        best_match_val = max_val
+                # Обновляем лучшее значение для этого героя (для отладки)
+                if max_val > best_match_val:
+                    best_match_val = max_val
 
-                    # print(f"[DEBUG][recognize] Герой: {hero_name}, Шаблон: {i}, MaxVal: {max_val:.4f}") # Детальный лог
-
-                    # Если уверенность выше порога, считаем героя найденным
-                    if max_val >= threshold:
-                        print(f"[RECOGNIZE] НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f})")
-                        recognized_heroes.add(hero_name)
-                        found_hero = True
-                        break # Нашли героя по одному из шаблонов, переходим к следующему герою
-                except cv2.error as e:
-                     print(f"[ERROR][recognize] Ошибка OpenCV при обработке шаблона {i} для {hero_name}: {e}")
-                except Exception as e:
-                     print(f"[ERROR][recognize] Неожиданная ошибка при обработке шаблона {i} для {hero_name}: {e}")
+                # Если уверенность выше порога, считаем героя найденным
+                if max_val >= threshold:
+                    print(f"[RECOGNIZE] НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f})")
+                    recognized_heroes.add(hero_name)
+                    found_hero = True
+                    break # Нашли героя по одному из шаблонов, переходим к следующему герою
 
             # Если герой не найден ни по одному шаблону (для отладки)
             # if not found_hero:

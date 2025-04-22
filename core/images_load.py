@@ -134,13 +134,15 @@ def get_images_for_mode(mode='middle'):
              continue # Переходим к следующему герою
 
         # Генерируем изображения нужных размеров
-        if right_size[0] > 0:
-            try:
-                right_images[hero] = img.scaled(QSize(*right_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
-            except Exception as e:
+        if right_size[0] > 0:           
+            if img is None:
+                print("[WARN] img is None.")
                 right_images[hero] = load_default_pixmap(right_size)
-                
-            print(f"[ERROR] Ошибка изменения размера изображения для {hero} в режиме {mode}: {e}")
+            else:
+                right_images[hero] = img.scaled(QSize(*right_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
+                if right_images[hero] is None:
+                    print(f"[ERROR] Ошибка изменения размера изображения для {hero} в режиме {mode}.")
+                    right_images[hero] = load_default_pixmap(right_size)
 
         if left_size[0] > 0: left_images[hero] = img.scaled(QSize(*left_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
         if small_size[0] > 0: small_images[hero] = img.scaled(QSize(*small_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
