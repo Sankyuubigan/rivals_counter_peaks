@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
     def switch_mode(self):
         print("switch_mode callback")
 
-    def toggle_topmost_winapi(self):
+    def set_topmost_winapi(self):
         self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
         
     def __init__(self, logic: CounterpickLogic, hero_templates):
