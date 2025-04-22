@@ -211,11 +211,12 @@ def load_hero_templates():
     hero_templates = defaultdict(list)
     valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp') # Добавлен webp
     print(f"Поиск шаблонов в: {templates_dir}")
-
+    
     if not os.path.isdir(templates_dir):
-        print(f"[ERROR] Папка шаблонов не найдена: {templates_dir}")
-        loaded_hero_templates = {} # Сохраняем пустой словарь в кэш
-        return loaded_hero_templates
+        print(f"[ERROR] Папка шаблонов не найдена: {templates_dir}. Шаблоны не будут загружены.")
+        return {}
+
+
 
     files_found = 0
     templates_loaded = 0
@@ -273,10 +274,11 @@ def load_hero_templates():
     if skipped_load_error > 0: print(f"Пропущено из-за ошибки загрузки/обработки: {skipped_load_error}")
 
 
-    if not hero_templates:
+    if not templates_loaded:
         print("[WARN] Ни одного шаблона не было успешно загружено.")
 
     # Сохраняем результат в кэш
     loaded_hero_templates = hero_templates
     return loaded_hero_templates
 # <<< КОНЕЦ Функции загрузки шаблонов >>>  # noqa
+
