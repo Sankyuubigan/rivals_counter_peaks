@@ -15,6 +15,10 @@ from core.ui_update import UiUpdateManager
 
 
 class MainWindow(QMainWindow):
+    @property
+    def _is_win_topmost(self):
+        return self.win_api_manager.is_win_topmost
+
     def switch_mode(self):
         print("switch_mode callback")
 
