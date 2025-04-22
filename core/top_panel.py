@@ -3,14 +3,16 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QSlider, QComboBox, QPushButton, QHBoxLayout, QSpacerItem, QSizePolicy, QWidget
 )
 from PySide6.QtCore import Qt
-
-from translations import get_text, SUPPORTED_LANGUAGES
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты >>>
+import translations
+import dialogs
+# <<< ----------------------------------------- >>>
+from translations import get_text, SUPPORTED_LANGUAGES # Импортируем отдельно для удобства
 from dialogs import show_author_info, show_hero_rating
-# <<< ---------------------------------------------- >>>
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .main_window import MainWindow
+    from main_window import MainWindow # Используем относительный импорт для type hinting
 
 
 class TopPanel:
@@ -18,7 +20,7 @@ class TopPanel:
 
     def __init__(self, parent: 'MainWindow', switch_mode_callback, logic, app_version):
         self.parent = parent
-        self.switch_mode_callback = switch_mode_callback # Это метод MainWindow.change_mode
+        self.switch_mode_callback = switch_mode_callback
         self.logic = logic
         self.app_version = app_version
 

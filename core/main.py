@@ -7,14 +7,20 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 print(f"Project root added to sys.path: {project_root}")
+# Добавляем папку core в sys.path, чтобы импорты работали и из корня, и внутри core
+core_dir = os.path.dirname(__file__)
+if core_dir not in sys.path:
+     sys.path.insert(0, core_dir)
+print(f"Core directory added to sys.path: {core_dir}")
 # --- ---
 
-from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory # <<< ДОБАВЛЕН QStyleFactory
-# Используем относительные импорты для модулей внутри core
+from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты от корня или от core >>>
 from logic import CounterpickLogic
 from images_load import load_hero_templates, load_original_images
 from main_window import MainWindow
 from utils import validate_heroes
+# <<< ---------------------------------------------------------------- >>>
 
 if __name__ == "__main__":
     print("[LOG] core/main.py: __main__ block started")
@@ -24,8 +30,7 @@ if __name__ == "__main__":
     validation_errors = validate_heroes()
     if validation_errors:
         error_msg = "Обнаружены ошибки в данных героев:\n\n" + "\n".join(validation_errors) + "\n\nПриложение может работать некорректно."
-        # Создаем временный QApplication только если основной еще не создан
-        temp_app = QApplication.instance() # Проверяем, есть ли уже экземпляр
+        temp_app = QApplication.instance()
         if temp_app is None:
             temp_app = QApplication([])
             temp_app_created = True
@@ -33,8 +38,7 @@ if __name__ == "__main__":
             temp_app_created = False
         QMessageBox.warning(None, "Ошибка данных", error_msg)
         if temp_app_created:
-             temp_app.quit() # Закрываем временный QApplication
-        # sys.exit(1) # Раскомментировать для выхода при ошибке
+             temp_app.quit()
         print("[WARN] Ошибки валидации обнаружены, но приложение продолжит работу.")
     else:
         print("[LOG] Валидация героев прошла успешно.")
@@ -44,9 +48,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # 3. Установка стиля
-    # <<< ИСПРАВЛЕНО: Используем QStyleFactory.keys() >>>
     available_styles = QStyleFactory.keys()
-    # <<< ----------------------------------------- >>>
     if "Fusion" in available_styles:
         print("[LOG] Установка стиля Fusion.")
         app.setStyle("Fusion")

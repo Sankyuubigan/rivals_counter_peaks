@@ -3,6 +3,11 @@ import time
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QScrollArea)
 from PySide6.QtCore import Qt, QTimer # Добавлен QTimer
 
+from left_panel import LeftPanel, create_left_panel
+from right_panel import RightPanel # <-- Импорт create_right_panel не используется
+from images_load import get_images_for_mode, SIZES
+from translations import get_text
+# <<< ------------------------------------------- >>>
 
 # --- Константы ---
 PANEL_MIN_WIDTHS = {
@@ -34,7 +39,7 @@ class ModeManager:
             print(f"[ERROR] Попытка установить неизвестный режим: {new_mode_name}")
             return
         if self.current_mode == new_mode_name:
-            print(f"Режим уже установлен: {new_mode_name}")
+            # print(f"Режим уже установлен: {new_mode_name}") # Можно раскомментировать для отладки
             return
 
         print(f"[MODE] Сохранение позиции для режима '{self.current_mode}'...")
@@ -45,7 +50,7 @@ class ModeManager:
 
         print(f"[MODE] Установка нового режима: {new_mode_name}")
         self.current_mode = new_mode_name
-        self.main_window.mode = new_mode_name
+        self.main_window.mode = new_mode_name # Обновляем атрибут в MainWindow
 
     def clear_layout_recursive(self, layout):
         """Рекурсивно очищает layout."""
@@ -64,20 +69,10 @@ class ModeManager:
                     spacer = item.spacerItem()
                     if spacer is not None: layout.removeItem(item)
 
+# Функция change_mode теперь является методом MainWindow
+# def change_mode(window, mode_name):
+#    ...
 
-# <<< ИЗМЕНЕНО: Функция change_mode теперь вызывает метод MainWindow >>>
-def change_mode(window, mode_name):
-    """Инициирует смену режима отображения через метод MainWindow."""
-    # Проверяем, есть ли у окна метод change_mode (добавлен в MainWindow)
-    if hasattr(window, 'change_mode') and callable(window.change_mode):
-         window.change_mode(mode_name)
-    else:
-         print(f"[ERROR] У объекта 'window' нет метода 'change_mode'!")
-# <<< -------------------------------------------------------- >>>
-
-
-# <<< ИЗМЕНЕНО: Функция update_interface_for_mode теперь метод MainWindow >>>
-# Оставляем здесь только константы и класс ModeManager
+# Функция update_interface_for_mode теперь является методом MainWindow
 # def update_interface_for_mode(window):
-#    # ... (весь код функции перенесен в MainWindow._update_interface_for_mode)
-# <<< --------------------------------------------------------------- >>>
+#    ...

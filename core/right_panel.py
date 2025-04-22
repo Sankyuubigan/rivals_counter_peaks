@@ -1,7 +1,8 @@
 # File: core/right_panel.py
-# <<< ИСПРАВЛЕНО: Импортируем get_text из правильного места >>>
-from core.translations import get_text
-# <<< ---------------------------------------------- >>>
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты >>>
+import translations
+import delegate
+# <<< ----------------------------------------- >>>
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
@@ -16,15 +17,12 @@ from PySide6.QtWidgets import (
     QWidget,
     QMenu
 )
-# Используем относительный импорт
+# Импортируем делегат из модуля delegate
 from delegate import HotkeyFocusDelegate
-# Выходим на уровень выше для импорта heroes_bd
+# Импортируем список героев из корня проекта
 from heroes_bd import heroes
 
 HERO_NAME_ROLE = Qt.UserRole + 1
-
-# Функция create_right_panel больше не нужна
-# Используем класс RightPanel напрямую
 
 class RightPanel:
     """Класс для создания и управления правой панелью."""
@@ -34,7 +32,7 @@ class RightPanel:
         self.logic = window.logic
         self.initial_mode = initial_mode
 
-        # --- Создание виджетов ---
+        # Создание виджетов
         self.frame = QFrame(window)
         self.frame.setObjectName("right_frame")
         self.frame.setFrameShape(QFrame.Shape.NoFrame)
@@ -42,41 +40,34 @@ class RightPanel:
         self.list_widget = QListWidget()
         self.list_widget.setObjectName("right_list_widget")
 
-        # <<< ИСПРАВЛЕНО: Используем импортированную get_text >>>
-        self.selected_heroes_label = QLabel(get_text("selected", language=self.logic.DEFAULT_LANGUAGE))
+        # <<< ИСПРАВЛЕНО: Используем импортированную функцию get_text >>>
+        self.selected_heroes_label = QLabel(translations.get_text("selected", language=self.logic.DEFAULT_LANGUAGE))
         self.selected_heroes_label.setObjectName("selected_heroes_label")
         self.selected_heroes_label.setWordWrap(True)
 
-        self.copy_button = QPushButton(get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE))
+        self.copy_button = QPushButton(translations.get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE))
         self.copy_button.setObjectName("copy_button")
 
-        self.clear_button = QPushButton(get_text("clear_all", language=self.logic.DEFAULT_LANGUAGE))
+        self.clear_button = QPushButton(translations.get_text("clear_all", language=self.logic.DEFAULT_LANGUAGE))
         self.clear_button.setObjectName("clear_button")
         # <<< --------------------------------------------------- >>>
 
         self.hero_items = {}
 
-        # --- Настройка и заполнение ---
+        # Настройка и заполнение
         self._setup_list_widget()
         self._populate_list_widget()
         self._setup_layout()
         self._connect_signals()
 
-        # --- Сохранение ссылок в MainWindow ---
-        # Делаем это после создания всех виджетов
-        if hasattr(window, 'right_frame'): window.right_frame = self.frame # Сохраняем сам QFrame
+        # Сохранение ссылок в MainWindow
+        if hasattr(window, 'right_frame'): window.right_frame = self.frame
         if hasattr(window, 'right_list_widget'): window.right_list_widget = self.list_widget
         if hasattr(window, 'selected_heroes_label'): window.selected_heroes_label = self.selected_heroes_label
         if hasattr(window, 'hero_items'): window.hero_items = self.hero_items
 
-    # _setup_list_widget остается без изменений
-    # _populate_list_widget остается без изменений
-    # _setup_layout остается без изменений
-    # _connect_signals остается без изменений
-    # update_language остается без изменений
-
-    # <<< Явно скопируем код методов из предыдущего ответа >>>
     def _setup_list_widget(self):
+        """Настраивает QListWidget."""
         delegate = HotkeyFocusDelegate(self.window)
         self.list_widget.setItemDelegate(delegate)
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)
@@ -103,6 +94,7 @@ class RightPanel:
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
     def _populate_list_widget(self):
+        """Заполняет QListWidget элементами героев."""
         self.hero_items.clear()
         right_images = getattr(self.window, 'right_images', {})
         for hero in heroes:
@@ -120,6 +112,7 @@ class RightPanel:
             self.hero_items[hero] = item
 
     def _setup_layout(self):
+        """Создает и настраивает QVBoxLayout для панели."""
         self.layout = QVBoxLayout(self.frame)
         self.layout.setObjectName("right_panel_layout")
         self.layout.setContentsMargins(5, 5, 5, 5)
@@ -130,6 +123,7 @@ class RightPanel:
         self.layout.addWidget(self.clear_button)
 
     def _connect_signals(self):
+        """Подключает сигналы виджетов к слотам главного окна."""
         if hasattr(self.window, 'handle_selection_changed'):
              self.list_widget.itemSelectionChanged.connect(self.window.handle_selection_changed)
         if hasattr(self.window, 'show_priority_context_menu'):
@@ -141,7 +135,8 @@ class RightPanel:
 
     def update_language(self):
         """Обновляет тексты на панели."""
-        # Используем get_text напрямую
+        # <<< ИСПРАВЛЕНО: Используем импортированную get_text >>>
         self.selected_heroes_label.setText(self.logic.get_selected_heroes_text())
-        self.copy_button.setText(get_text('copy_rating', language=self.logic.DEFAULT_LANGUAGE))
-        self.clear_button.setText(get_text('clear_all', language=self.logic.DEFAULT_LANGUAGE))
+        self.copy_button.setText(translations.get_text('copy_rating', language=self.logic.DEFAULT_LANGUAGE))
+        self.clear_button.setText(translations.get_text('clear_all', language=self.logic.DEFAULT_LANGUAGE))
+        # <<< --------------------------------------------------- >>>

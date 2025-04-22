@@ -1,7 +1,7 @@
 # File: core/utils_gui.py
 from PySide6.QtWidgets import QMessageBox
-# <<< ИСПРАВЛЕНО: Используем относительный импорт >>>
-from translations import get_text
+# <<< ИСПРАВЛЕНО: Используем абсолютный импорт >>>
+import translations
 # <<< ----------------------------------------- >>>
 import pyperclip
 
@@ -29,20 +29,21 @@ def copy_to_clipboard(logic):
         try:
             pyperclip.copy(text_to_copy)
             print(f"Скопировано в буфер: {text_to_copy}")
+            # <<< ИСПРАВЛЕНО: Используем translations.get_text >>>
             QMessageBox.information(None,
-                                     get_text('success', language=logic.DEFAULT_LANGUAGE),
-                                     get_text('copied_to_clipboard', language=logic.DEFAULT_LANGUAGE))
+                                     translations.get_text('success', language=logic.DEFAULT_LANGUAGE),
+                                     translations.get_text('copied_to_clipboard', language=logic.DEFAULT_LANGUAGE))
         except pyperclip.PyperclipException as e:
              print(f"Ошибка pyperclip при копировании: {e}")
              QMessageBox.warning(None,
-                                 get_text('error', language=logic.DEFAULT_LANGUAGE),
-                                 get_text('copy_error_detailed', e=str(e), language=logic.DEFAULT_LANGUAGE))
+                                 translations.get_text('error', language=logic.DEFAULT_LANGUAGE),
+                                 translations.get_text('copy_error_detailed', e=str(e), language=logic.DEFAULT_LANGUAGE))
         except Exception as e:
              print(f"Неожиданная ошибка при копировании: {e}")
-             QMessageBox.warning(None, get_text('error', language=logic.DEFAULT_LANGUAGE), get_text('copy_error', language=logic.DEFAULT_LANGUAGE))
+             QMessageBox.warning(None, translations.get_text('error', language=logic.DEFAULT_LANGUAGE), translations.get_text('copy_error', language=logic.DEFAULT_LANGUAGE))
     else:
         print("Нет данных для копирования (effective_team пуст или не рассчитана).")
-        QMessageBox.warning(None, get_text('warning', language=logic.DEFAULT_LANGUAGE), get_text('no_data_to_copy', language=logic.DEFAULT_LANGUAGE))
+        QMessageBox.warning(None, translations.get_text('warning', language=logic.DEFAULT_LANGUAGE), translations.get_text('no_data_to_copy', language=logic.DEFAULT_LANGUAGE))
+    # <<< --------------------------------------------------- >>>
 
-# Функции calculate_columns и связанные с ней больше не нужны здесь,
-# так как они стали методами MainWindow (_calculate_columns)
+# Функции calculate_columns и связанные с ней больше не нужны здесь

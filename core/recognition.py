@@ -6,7 +6,10 @@ from PySide6.QtWidgets import QMessageBox
 import cv2
 import numpy as np
 
-# Используем относительные импорты
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты >>>
+import utils
+import translations
+# <<< ---------------------------------------- >>>
 from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD, capture_screen_area
 from translations import get_text
 
@@ -29,7 +32,7 @@ class RecognitionWorker(QObject):
         print("[THREAD][RecognitionWorker] Worker started.")
         if not self._is_running:
             print("[THREAD][RecognitionWorker] Worker stopped before starting.")
-            self.error.emit("Recognition cancelled before start.") # Сообщение об ошибке
+            self.error.emit("Recognition cancelled before start.")
             return
 
         try:
@@ -71,7 +74,7 @@ class RecognitionManager(QObject):
     """Управляет процессом распознавания."""
     recognition_complete_signal = Signal(list)
     error = Signal(str)
-    recognize_heroes_signal = Signal() # Сигнал для запуска извне (например, из MainWindow)
+    recognize_heroes_signal = Signal()
 
     def __init__(self, main_window, logic, win_api_manager):
         super().__init__()
@@ -81,7 +84,6 @@ class RecognitionManager(QObject):
         self.win_api_manager = win_api_manager
         self._recognition_thread: QThread | None = None
         self._recognition_worker: RecognitionWorker | None = None
-        # Подключаем внутренний сигнал к слоту запуска
         self.recognize_heroes_signal.connect(self._handle_recognize_heroes)
         print("[LOG] RecognitionManager.__init__ finished")
 
@@ -110,10 +112,8 @@ class RecognitionManager(QObject):
         self._recognition_worker.moveToThread(self._recognition_thread)
 
         self._recognition_thread.started.connect(self._recognition_worker.run)
-        # Перенаправляем сигналы воркера во внешние сигналы менеджера
         self._recognition_worker.finished.connect(self.recognition_complete_signal.emit)
         self._recognition_worker.error.connect(self.error.emit)
-        # Очистка
         self._recognition_thread.finished.connect(self._recognition_thread.quit)
         self._recognition_thread.finished.connect(self._recognition_worker.deleteLater)
         self._recognition_thread.finished.connect(self._recognition_thread.deleteLater)
