@@ -1,3 +1,4 @@
+from PySide6.QtCore import Slot
 from PySide6.QtCore import QModelIndex
 from PySide6.QtWidgets import QMenu, QListWidget
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
@@ -44,12 +45,27 @@ class MainWindow(QMainWindow):
         menu.addAction("Назначить приоритет")
         menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
     
+    @Slot()
+    def _handle_clear_all(self):
+        print("[LOG] _handle_clear_all called")
+        self.logic.clear_all()
+        self.update_ui_after_logic_change()
+        if self.right_list_widget and self.right_list_widget.isVisible() and self.mode != 'min':
+        """
+        Показывает контекстное меню для назначения/снятия приоритета с героя.
+        """
+        menu = QMenu()
+        # Добавьте действия в меню, например:
+        menu.addAction("Назначить приоритет")
+        menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
+    
     def copy_to_clipboard(self):
         """
         Копирует выбранные имена героев в буфер обмена.
         """
         print("copy_to_clipboard")
         menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
+
         
     def __init__(self, logic: CounterpickLogic, hero_templates):
         """
