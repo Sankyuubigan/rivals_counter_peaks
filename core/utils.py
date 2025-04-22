@@ -34,11 +34,12 @@ def _get_file_path():
 
 def _get_root_path():
     """Получает базовый путь к ресурсам (для PyInstaller или обычного запуска)."""
-    try:
-        base_path = sys._MEIPASS  # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
-    except AttributeError:
-        base_path = _get_file_path()  # Обычный запуск из скрипта
-    return base_path
+    base_path = None
+    if hasattr(sys, '_MEIPASS'):
+      base_path = sys._MEIPASS
+    else:
+      base_path = _get_file_path()  # Обычный запуск из скрипта
+    return base_path if base_path else _get_file_path()
 
 def resource_path(relative_path):
     """ Получаем абсолютный путь к ресурсу, работает для обычного запуска и PyInstaller """
@@ -88,85 +89,72 @@ def capture_screen_area(area: dict):
     Returns:
         np.array: Изображение в формате OpenCV (BGR) или None в случае ошибки.
     """
-    try:
-        with mss.mss() as sct:
-            monitors = sct.monitors
-            if not monitors:
-                print("[ERROR][CAPTURE] Не удалось получить список мониторов.")
-                return None
+    with mss.mss() as sct:
+        monitors = sct.monitors
+        if not monitors:
+            print("[ERROR][CAPTURE] Не удалось получить список мониторов.")
+            return None
 
-            # Проверяем номер монитора
-            if area['monitor'] >= len(monitors):
-                 print(f"[ERROR][CAPTURE] Неверный номер монитора: {area['monitor']}. Доступные мониторы: {len(monitors)}")
-                 # Используем основной монитор (индекс 1), если он есть
-                 if len(monitors) > 1:
-                     target_monitor_index = 1
-                     print(f"[WARN][CAPTURE] Используется основной монитор (индекс {target_monitor_index}) как fallback.")
-                 elif len(monitors) == 1: # Если только один монитор (обычно индекс 0 - весь экран)
-                     target_monitor_index = 0 # Или 1, если индекс 0 действительно "все мониторы"
-                     print(f"[WARN][CAPTURE] Используется единственный монитор (индекс {target_monitor_index}).")
-                 else: # Не должно произойти, если monitors не пустой
-                     print(f"[ERROR][CAPTURE] Не найдено подходящего монитора.")
-                     return None
-            else:
-                target_monitor_index = area['monitor']
-
-            # Получаем геометрию нужного монитора
-            monitor_geometry = monitors[target_monitor_index]
-
-            # Формируем Bounding Box для захвата внутри этого монитора
-            # Координаты left/top берутся относительно верхнего левого угла монитора
-            bbox = {
-                "left": monitor_geometry["left"] + area['left'],
-                "top": monitor_geometry["top"] + area['top'],
-                "width": area['width'],
-                "height": area['height'],
-                # "mon": target_monitor_index, # 'mon' больше не используется в grab
-            }
-            print(f"[CAPTURE] Захват области: Monitor={target_monitor_index}, BBox={bbox}")
-
-            # Захватываем изображение
-            sct_img = sct.grab(bbox)
-
-            # Конвертируем в numpy массив
-            img_np = np.array(sct_img)
-
-            # MSS захватывает в формате BGRA, OpenCV обычно работает с BGR
-            # Убираем альфа-канал и получаем BGR
-            if img_np.shape[2] == 4:
-                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
-            elif img_np.shape[2] == 3:
-                 img_bgr = img_np # Уже BGR
-            else:
-                 print(f"[ERROR][CAPTURE] Неожиданный формат изображения (каналы: {img_np.shape[2]}).")
+        # Проверяем номер монитора
+        if area['monitor'] >= len(monitors):
+             print(f"[ERROR][CAPTURE] Неверный номер монитора: {area['monitor']}. Доступные мониторы: {len(monitors)}")
+             # Используем основной монитор (индекс 1), если он есть
+             if len(monitors) > 1:
+                 target_monitor_index = 1
+                 print(f"[WARN][CAPTURE] Используется основной монитор (индекс {target_monitor_index}) как fallback.")
+             elif len(monitors) == 1: # Если только один монитор (обычно индекс 0 - весь экран)
+                 target_monitor_index = 0 # Или 1, если индекс 0 действительно "все мониторы"
+                 print(f"[WARN][CAPTURE] Используется единственный монитор (индекс {target_monitor_index}).")
+             else: # Не должно произойти, если monitors не пустой
+                 print(f"[ERROR][CAPTURE] Не найдено подходящего монитора.")
                  return None
+        else:
+            target_monitor_index = area['monitor']
 
-            print(f"[CAPTURE] Область успешно захвачена. Размер: {img_bgr.shape}")
+        # Получаем геометрию нужного монитора
+        monitor_geometry = monitors[target_monitor_index]
 
-            # ================================================================
-            # !!! ОТЛАДКА: Сохранение скриншота !!!
-            # ================================================================
-            # Чтобы включить, убери символ '#' в начале следующих строк.
-            # Файл 'debug_screenshot.png' появится там же, где запущен exe/скрипт.
-            # Не забудь закомментировать обратно после настройки координат!
-            # ================================================================
-            # try:
-            #     debug_path = resource_path("debug_screenshot.png")
-            #     cv2.imwrite(debug_path, img_bgr)
-            #     print(f"[DEBUG][CAPTURE] Скриншот сохранен в: {debug_path}")
-            # except Exception as e_write:
-            #     print(f"[ERROR][CAPTURE] Не удалось сохранить отладочный скриншот: {e_write}")
-            # ================================================================
+        # Формируем Bounding Box для захвата внутри этого монитора
+        # Координаты left/top берутся относительно верхнего левого угла монитора
+        bbox = {
+            "left": monitor_geometry["left"] + area['left'],
+            "top": monitor_geometry["top"] + area['top'],
+            "width": area['width'],
+            "height": area['height'],
+            # "mon": target_monitor_index, # 'mon' больше не используется в grab
+        }
+        print(f"[CAPTURE] Захват области: Monitor={target_monitor_index}, BBox={bbox}")
 
-            return img_bgr
+        # Захватываем изображение
+        try:
+          sct_img = sct.grab(bbox)
+        except mss.ScreenShotError as e:
+          print(f"[ERROR][CAPTURE] Ошибка mss при захвате экрана: {e}")
+          return None
 
-    except IndexError as e: # Обработка выхода за пределы списка мониторов
-        print(f"[ERROR][CAPTURE] Ошибка индекса при доступе к монитору: {e}. Доступно мониторов: {len(mss.mss().monitors)}")
-        return None
-    except mss.ScreenShotError as e:
-        print(f"[ERROR][CAPTURE] Ошибка mss при захвате экрана: {e}")
-        return None
-    except Exception as e:
-        print(f"[ERROR][CAPTURE] Неожиданная ошибка при захвате экрана: {e}")
-        return None
+        # Конвертируем в numpy массив
+        img_np = np.array(sct_img)
+
+        # MSS захватывает в формате BGRA, OpenCV обычно работает с BGR
+        # Убираем альфа-канал и получаем BGR
+        if img_np.shape[2] == 4:
+            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
+        elif img_np.shape[2] == 3:
+             img_bgr = img_np # Уже BGR
+        else:
+             print(f"[ERROR][CAPTURE] Неожиданный формат изображения (каналы: {img_np.shape[2]}).")
+             return None
+        if len(monitors) < target_monitor_index:
+          print(f"[ERROR][CAPTURE] Ошибка индекса при доступе к монитору. Доступно мониторов: {len(monitors)}")
+          return None
+        print(f"[CAPTURE] Область успешно захвачена. Размер: {img_bgr.shape}")
+
+        debug_path = resource_path("debug_screenshot.png")
+        try:
+          cv2.imwrite(debug_path, img_bgr)
+          print(f"[DEBUG][CAPTURE] Скриншот сохранен в: {debug_path}")
+        except Exception as e_write:
+          print(f"[ERROR][CAPTURE] Не удалось сохранить отладочный скриншот: {e_write}")
+        return img_bgr
+
 # <<< КОНЕЦ Функции захвата >>>

@@ -1,5 +1,5 @@
 # File: images_load.py
-from PySide6.QtGui import QPixmap, Qt, QColor
+from PySide6.QtGui import QPixmap, Qt, QColor, QTransform
 from PySide6.QtCore import QSize
 import os
 import sys
@@ -9,11 +9,10 @@ import numpy as np
 from collections import defaultdict
 from heroes_bd import heroes as ALL_HERO_NAMES # Импортируем список героев
 # <<< --------------------------------------- >>>
-
-
 def resource_path(relative_path):
     """Получаем абсолютный путь к ресурсу, работает для обычного запуска и PyInstaller"""
-    try:
+
+    if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS  # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
     except AttributeError:
         base_path = os.path.abspath(".")  # Обычный запуск из скрипта
@@ -135,13 +134,19 @@ def get_images_for_mode(mode='middle'):
              continue # Переходим к следующему герою
 
         # Генерируем изображения нужных размеров
-        try:
-            if right_size[0] > 0: right_images[hero] = img.scaled(QSize(*right_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
-            if left_size[0] > 0: left_images[hero] = img.scaled(QSize(*left_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
-            if small_size[0] > 0: small_images[hero] = img.scaled(QSize(*small_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
-            if horizontal_size[0] > 0: horizontal_images[hero] = img.scaled(QSize(*horizontal_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
-        except Exception as e:
+        if right_size[0] > 0:
+            try:
+                right_images[hero] = img.scaled(QSize(*right_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
+            except Exception as e:
+                right_images[hero] = load_default_pixmap(right_size)
+                
             print(f"[ERROR] Ошибка изменения размера изображения для {hero} в режиме {mode}: {e}")
+
+        if left_size[0] > 0: left_images[hero] = img.scaled(QSize(*left_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
+        if small_size[0] > 0: small_images[hero] = img.scaled(QSize(*small_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
+        if horizontal_size[0] > 0: horizontal_images[hero] = img.scaled(QSize(*horizontal_size), Qt.AspectRatioMode.KeepAspectRatio, transform_mode)
+        
+        if not right_images.get(hero):
             # Устанавливаем заглушки при ошибке масштабирования
             if right_size[0] > 0: right_images[hero] = load_default_pixmap(right_size)
             if left_size[0] > 0: left_images[hero] = load_default_pixmap(left_size)
@@ -233,39 +238,37 @@ def load_hero_templates():
 
             # Ожидаем как минимум Имя_Номер или Имя_Фамилия_Номер
             if len(parts) >= 2:
-                try:
-                    # Пытаемся собрать имя героя (все части, кроме последней)
-                    hero_name_parts = parts[:-1]
-                    hero_name_parsed = " ".join(hero_name_parts).strip() # Объединяем и убираем лишние пробелы
+                # Пытаемся собрать имя героя (все части, кроме последней)
+                hero_name_parts = parts[:-1]
+                hero_name_parsed = " ".join(hero_name_parts).strip() # Объединяем и убираем лишние пробелы
 
-                    # Ищем совпадение имени героя (без учета регистра)
-                    matched_hero_name = None
-                    for known_hero in ALL_HERO_NAMES:
-                        if known_hero.lower() == hero_name_parsed.lower():
-                            matched_hero_name = known_hero
-                            break
-
-                    if matched_hero_name:
-                        template_path = os.path.join(templates_dir, filename)
-                        # Загружаем изображение с помощью OpenCV в цвете (BGR)
-                        template_img = cv2.imread(template_path, cv2.IMREAD_COLOR)
-                        if template_img is not None:
-                            hero_templates[matched_hero_name].append(template_img)       
-                            templates_loaded += 1
-                            # print(f"  Загружен шаблон: {filename} для героя: {matched_hero_name}")
-                        else:
-                            print(f"[WARN] Не удалось загрузить шаблон OpenCV: {template_path}")
-                            skipped_load_error += 1
+                # Ищем совпадение имени героя (без учета регистра)
+                matched_hero_name = None
+                for known_hero in ALL_HERO_NAMES:
+                    if known_hero.lower() == hero_name_parsed.lower():
+                        matched_hero_name = known_hero
+                        break
+                
+                if matched_hero_name:
+                    template_path = os.path.join(templates_dir, filename)
+                    # Загружаем изображение с помощью OpenCV в цвете (BGR)
+                    template_img = cv2.imread(template_path, cv2.IMREAD_COLOR)
+                    if template_img is not None:
+                        hero_templates[matched_hero_name].append(template_img)       
+                        templates_loaded += 1
+                        # print(f"  Загружен шаблон: {filename} для героя: {matched_hero_name}")
                     else:
-                         # print(f"[DEBUG] Пропущен файл (имя героя '{hero_name_parsed}' не найдено в списке): {filename}")
-                         skipped_unknown_hero +=1
-                except Exception as e:
-                    print(f"[ERROR] Ошибка обработки файла шаблона {filename}: {e}")
-                    skipped_load_error += 1
-            else:
-                 # print(f"[DEBUG] Пропущен файл (неверный формат имени - ожидался 'Имя_Номер'): {filename}")
-                skipped_bad_name += 1
+                        print(f"[WARN] Не удалось загрузить шаблон OpenCV: {template_path}")
+                        skipped_load_error += 1
+                else:
+                    print(f"[DEBUG] Пропущен файл (имя героя '{hero_name_parsed}' не найдено в списке): {filename}")
+                    skipped_unknown_hero +=1
 
+
+
+            else:
+                # print(f"[DEBUG] Пропущен файл (неверный формат имени - ожидался 'Имя_Номер'): {filename}")
+                skipped_bad_name += 1
     print(f"Обработано файлов изображений: {files_found}")
     print(f"Успешно загружено шаблонов: {templates_loaded} для {len(hero_templates)} героев.")
     if skipped_unknown_hero > 0: print(f"Пропущено из-за неизвестного имени героя: {skipped_unknown_hero}")

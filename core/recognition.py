@@ -29,7 +29,7 @@ class RecognitionWorker(QObject):
         self.templates = templates  # Передаём шаблоны
 
     def _get_screenshot(self):
-        """Делает скриншот."""
+        """Делает скриншот."""        
         try:
             return pyautogui.screenshot()
         except Exception as e:
@@ -37,43 +37,38 @@ class RecognitionWorker(QObject):
 
     def _get_region(self, image):
         """Вырезает область для распознавания из скриншота."""
-        try:
-            left, top, width, height = self.recognition_area
-            return image.crop((left, top, left + width, top + height))
-        except Exception as e:
-            raise Exception(f"Ошибка при вырезании области из скриншота: {e}")
-
-    def _template_matching(self, region_cv2):
+        try: left, top, width, height = self.recognition_area;
+        except Exception as e: raise Exception(f"Ошибка при вырезании области из скриншота: {e}")        
+        return image.crop((left, top, left + width, top + height))
+    def _template_matching(self, region_cv2):        
         """Распознает героев по шаблонам."""
+        recognized_heroes = []
+        for hero, template in self.templates.items():
+            # Метод cv2.matchTemplate выполняет поиск шаблона template в изображении region_cv2
+            # Метод возвращает карту соответствия, где каждый пиксель показывает, насколько хорошо шаблон соответствует
+            #   этому месту изображения. Чем выше значение, тем лучше соответствие.
+            result = cv2.matchTemplate(region_cv2, template, cv2.TM_CCOEFF_NORMED)
+            # Находим все пиксели в карте соответствия, где значение выше threshold
+            locations = np.where(result >= self.recognition_threshold)
+            # Если такие пиксели есть, считаем, что герой распознан
+            if len(locations[0]) > 0:
+                recognized_heroes.append(hero)
         try:
-            recognized_heroes = []
-            for hero, template in self.templates.items():
-                # Метод cv2.matchTemplate выполняет поиск шаблона template в изображении region_cv2
-                # Метод возвращает карту соответствия, где каждый пиксель показывает, насколько хорошо шаблон соответствует
-                #   этому месту изображения. Чем выше значение, тем лучше соответствие.
-                result = cv2.matchTemplate(region_cv2, template, cv2.TM_CCOEFF_NORMED)
-                # Находим все пиксели в карте соответствия, где значение выше threshold
-                locations = np.where(result >= self.recognition_threshold)
-                # Если такие пиксели есть, считаем, что герой распознан
-                if len(locations[0]) > 0:
-                    recognized_heroes.append(hero)
             return recognized_heroes
         except Exception as e:
             raise Exception(f"Ошибка при распознавании героев: {e}")
 
-    def run(self):
         """Основной метод, который выполняется в отдельном потоке."""
-        try:
-            print("[INFO] Поток распознавания запущен.")
-            image = self._get_screenshot()
-            region = self._get_region(image)
-            region_cv2 = np.array(region)
-            recognized_heroes = self._template_matching(region_cv2)
-            print(f"[RESULT] Распознавание завершено. Распознанные герои: {recognized_heroes}")
-            self.logic.set_selection(set(recognized_heroes))
-            self.finished.emit()
-        except Exception as e:
-            self.error.emit(str(e))
+        print("[INFO] Поток распознавания запущен.")
+        image = self._get_screenshot()
+        region = self._get_region(image)
+        region_cv2 = np.array(region)
+        recognized_heroes = self._template_matching(region_cv2)
+        print(f"[RESULT] Распознавание завершено. Распознанные герои: {recognized_heroes}")
+        self.logic.set_selection(set(recognized_heroes))        
+        self.error.emit(str(e))
+        self.finished.emit()
+
 
 class RecognitionManager(QObject):
     recognize_heroes_signal = Signal()
@@ -81,7 +76,7 @@ class RecognitionManager(QObject):
     def _get_screenshot(self):
         """Делает скриншот."""
         print("[INFO] Делаю скриншот...")
-        try:
+        try: 
             return self._get_screenshot()
         except Exception as e:
             raise Exception(f"Ошибка при создании скриншота: {e}")
@@ -89,20 +84,16 @@ class RecognitionManager(QObject):
     def _get_region(self, image):
         """Вырезает область для распознавания из скриншота."""
         print("[INFO] Вырезаю область для распознавания из скриншота...")
-        try:
-            left, top, width, height = self.RECOGNITION_AREA
-            return image.crop((left, top, left + width, top + height))
-        except Exception as e:
-            raise Exception(f"Ошибка при вырезании области из скриншота: {e}")
+        try: left, top, width, height = self.RECOGNITION_AREA;
+        except Exception as e: raise Exception(f"Ошибка при вырезании области из скриншота: {e}")        
+        return image.crop((left, top, left + width, top + height))
 
-    def _ocr(self, region):
+    def _ocr(self, region):        
         """Распознает текст на изображении."""
         print("[INFO] Распознаю текст на изображении...")
-        try:
-            text = pytesseract.image_to_string(region, lang='eng',)
-            return self.text.splitlines()
-        except Exception as e:
-            raise Exception(f"Ошибка распознавания текста: {e}")
+        try: text = pytesseract.image_to_string(region, lang='eng',)
+        except Exception as e: raise Exception(f"Ошибка распознавания текста: {e}")
+        return self.text.splitlines()
 
 
     recognition_complete_signal = Signal(list)
@@ -120,16 +111,16 @@ class RecognitionManager(QObject):
         print("[LOG] RecognitionManager.__init__ finished")
     def _get_text_from_region(self):
         """Распознает текст в заданной области на экране."""
+        image = self._get_screenshot()
+        region = self._get_region(image)
+        text = self._ocr(region)
         try:
-            image = self._get_screenshot()
-            region = self._get_region(image)
-            text = self._ocr(region)
             return text
         except Exception as e:
             print(f"[ERROR] Ошибка при распознавании текста: {e}")
-            return []
+        return []
 
-
+    def run(self):
     @Slot()
     def _handle_recognize_heroes(self):
         """Запускает процесс распознавания героев в отдельном потоке."""

@@ -19,12 +19,10 @@ class HotkeyManager(QObject):
     def run_if_topmost_gui(self, func):
         def wrapper(*args, **kwargs):
             if is_window_topmost(self.parent_window):
-                try:
-                    QTimer.singleShot(0, lambda: func(*args, **kwargs))
-                except Exception as e:
-                    print(f"[ERROR] Exception scheduling hotkey callback: {e}")
+                QTimer.singleShot(0, lambda: func(*args, **kwargs))
         return wrapper
 
+    
     def _handle_move_cursor(self, direction):
         if not self.parent_window.right_list_widget or not self.parent_window.right_list_widget.isVisible() or self.parent_window.mode == 'min': return
         list_widget = self.parent_window.right_list_widget; count = list_widget.count()
@@ -70,15 +68,14 @@ class HotkeyManager(QObject):
         if old_index != new_index:
             self.parent_window.hotkey_cursor_index = new_index
             self.parent_window._update_hotkey_highlight(old_index)
-        elif 0 <= self.parent_window.hotkey_cursor_index < count:
-             try:
-                current_item = list_widget.item(self.parent_window.hotkey_cursor_index)
-                if current_item: list_widget.scrollToItem(current_item, QObject.ScrollHint.EnsureVisible)
-             except RuntimeError: pass
+        elif 0 <= self.parent_window.hotkey_cursor_index < count:            
+            current_item = list_widget.item(self.parent_window.hotkey_cursor_index)
+            if current_item: list_widget.scrollToItem(current_item, QObject.ScrollHint.EnsureVisible)
 
     @Slot()
     def _handle_toggle_selection(self):
         if not self.parent_window.right_list_widget or not self.parent_window.right_list_widget.isVisible() or self.parent_window.mode == 'min': return
+        
         if 0 <= self.parent_window.hotkey_cursor_index < self.parent_window.right_list_widget.count():
             try:
                 item = self.parent_window.right_list_widget.item(self.parent_window.hotkey_cursor_index)
@@ -137,77 +134,72 @@ class HotkeyManager(QObject):
 
     def _register_topmost_hotkey(self, _emit_move, hooks):
         print(f"Регистрация хуков клавиатуры...")
-        try:
-            hooks.append(keyboard.add_hotkey('tab+up', lambda: _emit_move('up'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('tab+down', lambda: _emit_move('down'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('tab+left', lambda: _emit_move('left'), suppress=True, trigger_on_release=False))
-            hooks.append(keyboard.add_hotkey('tab+right', lambda: _emit_move('right'), suppress=True, trigger_on_release=False))
-        except Exception as e: print(f"[ERROR] setting up keyboard topmost hooks: {e}")
+        hooks.append(keyboard.add_hotkey('tab+up', lambda: _emit_move('up'), suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+down', lambda: _emit_move('down'), suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+left', lambda: _emit_move('left'), suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+right', lambda: _emit_move('right'), suppress=True, trigger_on_release=False))
 
     def _register_recognition_hotkey(self, _emit_recognize, hooks):
-        try:
-            hooks.append(keyboard.add_hotkey('tab+num /', _emit_recognize, suppress=True, trigger_on_release=False))
-            print("[INFO] Hooked Tab + Num /")
-        except ValueError:
-            try:
-                hooks.append(keyboard.add_hotkey('tab+keypad /', _emit_recognize, suppress=True, trigger_on_release=False))
-                print("[INFO] Hooked Tab + Keypad /")
-            except ValueError:
-                try:
-                     hooks.append(keyboard.add_hotkey('tab+/', _emit_recognize, suppress=True, trigger_on_release=False))
-                     print("[INFO] Hooked Tab + /")
-                except ValueError:
-                     print("[WARN] Could not hook Tab + Num / or Keypad / or /.")
-        except Exception as e: print(f"[ERROR] setting up keyboard recognition hooks: {e}")
+        
+        
+        hooks.append(keyboard.add_hotkey('tab+num /', _emit_recognize, suppress=True, trigger_on_release=False))
+        print("[INFO] Hooked Tab + Num /")
+
+        
+        hooks.append(keyboard.add_hotkey('tab+keypad /', _emit_recognize, suppress=True, trigger_on_release=False))
+        print("[INFO] Hooked Tab + Keypad /")
+
+        hooks.append(keyboard.add_hotkey('tab+/', _emit_recognize, suppress=True, trigger_on_release=False))
+        print("[INFO] Hooked Tab + /")
+        
+        print("[WARN] Could not hook Tab + Num / or Keypad / or /.")
+
 
     def _register_change_mode_hotkey(self, _emit_toggle_mode, _emit_clear, _emit_toggle_select, hooks):
-        try:
-            try: hooks.append(keyboard.add_hotkey('tab+num 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
-            except ValueError:
-                try: hooks.append(keyboard.add_hotkey('tab+keypad 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
-                except ValueError: print("[WARN] Could not hook Tab + Numpad 0 / Keypad 0.")
-            try: hooks.append(keyboard.add_hotkey('tab+delete', _emit_toggle_mode, suppress=True, trigger_on_release=False))
-            except ValueError:
-                try: hooks.append(keyboard.add_hotkey('tab+del', _emit_toggle_mode, suppress=True, trigger_on_release=False))
-                except ValueError:
-                    try: hooks.append(keyboard.add_hotkey('tab+.', _emit_toggle_mode, suppress=True, trigger_on_release=False))
-                    except ValueError: print("[WARN] Could not hook Tab + Delete / Del / Numpad .")
-            try: hooks.append(keyboard.add_hotkey('tab+num -', _emit_clear, suppress=True, trigger_on_release=False))
-            except ValueError:
-                try: hooks.append(keyboard.add_hotkey('tab+keypad -', _emit_clear, suppress=True, trigger_on_release=False))
-                except ValueError:
-                    try: hooks.append(keyboard.add_hotkey('tab+-', _emit_clear, suppress=True, trigger_on_release=False))
-                    except ValueError: print("[WARN] Could not hook Tab + Num - / Keypad - / -.")
-        except ImportError: print("\n[ERROR] 'keyboard' library requires root/admin privileges.\n")
-        except Exception as e: print(f"[ERROR] setting up keyboard change mode hooks: {e}")
-        finally:
-            print("Unhooking keyboard...")
-            keyboard.unhook_all()
-            print("Keyboard listener thread finished.")
+        
+        hooks.append(keyboard.add_hotkey('tab+num 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+keypad 0', _emit_toggle_select, suppress=True, trigger_on_release=False))
+        print("[WARN] Could not hook Tab + Numpad 0 / Keypad 0.")
+
+        hooks.append(keyboard.add_hotkey('tab+delete', _emit_toggle_mode, suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+del', _emit_toggle_mode, suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+.', _emit_toggle_mode, suppress=True, trigger_on_release=False))
+        print("[WARN] Could not hook Tab + Delete / Del / Numpad .")
+
+        hooks.append(keyboard.add_hotkey('tab+num -', _emit_clear, suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+keypad -', _emit_clear, suppress=True, trigger_on_release=False))
+        hooks.append(keyboard.add_hotkey('tab+-', _emit_clear, suppress=True, trigger_on_release=False))
+        print("[WARN] Could not hook Tab + Num - / Keypad - / -.")
+
+        print("\n[ERROR] 'keyboard' library requires root/admin privileges.\n")
+
+        print("Unhooking keyboard...")
+        keyboard.unhook_all()
+        print("Keyboard listener thread finished.")
 
     def start_keyboard_listener(self):
         if self._keyboard_listener_thread is None or not self._keyboard_listener_thread.is_alive():
             print("Starting keyboard listener thread...")
             self._stop_keyboard_listener_flag.clear()
             self._keyboard_listener_thread = threading.Thread(target=self._keyboard_listener_loop, daemon=True)
-            self._keyboard_listener_thread.start()
+            self._keyboard_listener_thread.start() 
         else: print("Keyboard listener already running.")
 
     def stop_keyboard_listener(self):
         if self._keyboard_listener_thread and self._keyboard_listener_thread.is_alive():
             print("Signalling keyboard listener to stop...")
-            self._stop_keyboard_listener_flag.set()
-
+            self._stop_keyboard_listener_flag.set()            
             if self.parent_window._recognition_worker:
                 self.parent_window._recognition_worker.stop()
             if self.parent_window._recognition_thread and self.parent_window._recognition_thread.isRunning():
                 print("Quitting recognition thread...")
                 self.parent_window._recognition_thread.quit()
                 if not self.parent_window._recognition_thread.wait(1000):
-                    print("[WARN] Recognition thread did not quit gracefully.")
+                    print("[WARN] Recognition thread did not quit gracefully.")                   
         else:
              if self.parent_window._recognition_worker: self.parent_window._recognition_worker.stop()
              if self.parent_window._recognition_thread and self.parent_window._recognition_thread.isRunning():
-                print("Quitting orphan recognition thread...")
+                print("Quitting orphan recognition thread...")               
                 self.parent_window._recognition_thread.quit()
                 self.parent_window._recognition_thread.wait(500)
+                
