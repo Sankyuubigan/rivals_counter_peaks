@@ -1,3 +1,4 @@
+from PySide6.QtCore import Slot, Qt
 from PySide6.QtCore import QModelIndex
 from PySide6.QtWidgets import QMenu, QListWidget
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
@@ -42,7 +43,6 @@ class MainWindow(QMainWindow):
         menu = QMenu()
         # Добавьте действия в меню, например:
         menu.addAction("Назначить приоритет")
-        menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
     
     
     def copy_to_clipboard(self):
@@ -51,7 +51,8 @@ class MainWindow(QMainWindow):
         Копирует выбранные имена героев в буфер обмена.
         """
         print("copy_to_clipboard")
-        menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
+        copy_to_clipboard(self.logic.get_rate_text())
+        
 
         
     def __init__(self, logic: CounterpickLogic, hero_templates):
