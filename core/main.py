@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # Загрузка ресурсов ПОСЛЕ QApplication
     print("[LOG] main() - About to load_hero_templates()")
     try:
-        hero_templates = load_hero_templates()
+        hero_templates = load_hero_templates()  # Removed unnecessary arguments
         print("Шаблоны загружены.")
         print(f"[LOG] load_hero_templates() about to return result: {locals()}")
     except Exception as e:
