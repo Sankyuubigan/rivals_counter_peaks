@@ -7,6 +7,8 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 print(f"sys.path: {sys.path}")
+print("[LOG] core/main.py started")
+print("[LOG] core/main.py about to import MainWindow")
 
 print(f"[LOG] Пытаюсь импортировать PySide6.QtWidgets")
 from PySide6.QtWidgets import QApplication
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import QApplication
 
 from settings import LOGGING_ENABLED
 from core.gui import MainWindow
+print("[LOG] core/main.py imported MainWindow")
 from core.utils import validate_heroes
 from core.hotkeys import HotkeyManager
 from core.win_api import WinApiManager

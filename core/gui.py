@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         from main import app_version
     def __init__(self, app_version):
         super().__init__()
+        print("[LOG] MainWindow.__init__ started")
         # Получаем версию из переменной окружения, установленной в build.py
         self.app_version = app_version
         self.logic = CounterpickLogic()
@@ -87,6 +88,8 @@ class MainWindow(QMainWindow):
         self.mode_manager = ModeManager(self)
 
         # <<< ДОБАВЛЕНО: Атрибуты для распознавания >>>
+        print("[LOG] MainWindow.__init__ about to create RecognitionManager")
+        
         self.recognition_manager = RecognitionManager(self.logic)
         # <<< ------------------------------------ >>>
 
@@ -96,6 +99,7 @@ class MainWindow(QMainWindow):
 
         #Создание менеджера обновлений UI
         self.ui_update_manager = UiUpdateManager(self)
+        print(f"[LOG] MainWindow.__init__ RecognitionManager created: {self.recognition_manager}")
 
         # <<< ------------------------------------ >>>
 
