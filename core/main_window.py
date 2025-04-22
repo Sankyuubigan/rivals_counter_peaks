@@ -1,3 +1,5 @@
+from PySide6.QtCore import QModelIndex
+from PySide6.QtWidgets import QMenu, QListWidget
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
 from PySide6.QtGui import QIcon
 from core.translations import get_text
@@ -25,6 +27,21 @@ class MainWindow(QMainWindow):
 
     def set_topmost_winapi(self):
         self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
+    
+    def handle_selection_changed(self):
+        """
+        Обработчик изменения выделения в QListWidget.
+        """
+        print("Selection changed in list widget")
+    
+    def show_priority_context_menu(self, position):
+        """
+        Показывает контекстное меню для назначения/снятия приоритета с героя.
+        """
+        menu = QMenu()
+        # Добавьте действия в меню, например:
+        menu.addAction("Назначить приоритет")
+        menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
         
     def __init__(self, logic: CounterpickLogic, hero_templates):
         """
