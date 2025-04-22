@@ -43,7 +43,6 @@ if __name__ == "__main__":
         print(f"[WARN] Стиль Fusion не доступен. Используется стиль по умолчанию.")
 
     print("[LOG] main() - Creating WinApiManager and ModeManager")
-    win_api_manager = WinApiManager()
     mode_manager = ModeManager()
 
     print("[LOG] Создание экземпляра CounterpickLogic...")
@@ -67,7 +66,8 @@ if __name__ == "__main__":
 
     print("[LOG] main() - About to create MainWindow")
     # print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
-    window = MainWindow(logic, hero_templates, win_api_manager, mode_manager)
+    window = MainWindow(logic, hero_templates, mode_manager)
+    win_api_manager = WinApiManager(window)
     if not window:
         print("[ERROR] Не удалось создать экземпляр MainWindow.")
         QMessageBox.critical(None, "Критическая ошибка", "Не удалось инициализировать главное окно.")
