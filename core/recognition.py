@@ -113,7 +113,6 @@ class RecognitionManager(QObject):
         self._recognition_thread = None  # Инициализируем атрибуты
         self._recognition_worker = None  # Инициализируем атрибуты
         self.win_api_manager = win_api_manager
-        self.mode_manager = mode_manager
 
         print("[LOG] RecognitionManager.__init__ finished")
     def _get_text_from_region(self):

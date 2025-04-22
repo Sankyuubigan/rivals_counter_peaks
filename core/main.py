@@ -8,7 +8,7 @@ from core.images_load import load_hero_templates, load_original_images
 from PySide6.QtWidgets import QApplication, QMessageBox
 from core.main_window import MainWindow
 from core.utils import validate_heroes
-from core.mode import ModeManager
+
 from core.win_api import WinApiManager
 
 import subprocess
@@ -43,7 +43,6 @@ if __name__ == "__main__":
         print(f"[WARN] Стиль Fusion не доступен. Используется стиль по умолчанию.")
 
     print("[LOG] main() - Creating WinApiManager and ModeManager")
-    mode_manager = ModeManager()
 
     print("[LOG] Создание экземпляра CounterpickLogic...")
     logic = CounterpickLogic()
@@ -66,7 +65,7 @@ if __name__ == "__main__":
 
     print("[LOG] main() - About to create MainWindow")
     # print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
-    window = MainWindow(logic, hero_templates, mode_manager)
+    window = MainWindow(logic, hero_templates)
     win_api_manager = WinApiManager(window)
     if not window:
         print("[ERROR] Не удалось создать экземпляр MainWindow.")
