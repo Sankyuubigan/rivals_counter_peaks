@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 
 from heroes_bd import heroes
-from images_load import load_hero_templates
 from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD, check_if_all_elements_in_list
 from translations import get_text
 
@@ -106,27 +105,13 @@ class RecognitionManager(QObject):
 
     recognition_complete_signal = Signal(list)
 
-    def __init__(self, main_window, logic):
+    def __init__(self, main_window, logic, hero_templates):
         super().__init__()
         self.main_window = main_window
         self.logic = logic
         self._recognition_thread = None
         self._recognition_worker = None
-        self.hero_templates = {}
-        self.load_templates()
-
-    def load_templates(self):
-        print("Загрузка шаблонов героев для распознавания...")
-        try:
-            # Функция из images_load.py использует кэш
-            self.hero_templates = load_hero_templates()
-            if not self.hero_templates:
-                print("[WARN] Шаблоны героев не найдены или не удалось загрузить.")
-            else:
-                print(f"Загружено шаблонов для {len(self.hero_templates)} героев.")
-        except Exception as e:
-            print(f"[ERROR] Критическая ошибка при загрузке шаблонов: {e}")
-            self.hero_templates = {}  # Очищаем на случай ошибки
+        self.hero_templates = hero_templates
 
     def _get_text_from_region(self):
         """Распознает текст в заданной области на экране."""

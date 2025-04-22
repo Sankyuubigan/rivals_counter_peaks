@@ -19,16 +19,15 @@ class MainWindow(QMainWindow):
         Args:
             logic: Экземпляр класса CounterpickLogic.
         """
-        print("[LOG] MainWindow.__init__ started")
-        super().__init__()   
+        super().__init__()
         self.logic = logic  # экземпляр логики, инициализированный в main.py
         self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
         self.setWindowIcon(QIcon(load_default_pixmap()))
-        
+
         # Загрузка шаблонов
-        # print("[LOG] MainWindow.__init__ before load_hero_templates")
-        # self.hero_templates = load_hero_templates()
-        # print("[LOG] MainWindow.__init__ after load_hero_templates")
+        self.hero_templates = load_hero_templates()
+
+
 
         # Создаем RecognitionManager, передавая ему экземпляр логики
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
