@@ -1,25 +1,39 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGridLayout
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt, QTimer, QRect
-from core.images_load import load_hero_templates, get_images_for_mode
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PySide6.QtGui import QPixmap, QFont, QColor, QPalette, QIcon
+from PySide6.QtCore import Qt, QSize, QTimer
+
 from logic import CounterpickLogic
-from manager import RecognitionManager
+from images_load import get_images_for_mode, load_original_images, load_hero_templates, load_default_pixmap
+from recognition import RecognitionManager
+import time
+import sys
+import os
+from heroes_bd import heroes
 
-class MainWindow(QWidget):
-    def __init__(self):
+
+class MainWindow(QMainWindow):
+    def __init__(self, logic: CounterpickLogic):
+        """
+        Инициализирует главное окно приложения.
+
+        Args:
+            logic: Экземпляр класса CounterpickLogic.
+        """
         print("[LOG] MainWindow.__init__ started")
-        super().__init__()
-        # Подключаем логику
-        self.logic = CounterpickLogic()
-
-        # Инициализируем RecognitionManager
-        print("[LOG] MainWindow.__init__ about to create RecognitionManager")
-        self.recognition_manager = RecognitionManager(logic=self.logic)
-
-        # Загружаем шаблоны героев (теперь без аргументов)
+        super().__init__()   
+        self.logic = logic  # экземпляр логики, инициализированный в main.py
+        self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
+        self.setWindowIcon(QIcon(load_default_pixmap()))
+        
+        # Загрузка шаблонов
+        print("[LOG] MainWindow.__init__ before load_hero_templates")
         self.hero_templates = load_hero_templates()
-
-        # Получаем изображения для режима 'middle'
-        self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(
-            mode='middle')
-        # ... (остальной код класса MainWindow) ...
+        print("[LOG] MainWindow.__init__ after load_hero_templates")
+        
+        # Создаем RecognitionManager, передавая ему экземпляр логики
+        print("[LOG] MainWindow.__init__ about to create RecognitionManager")
+        self.rec_manager = RecognitionManager(logic=self.logic)
+        
+        # Создание и настройка интерфейса
+        self.create_main_ui()
+        self.update_ui()

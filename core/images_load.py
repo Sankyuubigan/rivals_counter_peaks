@@ -203,12 +203,15 @@ def load_hero_templates():
     Использует кэш.
     """
     global loaded_hero_templates
+    print("[LOG] load_hero_templates() called")
     if loaded_hero_templates is not None: # Возвращаем кэш, если уже загружали
-        # print("Шаблоны героев взяты из кэша.")
+        print("[LOG] load_hero_templates() using cache")
         return loaded_hero_templates
 
     templates_dir = resource_path("resources/templates")
     hero_templates = defaultdict(list)
+    print(f"[LOG] load_hero_templates() templates_dir: {templates_dir}")
+
     valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp') # Добавлен webp
     print(f"Поиск шаблонов в: {templates_dir}")
     
@@ -221,11 +224,13 @@ def load_hero_templates():
     files_found = 0
     templates_loaded = 0
     skipped_unknown_hero = 0
+    print(f"[LOG] load_hero_templates() skipped_unknown_hero: {skipped_unknown_hero}")
     skipped_bad_name = 0
     skipped_load_error = 0
 
     for filename in os.listdir(templates_dir):
         # Проверяем расширение файла (без учета регистра)
+        print(f"[LOG] load_hero_templates() filename: {filename}")
         if filename.lower().endswith(valid_extensions):
             files_found += 1
             # Извлекаем имя файла без расширения и разделяем по '_'
@@ -243,6 +248,7 @@ def load_hero_templates():
                     matched_hero_name = None
                     for known_hero in ALL_HERO_NAMES:
                         if known_hero.lower() == hero_name_parsed.lower():
+                            print(f"[LOG] load_hero_templates() known_hero: {known_hero}")
                             matched_hero_name = known_hero
                             break
 
@@ -251,7 +257,7 @@ def load_hero_templates():
                         # Загружаем изображение с помощью OpenCV в цвете (BGR)
                         template_img = cv2.imread(template_path, cv2.IMREAD_COLOR)
                         if template_img is not None:
-                            hero_templates[matched_hero_name].append(template_img)
+                            hero_templates[matched_hero_name].append(template_img)       
                             templates_loaded += 1
                             # print(f"  Загружен шаблон: {filename} для героя: {matched_hero_name}")
                         else:
@@ -277,6 +283,7 @@ def load_hero_templates():
     if not templates_loaded:
         print("[WARN] Ни одного шаблона не было успешно загружено.")
 
+    print("[LOG] load_hero_templates() about to return result")
     # Сохраняем результат в кэш
     loaded_hero_templates = hero_templates
     return loaded_hero_templates
