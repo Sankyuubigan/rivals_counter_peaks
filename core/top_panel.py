@@ -22,7 +22,7 @@ def create_top_panel(parent: 'MainWindow', switch_mode_callback, logic, app_vers
 # <<< ------------------------------------------------- >>>
     top_frame = QFrame(parent); top_frame.setObjectName("top_frame"); top_frame.setStyleSheet("background-color: lightgray;"); top_frame.setFixedHeight(40)
     panel = TopPanel(parent, switch_mode_callback, logic, app_version)
-    return panel.top_frame, panel.author_button, panel.rating_button, switch_mode_callback
+    return panel.top_frame
 
 
 class TopPanel:

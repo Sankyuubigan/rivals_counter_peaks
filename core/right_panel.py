@@ -27,7 +27,7 @@ def create_right_panel(window, initial_mode="middle"):
     Множественный выбор должен работать.
     """
     right_panel = RightPanel(window, initial_mode)
-    return right_panel.frame, right_panel.selected_heroes_label
+    return right_panel.frame
 
 
 class RightPanel:

@@ -9,7 +9,7 @@ from core.horizontal_list import HorizontalList
 def create_left_panel(window):
     """Создает левую панель."""
     left_panel = LeftPanel(window)
-    return left_panel.scroll_area, left_panel.result_frame, left_panel.result_label, left_panel.update_scrollregion
+    return left_panel.scroll_area
 
 
 class LeftPanel:
