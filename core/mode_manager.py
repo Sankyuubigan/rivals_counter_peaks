@@ -1,13 +1,21 @@
 # File: core/mode_manager.py
 import time
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QScrollArea)
-from PySide6.QtCore import Qt, QTimer # Добавлен QTimer
+from PySide6.QtCore import Qt, QTimer
 
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты >>>
+import left_panel
+import right_panel
+import images_load
+import translations
+# <<< ----------------------------------------- >>>
+
+# Используем классы панелей напрямую
 from left_panel import LeftPanel, create_left_panel
-from right_panel import RightPanel # <-- Импорт create_right_panel не используется
+from right_panel import RightPanel
 from images_load import get_images_for_mode, SIZES
 from translations import get_text
-# <<< ------------------------------------------- >>>
+
 
 # --- Константы ---
 PANEL_MIN_WIDTHS = {
@@ -50,7 +58,13 @@ class ModeManager:
 
         print(f"[MODE] Установка нового режима: {new_mode_name}")
         self.current_mode = new_mode_name
-        self.main_window.mode = new_mode_name # Обновляем атрибут в MainWindow
+        # Обновляем атрибут mode в главном окне
+        # <<< ИСПРАВЛЕНО: Проверяем наличие атрибута перед установкой >>>
+        if hasattr(self.main_window, 'mode'):
+             self.main_window.mode = new_mode_name
+        else:
+             print("[WARN] Атрибут 'mode' не найден в main_window при смене режима в ModeManager.")
+        # <<< ---------------------------------------------------- >>>
 
     def clear_layout_recursive(self, layout):
         """Рекурсивно очищает layout."""
@@ -69,10 +83,7 @@ class ModeManager:
                     spacer = item.spacerItem()
                     if spacer is not None: layout.removeItem(item)
 
+
 # Функция change_mode теперь является методом MainWindow
-# def change_mode(window, mode_name):
-#    ...
 
 # Функция update_interface_for_mode теперь является методом MainWindow
-# def update_interface_for_mode(window):
-#    ...

@@ -9,35 +9,30 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QPoint, QModelIndex
 from PySide6.QtGui import QIcon, QMouseEvent, QColor, QBrush
 
-# <<< ИСПРАВЛЕНО: Используем абсолютные импорты от core или корня >>>
+# Импорты из проекта
 import translations
 import utils_gui
 import logic
-import mode_manager
-import win_api
-import recognition
-import images_load
-import top_panel
-import left_panel
-import right_panel
-import horizontal_list
+import heroes_bd
+import delegate
+import dialogs
 import display
-# <<< ----------------------------------------------------------- >>>
+import horizontal_list
+import images_load
+from mode_manager import ModeManager, PANEL_MIN_WIDTHS, MODE_DEFAULT_WINDOW_SIZES
+from win_api import WinApiManager, user32 as winapi_user32
+from recognition import RecognitionManager, RecognitionWorker
+from top_panel import TopPanel
+from left_panel import LeftPanel, create_left_panel
+from right_panel import RightPanel, HERO_NAME_ROLE
 
 # Импортируем конкретные классы/функции для удобства
 from translations import get_text, set_language, SUPPORTED_LANGUAGES
 from utils_gui import copy_to_clipboard
 from logic import CounterpickLogic, TEAM_SIZE
-from mode_manager import ModeManager, PANEL_MIN_WIDTHS, MODE_DEFAULT_WINDOW_SIZES
-from win_api import WinApiManager, user32 as winapi_user32
-from recognition import RecognitionManager, RecognitionWorker
-from images_load import load_original_images, get_images_for_mode, SIZES, load_default_pixmap
-from top_panel import TopPanel
-from left_panel import LeftPanel, create_left_panel
-from right_panel import RightPanel, HERO_NAME_ROLE # Импортируем create_right_panel не нужно, используем класс
+from images_load import get_images_for_mode, SIZES, load_default_pixmap
 from horizontal_list import update_horizontal_icon_list
 from display import generate_counterpick_display, generate_minimal_icon_list
-# heroes_bd импортируется там, где нужен
 
 try:
     import keyboard
@@ -55,7 +50,7 @@ class MainWindow(QMainWindow):
     recognize_heroes_signal = Signal()
     recognition_complete_signal = Signal(list)
 
-    def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict): # Используем более конкретные типы
+    def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict):
         super().__init__()
         print("[LOG] MainWindow.__init__ started")
 
@@ -79,7 +74,6 @@ class MainWindow(QMainWindow):
         # Атрибуты UI
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
         self.top_panel_instance: TopPanel | None = None
-        self.left_panel_instance: LeftPanel | None = None
         self.right_panel_instance: RightPanel | None = None
         self.top_frame = None
         self.author_button = None
@@ -113,7 +107,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(400, 100)
 
         # Создание UI
-        self._create_main_ui_layout() # <<< ВОССТАНОВЛЕН вызов этого метода
+        self._create_main_ui_layout()
         self._update_interface_for_mode()
 
         # Подключение сигналов
@@ -125,189 +119,121 @@ class MainWindow(QMainWindow):
 
         print("[LOG] MainWindow.__init__ finished")
 
-    # --- Создание и настройка UI ---
-    # <<< ВОССТАНОВЛЕН МЕТОД >>>
     def _create_main_ui_layout(self):
-        """Создает базовую структуру виджетов и layout'ов окна."""
         print("[LOG] MainWindow._create_main_ui_layout() started")
         central_widget = QWidget(self); self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
 
-        # Верхняя панель
         self.top_panel_instance = TopPanel(self, self.change_mode, self.logic, self.app_version)
         self.top_frame = self.top_panel_instance.top_frame
         self.author_button = self.top_panel_instance.author_button
         self.rating_button = self.top_panel_instance.rating_button
         self.main_layout.addWidget(self.top_frame)
 
-        # Горизонтальный список иконок
         self._create_icons_scroll_area()
         self.main_layout.addWidget(self.icons_scroll_area)
 
-        # Контейнер для левой и правой панелей
         self.main_widget = QWidget(); self.main_widget.setObjectName("main_widget")
         self.inner_layout = QHBoxLayout(self.main_widget); self.inner_layout.setObjectName("inner_layout")
         self.inner_layout.setContentsMargins(0, 0, 0, 0); self.inner_layout.setSpacing(0)
         self.main_layout.addWidget(self.main_widget, stretch=1)
         print("[LOG] MainWindow._create_main_ui_layout() finished")
-    # <<< ------------------- >>>
 
-    # _create_icons_scroll_area остается как есть
-    # _connect_signals остается как есть
+    def _create_icons_scroll_area(self):
+        self.icons_scroll_area = QScrollArea();
+        self.icons_scroll_area.setObjectName("icons_scroll_area")
+        self.icons_scroll_area.setWidgetResizable(True)
+        self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.icons_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.icons_scroll_area.setStyleSheet("QScrollArea { border: none; background-color: #f0f0f0; }")
+        self.icons_scroll_content = QWidget(); self.icons_scroll_content.setObjectName("icons_scroll_content")
+        self.icons_scroll_content_layout = QHBoxLayout(self.icons_scroll_content)
+        self.icons_scroll_content_layout.setObjectName("icons_scroll_content_layout")
+        self.icons_scroll_content_layout.setContentsMargins(5, 2, 5, 2); self.icons_scroll_content_layout.setSpacing(4)
+        self.icons_scroll_content_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.icons_scroll_area.setWidget(self.icons_scroll_content)
+        self.icons_scroll_area.setFixedHeight(40)
+
+    def _connect_signals(self):
+        self.move_cursor_signal.connect(self._handle_move_cursor)
+        self.toggle_selection_signal.connect(self._handle_toggle_selection)
+        self.toggle_mode_signal.connect(self._handle_toggle_mode)
+        self.clear_all_signal.connect(self._handle_clear_all)
+        self.recognize_heroes_signal.connect(self.rec_manager._handle_recognize_heroes)
+        self.rec_manager.recognition_complete_signal.connect(self._on_recognition_complete)
+        self.rec_manager.error.connect(self._on_recognition_error)
 
     # --- Обработка событий окна ---
-    # closeEvent, mousePress/Move/ReleaseEvent остаются без изменений
+    def closeEvent(self, event):
+        print("Close event triggered.")
+        self.stop_keyboard_listener()
+        if hasattr(self, 'rec_manager') and self.rec_manager:
+            self.rec_manager.stop_recognition()
+        if self._keyboard_listener_thread and self._keyboard_listener_thread.is_alive():
+             print("Waiting for keyboard listener thread to join...")
+             self._keyboard_listener_thread.join(timeout=1.0)
+             if self._keyboard_listener_thread.is_alive(): print("[WARN] Keyboard listener thread did not exit cleanly.")
+             else: print("Keyboard listener thread joined successfully.")
+        super().closeEvent(event)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if self.mode == "min" and self.top_frame and self.top_frame.underMouse():
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._mouse_pressed = True; self._old_pos = event.globalPosition().toPoint(); event.accept(); return
+        self._mouse_pressed = False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.mode == "min" and self._mouse_pressed and self._old_pos is not None:
+            delta = event.globalPosition().toPoint() - self._old_pos; self.move(self.pos() + delta); self._old_pos = event.globalPosition().toPoint(); event.accept()
+        else: super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton:
+            self._mouse_pressed = False; self._old_pos = None; event.accept()
+        else: super().mouseReleaseEvent(event)
 
     # --- Управление режимами окна ---
     def change_mode(self, mode_name: str):
-        """Слот для изменения режима отображения (вызывается из TopPanel)."""
         print(f"--- Попытка смены режима на: {mode_name} (в MainWindow) ---")
-        if self.mode == mode_name:
-            print(f"Режим '{mode_name}' уже установлен.")
-            return
-
+        if self.mode == mode_name: print(f"Режим '{mode_name}' уже установлен."); return
         start_time = time.time()
-        # 1. Сохраняем позицию
         if self.mode in self.mode_positions and self.isVisible():
-            self.mode_positions[self.mode] = self.pos()
-            print(f"Позиция для режима '{self.mode}' сохранена: {self.mode_positions[self.mode]}")
-
-        # 2. Сбрасываем фокус хоткея
-        old_cursor_index = self.hotkey_cursor_index
-        self.hotkey_cursor_index = -1
-        if self.right_list_widget and self.right_list_widget.isVisible() and old_cursor_index >= 0:
-            self._update_hotkey_highlight(old_cursor_index)
-
-        # 3. Устанавливаем новый режим
-        self.mode_manager.change_mode(mode_name)
-        self.mode = mode_name
-
-        # 4. Перестройка интерфейса
+            self.mode_positions[self.mode] = self.pos(); print(f"Позиция для режима '{self.mode}' сохранена: {self.mode_positions[self.mode]}")
+        old_cursor_index = self.hotkey_cursor_index; self.hotkey_cursor_index = -1
+        if self.right_list_widget and self.right_list_widget.isVisible() and old_cursor_index >= 0: self._update_hotkey_highlight(old_cursor_index)
+        self.mode_manager.change_mode(mode_name); self.mode = mode_name
         self._update_interface_for_mode()
-
-        # 5. Восстанавливаем позицию окна
         target_pos = self.mode_positions.get(self.mode)
-        if target_pos and self.isVisible():
-            print(f"Восстановление позиции для режима '{self.mode}': {target_pos}")
-            self.move(target_pos)
-
-        # 6. Восстанавливаем фокус хоткея
+        if target_pos and self.isVisible(): print(f"Восстановление позиции для режима '{self.mode}': {target_pos}"); self.move(target_pos)
         QTimer.singleShot(150, self._reset_hotkey_cursor_after_mode_change)
+        end_time = time.time(); print(f"--- Смена режима на {mode_name} ЗАВЕРШЕНА (в MainWindow) (заняло: {end_time - start_time:.4f} сек) ---")
 
-        end_time = time.time()
-        print(f"--- Смена режима на {mode_name} ЗАВЕРШЕНА (в MainWindow) (заняло: {end_time - start_time:.4f} сек) ---")
-
-    # Метод _update_interface_for_mode остается здесь
-    # Метод _reset_hotkey_cursor_after_mode_change остается здесь
-
-    # --- Управление Topmost ---
-    # @property _is_win_topmost, set_topmost_winapi, toggle_topmost_winapi остаются здесь
-
-    # --- Обработка сигналов хоткеев ---
-    # _handle_move_cursor, _handle_toggle_selection, _handle_toggle_mode,
-    # _handle_clear_all, _reset_hotkey_cursor_after_clear остаются здесь
-
-    # --- Обработка сигналов распознавания ---
-    # _on_recognition_complete, _on_recognition_error остаются здесь
-
-    # --- Обновление UI ---
-    # update_ui_after_logic_change, _update_selected_label, _update_counterpick_display,
-    # _update_list_item_selection_states, _update_priority_labels остаются здесь
-
-    # --- Обработчики событий UI ---
-    # handle_selection_changed, show_priority_context_menu остаются здесь
-
-    # --- Язык ---
-    # switch_language остается здесь
-    # <<< ВОССТАНОВЛЕН МЕТОД update_language >>>
-    def update_language(self):
-        """Обновляет тексты всех элементов интерфейса."""
-        print("[LOG] update_language called")
-        current_lang = self.logic.DEFAULT_LANGUAGE
-        self.setWindowTitle(f"{get_text('title', language=current_lang)} v{self.app_version}")
-
-        # Обновляем TopPanel
-        if self.top_panel_instance:
-            self.top_panel_instance.update_language()
-
-        # Обновляем RightPanel (если она есть)
-        if self.right_panel_instance:
-            self.right_panel_instance.update_language()
-
-        # Обновляем LeftPanel (result_label)
-        # result_label теперь атрибут MainWindow, а не left_panel_instance
-        if self.result_label and not self.logic.selected_heroes:
-             self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
-
-        # Обновляем подсказки в QListWidget
-        list_widget = self.right_list_widget # Используем атрибут MainWindow
-        hero_items_dict = self.hero_items # Используем атрибут MainWindow
-        if list_widget and list_widget.isVisible():
-            focused_tooltip = None
-            if 0 <= self.hotkey_cursor_index < list_widget.count():
-                 try:
-                     focused_item = list_widget.item(self.hotkey_cursor_index)
-                     if focused_item: focused_tooltip = focused_item.toolTip()
-                 except RuntimeError: pass
-
-            for hero, item in hero_items_dict.items():
-                 if item is None: continue
-                 try:
-                     # Обновляем текст элемента в зависимости от режима
-                     item_text = hero if self.mode == "max" else ""
-                     if item.text() != item_text: item.setText(item_text)
-                     # Обновляем базовую подсказку
-                     item.setToolTip(hero)
-                 except RuntimeError: continue
-
-            if focused_tooltip and ">>>" in focused_tooltip and 0 <= self.hotkey_cursor_index < list_widget.count():
-                try:
-                    current_focused_item = list_widget.item(self.hotkey_cursor_index)
-                    if current_focused_item: current_focused_item.setToolTip(focused_tooltip)
-                except RuntimeError: pass
-    # <<< --------------------------------- >>>
-
-
-    # --- Утилиты UI ---
-    # _calculate_columns, _update_hotkey_highlight остаются здесь
-
-    # --- Управление слушателем клавиатуры ---
-    # start_keyboard_listener, stop_keyboard_listener, _keyboard_listener_loop остаются здесь
-
-    # --- Копирование в буфер обмена ---
-    # copy_to_clipboard остается здесь
-
-    # --- Явно скопируем код _update_interface_for_mode и др. ---
     def _update_interface_for_mode(self):
-        t0 = time.time()
-        current_mode = self.mode
+        t0 = time.time(); current_mode = self.mode
         print(f"[TIMING] _update_interface_for_mode: Start for mode '{current_mode}'")
         t1 = time.time()
         if self.inner_layout: self.mode_manager.clear_layout_recursive(self.inner_layout)
         else:
-            if self.main_widget:
-                 self.inner_layout = QHBoxLayout(self.main_widget); self.inner_layout.setObjectName("inner_layout")
-                 self.inner_layout.setContentsMargins(0,0,0,0); self.inner_layout.setSpacing(0)
+            if self.main_widget: self.inner_layout = QHBoxLayout(self.main_widget); self.inner_layout.setObjectName("inner_layout"); self.inner_layout.setContentsMargins(0,0,0,0); self.inner_layout.setSpacing(0)
             else: print("[!] КРИТИЧЕСКАЯ ОШИБКА: main_widget не найден."); return
         t2 = time.time(); # print(f"[TIMING] -> Clear inner_layout: {t2-t1:.4f} s")
-        self.left_panel_instance = None; self.canvas = None; self.result_frame = None; self.result_label = None
-        self.right_panel_instance = None; self.right_frame = None; self.selected_heroes_label = None; self.right_list_widget = None
-        self.hero_items.clear()
+        self.canvas = None; self.result_frame = None; self.result_label = None; self.update_scrollregion = lambda: None
+        self.right_frame = None; self.selected_heroes_label = None; self.right_list_widget = None
+        self.hero_items.clear(); self.left_panel_instance = None; self.right_panel_instance = None
         t1 = time.time()
         try: self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(current_mode)
         except Exception as e: print(f"Критическая ошибка загрузки изображений для режима {current_mode}: {e}"); return
         t2 = time.time(); # print(f"[TIMING] -> Load/Get images: {t2-t1:.4f} s")
         t1 = time.time()
-        # <<< ИЗМЕНЕНО: create_left_panel теперь импортирован и используется >>>
         self.canvas, self.result_frame, self.result_label, self.update_scrollregion = create_left_panel(self.main_widget)
-        self.left_frame = self.canvas.parentWidget() # Получаем QFrame контейнер
+        self.left_frame = self.canvas.parentWidget()
         self.left_frame.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('left', 0))
         self.inner_layout.addWidget(self.left_frame, stretch=1)
         t2 = time.time(); # print(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
         t1 = time.time()
         if current_mode != "min":
-            # <<< ИЗМЕНЕНО: Используем класс RightPanel напрямую >>>
             self.right_panel_instance = RightPanel(self, current_mode)
             self.right_frame = self.right_panel_instance.frame
             self.selected_heroes_label = self.right_panel_instance.selected_heroes_label
@@ -363,7 +289,7 @@ class MainWindow(QMainWindow):
         if frameless_changed: print("[LOG] Frameless flag changed, calling window.show()"); self.show()
         t2 = time.time(); # print(f"[TIMING] -> Setup window flags/visibility: {t2-t1:.4f} s")
         t1 = time.time()
-        self.update_language() # <<< ВЫЗОВ update_language ПЕРЕМЕЩЕН СЮДА >>>
+        self.update_language() # <<< ВЫЗЫВАЕМ МЕТОД self.update_language() >>>
         self.main_layout.activate()
         if self.inner_layout: self.inner_layout.activate()
         self.updateGeometry()
@@ -381,7 +307,7 @@ class MainWindow(QMainWindow):
         t_end = time.time()
         print(f"[TIMING] _update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
 
-    # --- Остальные методы (без изменений) ---
+    # <<< ВОССТАНОВЛЕН МЕТОД >>>
     def _reset_hotkey_cursor_after_mode_change(self):
         print("[LOG] _reset_hotkey_cursor_after_mode_change called")
         list_widget = self.right_list_widget
@@ -397,12 +323,15 @@ class MainWindow(QMainWindow):
             self.hotkey_cursor_index = -1
             list_visible_status = list_widget.isVisible() if list_widget else 'No list'
             print(f"[Hotkey] Cursor set to -1 (mode: {self.mode}, list visible: {list_visible_status})")
+    # <<< ------------------- >>>
 
+    # --- Управление Topmost ---
     @property
     def _is_win_topmost(self): return self.win_api_manager.is_win_topmost
     def set_topmost_winapi(self, enable: bool): self.win_api_manager.set_topmost_winapi(enable)
     def toggle_topmost_winapi(self): self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
 
+    # --- Обработка сигналов хоткеев ---
     @Slot(str)
     def _handle_move_cursor(self, direction):
         list_widget = self.right_list_widget
@@ -466,6 +395,7 @@ class MainWindow(QMainWindow):
         self.update_ui_after_logic_change()
         self._reset_hotkey_cursor_after_clear()
 
+    # --- Обработка сигналов распознавания ---
     @Slot(list)
     def _on_recognition_complete(self, recognized_heroes):
         print(f"[RESULT] Распознавание завершено в MainWindow. Распознанные герои: {recognized_heroes}")
@@ -482,6 +412,8 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, get_text('error', language=self.logic.DEFAULT_LANGUAGE),
                             f"{get_text('recognition_error_prefix', language=self.logic.DEFAULT_LANGUAGE)}\n{error_message}")
 
+    # --- Обновление UI ---
+    # <<< ВОССТАНОВЛЕНЫ МЕТОДЫ >>>
     def update_ui_after_logic_change(self):
         print("[UI Update] Started after logic change.")
         start_time = time.time()
@@ -493,6 +425,55 @@ class MainWindow(QMainWindow):
         end_time = time.time()
         print(f"[UI Update] Finished in {end_time - start_time:.4f} sec.")
 
+    def _update_selected_label(self):
+        label_to_update = self.selected_heroes_label
+        if label_to_update:
+             try: label_to_update.setText(self.logic.get_selected_heroes_text())
+             except RuntimeError: pass
+             except Exception as e: print(f"[ERROR] updating selected label: {e}")
+
+    def _update_counterpick_display(self):
+        if not self.result_frame or not self.canvas:
+             print("[WARN] result_frame or canvas not found in _update_counterpick_display")
+             return
+        images_ok = bool(self.left_images)
+        if self.mode != 'min': images_ok = images_ok and bool(self.small_images)
+        if not images_ok:
+            try: _, self.left_images, self.small_images, _ = get_images_for_mode(self.mode)
+            except Exception as e: print(f"[ERROR] reloading images for display: {e}"); return
+        try:
+            if self.mode == "min": generate_minimal_icon_list(self.logic, self.result_frame, self.left_images)
+            else: generate_counterpick_display(self.logic, self.result_frame, self.left_images, self.small_images)
+            if self.update_scrollregion: QTimer.singleShot(0, self.update_scrollregion)
+        except RuntimeError as e: print(f"[ERROR] RuntimeErr in display generation: {e}")
+        except Exception as e: print(f"[ERROR] General Err in display generation: {e}")
+
+    def _update_list_item_selection_states(self):
+        list_widget = self.right_list_widget
+        hero_items_dict = self.hero_items
+        if not list_widget or not list_widget.isVisible(): return
+        self.is_programmatically_updating_selection = True
+        try:
+            list_widget.blockSignals(True)
+            current_logic_selection = set(self.logic.selected_heroes)
+            for hero, item in hero_items_dict.items():
+                if item is None: continue
+                try:
+                    is_now_selected = (hero in current_logic_selection)
+                    if item.isSelected() != is_now_selected: item.setSelected(is_now_selected)
+                except RuntimeError: pass
+                except Exception as e: print(f"[ERROR] updating selection state for {hero}: {e}")
+            self._update_selected_label()
+        finally:
+            try:
+                if list_widget: list_widget.blockSignals(False)
+            except RuntimeError: pass
+            self.is_programmatically_updating_selection = False
+
+    def _update_priority_labels(self): pass # Пока не используется
+    # <<< ------------------------ >>>
+
+    # --- Обработчики событий UI ---
     def handle_selection_changed(self):
         if self.is_programmatically_updating_selection: return
         list_widget = self.right_list_widget
@@ -527,6 +508,7 @@ class MainWindow(QMainWindow):
                 self.update_ui_after_logic_change()
             else: print(f"Cannot change priority for '{hero_name}' as it's not selected.")
 
+    # --- Язык ---
     def switch_language(self, lang_code: str):
         print(f"[Language] Attempting to switch to {lang_code}")
         if self.logic.DEFAULT_LANGUAGE != lang_code:
@@ -539,6 +521,53 @@ class MainWindow(QMainWindow):
         else:
             print(f"[Language] Already set to {lang_code}")
 
+    # <<< ВОССТАНОВЛЕН МЕТОД update_language >>>
+    def update_language(self):
+        """Обновляет тексты всех элементов интерфейса."""
+        print("[LOG] update_language called")
+        current_lang = self.logic.DEFAULT_LANGUAGE
+        self.setWindowTitle(f"{get_text('title', language=current_lang)} v{self.app_version}")
+
+        # Обновляем TopPanel
+        if self.top_panel_instance:
+            self.top_panel_instance.update_language()
+
+        # Обновляем RightPanel (если она есть)
+        if self.right_panel_instance:
+            self.right_panel_instance.update_language()
+
+        # Обновляем LeftPanel (result_label)
+        if self.result_label and not self.logic.selected_heroes:
+             self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
+
+        # Обновляем подсказки в QListWidget
+        list_widget = self.right_list_widget
+        hero_items_dict = self.hero_items
+        if list_widget and list_widget.isVisible():
+            focused_tooltip = None
+            if 0 <= self.hotkey_cursor_index < list_widget.count():
+                 try:
+                     focused_item = list_widget.item(self.hotkey_cursor_index)
+                     if focused_item: focused_tooltip = focused_item.toolTip()
+                 except RuntimeError: pass
+
+            for hero, item in hero_items_dict.items():
+                 if item is None: continue
+                 try:
+                     item_text = hero if self.mode == "max" else ""
+                     if item.text() != item_text: item.setText(item_text)
+                     item.setToolTip(hero)
+                 except RuntimeError: continue
+
+            if focused_tooltip and ">>>" in focused_tooltip and 0 <= self.hotkey_cursor_index < list_widget.count():
+                try:
+                    current_focused_item = list_widget.item(self.hotkey_cursor_index)
+                    if current_focused_item: current_focused_item.setToolTip(focused_tooltip)
+                except RuntimeError: pass
+    # <<< --------------------------------- >>>
+
+
+    # --- Утилиты UI ---
     def _calculate_columns(self):
         list_widget = self.right_list_widget
         if not list_widget or not list_widget.isVisible() or self.mode == 'min':
@@ -584,6 +613,7 @@ class MainWindow(QMainWindow):
         if needs_viewport_update or old_index != new_index:
             list_widget.viewport().update()
 
+    # --- Управление слушателем клавиатуры ---
     def start_keyboard_listener(self):
         if not keyboard: return
         if self._keyboard_listener_thread is None or not self._keyboard_listener_thread.is_alive():
@@ -645,3 +675,8 @@ class MainWindow(QMainWindow):
             print("Unhooking all keyboard hotkeys...")
             keyboard.unhook_all()
             print("Keyboard listener thread finished.")
+
+    # --- Копирование в буфер обмена ---
+    def copy_to_clipboard(self):
+        """Слот для копирования рекомендуемой команды в буфер."""
+        copy_to_clipboard(self.logic)

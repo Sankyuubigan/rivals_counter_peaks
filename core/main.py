@@ -7,7 +7,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 print(f"Project root added to sys.path: {project_root}")
-# Добавляем папку core в sys.path, чтобы импорты работали и из корня, и внутри core
 core_dir = os.path.dirname(__file__)
 if core_dir not in sys.path:
      sys.path.insert(0, core_dir)
@@ -15,11 +14,15 @@ print(f"Core directory added to sys.path: {core_dir}")
 # --- ---
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
-# <<< ИСПРАВЛЕНО: Используем абсолютные импорты от корня или от core >>>
-from logic import CounterpickLogic
-from images_load import load_hero_templates, load_original_images
+# <<< ИСПРАВЛЕНО: Используем абсолютные импорты (от корня или от core) >>>
+# Модули из корня проекта
+import logic # Зависит от heroes_bd, translations
+import images_load # Зависит от heroes_bd
+import utils # Зависит от heroes_bd
+import heroes_bd # Загружаем отдельно
+import translations
+# Модули из core
 from main_window import MainWindow
-from utils import validate_heroes
 # <<< ---------------------------------------------------------------- >>>
 
 if __name__ == "__main__":
@@ -27,7 +30,7 @@ if __name__ == "__main__":
 
     # 1. Валидация данных
     print("[LOG] Запуск валидации героев...")
-    validation_errors = validate_heroes()
+    validation_errors = utils.validate_heroes() # Используем utils.
     if validation_errors:
         error_msg = "Обнаружены ошибки в данных героев:\n\n" + "\n".join(validation_errors) + "\n\nПриложение может работать некорректно."
         temp_app = QApplication.instance()
@@ -58,8 +61,8 @@ if __name__ == "__main__":
     # 4. Загрузка ресурсов
     print("[LOG] Предварительная загрузка ресурсов...")
     try:
-        load_original_images()
-        hero_templates = load_hero_templates()
+        images_load.load_original_images() # Используем images_load.
+        hero_templates = images_load.load_hero_templates() # Используем images_load.
         if hero_templates is None:
              raise RuntimeError("Словарь шаблонов не был загружен (None).")
         elif not hero_templates:
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     # 5. Создание экземпляра логики
     print("[LOG] Создание экземпляра CounterpickLogic...")
     try:
-        logic = CounterpickLogic()
+        logic_instance = logic.CounterpickLogic() # Используем logic.
     except Exception as e:
         print(f"[ERROR] Не удалось создать экземпляр CounterpickLogic: {e}")
         QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
@@ -85,7 +88,8 @@ if __name__ == "__main__":
     # 6. Создание главного окна
     print("[LOG] Создание MainWindow...")
     try:
-        window = MainWindow(logic, hero_templates if hero_templates else {})
+        # Передаем созданный экземпляр logic_instance
+        window = MainWindow(logic_instance, hero_templates if hero_templates else {})
         window.show()
     except Exception as e:
         print(f"[ERROR] Не удалось создать или показать MainWindow: {e}")
