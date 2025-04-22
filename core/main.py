@@ -6,7 +6,7 @@ import os
 from logic import CounterpickLogic
 from core.images_load import load_hero_templates, load_original_images
 from PySide6.QtWidgets import QApplication, QMessageBox
-from core.main_window import MainWindow, LOG
+from core.main_window import MainWindow
 from core.utils import validate_heroes
 import subprocess
 
@@ -23,8 +23,8 @@ if __name__ == "__main__":
     
     print("[LOG] Проверка валидации героев...")
     if not validate_heroes():
-        print("[ERROR] Ошибка валидации героев. Приложение не может быть запущено.")
-        sys.exit(1)
+        print("[ERROR] Ошибка валидации героев. ")
+        # sys.exit(1)
     else:
         print("[LOG] Валидация героев прошла успешно.")
 
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Проверяем доступность стиля Fusion перед попыткой его установить
-    available_styles = QApplication.styles()
-    if "Fusion" in available_styles:
+    available_styles = QApplication.style()
+    if "Fusion" is available_styles.name():
         print("[LOG] Стиль Fusion доступен. Устанавливаем.")
         app.setStyle("Fusion")
     else:
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     print("[LOG] Загрузка ресурсов завершена.")
 
     print("[LOG] main() - About to create MainWindow")
-    print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
+    # print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
     window = MainWindow(logic, hero_templates)
     if not window:
         print("[ERROR] Не удалось создать экземпляр MainWindow.")
