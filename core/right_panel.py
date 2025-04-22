@@ -165,7 +165,7 @@ class RightPanel:
             self.list_widget.setSpacing(4)
         self.list_widget.setIconSize(icon_size); self.list_widget.setGridSize(grid_size)
         self.copy_button.clicked.connect(self.window.copy_to_clipboard)
-        self.clear_button.clicked.connect(self.window.handle_clear_all)
+        self.clear_button.clicked.connect(self.window._handle_clear_all)
 
     def _create_layout(self):
         """
