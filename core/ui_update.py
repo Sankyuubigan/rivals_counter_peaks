@@ -2,16 +2,13 @@ import logging
 
 from PySide6.QtWidgets import QListWidgetItem
 
-from core.mode import ModeManager
-from core.win_api import WinApiManager
-
 
 class UiUpdateManager:
     def __init__(
         self,
         main_window,
-        win_api_manager: WinApiManager,
-        mode_manager: ModeManager,
+        win_api_manager: object,
+        mode_manager: object,
     ):
         self.main_window = main_window
         self.win_api_manager = win_api_manager

@@ -33,12 +33,12 @@ class MainWindow(QMainWindow):
         self.hero_templates = hero_templates
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
-
+        
         # Создаем RecognitionManager, передавая ему экземпляр логики
         # print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager with: logic={self.logic}, hero_templates={self.hero_templates}")
         print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager from file {RecognitionManager.__module__}")
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
-        self.rec_manager = RecognitionManager(main_window=self,logic=self.logic)
+        self.rec_manager = RecognitionManager(main_window=self,logic=self.logic, win_api_manager = self.win_api_manager, mode_manager = self.mode_manager)
         self.ui_update_manager = UiUpdateManager(self, self.rec_manager.win_api_manager, self.rec_manager.mode_manager)
         print(f"[LOG] MainWindow.__init__ - RecognitionManager created: {self.rec_manager}")
         
