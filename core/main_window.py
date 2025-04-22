@@ -1,24 +1,21 @@
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
-from PySide6.QtGui import QPixmap, QFont, QColor, QPalette, QIcon
-from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtWidgets import QMainWindow
+from PySide6.QtGui import QIcon
 
 from logic import CounterpickLogic
-from images_load import get_images_for_mode, load_original_images, load_hero_templates, load_default_pixmap
+from images_load import load_hero_templates, load_default_pixmap
 from recognition import RecognitionManager
-import time
-import sys
-import os
-from heroes_bd import heroes
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, logic: CounterpickLogic):
+    def __init__(self, logic: CounterpickLogic, hero_templates):
         """
         Инициализирует главное окно приложения.
 
         Args:
             logic: Экземпляр класса CounterpickLogic.
+            hero_templates (dict): Шаблоны для распознавания героев.
         """
+        print("[LOG] MainWindow.__init__ started")
         super().__init__()
         self.logic = logic  # экземпляр логики, инициализированный в main.py
         self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
@@ -26,13 +23,15 @@ class MainWindow(QMainWindow):
 
         # Загрузка шаблонов
         self.hero_templates = load_hero_templates()
+        print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
 
 
         # Создаем RecognitionManager, передавая ему экземпляр логики
         print("[LOG] MainWindow.__init__ about to create RecognitionManager")
-        self.rec_manager = RecognitionManager(logic=self.logic)
+        self.rec_manager = RecognitionManager(main_window = self, logic=self.logic, hero_templates=hero_templates)
         
         # Создание и настройка интерфейса
-        self.create_main_ui()
-        self.update_ui()
+        #self.create_main_ui()
+        #self.update_ui()
+        print("[LOG] MainWindow.__init__ finished")
