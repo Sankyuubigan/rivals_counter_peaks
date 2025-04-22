@@ -11,6 +11,7 @@ from core.mode import ModeManager
 from core.win_api import WinApiManager
 from core.images_load import load_hero_templates, load_default_pixmap, load_right_panel_images
 from core.recognition import RecognitionManager
+from core.hotkeys import HotkeyManager
 
 from core.top_panel import create_top_panel
 from core.left_panel import create_left_panel
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         self.mode_manager = ModeManager(self)
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
+        self.hotkey_manager = HotkeyManager(self)
         self.win_api_manager = WinApiManager(self)
         
 
