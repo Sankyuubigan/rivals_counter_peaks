@@ -1,5 +1,10 @@
 
 import sys
+import importlib
+
+# Сброс кеша модулей
+importlib.invalidate_caches()
+import sys
 import os
 from logic import CounterpickLogic
 
@@ -24,6 +29,7 @@ from core.images_load import load_original_images
 if __name__ == "__main__":
     print("[LOG] if __name__ == '__main__': started")
     print("[LOG] main() started")
+    print("[LOG] main() enter")
     
     # Создаем экземпляр логики
     logic = CounterpickLogic()
@@ -87,4 +93,9 @@ if __name__ == "__main__":
         except:
             pass
         sys.exit(1)
+    
+    import subprocess
+    subprocess.run([sys.executable, '-m', 'pip', 'freeze', '>', 'requirements.txt'], check=True)
+    
+
 
