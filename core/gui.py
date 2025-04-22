@@ -1,15 +1,24 @@
 # File: gui.py
+print("[LOG] core/gui.py started")
+
 import time
 import threading
 import sys # Добавлен импорт
 
+print(f"[LOG] Пытаюсь импортировать PySide6.QtWidgets")
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QWidget, QVBoxLayout, QFrame,
                                QLabel, QPushButton, QApplication, QListWidget, QListWidgetItem, QMenu,
                                QAbstractItemView, QStyle, QComboBox, QScrollArea, QMessageBox) # Добавлен QMessageBox
+
+print(f"[LOG] Пытаюсь импортировать PySide6.QtCore")
 from PySide6.QtCore import Qt, QSize, Signal, Slot, QTimer, QPoint, QModelIndex, QEvent, QThread, QObject
+
+print(f"[LOG] Пытаюсь импортировать PySide6.QtGui")
 from PySide6.QtGui import QColor, QPalette, QIcon, QBrush, QMouseEvent
+
 from top_panel import create_top_panel
 from right_panel import create_right_panel, HERO_NAME_ROLE
+
 from left_panel import create_left_panel
 from utils_gui import copy_to_clipboard
 # from build import version # Версия теперь берется из logic или os.environ

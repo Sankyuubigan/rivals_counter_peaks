@@ -4,3 +4,4 @@
 .idea/
 dist/
 /core/__pycache__/
+.idx/dev.nix
