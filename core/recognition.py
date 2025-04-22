@@ -120,7 +120,7 @@ class RecognitionManager(QObject):
             print(f"[ERROR] Ошибка при распознавании текста: {e}")
         return []
 
-    def run(self):
+    # def run(self):
     @Slot()
     def _handle_recognize_heroes(self):
         """Запускает процесс распознавания героев в отдельном потоке."""

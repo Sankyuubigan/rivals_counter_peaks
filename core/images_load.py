@@ -14,7 +14,7 @@ def resource_path(relative_path):
 
     if hasattr(sys, "_MEIPASS"):
         base_path = sys._MEIPASS  # PyInstaller создает временную папку и сохраняет путь в sys._MEIPASS
-    except AttributeError:
+    else:
         base_path = os.path.abspath(".")  # Обычный запуск из скрипта
 
     return os.path.join(base_path, relative_path)
