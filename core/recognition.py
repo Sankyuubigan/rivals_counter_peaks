@@ -12,25 +12,24 @@ from translations import get_text
 
 class RecognitionWorker(QObject):
     """Воркер для распознавания героев в отдельном потоке."""
-    # Сигналы должны быть определены на уровне класса
-    finished = Signal(list) # Передает список распознанных имен
-    error = Signal(str)     # Передает сообщение об ошибке
+    finished = Signal(list)
+    error = Signal(str)
 
     def __init__(self, logic, recognition_area, recognition_threshold, templates, parent=None):
-        super().__init__(parent) # Передаем parent, если нужно
+        super().__init__(parent)
         self.logic = logic
         self.recognition_area = recognition_area
         self.recognition_threshold = recognition_threshold
         self.templates = templates
-        self._is_running = True # Флаг для возможности остановки
+        self._is_running = True
 
-    @Slot() # Декоратор для слота, который будет выполняться в потоке
+    @Slot()
     def run(self):
         """Основная функция воркера."""
         print("[THREAD][RecognitionWorker] Worker started.")
         if not self._is_running:
             print("[THREAD][RecognitionWorker] Worker stopped before starting.")
-            self.error.emit("Recognition cancelled.")
+            self.error.emit("Recognition cancelled before start.") # Сообщение об ошибке
             return
 
         try:
@@ -38,7 +37,7 @@ class RecognitionWorker(QObject):
             screenshot_cv2 = capture_screen_area(self.recognition_area)
             if screenshot_cv2 is None:
                 raise ValueError(get_text('recognition_no_screenshot', language=self.logic.DEFAULT_LANGUAGE))
-            if not self._is_running: return # Проверка после захвата
+            if not self._is_running: return
 
             # 2. Проверка шаблонов
             if not self.templates:
@@ -50,14 +49,14 @@ class RecognitionWorker(QObject):
                 self.templates,
                 self.recognition_threshold
             )
-            if not self._is_running: return # Проверка после распознавания
+            if not self._is_running: return
 
             # 4. Отправка результата
             self.finished.emit(recognized_heroes)
 
         except Exception as e:
             print(f"[THREAD ERROR][RecognitionWorker] Ошибка в потоке: {e}")
-            if self._is_running: # Отправляем ошибку, только если нас не остановили
+            if self._is_running:
                 self.error.emit(str(e))
         finally:
              print(f"[THREAD][RecognitionWorker] Worker finished.")
@@ -70,23 +69,23 @@ class RecognitionWorker(QObject):
 
 class RecognitionManager(QObject):
     """Управляет процессом распознавания."""
-    # Сигналы, которые будет эмитить менеджер в основной поток
     recognition_complete_signal = Signal(list)
     error = Signal(str)
-    # Сигнал для запуска хоткеем
-    recognize_heroes_signal = Signal()
+    recognize_heroes_signal = Signal() # Сигнал для запуска извне (например, из MainWindow)
 
     def __init__(self, main_window, logic, win_api_manager):
         super().__init__()
         print("[LOG] RecognitionManager.__init__ started")
-        self.main_window = main_window # Ссылка на главное окно
+        self.main_window = main_window
         self.logic = logic
-        self.win_api_manager = win_api_manager # Менеджер WinAPI (если нужен)
+        self.win_api_manager = win_api_manager
         self._recognition_thread: QThread | None = None
         self._recognition_worker: RecognitionWorker | None = None
+        # Подключаем внутренний сигнал к слоту запуска
+        self.recognize_heroes_signal.connect(self._handle_recognize_heroes)
         print("[LOG] RecognitionManager.__init__ finished")
 
-    @Slot() # Слот для запуска по сигналу recognize_heroes_signal
+    @Slot()
     def _handle_recognize_heroes(self):
         """Запускает процесс распознавания героев в отдельном потоке."""
         print("[ACTION][RecognitionManager] Запрос на распознавание героев...")
@@ -95,37 +94,31 @@ class RecognitionManager(QObject):
             QMessageBox.information(self.main_window, "Распознавание", "Процесс распознавания уже выполняется.")
             return
 
-        # Проверяем наличие шаблонов перед запуском
         if not self.main_window.hero_templates:
              print("[ERROR][RecognitionManager] Шаблоны героев не загружены.")
              QMessageBox.warning(self.main_window, get_text('error', language=self.logic.DEFAULT_LANGUAGE),
                                  get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
              return
 
-        # Создаем воркер и поток
         self._recognition_worker = RecognitionWorker(
             self.logic,
-            RECOGNITION_AREA, # Используем константу из utils
-            RECOGNITION_THRESHOLD, # Используем константу из utils
-            self.main_window.hero_templates # Передаем шаблоны из MainWindow
+            RECOGNITION_AREA,
+            RECOGNITION_THRESHOLD,
+            self.main_window.hero_templates
         )
-        self._recognition_thread = QThread(self.main_window) # Родитель - главное окно
+        self._recognition_thread = QThread(self.main_window)
         self._recognition_worker.moveToThread(self._recognition_thread)
 
-        # --- Подключаем сигналы ---
-        # Запуск воркера при старте потока
         self._recognition_thread.started.connect(self._recognition_worker.run)
-        # Перенаправляем сигналы воркера в сигналы менеджера (и далее в MainWindow)
+        # Перенаправляем сигналы воркера во внешние сигналы менеджера
         self._recognition_worker.finished.connect(self.recognition_complete_signal.emit)
         self._recognition_worker.error.connect(self.error.emit)
-        # Очистка после завершения потока
-        # Важно сначала завершить поток, потом удалять объекты
-        self._recognition_thread.finished.connect(self._recognition_thread.quit) # Запрашиваем выход из цикла событий потока
-        self._recognition_thread.finished.connect(self._recognition_worker.deleteLater) # Ставим воркер на удаление
-        self._recognition_thread.finished.connect(self._recognition_thread.deleteLater) # Ставим поток на удаление
-        self._recognition_thread.finished.connect(self._reset_recognition_state) # Сбрасываем ссылки
+        # Очистка
+        self._recognition_thread.finished.connect(self._recognition_thread.quit)
+        self._recognition_thread.finished.connect(self._recognition_worker.deleteLater)
+        self._recognition_thread.finished.connect(self._recognition_thread.deleteLater)
+        self._recognition_thread.finished.connect(self._reset_recognition_state)
 
-        # Запускаем поток
         self._recognition_thread.start()
         print("[INFO][RecognitionManager] Поток распознавания запущен.")
 
@@ -140,4 +133,3 @@ class RecognitionManager(QObject):
          """Останавливает текущий процесс распознавания."""
          if self._recognition_worker:
              self._recognition_worker.stop()
-         # Поток остановится сам после завершения run или по сигналу quit

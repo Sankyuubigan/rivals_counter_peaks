@@ -3,17 +3,13 @@ import sys
 import os
 
 # --- Настройка путей ---
-# Добавляем корень проекта (папка над core) в sys.path
-# Это нужно, чтобы можно было импортировать модули из корня (например, heroes_bd)
-# и чтобы PyInstaller правильно находил зависимости.
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 print(f"Project root added to sys.path: {project_root}")
 # --- ---
 
-# Импорты после настройки путей
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory # <<< ДОБАВЛЕН QStyleFactory
 # Используем относительные импорты для модулей внутри core
 from logic import CounterpickLogic
 from images_load import load_hero_templates, load_original_images
@@ -25,13 +21,19 @@ if __name__ == "__main__":
 
     # 1. Валидация данных
     print("[LOG] Запуск валидации героев...")
-    validation_errors = validate_heroes() # Функция теперь возвращает список ошибок
+    validation_errors = validate_heroes()
     if validation_errors:
-        # Показываем ошибки пользователю в MessageBox
         error_msg = "Обнаружены ошибки в данных героев:\n\n" + "\n".join(validation_errors) + "\n\nПриложение может работать некорректно."
-        QApplication([]) # Нужно создать временный QApplication для MessageBox
+        # Создаем временный QApplication только если основной еще не создан
+        temp_app = QApplication.instance() # Проверяем, есть ли уже экземпляр
+        if temp_app is None:
+            temp_app = QApplication([])
+            temp_app_created = True
+        else:
+            temp_app_created = False
         QMessageBox.warning(None, "Ошибка данных", error_msg)
-        # Решаем, стоит ли продолжать или выйти
+        if temp_app_created:
+             temp_app.quit() # Закрываем временный QApplication
         # sys.exit(1) # Раскомментировать для выхода при ошибке
         print("[WARN] Ошибки валидации обнаружены, но приложение продолжит работу.")
     else:
@@ -41,8 +43,10 @@ if __name__ == "__main__":
     print("[LOG] Создание QApplication...")
     app = QApplication(sys.argv)
 
-    # 3. Установка стиля (опционально)
-    available_styles = QApplication.style().keys()
+    # 3. Установка стиля
+    # <<< ИСПРАВЛЕНО: Используем QStyleFactory.keys() >>>
+    available_styles = QStyleFactory.keys()
+    # <<< ----------------------------------------- >>>
     if "Fusion" in available_styles:
         print("[LOG] Установка стиля Fusion.")
         app.setStyle("Fusion")
@@ -52,13 +56,12 @@ if __name__ == "__main__":
     # 4. Загрузка ресурсов
     print("[LOG] Предварительная загрузка ресурсов...")
     try:
-        load_original_images() # Загружаем базовые иконки
-        hero_templates = load_hero_templates() # Загружаем шаблоны
-        if hero_templates is None: # Проверяем результат (может быть None при ошибке)
+        load_original_images()
+        hero_templates = load_hero_templates()
+        if hero_templates is None:
              raise RuntimeError("Словарь шаблонов не был загружен (None).")
         elif not hero_templates:
              print("[WARN] Шаблоны героев не найдены или не загружены, распознавание будет недоступно.")
-             # Показываем предупреждение, но не выходим
              QMessageBox.warning(None, "Внимание", "Шаблоны героев не найдены. Функция распознавания будет недоступна.")
         else:
             print(f"[LOG] Шаблоны героев загружены ({len(hero_templates)} героев).")
@@ -80,12 +83,12 @@ if __name__ == "__main__":
     # 6. Создание главного окна
     print("[LOG] Создание MainWindow...")
     try:
-        window = MainWindow(logic, hero_templates if hero_templates else {}) # Передаем пустой словарь, если шаблоны не загрузились
+        window = MainWindow(logic, hero_templates if hero_templates else {})
         window.show()
     except Exception as e:
         print(f"[ERROR] Не удалось создать или показать MainWindow: {e}")
         import traceback
-        traceback.print_exc() # Печатаем полный traceback
+        traceback.print_exc()
         QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать или показать главное окно:\n{e}")
         sys.exit(1)
 
