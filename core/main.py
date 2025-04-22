@@ -1,6 +1,7 @@
 
 import sys
 import os
+from logic import CounterpickLogic
 
 
 # Добавление пути к корневой папке проекта в sys.path
@@ -17,10 +18,14 @@ from core.utils import validate_heroes
 from core.images_load import load_original_images
 
 
+
+
 if __name__ == "__main__":
     print("[LOG] if __name__ == '__main__': started")
     print("[LOG] main() started")
-
+    
+    # Создаем экземпляр логики
+    logic = CounterpickLogic()
 
     print("--- Запуск приложения ---")
 
@@ -36,7 +41,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[WARN] Не удалось установить стиль Fusion: {e}")
         
-    # Загрузка ресурсов
+    # Загрузка ресурсов ПОСЛЕ QApplication
     print("[LOG] main() - About to load_original_images()")
     try:
         load_original_images()  # Загружаем QPixmap
@@ -57,7 +62,7 @@ if __name__ == "__main__":
     print("[LOG] main() - About to create MainWindow")
 
     try:
-        window = MainWindow()
+        window = MainWindow(logic)
         print("[LOG] main() - MainWindow created")
         print("Отображение MainWindow...")
 
