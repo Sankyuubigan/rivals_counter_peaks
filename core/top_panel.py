@@ -3,12 +3,14 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QSlider, QComboBox, QPushButton, QHBoxLayout, QSpacerItem, QSizePolicy, QWidget
 )
 from PySide6.QtCore import Qt
-from core.translations import get_text, SUPPORTED_LANGUAGES
-from core.dialogs import show_author_info, show_hero_rating
+
+from translations import get_text, SUPPORTED_LANGUAGES
+from dialogs import show_author_info, show_hero_rating
+# <<< ---------------------------------------------- >>>
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .main_window import MainWindow # Используем относительный импорт для type hinting
+    from .main_window import MainWindow
 
 
 class TopPanel:
@@ -16,21 +18,18 @@ class TopPanel:
 
     def __init__(self, parent: 'MainWindow', switch_mode_callback, logic, app_version):
         self.parent = parent
-        self.switch_mode_callback = switch_mode_callback
+        self.switch_mode_callback = switch_mode_callback # Это метод MainWindow.change_mode
         self.logic = logic
         self.app_version = app_version
 
-        # Создаем основной QFrame
         self.top_frame = QFrame(parent)
         self.top_frame.setObjectName("top_frame")
-        self.top_frame.setStyleSheet("QFrame#top_frame { background-color: lightgray; }") # Стиль с ID селектором
+        self.top_frame.setStyleSheet("QFrame#top_frame { background-color: lightgray; }")
         self.top_frame.setFixedHeight(40)
 
-        # Атрибуты для кнопок, которые могут скрываться/показываться
         self.author_button: QPushButton | None = None
         self.rating_button: QPushButton | None = None
 
-        # Создаем и настраиваем layout и виджеты
         self._setup_ui()
 
     def _setup_ui(self):
@@ -39,7 +38,6 @@ class TopPanel:
         layout.setContentsMargins(5, 2, 5, 2)
         layout.setSpacing(5)
 
-        # --- Виджеты ---
         # Прозрачность
         self.transparency_slider = self._create_slider()
         layout.addWidget(self.transparency_slider)
@@ -85,11 +83,36 @@ class TopPanel:
 
         # Кнопка Закрыть
         self.close_button = self._create_close_button()
-        # Вставляем кнопку закрытия после растяжки
         self._insert_widget_after_stretch(layout, self.close_button)
 
+    # Методы _create_slider, _create_language_combo, _create_mode_button, _create_topmost_button,
+    # _create_info_button, _create_close_button, _insert_widget_after_stretch
+    # остаются без изменений, но метод update_language добавлен ниже для полноты
+
+    def update_language(self):
+        """Обновляет тексты элементов на панели."""
+        current_lang = self.logic.DEFAULT_LANGUAGE
+        self.language_label.setText(get_text('language', language=current_lang))
+        self.mode_label.setText(get_text('mode', language=current_lang))
+        self.min_button.setText(get_text('mode_min', language=current_lang))
+        self.middle_button.setText(get_text('mode_middle', language=current_lang))
+        self.max_button.setText(get_text('mode_max', language=current_lang))
+
+        # Обновляем текст кнопки topmost
+        update_func = getattr(self.topmost_button, '_update_visual_state', None)
+        if update_func: update_func()
+
+        if self.author_button: self.author_button.setText(get_text('about_author', language=current_lang))
+        if self.rating_button: self.rating_button.setText(get_text('hero_rating', language=current_lang))
+
+        # Обновляем комбо-бокс языка
+        current_text = SUPPORTED_LANGUAGES.get(current_lang, "N/A")
+        self.language_combo.blockSignals(True)
+        self.language_combo.setCurrentText(current_text)
+        self.language_combo.blockSignals(False)
+
+    # --- Копируем код вспомогательных методов создания виджетов ---
     def _create_slider(self) -> QSlider:
-        """Создает слайдер прозрачности."""
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setObjectName("transparency_slider")
         slider.setRange(10, 100); slider.setValue(100); slider.setFixedWidth(100)
@@ -103,13 +126,11 @@ class TopPanel:
         return slider
 
     def _create_language_combo(self) -> QComboBox:
-        """Создает комбо-бокс выбора языка."""
         combo = QComboBox()
         combo.setObjectName("language_combo")
         combo.addItems(SUPPORTED_LANGUAGES.values())
         combo.setCurrentText(SUPPORTED_LANGUAGES[self.logic.DEFAULT_LANGUAGE])
         combo.setStyleSheet("font-size: 10pt;")
-        # Используем lambda для передачи аргумента в switch_language_callback
         combo.currentTextChanged.connect(
             lambda text: self.parent.switch_language(
                 list(SUPPORTED_LANGUAGES.keys())[list(SUPPORTED_LANGUAGES.values()).index(text)]
@@ -118,52 +139,38 @@ class TopPanel:
         return combo
 
     def _create_mode_button(self, text_key: str, mode_name: str) -> QPushButton:
-        """Создает кнопку для переключения режима."""
         button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE))
-        button.setObjectName(f"{mode_name}_mode_button") # Используем имя режима в objectName
+        button.setObjectName(f"{mode_name}_mode_button")
         button.setStyleSheet("font-size: 10pt; padding: 2px;")
-        button.clicked.connect(lambda: self.switch_mode_callback(mode_name)) # switch_mode_callback - это self.change_mode из MainWindow
+        button.clicked.connect(lambda: self.switch_mode_callback(mode_name))
         return button
 
     def _create_topmost_button(self) -> QPushButton:
-        """Создает кнопку переключения 'Поверх окон'."""
         button = QPushButton()
         button.setObjectName("topmost_button")
-
         def update_visual_state():
             is_topmost = self.parent._is_win_topmost
             button.setText(get_text('topmost_on' if is_topmost else 'topmost_off', language=self.logic.DEFAULT_LANGUAGE))
-            bg_color = "#4CAF50" if is_topmost else "gray"
-            border_color = "#388E3C" if is_topmost else "#666666"
+            bg_color = "#4CAF50" if is_topmost else "gray"; border_color = "#388E3C" if is_topmost else "#666666"
             hover_bg_color = "#45a049" if is_topmost else "#757575"
             button.setStyleSheet(f"""
-                QPushButton {{
-                    font-size: 10pt; padding: 2px;
-                    background-color: {bg_color};
-                    border: 1px solid {border_color};
-                    border-radius: 4px;
-                    color: white;
-                    min-width: 80px;
-                }}
+                QPushButton {{ font-size: 10pt; padding: 2px; background-color: {bg_color}; border: 1px solid {border_color}; border-radius: 4px; color: white; min-width: 80px; }}
                 QPushButton:hover {{ background-color: {hover_bg_color}; }}
             """)
-
-        setattr(button, '_update_visual_state', update_visual_state) # Сохраняем функцию обновления
-        button.clicked.connect(self.parent.toggle_topmost_winapi) # Подключаем к методу MainWindow
-        update_visual_state() # Устанавливаем начальный вид
+        setattr(button, '_update_visual_state', update_visual_state)
+        button.clicked.connect(self.parent.toggle_topmost_winapi)
+        update_visual_state()
         return button
 
     def _create_info_button(self, text_key: str, callback) -> QPushButton:
-        """Создает кнопки 'Об авторе' и 'Рейтинг героев'."""
         button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE))
         button.setObjectName(f"{text_key}_button")
         button.setStyleSheet("font-size: 10pt; padding: 2px;")
         button.clicked.connect(callback)
-        button.setVisible(False) # Скрыты по умолчанию
+        button.setVisible(False)
         return button
 
     def _create_close_button(self) -> QPushButton:
-        """Создает кнопку закрытия окна (для min режима)."""
         button = QPushButton("X")
         button.setObjectName("close_button")
         button.setFixedSize(25, 25)
@@ -173,39 +180,15 @@ class TopPanel:
             QPushButton:pressed { background-color: #c0302c; }
         """)
         button.clicked.connect(self.parent.close)
-        button.setVisible(False) # Скрыта по умолчанию
+        button.setVisible(False)
         return button
 
     def _insert_widget_after_stretch(self, layout: QHBoxLayout, widget: QWidget):
-        """Вставляет виджет в layout после первого горизонтального QSpacerItem."""
         stretch_index = -1
         for i in range(layout.count()):
             item = layout.itemAt(i)
             if isinstance(item, QSpacerItem) and item.spacerItem().expandingDirections() & Qt.Orientation.Horizontal:
                 stretch_index = i
                 break
-        if stretch_index != -1:
-            layout.insertWidget(stretch_index + 1, widget)
-        else:
-            layout.addWidget(widget) # Добавляем в конец, если растяжки нет
-
-    def update_language(self):
-        """Обновляет тексты элементов на панели."""
-        # Обновляем тексты всех статичных меток и кнопок
-        self.language_label.setText(get_text('language', language=self.logic.DEFAULT_LANGUAGE))
-        self.mode_label.setText(get_text('mode', language=self.logic.DEFAULT_LANGUAGE))
-        self.min_button.setText(get_text('mode_min', language=self.logic.DEFAULT_LANGUAGE))
-        self.middle_button.setText(get_text('mode_middle', language=self.logic.DEFAULT_LANGUAGE))
-        self.max_button.setText(get_text('mode_max', language=self.logic.DEFAULT_LANGUAGE))
-        # Обновляем текст кнопки topmost через ее метод
-        update_func = getattr(self.topmost_button, '_update_visual_state', None)
-        if update_func: update_func()
-        # Обновляем тексты информационных кнопок
-        if self.author_button: self.author_button.setText(get_text('about_author', language=self.logic.DEFAULT_LANGUAGE))
-        if self.rating_button: self.rating_button.setText(get_text('hero_rating', language=self.logic.DEFAULT_LANGUAGE))
-        # Обновляем комбо-бокс языка
-        current_lang_code = self.logic.DEFAULT_LANGUAGE
-        current_text = SUPPORTED_LANGUAGES.get(current_lang_code, "N/A")
-        self.language_combo.blockSignals(True)
-        self.language_combo.setCurrentText(current_text)
-        self.language_combo.blockSignals(False)
+        if stretch_index != -1: layout.insertWidget(stretch_index + 1, widget)
+        else: layout.addWidget(widget)
