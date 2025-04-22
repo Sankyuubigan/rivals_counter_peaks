@@ -12,9 +12,9 @@ from core.win_api import WinApiManager
 from core.images_load import load_hero_templates, load_default_pixmap, load_right_panel_images
 from core.recognition import RecognitionManager
 
-from core.top_panel import create_top_panel
-from core.left_panel import create_left_panel
-from core.right_panel import create_right_panel
+from core.top_panel import create_top_panel, TopPanel
+from core.left_panel import create_left_panel, LeftPanel
+from core.right_panel import create_right_panel, RightPanel
 from core.ui_update import UiUpdateManager
 
 
@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
         self.setWindowIcon(QIcon(load_default_pixmap()))
 
-        self.hero_templates = hero_templates
+        self.hero_templates:dict = hero_templates
         self.mode_manager = ModeManager(self)
         print("[LOG] MainWindow.__init__ load_hero_templates() finished")
 
@@ -107,20 +107,20 @@ class MainWindow(QMainWindow):
         """
         print("[LOG] MainWindow.create_main_ui() started")
         # Создаем панели
-        self.top_panel = create_top_panel(self, self.switch_mode, self.logic, '0.1.0')
-        self.left_panel = create_left_panel(self)
-        self.right_panel = create_right_panel(self)
+        self.top_panel:TopPanel = create_top_panel(self, self.switch_mode, self.logic, '0.1.0')
+        self.left_panel:LeftPanel = create_left_panel(self)
+        self.right_panel:RightPanel = create_right_panel(self)
 
         # Создаем главный макет
         main_layout = QVBoxLayout()
 
         # Добавляем top panel
-        main_layout.addWidget(self.top_panel)
+        main_layout.addWidget(self.top_panel.top_frame)
 
         # Создаем горизонтальный макет для left и right панелей
         horizontal_layout = QHBoxLayout()
-        horizontal_layout.addWidget(self.left_panel)
-        horizontal_layout.addWidget(self.right_panel)
+        horizontal_layout.addWidget(self.left_panel.scroll_area)
+        horizontal_layout.addWidget(self.right_panel.frame)
         main_layout.addLayout(horizontal_layout)
         central_widget = QWidget()
         central_widget.setLayout(main_layout)

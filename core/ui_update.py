@@ -1,5 +1,7 @@
 import logging
 
+from core.left_panel import LeftPanel
+from core.right_panel import RightPanel
 from PySide6.QtWidgets import QListWidgetItem
 
 
@@ -13,11 +15,13 @@ class UiUpdateManager:
         self.main_window = main_window
         self.win_api_manager = win_api_manager
         self.mode_manager = mode_manager
+        
 
     def _update_lists(self):
-        self.main_window.left_panel.update_ui()
-        self.main_window.right_panel.update_ui()
-        self._update_list_item_visuals()  # Обновляем список героев
+        if isinstance(self.main_window.left_panel, LeftPanel):
+            self.main_window.left_panel.update_ui()
+        if isinstance(self.main_window.right_panel, RightPanel):
+            self.main_window.right_panel.update_ui()
         self.update_list_item_selection_states()  # Обновляем выделение
         self.update_priority_labels()  # Обновляем приоритеты
 
