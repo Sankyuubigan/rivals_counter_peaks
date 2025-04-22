@@ -126,7 +126,7 @@ formatted_text_cache = {}
 
 def _get_translation_table(language):
     """Получает таблицу переводов для указанного языка или таблицу для русского языка как запасной вариант."""
-    return TRANSLATIONS.get(language, TRANSLATIONS['ru_RU']),
+    return TRANSLATIONS.get(language, TRANSLATIONS['ru_RU'])
 
 
 def _validate_key(key, translations_for_lang, default_text):
