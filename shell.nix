@@ -1,12 +1,15 @@
 {
   pkgs ? import <nixpkgs> {},
 }:
-pkgs.mkShell {
-    buildInputs = [
-      pkgs.python311
-      pkgs.python311Packages.opencv4
-      pkgs.python311Packages.pip
-      pkgs.python311Packages.ipykernel
-      pkgs.python311Packages.pandas
+let
+  python = pkgs.python312;
+in
+  pkgs.mkShell {
+    buildInputs = [ 
+      python
+      python.pkgs.opencv4
+      python.pkgs.pandas
+      python.pkgs.ipykernel
     ];
-  }
+    shellHook = ''export PYTHONPATH=.'';
+}
