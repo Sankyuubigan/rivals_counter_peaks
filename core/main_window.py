@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
 from PySide6.QtGui import QIcon
+from core.translations import get_text
 
 from core.logic import CounterpickLogic
 from core.mode import ModeManager
@@ -35,6 +36,9 @@ class MainWindow(QMainWindow):
         """
         print(f"[LOG] MainWindow.__init__ started with hero_templates: {len(hero_templates)}")
         super().__init__()
+        
+        self.get_text = get_text
+        
         self.logic = logic  # экземпляр логики, инициализированный в main.py
         self.setWindowTitle("Rivals Counter-Peaks")  # Заголовок окна
         self.setWindowIcon(QIcon(load_default_pixmap()))
