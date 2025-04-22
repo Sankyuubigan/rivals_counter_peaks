@@ -23,9 +23,9 @@ class LeftPanel:
         self.setup_ui()
 
     def setup_ui(self):
-        self._create_widgets()
-        self._setup_widgets()
         self._create_layout()
+        self._create_widgets()        
+        self._setup_widgets()
         self._setup_layout()
 
     def _create_widgets(self):
