@@ -53,6 +53,7 @@ if __name__ == "__main__":
     try:
         hero_templates = load_hero_templates()
         print("Шаблоны загружены.")
+        print(f"[LOG] load_hero_templates() about to return result: {locals()}")
     except Exception as e:
          print(f"[ERROR] Критическая ошибка при загрузке шаблонов: {e}")
     print("[LOG] main() - About to load_original_images()")
@@ -73,6 +74,7 @@ if __name__ == "__main__":
 
     # Создание MainWindow
     print("[LOG] main() - About to create MainWindow")
+    print(f"[LOG] main() - About to create MainWindow with hero_templates: {hero_templates}")
 
     try:
         window = MainWindow(logic, hero_templates)

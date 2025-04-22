@@ -202,26 +202,19 @@ def load_hero_templates():
     Возвращает словарь: {hero_name: [template1_cv2, template2_cv2, ...]}
     Использует кэш.
     """
-    print("[LOG] load_hero_templates() called")
     global loaded_hero_templates
     if loaded_hero_templates is not None: # Возвращаем кэш, если уже загружали
-        print("[LOG] load_hero_templates() using cache")
         return loaded_hero_templates
 
-
-    print("[LOG] load_hero_templates() about to start loading templates")
     templates_dir = resource_path("resources/templates")
     hero_templates = defaultdict(list)
-    print(f"[LOG] load_hero_templates() templates_dir: {templates_dir}")
 
     valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp') # Добавлен webp
     print(f"Поиск шаблонов в: {templates_dir}")
     
     if not os.path.isdir(templates_dir):
         print(f"[ERROR] Папка шаблонов не найдена: {templates_dir}. Шаблоны не будут загружены.")
-        return {}
-
-
+        return {}    
 
     files_found = 0
     templates_loaded = 0
@@ -231,9 +224,7 @@ def load_hero_templates():
     skipped_load_error = 0
 
     for filename in os.listdir(templates_dir):
-        print(f"[LOG] load_hero_templates() about to process filename: {filename}")
         # Проверяем расширение файла (без учета регистра)
-        print(f"[LOG] load_hero_templates() filename: {filename}")
         if filename.lower().endswith(valid_extensions):
             files_found += 1
             # Извлекаем имя файла без расширения и разделяем по '_'
@@ -251,7 +242,6 @@ def load_hero_templates():
                     matched_hero_name = None
                     for known_hero in ALL_HERO_NAMES:
                         if known_hero.lower() == hero_name_parsed.lower():
-                            print(f"[LOG] load_hero_templates() known_hero: {known_hero}")
                             matched_hero_name = known_hero
                             break
 
@@ -286,7 +276,6 @@ def load_hero_templates():
     if not templates_loaded:
         print("[WARN] Ни одного шаблона не было успешно загружено.")
 
-    print("[LOG] load_hero_templates() about to return result")
     # Сохраняем результат в кэш
     loaded_hero_templates = hero_templates
     return loaded_hero_templates

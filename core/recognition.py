@@ -1,3 +1,5 @@
+print("[LOG] recognition.py started")
+
 from PySide6.QtCore import QObject, Signal, Slot, QThread, Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QMessageBox, QWidget, QLabel
