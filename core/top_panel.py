@@ -117,7 +117,7 @@ class TopPanel:
                 }}
             """)
         setattr(self.topmost_button, '_update_visual_state', update_topmost_visual_state)
-        self.topmost_button.clicked.connect(self.parent.toggle_topmost_winapi)
+        self.topmost_button.clicked.connect(self.parent.set_topmost_winapi)
         update_topmost_visual_state() # Обновление состояния после добавления
 
         self.author_button.setStyleSheet("font-size: 10pt; padding: 2px;")
