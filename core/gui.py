@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         self.mode_manager = ModeManager(self)
 
         # <<< ДОБАВЛЕНО: Атрибуты для распознавания >>>
-        self.recognition_manager = RecognitionManager(self)
+        self.recognition_manager = RecognitionManager(self.logic)
         # <<< ------------------------------------ >>>
 
         # <<< ДОБАВЛЕНО: Атрибуты для win_api >>>
