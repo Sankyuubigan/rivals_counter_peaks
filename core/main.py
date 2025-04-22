@@ -85,7 +85,6 @@ if __name__ == "__main__":
     print("Предварительная загрузка ресурсов...")
     try:
         load_original_images() # Загружаем QPixmap
-        load_hero_templates() # Загружаем шаблоны OpenCV
         print("Загрузка ресурсов завершена.")
     except Exception as e:
          print(f"[ERROR] Критическая ошибка при загрузке ресурсов: {e}")
