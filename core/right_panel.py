@@ -1,6 +1,6 @@
 # File: right_panel.py
+from core.translations import get_text
 from PySide6.QtCore import QSize, Qt
-
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -12,8 +12,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-
-from core.translations import get_text
 
 # Импортируем делегат
 from delegate import HotkeyFocusDelegate
@@ -36,7 +34,6 @@ class RightPanel:
     """
     Класс для создания и управления правой панелью.
     """
-
     def __init__(self, window, initial_mode="middle"):
         """
         Инициализация правой панели.
@@ -87,7 +84,7 @@ class RightPanel:
             if icon_pixmap and not icon_pixmap.isNull():
                 item.setIcon(QIcon(icon_pixmap))
             item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            item.setData(self.HERO_NAME_ROLE, hero)
+            item.setData(HERO_NAME_ROLE, hero)
             item.setToolTip(hero)
             if hero in self.logic.selected_heroes:
                 item.setSelected(True)
