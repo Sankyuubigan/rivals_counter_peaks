@@ -109,7 +109,6 @@ class MainWindow(QMainWindow):
 
         # <<< ДОБАВЛЕНО: Загрузка шаблонов при инициализации >>>
         self.hotkey_manager.start_keyboard_listener()
-        load_hero_templates()
 
     # --- Перемещение окна без рамки ---
     def mousePressEvent(self, event: QMouseEvent):
