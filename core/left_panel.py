@@ -1,6 +1,6 @@
 # File: left_panel.py
 # File: left_panel.py
-from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
@@ -9,7 +9,7 @@ from core.horizontal_list import HorizontalList
 def create_left_panel(window):
     """Создает левую панель."""
     left_panel = LeftPanel(window)
-    return left_panel.left_frame
+    return left_panel.scroll_area, left_panel.result_frame, left_panel.result_label, left_panel.update_scrollregion
 
 
 class LeftPanel:
@@ -33,7 +33,7 @@ class LeftPanel:
         self.left_frame = QFrame(self.parent)
         self.scroll_area = QScrollArea(self.left_frame)
         self.result_frame = QFrame()
-        self.heroes_list = HorizontalList()
+        self.heroes_list = HorizontalList(self.heroes_layout)
         self.result_label = QLabel("Выберите героев")
 
     def _setup_widgets(self):
@@ -54,6 +54,7 @@ class LeftPanel:
     def _create_layout(self):
         """Создает layout."""
         self.layout = QVBoxLayout(self.left_frame)
+        self.heroes_layout = QHBoxLayout()
         self.result_layout = QVBoxLayout(self.result_frame)
 
     def _setup_layout(self):
@@ -68,7 +69,7 @@ class LeftPanel:
         self.result_layout.setSpacing(1)
         self.result_frame.setLayout(self.result_layout)
         self.result_layout.addWidget(self.result_label)
-        self.result_layout.addWidget(self.heroes_list)
+        self.result_layout.addLayout(self.heroes_layout)
     def update_scrollregion(self):
         """Обновляет геометрию ScrollArea."""
         self.scroll_area.updateGeometry()
