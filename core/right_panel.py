@@ -70,10 +70,10 @@ class RightPanel:
         self.selected_heroes_label.setObjectName("selected_heroes_label")
         self.window.right_list_widget = self.list_widget
         self.list_widget.setObjectName("right_list_widget")
-        self.copy_button = QPushButton(self.logic.get_text("copy_rating"))
-        self.copy_button.setObjectName("copy_button"); self.copy_button.setText(self.window.get_text("copy_rating"))
-        self.clear_button = QPushButton(self.window.get_text("clear_all"))
+        self.copy_button = QPushButton(self.window.get_text("copy_rating"))
+        self.copy_button.setObjectName("copy_button")
         self.clear_button.setObjectName("clear_button")
+        self.clear_button = QPushButton(self.window.get_text("clear_all"))
         self.hero_items = {}
         self.window.hero_items = self.hero_items
         for hero in heroes:
