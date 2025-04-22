@@ -5,7 +5,7 @@ from core.translations import get_text
 from core.logic import CounterpickLogic
 from core.mode import ModeManager
 from core.win_api import WinApiManager
-from core.images_load import load_hero_templates, load_default_pixmap
+from core.images_load import load_hero_templates, load_default_pixmap, load_right_panel_images
 from core.recognition import RecognitionManager
 
 from core.top_panel import create_top_panel
@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
             hero_templates (dict): Шаблоны для распознавания героев.
         """
         print(f"[LOG] MainWindow.__init__ started with hero_templates: {len(hero_templates)}")
+        self.right_images = load_right_panel_images()
         super().__init__()
         
         self.get_text = get_text
@@ -50,15 +51,10 @@ class MainWindow(QMainWindow):
         self.win_api_manager = WinApiManager(self)
         
 
-        # Создаем RecognitionManager, передавая ему экземпляр логики
-        # print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager with: logic={self.logic}, hero_templates={self.hero_templates}")
-        print(f"[LOG] MainWindow.__init__ - About to create RecognitionManager from file {RecognitionManager.__module__}")
-        print("[LOG] MainWindow.__init__ about to create RecognitionManager")
 
         self.rec_manager = RecognitionManager(main_window=self,logic=self.logic, win_api_manager = self.win_api_manager)
         self.ui_update_manager = UiUpdateManager(self, self.rec_manager.win_api_manager, self)
-        print(f"[LOG] MainWindow.__init__ - RecognitionManager created: {self.rec_manager}")
-        
+      
         self.create_main_ui()
         self.ui_update_manager.update_ui()
         print("[LOG] MainWindow.__init__ finished")

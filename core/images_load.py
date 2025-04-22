@@ -164,6 +164,34 @@ def get_images_for_mode(mode='middle'):
     return right_images, left_images, small_images, horizontal_images
 
 
+def load_right_panel_images():
+    """
+    Загружает изображения героев из папки resources и возвращает словарь.
+    Ключи - имена героев в нижнем регистре, значения - QPixmap.
+    """
+    print("Загрузка изображений для правой панели...")
+    hero_images = {}
+    loaded_count = 0
+    missing_heroes = []
+
+    for hero in ALL_HERO_NAMES:
+        base_filename = hero.lower().replace(' ', '_').replace('&', 'and')
+        img_path = _get_image_path(base_filename)
+        if img_path:
+            pixmap = QPixmap(img_path)
+            if not pixmap.isNull():
+                hero_images[hero.lower()] = pixmap
+                loaded_count += 1
+            else:
+                missing_heroes.append(hero + " (invalid)")
+        else:
+            missing_heroes.append(hero)
+
+    print(f"Изображения для правой панели загружены: {loaded_count} / {len(ALL_HERO_NAMES)}")
+    if missing_heroes:
+        print(f"[WARN] Отсутствуют или недействительны изображения для: {', '.join(missing_heroes)}")
+    return hero_images
+
 def load_default_pixmap(size=(1, 1)):
     """Создает или возвращает масштабированную серую заглушку QPixmap."""
     global default_pixmap
