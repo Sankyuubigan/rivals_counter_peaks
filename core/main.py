@@ -4,6 +4,8 @@ import os
 from logic import CounterpickLogic
 
 
+from core.images_load import load_hero_templates, load_original_images
+
 # Добавление пути к корневой папке проекта в sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
@@ -12,7 +14,6 @@ print("[LOG] core/main.py started")
 
 print(f"[LOG] Пытаюсь импортировать PySide6.QtWidgets")
 from PySide6.QtWidgets import QApplication
-
 from core.main_window import MainWindow
 from core.utils import validate_heroes
 from core.images_load import load_original_images
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     # Создаем экземпляр логики
     logic = CounterpickLogic()
 
-    print("--- Запуск приложения ---")
+    print("--- Запуск приложения ---") 
 
 
     validate_heroes()
@@ -40,8 +41,14 @@ if __name__ == "__main__":
         app.setStyle("Fusion")
     except Exception as e:
         print(f"[WARN] Не удалось установить стиль Fusion: {e}")
-        
+
     # Загрузка ресурсов ПОСЛЕ QApplication
+    print("[LOG] main() - About to load_hero_templates()")
+    try:
+        hero_templates = load_hero_templates()
+        print("Шаблоны загружены.")
+    except Exception as e:
+         print(f"[ERROR] Критическая ошибка при загрузке шаблонов: {e}")
     print("[LOG] main() - About to load_original_images()")
     try:
         load_original_images()  # Загружаем QPixmap
@@ -62,7 +69,7 @@ if __name__ == "__main__":
     print("[LOG] main() - About to create MainWindow")
 
     try:
-        window = MainWindow(logic)
+        window = MainWindow(logic, hero_templates)
         print("[LOG] main() - MainWindow created")
         print("Отображение MainWindow...")
 

@@ -112,6 +112,7 @@ class RecognitionManager(QObject):
         self.logic = logic
         self._recognition_thread = None
         self._recognition_worker = None
+        print(f"Загружено шаблонов: {len(hero_templates)}")
         self.hero_templates = hero_templates
 
         print("[LOG] RecognitionManager.__init__ finished")
