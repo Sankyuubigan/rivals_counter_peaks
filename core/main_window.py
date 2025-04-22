@@ -1,4 +1,3 @@
-from PySide6.QtCore import Slot
 from PySide6.QtCore import QModelIndex
 from PySide6.QtWidgets import QMenu, QListWidget
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QWidget
@@ -12,9 +11,9 @@ from core.win_api import WinApiManager
 from core.images_load import load_hero_templates, load_default_pixmap, load_right_panel_images
 from core.recognition import RecognitionManager
 
-from core.top_panel import create_top_panel, TopPanel
-from core.left_panel import create_left_panel, LeftPanel
-from core.right_panel import create_right_panel, RightPanel
+from core.top_panel import create_top_panel
+from core.left_panel import create_left_panel
+from core.right_panel import create_right_panel
 from core.ui_update import UiUpdateManager
 
 
@@ -45,19 +44,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Назначить приоритет")
         menu.exec_(self.right_list_widget.viewport().mapToGlobal(position))
     
-    @Slot()
-    def _handle_clear_all(self):
-        print("[LOG] _handle_clear_all called")
-        self.logic.clear_all()
-        self.update_ui_after_logic_change()
-        if self.right_list_widget and self.right_list_widget.isVisible() and self.mode != 'min':            
-            old_index = self.hotkey_cursor_index
-            count = self.right_list_widget.count()
-            self.hotkey_cursor_index = 0 if count > 0 else -1
-            if self.hotkey_cursor_index != old_index or old_index == -1:
-                self._update_hotkey_highlight(old_index)
-        else:
-            self.hotkey_cursor_index = -1    
+    
     def copy_to_clipboard(self):
         
         """
@@ -107,20 +94,20 @@ class MainWindow(QMainWindow):
         """
         print("[LOG] MainWindow.create_main_ui() started")
         # Создаем панели
-        self.top_panel:TopPanel = create_top_panel(self, self.switch_mode, self.logic, '0.1.0')
-        self.left_panel:LeftPanel = create_left_panel(self)
-        self.right_panel:RightPanel = create_right_panel(self)
+        self.top_panel = create_top_panel(self, self.switch_mode, self.logic, '0.1.0')
+        self.left_panel = create_left_panel(self)
+        self.right_panel = create_right_panel(self)
 
         # Создаем главный макет
         main_layout = QVBoxLayout()
 
         # Добавляем top panel
-        main_layout.addWidget(self.top_panel.top_frame)
+        main_layout.addWidget(self.top_panel)
 
         # Создаем горизонтальный макет для left и right панелей
         horizontal_layout = QHBoxLayout()
-        horizontal_layout.addWidget(self.left_panel.scroll_area)
-        horizontal_layout.addWidget(self.right_panel.frame)
+        horizontal_layout.addWidget(self.left_panel)
+        horizontal_layout.addWidget(self.right_panel)
         main_layout.addLayout(horizontal_layout)
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
