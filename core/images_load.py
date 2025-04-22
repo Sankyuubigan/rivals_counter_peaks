@@ -276,7 +276,7 @@ def load_hero_templates():
     if not hero_templates:
         print("[WARN] Ни одного шаблона не было успешно загружено.")
 
-    # Сохраняем результат в кэш (даже если он пустой)
-    loaded_hero_templates = dict(hero_templates)
+    # Сохраняем результат в кэш
+    loaded_hero_templates = hero_templates
     return loaded_hero_templates
 # <<< КОНЕЦ Функции загрузки шаблонов >>>  # noqa
