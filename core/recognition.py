@@ -1,191 +1,143 @@
-print("[LOG] recognition.py started")
+# File: core/recognition.py
+print("[LOG] recognition.py loaded")
 
-from PySide6.QtCore import QObject, Signal, Slot, QThread, Qt
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QMessageBox, QWidget, QLabel
-import pyautogui
-import pytesseract
+from PySide6.QtCore import QObject, Signal, Slot, QThread
+from PySide6.QtWidgets import QMessageBox
 import cv2
 import numpy as np
 
-from heroes_bd import heroes
-from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD, check_if_all_elements_in_list
+# Используем относительные импорты
+from utils import RECOGNITION_AREA, RECOGNITION_THRESHOLD, capture_screen_area
 from translations import get_text
 
-
 class RecognitionWorker(QObject):
-    """
-    Воркер для распознавания героев.
-    """
+    """Воркер для распознавания героев в отдельном потоке."""
+    # Сигналы должны быть определены на уровне класса
+    finished = Signal(list) # Передает список распознанных имен
+    error = Signal(str)     # Передает сообщение об ошибке
 
-    finished = Signal()
-    error = Signal(str)
-
-    def __init__(self, logic, recognition_area, recognition_threshold, templates):
-        super().__init__()
+    def __init__(self, logic, recognition_area, recognition_threshold, templates, parent=None):
+        super().__init__(parent) # Передаем parent, если нужно
         self.logic = logic
         self.recognition_area = recognition_area
         self.recognition_threshold = recognition_threshold
-        self.templates = templates  # Передаём шаблоны
+        self.templates = templates
+        self._is_running = True # Флаг для возможности остановки
 
-    def _get_screenshot(self):
-        """Делает скриншот."""        
-        image = pyautogui.screenshot()
-        if not image:
-           print(f"Ошибка при создании скриншота")
-           return None
-        return image
-
-    def _get_region(self, image):
-        """Вырезает область для распознавания из скриншота."""
-        if not self.recognition_area: 
-            print(f"Ошибка при вырезании области из скриншота: RECOGNITION_AREA not set")
-            return None
-        left, top, width, height = self.recognition_area
-        return image.crop((left, top, left + width, top + height))
-    def _template_matching(self, region_cv2):        
-        """Распознает героев по шаблонам."""        
-        recognized_heroes = []
-        for hero, template in self.templates.items():
-            # Метод cv2.matchTemplate выполняет поиск шаблона template в изображении region_cv2
-            # Метод возвращает карту соответствия, где каждый пиксель показывает, насколько хорошо шаблон соответствует
-            #   этому месту изображения. Чем выше значение, тем лучше соответствие.
-            result = cv2.matchTemplate(region_cv2, template, cv2.TM_CCOEFF_NORMED)
-            # Находим все пиксели в карте соответствия, где значение выше threshold
-            locations = np.where(result >= self.recognition_threshold)
-            # Если такие пиксели есть, считаем, что герой распознан
-            if len(locations[0]) > 0:
-                recognized_heroes.append(hero)
-        if not recognized_heroes:
-            print("Ошибка при распознавании героев")
-            return []
-        return recognized_heroes
-            
+    @Slot() # Декоратор для слота, который будет выполняться в потоке
     def run(self):
-        print("[INFO] Поток распознавания запущен.")
-        image = self._get_screenshot()
-        region = self._get_region(image)
-        region_cv2 = np.array(region)
-        recognized_heroes = self._template_matching(region_cv2)
-        print(f"[RESULT] Распознавание завершено. Распознанные герои: {recognized_heroes}")
-        self.logic.set_selection(set(recognized_heroes))        
-        self.finished.emit()
+        """Основная функция воркера."""
+        print("[THREAD][RecognitionWorker] Worker started.")
+        if not self._is_running:
+            print("[THREAD][RecognitionWorker] Worker stopped before starting.")
+            self.error.emit("Recognition cancelled.")
+            return
+
+        try:
+            # 1. Захват скриншота
+            screenshot_cv2 = capture_screen_area(self.recognition_area)
+            if screenshot_cv2 is None:
+                raise ValueError(get_text('recognition_no_screenshot', language=self.logic.DEFAULT_LANGUAGE))
+            if not self._is_running: return # Проверка после захвата
+
+            # 2. Проверка шаблонов
+            if not self.templates:
+                 raise ValueError(get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
+
+            # 3. Распознавание
+            recognized_heroes = self.logic.recognize_heroes_from_image(
+                screenshot_cv2,
+                self.templates,
+                self.recognition_threshold
+            )
+            if not self._is_running: return # Проверка после распознавания
+
+            # 4. Отправка результата
+            self.finished.emit(recognized_heroes)
+
+        except Exception as e:
+            print(f"[THREAD ERROR][RecognitionWorker] Ошибка в потоке: {e}")
+            if self._is_running: # Отправляем ошибку, только если нас не остановили
+                self.error.emit(str(e))
+        finally:
+             print(f"[THREAD][RecognitionWorker] Worker finished.")
+
+    def stop(self):
+        """Устанавливает флаг остановки воркера."""
+        print("[THREAD][RecognitionWorker] Stop requested.")
+        self._is_running = False
 
 
 class RecognitionManager(QObject):
-    recognize_heroes_signal = Signal()
-    RECOGNITION_AREA = RECOGNITION_AREA
-
-    def _get_screenshot(self):
-        """Делает скриншот."""
-        print("[INFO] Делаю скриншот...")
-        image = pyautogui.screenshot()
-        if not image:
-           print(f"Ошибка при создании скриншота")
-           return None
-        return image
-
-    def _get_region(self, image):
-        """Вырезает область для распознавания из скриншота."""
-        print("[INFO] Вырезаю область для распознавания из скриншота...")
-        if not self.RECOGNITION_AREA: 
-            print(f"Ошибка при вырезании области из скриншота: RECOGNITION_AREA not set")
-            return None
-        left, top, width, height = self.RECOGNITION_AREA
-        return image.crop((left, top, left + width, top + height))
-
-    def _ocr(self, region):        
-        """Распознает текст на изображении."""
-        print("[INFO] Распознаю текст на изображении...")
-        text = pytesseract.image_to_string(region, lang='eng',)
-        return text.splitlines()
-
-
+    """Управляет процессом распознавания."""
+    # Сигналы, которые будет эмитить менеджер в основной поток
     recognition_complete_signal = Signal(list)
+    error = Signal(str)
+    # Сигнал для запуска хоткеем
+    recognize_heroes_signal = Signal()
 
     def __init__(self, main_window, logic, win_api_manager):
-        # print(f"[LOG] RecognitionManager.__init__ called from file {__file__}")
-        # print(f"[LOG] RecognitionManager.__init__ called with arguments: {locals()}")
-        print("[LOG] RecognitionManager.__init__ started")
         super().__init__()
-        self.main_window = main_window
+        print("[LOG] RecognitionManager.__init__ started")
+        self.main_window = main_window # Ссылка на главное окно
         self.logic = logic
-        self._recognition_thread = None  # Инициализируем атрибуты
-        self._recognition_worker = None  # Инициализируем атрибуты
-        self.win_api_manager = win_api_manager
-
+        self.win_api_manager = win_api_manager # Менеджер WinAPI (если нужен)
+        self._recognition_thread: QThread | None = None
+        self._recognition_worker: RecognitionWorker | None = None
         print("[LOG] RecognitionManager.__init__ finished")
-    def _get_text_from_region(self):
-        """Распознает текст в заданной области на экране."""        
-        image = self._get_screenshot()        
-        region = self._get_region(image)        
-        text = self._ocr(region)        
-        if not text:
-            print(f"[ERROR] Ошибка при распознавании текста: {e}")
-        return []
 
-    # def run(self):
-    @Slot()
+    @Slot() # Слот для запуска по сигналу recognize_heroes_signal
     def _handle_recognize_heroes(self):
         """Запускает процесс распознавания героев в отдельном потоке."""
-        print("[ACTION] Запрос на распознавание героев...")
+        print("[ACTION][RecognitionManager] Запрос на распознавание героев...")
         if self._recognition_thread and self._recognition_thread.isRunning():
-            print("[WARN] Процесс распознавания уже запущен.")
+            print("[WARN][RecognitionManager] Процесс распознавания уже запущен.")
             QMessageBox.information(self.main_window, "Распознавание", "Процесс распознавания уже выполняется.")
             return
 
-         # Создаем и запускаем поток
+        # Проверяем наличие шаблонов перед запуском
+        if not self.main_window.hero_templates:
+             print("[ERROR][RecognitionManager] Шаблоны героев не загружены.")
+             QMessageBox.warning(self.main_window, get_text('error', language=self.logic.DEFAULT_LANGUAGE),
+                                 get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
+             return
+
+        # Создаем воркер и поток
         self._recognition_worker = RecognitionWorker(
             self.logic,
-            self.RECOGNITION_AREA,
-            RECOGNITION_THRESHOLD,
-            self.main_window.hero_templates # Берём шаблоны из main_window
+            RECOGNITION_AREA, # Используем константу из utils
+            RECOGNITION_THRESHOLD, # Используем константу из utils
+            self.main_window.hero_templates # Передаем шаблоны из MainWindow
         )
-        self._recognition_thread = QThread(self.main_window) # Указываем родителя для управления жизненным циклом
+        self._recognition_thread = QThread(self.main_window) # Родитель - главное окно
         self._recognition_worker.moveToThread(self._recognition_thread)
 
-        # Подключаем сигналы потока и воркера
+        # --- Подключаем сигналы ---
+        # Запуск воркера при старте потока
         self._recognition_thread.started.connect(self._recognition_worker.run)
-        self._recognition_worker.finished.connect(self.recognition_complete_signal.emit)  # Перенаправляем сигнал в основной поток
-        self._recognition_worker.error.connect(self._on_recognition_error)  # Обработка ошибок в основном потоке
+        # Перенаправляем сигналы воркера в сигналы менеджера (и далее в MainWindow)
+        self._recognition_worker.finished.connect(self.recognition_complete_signal.emit)
+        self._recognition_worker.error.connect(self.error.emit)
+        # Очистка после завершения потока
+        # Важно сначала завершить поток, потом удалять объекты
+        self._recognition_thread.finished.connect(self._recognition_thread.quit) # Запрашиваем выход из цикла событий потока
+        self._recognition_thread.finished.connect(self._recognition_worker.deleteLater) # Ставим воркер на удаление
+        self._recognition_thread.finished.connect(self._recognition_thread.deleteLater) # Ставим поток на удаление
+        self._recognition_thread.finished.connect(self._reset_recognition_state) # Сбрасываем ссылки
 
-        # Очистка после завершения потока (важно для избежания утечек)
-        self._recognition_worker.finished.connect(self._recognition_thread.quit)
-        self._recognition_worker.finished.connect(self._recognition_worker.deleteLater)  # Удаляем воркер
-        self._recognition_thread.finished.connect(self._recognition_thread.deleteLater)  # Удаляем поток
-
-        self._recognition_thread.finished.connect(self._reset_recognition_thread)  # Сбрасываем ссылки
-
+        # Запускаем поток
         self._recognition_thread.start()
-        print("[INFO] Поток распознавания запущен.")
+        print("[INFO][RecognitionManager] Поток распознавания запущен.")
 
     @Slot()
-    def _reset_recognition_thread(self):
-        """Сбрасывает ссылки на поток и воркер после завершения."""
-        print("[INFO] Сброс ссылок на поток распознавания.")
+    def _reset_recognition_state(self):
+        """Сбрасывает ссылки на поток и воркер."""
+        print("[INFO][RecognitionManager] Сброс ссылок на поток распознавания.")
         self._recognition_thread = None
         self._recognition_worker = None
 
-    @Slot(list)
-    def _on_recognition_complete(self, recognized_heroes):
-        """Обрабатывает результат успешного распознавания."""
-        print(f"[RESULT] Распознавание завершено. Распознанные герои: {recognized_heroes}")
-        if recognized_heroes:
-            # Устанавливаем выбор в логике (полностью заменяем текущий выбор врагов)
-            self.logic.set_selection(set(recognized_heroes))
-            # Обновляем UI
-            self.main_window.update_ui_after_logic_change()
-            # Показываем сообщение об успехе (опционально)
-            # QMessageBox.information(self, "Распознавание", f"Распознанные герои: {', '.join(recognized_heroes)}")
-        else:
-            print("[INFO] Герои не распознаны или список пуст.")
-            # Показываем сообщение пользователю
-            QMessageBox.information(self.main_window, "Распознавание", get_text('recognition_failed', language=self.logic.DEFAULT_LANGUAGE))
-
-    @Slot(str)
-    def _on_recognition_error(self, error_message):
-        """Обрабатывает ошибку во время распознавания."""
-        print(f"[ERROR] Ошибка во время распознавания: {error_message}")
-        # Показываем ошибку пользователю
-        QMessageBox.warning(self.main_window, get_text('error', language=self.logic.DEFAULT_LANGUAGE),
-                            f"{get_text('recognition_error_prefix', language=self.logic.DEFAULT_LANGUAGE)}\n{error_message}")
+    def stop_recognition(self):
+         """Останавливает текущий процесс распознавания."""
+         if self._recognition_worker:
+             self._recognition_worker.stop()
+         # Поток остановится сам после завершения run или по сигналу quit

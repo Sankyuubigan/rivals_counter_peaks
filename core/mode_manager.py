@@ -4,10 +4,10 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCombo
 from PySide6.QtCore import Qt
 
 # Импорты из проекта
-from .left_panel import LeftPanel # Используем класс LeftPanel
-from .right_panel import RightPanel # Используем класс RightPanel
-from .images_load import get_images_for_mode, SIZES
-from .translations import get_text
+from left_panel import LeftPanel # Используем класс LeftPanel
+from right_panel import RightPanel # Используем класс RightPanel
+from images_load import get_images_for_mode, SIZES
+from translations import get_text
 
 # --- Константы ---
 PANEL_MIN_WIDTHS = {
@@ -21,14 +21,6 @@ MODE_DEFAULT_WINDOW_SIZES = {
     'min': {'width': 600, 'height': 0} # Высота будет рассчитана
 }
 # --- ---
-
-class Mode:
-    """Простой класс для хранения данных режима (если понадобится в будущем)."""
-    def __init__(self, name):
-        self.name = name
-        # Можно добавить pos, size, если нужно хранить их здесь
-        self.pos = None
-        self.size = None
 
 class ModeManager:
     """Управляет текущим режимом окна и его позициями."""
@@ -55,11 +47,14 @@ class ModeManager:
         print(f"[MODE] Сохранение позиции для режима '{self.current_mode}'...")
         # Сохраняем текущую позицию окна для старого режима
         if self.main_window.isVisible():
-             self.mode_positions[self.current_mode] = self.main_window.pos()
-             print(f"[MODE] Позиция для '{self.current_mode}' сохранена: {self.mode_positions[self.current_mode]}")
+             current_pos = self.main_window.pos()
+             self.mode_positions[self.current_mode] = current_pos
+             print(f"[MODE] Позиция для '{self.current_mode}' сохранена: {current_pos}")
 
         print(f"[MODE] Установка нового режима: {new_mode_name}")
         self.current_mode = new_mode_name
+        # Обновляем атрибут mode в главном окне
+        self.main_window.mode = new_mode_name
         # Позиция для нового режима будет восстановлена в update_interface_for_mode
 
     def clear_layout_recursive(self, layout):
@@ -77,10 +72,6 @@ class ModeManager:
                 if sub_layout is not None:
                     # print(f"  Clearing sub-layout: {sub_layout.objectName()} ({type(sub_layout).__name__})")
                     self.clear_layout_recursive(sub_layout)
-                    # print(f"  Deleting sub-layout object: {sub_layout.objectName()}")
-                    # Удаляем сам объект layout'а после очистки
-                    # sub_layout.deleteLater() # Это может вызывать проблемы, если layout еще где-то используется
-                    # Безопаснее просто удалить его из родительского layout'а
                     layout.removeItem(item) # Удаляем QLayoutItem, содержащий sub_layout
                 else:
                     spacer = item.spacerItem()
@@ -107,26 +98,25 @@ def change_mode(window, mode_name):
     # 2. Сбрасываем фокус хоткея перед перестройкой UI
     old_cursor_index = window.hotkey_cursor_index
     window.hotkey_cursor_index = -1
+    # Проверяем наличие list_widget перед вызовом _update_hotkey_highlight
     if window.right_list_widget and window.right_list_widget.isVisible() and old_cursor_index >= 0:
-        window._update_hotkey_highlight(old_cursor_index) # Снимаем подсветку со старого элемента
+        window._update_hotkey_highlight(old_cursor_index) # Снимаем подсветку
 
     # 3. Устанавливаем новый режим в менеджере и в окне
-    window.mode_manager.change_mode(mode_name) # Обновляем режим в менеджере
-    window.mode = mode_name # Обновляем режим в окне
+    window.mode_manager.change_mode(mode_name) # Обновляем режим в менеджере (и в window.mode)
 
     # --- Перестройка интерфейса ---
     update_interface_for_mode(window)
 
     # --- Завершение смены режима ---
     # 4. Восстанавливаем позицию окна для нового режима
-    if window.isVisible():
-        target_pos = window.mode_positions.get(window.mode)
-        if target_pos:
-            print(f"Восстановление позиции для режима '{window.mode}': {target_pos}")
-            window.move(target_pos)
+    target_pos = window.mode_positions.get(window.mode)
+    if target_pos and window.isVisible():
+        print(f"Восстановление позиции для режима '{window.mode}': {target_pos}")
+        window.move(target_pos)
 
     # 5. Восстанавливаем фокус хоткея после небольшой задержки
-    QTimer.singleShot(150, window._reset_hotkey_cursor_after_mode_change) # Уменьшил задержку
+    QTimer.singleShot(150, window._reset_hotkey_cursor_after_mode_change)
 
     end_time = time.time()
     print(f"--- Смена режима на {mode_name} ЗАВЕРШЕНА (заняло: {end_time - start_time:.4f} сек) ---")
@@ -144,17 +134,21 @@ def update_interface_for_mode(window):
         # print("Clearing inner_layout...")
         window.mode_manager.clear_layout_recursive(window.inner_layout)
     else:
+        # Если inner_layout не существует, создаем его (это не должно происходить после init_ui)
         if window.main_widget:
-            window.inner_layout = QHBoxLayout(window.main_widget)
-            window.inner_layout.setObjectName("inner_layout")
-            window.inner_layout.setContentsMargins(0,0,0,0); window.inner_layout.setSpacing(0)
-        else:
-            print("[!] КРИТИЧЕСКАЯ ОШИБКА: main_widget не найден."); return
+             window.inner_layout = QHBoxLayout(window.main_widget)
+             window.inner_layout.setObjectName("inner_layout")
+             window.inner_layout.setContentsMargins(0,0,0,0); window.inner_layout.setSpacing(0)
+        else: print("[!] КРИТИЧЕСКАЯ ОШИБКА: main_widget не найден."); return
     t2 = time.time(); # print(f"[TIMING] -> Clear inner_layout: {t2-t1:.4f} s")
 
     # --- 2. Сброс ссылок на виджеты панелей ---
-    window.left_panel_instance = None; window.canvas = None; window.result_frame = None; window.result_label = None
-    window.right_panel_instance = None; window.right_frame = None; window.selected_heroes_label = None; window.right_list_widget = None
+    # Сбрасываем экземпляры панелей
+    window.left_panel_instance = None
+    window.right_panel_instance = None
+    # Сбрасываем прямые ссылки на виджеты внутри панелей
+    window.canvas = None; window.result_frame = None; window.result_label = None
+    window.right_frame = None; window.selected_heroes_label = None; window.right_list_widget = None
     window.hero_items.clear()
 
     # --- 3. Загрузка/Получение изображений ---
@@ -168,13 +162,11 @@ def update_interface_for_mode(window):
     # --- 4. Пересоздание левой панели ---
     t1 = time.time()
     # print("Creating left panel...")
-    # Создаем экземпляр LeftPanel
     window.left_panel_instance = LeftPanel(window.main_widget) # Родитель - main_widget
-    # Получаем ссылки на виджеты из экземпляра
     window.canvas, window.result_frame, window.result_label, window.update_scrollregion = window.left_panel_instance.get_widgets()
-    # Устанавливаем минимальную ширину контейнера левой панели
+    # Устанавливаем минимальную ширину контейнера (QFrame) левой панели
     window.left_panel_instance.left_frame.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('left', 0))
-    # Добавляем контейнер (QFrame) левой панели в inner_layout
+    # Добавляем контейнер левой панели в inner_layout
     window.inner_layout.addWidget(window.left_panel_instance.left_frame, stretch=1)
     t2 = time.time(); # print(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
 
@@ -182,22 +174,22 @@ def update_interface_for_mode(window):
     t1 = time.time()
     if current_mode != "min":
         # print("Creating right panel...")
-        # Создаем экземпляр RightPanel
-        window.right_panel_instance = RightPanel(window, current_mode) # Передаем MainWindow и режим
-        window.right_frame = window.right_panel_instance.frame # Получаем QFrame
-        window.selected_heroes_label = window.right_panel_instance.selected_heroes_label # Получаем QLabel
-        window.right_list_widget = window.right_panel_instance.list_widget # Получаем QListWidget
+        window.right_panel_instance = RightPanel(window, current_mode)
+        # Получаем ссылки на виджеты из созданного экземпляра
+        window.right_frame = window.right_panel_instance.frame
+        window.selected_heroes_label = window.right_panel_instance.selected_heroes_label
+        window.right_list_widget = window.right_panel_instance.list_widget
+        window.hero_items = window.right_panel_instance.hero_items # Обновляем словарь ссылок
         # Устанавливаем минимальную ширину
         window.right_frame.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('right', 0))
         # Добавляем QFrame правой панели в inner_layout
         window.inner_layout.addWidget(window.right_frame, stretch=1)
         # Устанавливаем растяжение панелей
-        window.inner_layout.setStretch(0, 2) # Левая (индекс 0) шире
-        window.inner_layout.setStretch(1, 1) # Правая (индекс 1) уже
+        window.inner_layout.setStretch(0, 2) # Левая (индекс 0)
+        window.inner_layout.setStretch(1, 1) # Правая (индекс 1)
     else:
         # print("Skipping right panel creation (min mode).")
-        # Ссылки уже сброшены в None
-        pass
+        pass # Ссылки уже сброшены в None
     t2 = time.time(); # print(f"[TIMING] -> Create/Hide right panel: {t2-t1:.4f} s")
 
     # --- 6. Настройка окна и TopPanel ---
@@ -205,9 +197,11 @@ def update_interface_for_mode(window):
     # print("Configuring window and top panel...")
     # Расчет базовой высоты
     top_h = window.top_frame.sizeHint().height() if window.top_frame else 40
-    h_icon_h = SIZES[current_mode]['horizontal'][1] if current_mode in SIZES and 'horizontal' in SIZES[current_mode] else 30
+    # Проверяем наличие SIZES[current_mode] и 'horizontal' ключа
+    horiz_size = SIZES.get(current_mode, {}).get('horizontal')
+    h_icon_h = horiz_size[1] if horiz_size else 30 # Высота иконки из SIZES или 30 по умолчанию
     icons_h = h_icon_h + 12
-    window.icons_scroll_area.setFixedHeight(icons_h) # Устанавливаем высоту панели иконок
+    window.icons_scroll_area.setFixedHeight(icons_h)
 
     spacing = window.main_layout.spacing() if window.main_layout else 0
     base_h = top_h + icons_h + spacing
@@ -215,12 +209,11 @@ def update_interface_for_mode(window):
     # Сброс ограничений высоты
     window.setMinimumHeight(0); window.setMaximumHeight(16777215)
 
-    # Настройка элементов TopPanel и окна в зависимости от режима
     is_min_mode = (current_mode == "min")
     current_flags = window.windowFlags()
     frameless_changed = False
 
-    # Находим элементы в TopPanel (используем findChild на QFrame верхней панели)
+    # Находим элементы в TopPanel
     lang_label = window.top_frame.findChild(QLabel, "language_label")
     lang_combo = window.top_frame.findChild(QComboBox, "language_combo")
     version_label = window.top_frame.findChild(QLabel, "version_label")
@@ -264,7 +257,7 @@ def update_interface_for_mode(window):
             if window.author_button: window.author_button.hide()
             if window.rating_button: window.rating_button.hide()
 
-    # Применяем frameless/рамку, если флаг менялся
+    # Применяем frameless/рамку
     if frameless_changed:
         print("[LOG] Frameless flag changed, calling window.show()")
         window.show()
@@ -276,7 +269,7 @@ def update_interface_for_mode(window):
     window.update_language() # Обновит тексты
     # Активируем layout'ы
     window.main_layout.activate()
-    window.inner_layout.activate()
+    if window.inner_layout: window.inner_layout.activate() # Проверяем на None
     window.updateGeometry() # Пересчитываем геометрию
     t2 = time.time(); # print(f"[TIMING] -> Update language/layout/geometry: {t2-t1:.4f} s")
 
@@ -288,7 +281,7 @@ def update_interface_for_mode(window):
 
     if current_mode == 'min':
         final_w = max(target_w, min_w)
-        final_h = window.minimumHeight() # Фиксированная высота
+        final_h = window.minimumHeight()
         window.resize(final_w, final_h)
     else:
         final_w = max(target_w, min_w)
@@ -297,19 +290,10 @@ def update_interface_for_mode(window):
     t2 = time.time(); # print(f"[TIMING] -> Resize window: {t2-t1:.4f} s")
 
     # --- 9. Восстановление состояния UI ---
-    # Важно делать это ПОСЛЕ создания всех панелей и установки размеров
     t1 = time.time()
     # print("Restoring UI state...")
-    window.update_ui_after_logic_change() # Обновляем все зависимые от логики элементы
+    window.update_ui_after_logic_change()
     t2 = time.time(); # print(f"[TIMING] -> Restore UI state: {t2-t1:.4f} s")
-
-    # Фокус хоткея будет восстановлен в _reset_hotkey_cursor_after_mode_change,
-    # который вызывается после update_interface_for_mode
 
     t_end = time.time()
     print(f"[TIMING] update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
-
-    # Ручная сборка мусора (опционально, для отладки утечек)
-    # import gc
-    # collected = gc.collect()
-    # print(f"[GC] Garbage collected: {collected} objects.")

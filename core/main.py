@@ -1,77 +1,96 @@
-
+# File: core/main.py
 import sys
-import importlib
-importlib.invalidate_caches()
 import os
-from logic import CounterpickLogic
-from core.images_load import load_hero_templates, load_original_images
-from PySide6.QtWidgets import QApplication, QMessageBox
-from core.main_window import MainWindow
-from core.utils import validate_heroes
 
-
-import subprocess
-
+# --- Настройка путей ---
+# Добавляем корень проекта (папка над core) в sys.path
+# Это нужно, чтобы можно было импортировать модули из корня (например, heroes_bd)
+# и чтобы PyInstaller правильно находил зависимости.
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
-print(f"sys.path: {sys.path}")
-print("[LOG] core/main.py started")
-from PySide6.QtWidgets import QApplication
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+print(f"Project root added to sys.path: {project_root}")
+# --- ---
+
+# Импорты после настройки путей
+from PySide6.QtWidgets import QApplication, QMessageBox
+# Используем относительные импорты для модулей внутри core
+from logic import CounterpickLogic
+from images_load import load_hero_templates, load_original_images
+from main_window import MainWindow
+from utils import validate_heroes
 
 if __name__ == "__main__":
-    print("[LOG] if __name__ == '__main__': started")
-    print("[LOG] main() started")
-    print("[LOG] main() enter")
-    
-    print("[LOG] Проверка валидации героев...")
-    if not validate_heroes():
-        print("[ERROR] Ошибка валидации героев. ")
-        # sys.exit(1)
+    print("[LOG] core/main.py: __main__ block started")
+
+    # 1. Валидация данных
+    print("[LOG] Запуск валидации героев...")
+    validation_errors = validate_heroes() # Функция теперь возвращает список ошибок
+    if validation_errors:
+        # Показываем ошибки пользователю в MessageBox
+        error_msg = "Обнаружены ошибки в данных героев:\n\n" + "\n".join(validation_errors) + "\n\nПриложение может работать некорректно."
+        QApplication([]) # Нужно создать временный QApplication для MessageBox
+        QMessageBox.warning(None, "Ошибка данных", error_msg)
+        # Решаем, стоит ли продолжать или выйти
+        # sys.exit(1) # Раскомментировать для выхода при ошибке
+        print("[WARN] Ошибки валидации обнаружены, но приложение продолжит работу.")
     else:
         print("[LOG] Валидация героев прошла успешно.")
 
-    print("Создание QApplication...")
+    # 2. Создание QApplication
+    print("[LOG] Создание QApplication...")
     app = QApplication(sys.argv)
 
-    # Проверяем доступность стиля Fusion перед попыткой его установить
-    available_styles = QApplication.style()
-    if "Fusion" == available_styles.name():
-        print("[LOG] Стиль Fusion доступен. Устанавливаем.")
+    # 3. Установка стиля (опционально)
+    available_styles = QApplication.style().keys()
+    if "Fusion" in available_styles:
+        print("[LOG] Установка стиля Fusion.")
         app.setStyle("Fusion")
     else:
-        print(f"[WARN] Стиль Fusion не доступен. Используется стиль по умолчанию.")
+        print(f"[WARN] Стиль Fusion не доступен. Используется стиль по умолчанию: {QApplication.style().objectName()}")
 
-    print("[LOG] main() - Creating WinApiManager and ModeManager")
+    # 4. Загрузка ресурсов
+    print("[LOG] Предварительная загрузка ресурсов...")
+    try:
+        load_original_images() # Загружаем базовые иконки
+        hero_templates = load_hero_templates() # Загружаем шаблоны
+        if hero_templates is None: # Проверяем результат (может быть None при ошибке)
+             raise RuntimeError("Словарь шаблонов не был загружен (None).")
+        elif not hero_templates:
+             print("[WARN] Шаблоны героев не найдены или не загружены, распознавание будет недоступно.")
+             # Показываем предупреждение, но не выходим
+             QMessageBox.warning(None, "Внимание", "Шаблоны героев не найдены. Функция распознавания будет недоступна.")
+        else:
+            print(f"[LOG] Шаблоны героев загружены ({len(hero_templates)} героев).")
+        print("[LOG] Загрузка ресурсов завершена.")
+    except Exception as e:
+        print(f"[ERROR] Критическая ошибка при загрузке ресурсов: {e}")
+        QMessageBox.critical(None, "Критическая ошибка", f"Не удалось загрузить ресурсы приложения:\n{e}")
+        sys.exit(1)
 
+    # 5. Создание экземпляра логики
     print("[LOG] Создание экземпляра CounterpickLogic...")
-    logic = CounterpickLogic()
-    if not logic:
-        print("[ERROR] Не удалось создать экземпляр CounterpickLogic.")
-        QMessageBox.critical(None, "Критическая ошибка", "Не удалось инициализировать игровую логику.")
+    try:
+        logic = CounterpickLogic()
+    except Exception as e:
+        print(f"[ERROR] Не удалось создать экземпляр CounterpickLogic: {e}")
+        QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
         sys.exit(1)
 
-    print("[LOG] main() - About to load_hero_templates()")
-    hero_templates = load_hero_templates()
-    if not hero_templates:
-        print("[ERROR] Не удалось загрузить шаблоны героев.")
-        QMessageBox.critical(None, "Критическая ошибка", "Не удалось загрузить шаблоны героев.")
+    # 6. Создание главного окна
+    print("[LOG] Создание MainWindow...")
+    try:
+        window = MainWindow(logic, hero_templates if hero_templates else {}) # Передаем пустой словарь, если шаблоны не загрузились
+        window.show()
+    except Exception as e:
+        print(f"[ERROR] Не удалось создать или показать MainWindow: {e}")
+        import traceback
+        traceback.print_exc() # Печатаем полный traceback
+        QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать или показать главное окно:\n{e}")
         sys.exit(1)
-    else:
-        print("[LOG] Шаблоны героев успешно загружены.")
 
-    load_original_images() # Оригиналы загружаются без проверок, заглушки вместо ошибок
-    print("[LOG] Загрузка ресурсов завершена.")
-
-    print("[LOG] main() - About to create MainWindow")
-    window = MainWindow(logic, hero_templates)
-    if not window:
-        print("[ERROR] Не удалось создать экземпляр MainWindow.")
-        QMessageBox.critical(None, "Критическая ошибка", "Не удалось инициализировать главное окно.")
-        sys.exit(1)
-    window.show()
+    # 7. Запуск главного цикла приложения
+    print("[LOG] Запуск главного цикла приложения (app.exec())...")
     exit_code = app.exec()
     print(f"[LOG] --- Приложение завершено с кодом: {exit_code} ---")
     sys.exit(exit_code)
-
-    subprocess.run([sys.executable, '-m', 'pip', 'freeze', '>', 'requirements.txt'], check=True)
-

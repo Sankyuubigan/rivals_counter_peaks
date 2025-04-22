@@ -128,35 +128,28 @@ class WinApiManager:
                     self._is_win_topmost = enable
                 else:
                     print("[API ERROR] Вызов SetWindowPos не удался.")
-                    # Здесь можно не вызывать fallback, если API доступно, но вызов не прошел
-                    # Возможно, проблема в правах или конфликте с другим окном
                     # Обновляем флаг до желаемого состояния, чтобы UI соответствовал попытке
                     self._is_win_topmost = enable
 
             else:
                 print("[WARN][WinAPI] Не удалось получить HWND для SetWindowPos.")
-                # Если HWND не получен, используем Qt fallback
                 self._apply_qt_fallback(enable)
                 return # Выходим после fallback
 
         else:
-            # Если WinAPI вообще недоступно, используем Qt fallback
             print("[INFO][WinAPI] WinAPI недоступно.")
             self._apply_qt_fallback(enable)
             return # Выходим после fallback
 
-        # --- Обновление UI после попытки WinAPI (даже если неуспешной) ---
-        # Обновляем вид кнопки, чтобы он отражал _is_win_topmost
-        # Используем QTimer, чтобы гарантировать выполнение в GUI потоке
+        # --- Обновление UI ---
         QTimer.singleShot(0, self._update_topmost_button_visuals)
 
     def _update_topmost_button_visuals(self):
         """Обновляет вид кнопки topmost в главном окне."""
-        # Этот метод вызывается из set_topmost_winapi
         try:
-            # Находим кнопку и вызываем ее внутренний метод обновления
-            if self.main_window and self.main_window.top_panel_instance:
-                button = self.main_window.top_panel_instance.topmost_button
+            # Доступ к кнопке через экземпляр TopPanel в MainWindow
+            if self.main_window and hasattr(self.main_window, 'top_panel_instance') and self.main_window.top_panel_instance:
+                button = getattr(self.main_window.top_panel_instance, 'topmost_button', None)
                 if button:
                     update_func = getattr(button, '_update_visual_state', None)
                     if callable(update_func):
@@ -170,5 +163,5 @@ def is_window_topmost(window: QWidget) -> bool:
     """Проверяет, находится ли окно в состоянии Topmost (используя менеджер)."""
     if hasattr(window, 'win_api_manager') and isinstance(window.win_api_manager, WinApiManager):
         return window.win_api_manager.is_win_topmost
-    # Fallback на Qt флаг, если менеджера нет (маловероятно)
+    print("[WARN] Атрибут 'win_api_manager' не найден в окне. Используется Qt fallback для is_window_topmost.")
     return bool(window.windowFlags() & Qt.WindowStaysOnTopHint)
