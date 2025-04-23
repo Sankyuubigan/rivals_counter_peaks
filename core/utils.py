@@ -8,12 +8,7 @@ import sys
 from heroes_bd import heroes_counters, heroes
 import logging
 
-# <<< ИЗМЕНЕНО: Константа RECOGNITION_AREA теперь использует проценты >>>
-# Значения по умолчанию: правая середина экрана
-# 'left_pct': 50 - начинаем с середины по ширине
-# 'top_pct': 20 - начинаем с 20% от верха
-# 'width_pct': 40 - ширина области = 40% ширины экрана
-# 'height_pct': 50 - высота области = 50% высоты экрана
+# Константы для распознавания
 RECOGNITION_AREA = {
     'monitor': 1,
     'left_pct': 50,
@@ -21,11 +16,9 @@ RECOGNITION_AREA = {
     'width_pct': 40,
     'height_pct': 50
 }
-# Старые ключи оставлены для возможной совместимости, но приоритет у _pct
-# RECOGNITION_AREA = {'monitor': 1, 'left': 100, 'top': 50, 'width': 600, 'height': 60}
-
-RECOGNITION_THRESHOLD = 0.8
-# <<< ------------------------------------------------------------ >>>
+# <<< ИЗМЕНЕНО: Порог по умолчанию (можно менять для тестов) >>>
+RECOGNITION_THRESHOLD = 0.75 # Понижен для теста, верните 0.8 или другое значение после анализа логов
+# <<< ----------------------------------------------------- >>>
 
 
 def _get_root_path():
@@ -58,7 +51,6 @@ def check_if_all_elements_in_list(target_list, check_list):
     """Проверяет, что все элементы из check_list присутствуют в target_list."""
     return set(check_list).issubset(set(target_list))
 
-# <<< ИЗМЕНЕНО: Функция capture_screen_area теперь поддерживает проценты >>>
 def capture_screen_area(area: dict):
     """
     Захватывает указанную область экрана с помощью mss.
@@ -73,60 +65,36 @@ def capture_screen_area(area: dict):
             monitors = sct.monitors
             if not monitors: logging.error("[ERROR][CAPTURE] No monitors found."); return None
             target_monitor_index = area.get('monitor', 1)
-
-            # Корректировка индекса монитора
             if target_monitor_index >= len(monitors):
                  corrected_index = 1 if len(monitors) > 1 else 0
                  logging.warning(f"[WARN][CAPTURE] Invalid monitor index {target_monitor_index}. Available: {len(monitors)}. Using monitor {corrected_index} instead.")
                  target_monitor_index = corrected_index
-                 if target_monitor_index >= len(monitors):
-                      logging.error("[ERROR][CAPTURE] Corrected monitor index still invalid.")
-                      return None
+                 if target_monitor_index >= len(monitors): logging.error("[ERROR][CAPTURE] Corrected monitor index still invalid."); return None
             try: monitor_geometry = monitors[target_monitor_index]
             except IndexError: logging.error(f"[ERROR][CAPTURE] IndexError accessing monitor {target_monitor_index}. Monitors: {monitors}"); return None
 
-            mon_width = monitor_geometry["width"]
-            mon_height = monitor_geometry["height"]
-            mon_left = monitor_geometry["left"]
-            mon_top = monitor_geometry["top"]
+            mon_width = monitor_geometry["width"]; mon_height = monitor_geometry["height"]
+            mon_left = monitor_geometry["left"]; mon_top = monitor_geometry["top"]
 
-            # Расчет координат в пикселях
             use_pct = False
             if all(k in area for k in ['left_pct', 'top_pct', 'width_pct', 'height_pct']):
-                use_pct = True
-                logging.debug(f"[CAPTURE] Using percentage values for area calculation.")
-                left_px = int(mon_width * area['left_pct'] / 100)
-                top_px = int(mon_height * area['top_pct'] / 100)
-                width_px = int(mon_width * area['width_pct'] / 100)
-                height_px = int(mon_height * area['height_pct'] / 100)
+                use_pct = True; logging.debug(f"[CAPTURE] Using percentage values for area calculation.")
+                left_px = int(mon_width * area['left_pct'] / 100); top_px = int(mon_height * area['top_pct'] / 100)
+                width_px = int(mon_width * area['width_pct'] / 100); height_px = int(mon_height * area['height_pct'] / 100)
                 logging.debug(f"[CAPTURE] Calculated px values: L={left_px}, T={top_px}, W={width_px}, H={height_px}")
             else:
                 logging.debug(f"[CAPTURE] Using absolute pixel values from area definition.")
-                left_px = area.get('left', 0)
-                top_px = area.get('top', 0)
-                width_px = area.get('width', 100)
-                height_px = area.get('height', 100)
+                left_px = area.get('left', 0); top_px = area.get('top', 0)
+                width_px = area.get('width', 100); height_px = area.get('height', 100)
 
-            # Формируем BBox для mss (с учетом смещения монитора)
-            bbox = {
-                "left": mon_left + left_px,
-                "top": mon_top + top_px,
-                "width": max(1, width_px),  # Ширина и высота должны быть > 0
-                "height": max(1, height_px),
-                "mon": target_monitor_index
-            }
-
+            bbox = {"left": mon_left + left_px, "top": mon_top + top_px, "width": max(1, width_px), "height": max(1, height_px), "mon": target_monitor_index}
             if bbox['width'] <= 0 or bbox['height'] <= 0: logging.error(f"[ERROR][CAPTURE] Invalid calculated capture dimensions: {bbox}"); return None
             logging.debug(f"[CAPTURE] Grabbing BBox: {bbox} on Monitor: {target_monitor_index}")
-
-            sct_img = sct.grab(bbox)
-            img_np = np.array(sct_img)
+            sct_img = sct.grab(bbox); img_np = np.array(sct_img)
             if img_np.size == 0: logging.error("[ERROR][CAPTURE] Grabbed empty image."); return None
             if img_np.shape[2] == 4: img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
             elif img_np.shape[2] == 3: img_bgr = img_np
             else: logging.error(f"[ERROR][CAPTURE] Unexpected image format (channels: {img_np.shape[2]})."); return None
-            logging.debug(f"[CAPTURE] Area captured successfully. Shape: {img_bgr.shape}")
-            return img_bgr
+            logging.debug(f"[CAPTURE] Area captured successfully. Shape: {img_bgr.shape}"); return img_bgr
     except mss.ScreenShotError as e: logging.error(f"[ERROR][CAPTURE] mss error: {e}"); return None
     except Exception as e: logging.error(f"[ERROR][CAPTURE] Unexpected error during capture: {e}", exc_info=True); return None
-# <<< ----------------------------------------------------------------- >>>
