@@ -8,7 +8,9 @@ TRANSLATIONS = {
         'title': 'Подбор контрпиков',
         'select_heroes': 'Выберите героев, чтобы увидеть контрпики.',
         'no_heroes_selected': 'Выберите героев вражеской команды.',
-        'selected': 'Выбрано',
+        'selected': 'Выбрано', # Ключ 'selected' оставлен для обратной совместимости, если где-то используется
+        'selected_none': 'Выбрано (0/{max_team_size})', # Новый ключ
+        'selected_some': 'Выбрано', # Новый ключ
         'copy_rating': 'Копировать состав',
         'clear_all': 'Очистить всё',
         'about_author': 'Об авторе',
@@ -65,7 +67,9 @@ TRANSLATIONS = {
         'title': 'Counterpick Selection',
         'select_heroes': 'Select heroes to see counterpicks.',
         'no_heroes_selected': 'Select enemy team heroes.',
-        'selected': 'Selected',
+        'selected': 'Selected', # Kept for compatibility
+        'selected_none': 'Selected (0/{max_team_size})', # New key
+        'selected_some': 'Selected', # New key
         'copy_rating': 'Copy Team',
         'clear_all': 'Clear All',
         'about_author': 'About Author',
