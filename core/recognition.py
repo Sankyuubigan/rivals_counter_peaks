@@ -36,17 +36,14 @@ class RecognitionWorker(QObject):
             return
 
         try:
-            # 1. Захват скриншота
             screenshot_cv2 = capture_screen_area(self.recognition_area)
             if screenshot_cv2 is None:
                 raise ValueError(get_text('recognition_no_screenshot', language=self.logic.DEFAULT_LANGUAGE))
             if not self._is_running: return
 
-            # 2. Проверка шаблонов
             if not self.templates:
                  raise ValueError(get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
 
-            # 3. Распознавание
             recognized_heroes = self.logic.recognize_heroes_from_image(
                 screenshot_cv2,
                 self.templates,
@@ -54,7 +51,6 @@ class RecognitionWorker(QObject):
             )
             if not self._is_running: return
 
-            # 4. Отправка результата
             self.finished.emit(recognized_heroes)
 
         except Exception as e:

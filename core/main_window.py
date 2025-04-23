@@ -20,7 +20,7 @@ import display
 import horizontal_list
 import images_load
 from mode_manager import ModeManager, PANEL_MIN_WIDTHS, MODE_DEFAULT_WINDOW_SIZES
-from win_api import WinApiManager, user32 as winapi_user32
+from win_api import WinApiManager, user32 as winapi_user32, is_window_topmost
 from recognition import RecognitionManager, RecognitionWorker
 from top_panel import TopPanel
 from left_panel import LeftPanel, create_left_panel
@@ -54,24 +54,20 @@ class MainWindow(QMainWindow):
         super().__init__()
         print("[LOG] MainWindow.__init__ started")
 
-        # Основные компоненты
         self.logic = logic_instance
         self.hero_templates = hero_templates_dict
         self.app_version = os.environ.get("APP_VERSION", "N/A")
 
-        # Менеджеры
         self.win_api_manager = WinApiManager(self)
         self.mode_manager = ModeManager(self)
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
 
-        # Состояние UI
         self.mode = self.mode_manager.current_mode
         self.initial_pos = self.pos()
         self.mode_positions = self.mode_manager.mode_positions
         self.mode_positions["middle"] = self.initial_pos
         self.is_programmatically_updating_selection = False
 
-        # Атрибуты UI
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
         self.top_panel_instance: TopPanel | None = None
         self.right_panel_instance: RightPanel | None = None
@@ -89,31 +85,24 @@ class MainWindow(QMainWindow):
         self.selected_heroes_label = None
         self.hero_items = {}
 
-        # Hotkeys
         self.hotkey_cursor_index = -1
         self._num_columns_cache = 1
         self._keyboard_listener_thread = None
         self._stop_keyboard_listener_flag = threading.Event()
 
-        # Распознавание
         self._recognition_thread = None
         self._recognition_worker = None
 
-        # Настройка окна
         self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
         icon_pixmap = load_default_pixmap((32,32))
         if not icon_pixmap.isNull(): self.setWindowIcon(QIcon(icon_pixmap))
         self.setGeometry(100, 100, 950, 350)
         self.setMinimumSize(400, 100)
 
-        # Создание UI
         self._create_main_ui_layout()
         self._update_interface_for_mode()
-
-        # Подключение сигналов
         self._connect_signals()
 
-        # Запуск слушателя хоткеев
         if keyboard: self.start_keyboard_listener()
         else: print("[WARN] Библиотека keyboard не найдена, горячие клавиши не будут работать.")
 
@@ -168,8 +157,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         print("Close event triggered.")
         self.stop_keyboard_listener()
-        if hasattr(self, 'rec_manager') and self.rec_manager:
-            self.rec_manager.stop_recognition()
+        if hasattr(self, 'rec_manager') and self.rec_manager: self.rec_manager.stop_recognition()
         if self._keyboard_listener_thread and self._keyboard_listener_thread.is_alive():
              print("Waiting for keyboard listener thread to join...")
              self._keyboard_listener_thread.join(timeout=1.0)
@@ -179,10 +167,8 @@ class MainWindow(QMainWindow):
 
     def mousePressEvent(self, event: QMouseEvent):
         if self.mode == "min" and self.top_frame and self.top_frame.underMouse():
-            if event.button() == Qt.MouseButton.LeftButton:
-                self._mouse_pressed = True; self._old_pos = event.globalPosition().toPoint(); event.accept(); return
-        self._mouse_pressed = False
-        super().mousePressEvent(event)
+            if event.button() == Qt.MouseButton.LeftButton: self._mouse_pressed = True; self._old_pos = event.globalPosition().toPoint(); event.accept(); return
+        self._mouse_pressed = False; super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
         if self.mode == "min" and self._mouse_pressed and self._old_pos is not None:
@@ -190,8 +176,7 @@ class MainWindow(QMainWindow):
         else: super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton:
-            self._mouse_pressed = False; self._old_pos = None; event.accept()
+        if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton: self._mouse_pressed = False; self._old_pos = None; event.accept()
         else: super().mouseReleaseEvent(event)
 
     # --- Управление режимами окна ---
@@ -199,20 +184,21 @@ class MainWindow(QMainWindow):
         print(f"--- Попытка смены режима на: {mode_name} (в MainWindow) ---")
         if self.mode == mode_name: print(f"Режим '{mode_name}' уже установлен."); return
         start_time = time.time()
-        if self.mode in self.mode_positions and self.isVisible():
-            self.mode_positions[self.mode] = self.pos(); print(f"Позиция для режима '{self.mode}' сохранена: {self.mode_positions[self.mode]}")
+        if self.mode in self.mode_positions and self.isVisible(): self.mode_positions[self.mode] = self.pos(); print(f"Позиция для режима '{self.mode}' сохранена: {self.mode_positions[self.mode]}")
         old_cursor_index = self.hotkey_cursor_index; self.hotkey_cursor_index = -1
         if self.right_list_widget and self.right_list_widget.isVisible() and old_cursor_index >= 0: self._update_hotkey_highlight(old_cursor_index)
         self.mode_manager.change_mode(mode_name); self.mode = mode_name
         self._update_interface_for_mode()
         target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible(): print(f"Восстановление позиции для режима '{self.mode}': {target_pos}"); self.move(target_pos)
-        QTimer.singleShot(150, self._reset_hotkey_cursor_after_mode_change)
+        self._reset_hotkey_cursor_after_mode_change()
         end_time = time.time(); print(f"--- Смена режима на {mode_name} ЗАВЕРШЕНА (в MainWindow) (заняло: {end_time - start_time:.4f} сек) ---")
 
     def _update_interface_for_mode(self):
         t0 = time.time(); current_mode = self.mode
         print(f"[TIMING] _update_interface_for_mode: Start for mode '{current_mode}'")
+        current_selection_ids = set(self.logic.selected_heroes) # Сохраняем выделение
+        print(f"[DEBUG] Selection before clear: {current_selection_ids}")
         t1 = time.time()
         if self.inner_layout: self.mode_manager.clear_layout_recursive(self.inner_layout)
         else:
@@ -221,7 +207,7 @@ class MainWindow(QMainWindow):
         t2 = time.time(); # print(f"[TIMING] -> Clear inner_layout: {t2-t1:.4f} s")
         self.canvas = None; self.result_frame = None; self.result_label = None; self.update_scrollregion = lambda: None
         self.right_frame = None; self.selected_heroes_label = None; self.right_list_widget = None
-        self.hero_items.clear(); self.left_panel_instance = None; self.right_panel_instance = None
+        self.hero_items.clear(); self.right_panel_instance = None
         t1 = time.time()
         try: self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(current_mode)
         except Exception as e: print(f"Критическая ошибка загрузки изображений для режима {current_mode}: {e}"); return
@@ -271,13 +257,15 @@ class MainWindow(QMainWindow):
             self.setWindowTitle("")
             calculated_fixed_min_height = base_h + 5
             self.setMinimumHeight(calculated_fixed_min_height); self.setMaximumHeight(calculated_fixed_min_height)
+            if self.left_frame: self.left_frame.hide()
         else:
             if current_flags & Qt.WindowType.FramelessWindowHint: self.setWindowFlags(current_flags & ~Qt.WindowType.FramelessWindowHint); frameless_changed = True
             if lang_label: lang_label.show()
             if lang_combo: lang_combo.show()
-            if version_label: version_label.show()
-            if close_button: close_button.hide()
+            if version_label: version_label.show() # <<< Показываем версию
+            if close_button: close_button.hide() # <<< Скрываем кнопку Х
             self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
+            if self.left_frame: self.left_frame.show()
             if current_mode == "max":
                 calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h)
                 if self.author_button: self.author_button.show()
@@ -289,7 +277,7 @@ class MainWindow(QMainWindow):
         if frameless_changed: print("[LOG] Frameless flag changed, calling window.show()"); self.show()
         t2 = time.time(); # print(f"[TIMING] -> Setup window flags/visibility: {t2-t1:.4f} s")
         t1 = time.time()
-        self.update_language() # <<< ВЫЗЫВАЕМ МЕТОД self.update_language() >>>
+        self.update_language()
         self.main_layout.activate()
         if self.inner_layout: self.inner_layout.activate()
         self.updateGeometry()
@@ -302,12 +290,15 @@ class MainWindow(QMainWindow):
         else: final_w = max(target_w, min_w); final_h = max(target_h, actual_min_h); self.resize(final_w, final_h)
         t2 = time.time(); # print(f"[TIMING] -> Resize window: {t2-t1:.4f} s")
         t1 = time.time()
+        # <<< ИЗМЕНЕНО: Восстанавливаем выделение ПОСЛЕ обновления UI >>>
         self.update_ui_after_logic_change()
-        t2 = time.time(); # print(f"[TIMING] -> Restore UI state: {t2-t1:.4f} s")
+        self.logic.set_selection(current_selection_ids) # Восстанавливаем выделение в логике
+        self._update_list_item_selection_states() # Применяем выделение к новым виджетам
+        # <<< ---------------------------------------------------- >>>
+        t2 = time.time(); print(f"[TIMING] -> Restore UI state: {t2-t1:.4f} s")
         t_end = time.time()
         print(f"[TIMING] _update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
 
-    # <<< ВОССТАНОВЛЕН МЕТОД >>>
     def _reset_hotkey_cursor_after_mode_change(self):
         print("[LOG] _reset_hotkey_cursor_after_mode_change called")
         list_widget = self.right_list_widget
@@ -323,7 +314,6 @@ class MainWindow(QMainWindow):
             self.hotkey_cursor_index = -1
             list_visible_status = list_widget.isVisible() if list_widget else 'No list'
             print(f"[Hotkey] Cursor set to -1 (mode: {self.mode}, list visible: {list_visible_status})")
-    # <<< ------------------- >>>
 
     # --- Управление Topmost ---
     @property
@@ -332,6 +322,7 @@ class MainWindow(QMainWindow):
     def toggle_topmost_winapi(self): self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
 
     # --- Обработка сигналов хоткеев ---
+    # <<< ВОССТАНОВЛЕНЫ МЕТОДЫ >>>
     @Slot(str)
     def _handle_move_cursor(self, direction):
         list_widget = self.right_list_widget
@@ -394,6 +385,7 @@ class MainWindow(QMainWindow):
         self.logic.clear_all()
         self.update_ui_after_logic_change()
         self._reset_hotkey_cursor_after_clear()
+    # <<< ------------------- >>>
 
     # --- Обработка сигналов распознавания ---
     @Slot(list)
@@ -442,8 +434,8 @@ class MainWindow(QMainWindow):
             try: _, self.left_images, self.small_images, _ = get_images_for_mode(self.mode)
             except Exception as e: print(f"[ERROR] reloading images for display: {e}"); return
         try:
-            if self.mode == "min": generate_minimal_icon_list(self.logic, self.result_frame, self.left_images)
-            else: generate_counterpick_display(self.logic, self.result_frame, self.left_images, self.small_images)
+            if self.mode == "min": display.generate_minimal_icon_list(self.logic, self.result_frame, self.left_images)
+            else: display.generate_counterpick_display(self.logic, self.result_frame, self.left_images, self.small_images)
             if self.update_scrollregion: QTimer.singleShot(0, self.update_scrollregion)
         except RuntimeError as e: print(f"[ERROR] RuntimeErr in display generation: {e}")
         except Exception as e: print(f"[ERROR] General Err in display generation: {e}")
@@ -452,15 +444,21 @@ class MainWindow(QMainWindow):
         list_widget = self.right_list_widget
         hero_items_dict = self.hero_items
         if not list_widget or not list_widget.isVisible(): return
+        print("[UI Update] Updating list item selection states...")
         self.is_programmatically_updating_selection = True
         try:
             list_widget.blockSignals(True)
             current_logic_selection = set(self.logic.selected_heroes)
+            print(f"[DEBUG] Logic selection before UI update: {current_logic_selection}")
             for hero, item in hero_items_dict.items():
                 if item is None: continue
                 try:
                     is_now_selected = (hero in current_logic_selection)
-                    if item.isSelected() != is_now_selected: item.setSelected(is_now_selected)
+                    # print(f"[DEBUG] Hero: {hero}, Should be selected: {is_now_selected}, Currently selected: {item.isSelected()}")
+                    if item.isSelected() != is_now_selected:
+                        print(f"[DEBUG] Setting '{hero}' selected state to: {is_now_selected}")
+                        item.setSelected(is_now_selected)
+                    # else: print(f"[UI Update] '{hero}' selection state already {is_now_selected}")
                 except RuntimeError: pass
                 except Exception as e: print(f"[ERROR] updating selection state for {hero}: {e}")
             self._update_selected_label()
@@ -469,8 +467,28 @@ class MainWindow(QMainWindow):
                 if list_widget: list_widget.blockSignals(False)
             except RuntimeError: pass
             self.is_programmatically_updating_selection = False
+        print("[UI Update] Finished updating list item selection states.")
 
-    def _update_priority_labels(self): pass # Пока не используется
+    def _update_priority_labels(self):
+        list_widget = self.right_list_widget
+        hero_items_dict = self.hero_items
+        if not list_widget or not list_widget.isVisible(): return
+        priority_color = QColor("lightcoral")
+        default_brush = QBrush(Qt.GlobalColor.transparent)
+        focused_index = self.hotkey_cursor_index
+        for hero, item in hero_items_dict.items():
+             if item is None: continue
+             try:
+                 item_index = list_widget.row(item)
+                 is_priority = hero in self.logic.priority_heroes
+                 is_hotkey_focused = (item_index == focused_index and self.mode != 'min')
+                 is_selected = item.isSelected()
+                 target_brush = default_brush
+                 if is_priority and not is_selected and not is_hotkey_focused:
+                      target_brush = QBrush(priority_color)
+                 if item.background() != target_brush: item.setBackground(target_brush)
+             except RuntimeError: pass
+             except Exception as e: print(f"[ERROR] updating priority label for {hero}: {e}")
     # <<< ------------------------ >>>
 
     # --- Обработчики событий UI ---
@@ -527,20 +545,9 @@ class MainWindow(QMainWindow):
         print("[LOG] update_language called")
         current_lang = self.logic.DEFAULT_LANGUAGE
         self.setWindowTitle(f"{get_text('title', language=current_lang)} v{self.app_version}")
-
-        # Обновляем TopPanel
-        if self.top_panel_instance:
-            self.top_panel_instance.update_language()
-
-        # Обновляем RightPanel (если она есть)
-        if self.right_panel_instance:
-            self.right_panel_instance.update_language()
-
-        # Обновляем LeftPanel (result_label)
-        if self.result_label and not self.logic.selected_heroes:
-             self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
-
-        # Обновляем подсказки в QListWidget
+        if self.top_panel_instance: self.top_panel_instance.update_language()
+        if self.right_panel_instance: self.right_panel_instance.update_language()
+        if self.result_label and not self.logic.selected_heroes: self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
         list_widget = self.right_list_widget
         hero_items_dict = self.hero_items
         if list_widget and list_widget.isVisible():
@@ -550,7 +557,6 @@ class MainWindow(QMainWindow):
                      focused_item = list_widget.item(self.hotkey_cursor_index)
                      if focused_item: focused_tooltip = focused_item.toolTip()
                  except RuntimeError: pass
-
             for hero, item in hero_items_dict.items():
                  if item is None: continue
                  try:
@@ -558,7 +564,6 @@ class MainWindow(QMainWindow):
                      if item.text() != item_text: item.setText(item_text)
                      item.setToolTip(hero)
                  except RuntimeError: continue
-
             if focused_tooltip and ">>>" in focused_tooltip and 0 <= self.hotkey_cursor_index < list_widget.count():
                 try:
                     current_focused_item = list_widget.item(self.hotkey_cursor_index)
@@ -631,52 +636,73 @@ class MainWindow(QMainWindow):
         else: print("Keyboard listener not running or already stopped.")
 
     def _keyboard_listener_loop(self):
-        print("Keyboard listener thread started.")
+        print("[LOG][Hotkey] Keyboard listener thread started.")
         def run_in_gui_thread(func, *args): QTimer.singleShot(0, lambda: func(*args))
         def run_if_topmost_gui(func, *args):
-            is_topmost = self.win_api_manager.is_win_topmost if winapi_user32 else bool(self.windowFlags() & Qt.WindowStaysOnTopHint)
-            if is_topmost:
+            # print(f"[LOG][Hotkey] Checking topmost for: {func.__name__}{args}") # Debug
+            is_top = is_window_topmost(self)
+            if is_top:
+                # print(f"[LOG][Hotkey] Window is topmost, executing: {func.__name__}") # Debug
                 try: run_in_gui_thread(func, *args)
                 except Exception as e: print(f"[ERROR] Exception scheduling hotkey callback: {e}")
+            # else: print(f"[LOG][Hotkey] Window not topmost, blocking: {func.__name__}") # Debug
+
         hooks_registered = []
         try:
-            print(f"Registering keyboard hooks...")
-            keyboard.add_hotkey('tab+up', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'up'), suppress=True)
-            keyboard.add_hotkey('tab+down', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'down'), suppress=True)
-            keyboard.add_hotkey('tab+left', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'left'), suppress=True)
-            keyboard.add_hotkey('tab+right', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'right'), suppress=True)
+            print(f"[LOG][Hotkey] Registering keyboard hooks...")
+            # <<< Используем lambda для вызова run_if_topmost_gui при нажатии >>>
+            keyboard.add_hotkey('tab+up', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'up'), suppress=True, trigger_on_release=False)
+            keyboard.add_hotkey('tab+down', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'down'), suppress=True, trigger_on_release=False)
+            keyboard.add_hotkey('tab+left', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'left'), suppress=True, trigger_on_release=False)
+            keyboard.add_hotkey('tab+right', lambda: run_if_topmost_gui(self.move_cursor_signal.emit, 'right'), suppress=True, trigger_on_release=False)
             hooks_registered.extend(['tab+up', 'tab+down', 'tab+left', 'tab+right'])
-            try: keyboard.add_hotkey('tab+num 0', lambda: run_if_topmost_gui(self.toggle_selection_signal.emit), suppress=True); hooks_registered.append('tab+num 0')
+
+            try: keyboard.add_hotkey('tab+num 0', lambda: run_if_topmost_gui(self.toggle_selection_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+num 0')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+keypad 0', lambda: run_if_topmost_gui(self.toggle_selection_signal.emit), suppress=True); hooks_registered.append('tab+keypad 0')
+            try: keyboard.add_hotkey('tab+keypad 0', lambda: run_if_topmost_gui(self.toggle_selection_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+keypad 0')
             except ValueError: print("[WARN] Could not hook Tab + Num 0 / Keypad 0.")
-            try: keyboard.add_hotkey('tab+delete', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True); hooks_registered.append('tab+delete')
+
+            try: keyboard.add_hotkey('tab+delete', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+delete')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+del', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True); hooks_registered.append('tab+del')
+            try: keyboard.add_hotkey('tab+del', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+del')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+.', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True); hooks_registered.append('tab+.')
+            try: keyboard.add_hotkey('tab+.', lambda: run_if_topmost_gui(self.toggle_mode_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+.')
             except ValueError: print("[WARN] Could not hook Tab + Delete / Del / Numpad .")
-            try: keyboard.add_hotkey('tab+num -', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True); hooks_registered.append('tab+num -')
+
+            try: keyboard.add_hotkey('tab+num -', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+num -')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+keypad -', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True); hooks_registered.append('tab+keypad -')
+            try: keyboard.add_hotkey('tab+keypad -', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+keypad -')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+-', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True); hooks_registered.append('tab+-')
+            try: keyboard.add_hotkey('tab+-', lambda: run_if_topmost_gui(self.clear_all_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+-')
             except ValueError: print("[WARN] Could not hook Tab + Num - / Keypad - / -.")
-            try: keyboard.add_hotkey('tab+num /', lambda: run_if_topmost_gui(self.recognize_heroes_signal.emit), suppress=True); hooks_registered.append('tab+num /')
+
+            try: keyboard.add_hotkey('tab+num /', lambda: run_if_topmost_gui(self.recognize_heroes_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+num /')
             except ValueError: pass
-            try: keyboard.add_hotkey('tab+keypad /', lambda: run_if_topmost_gui(self.recognize_heroes_signal.emit), suppress=True); hooks_registered.append('tab+keypad /')
+            try: keyboard.add_hotkey('tab+keypad /', lambda: run_if_topmost_gui(self.recognize_heroes_signal.emit), suppress=True, trigger_on_release=False); hooks_registered.append('tab+keypad /')
             except ValueError: print("[WARN] Could not hook Tab + Num / or Keypad /.")
-            print(f"Hotkeys registered: {len(hooks_registered)}")
+            # <<< --------------------------------------------------------------- >>>
+
+            print(f"[LOG][Hotkey] Hotkeys registered: {len(hooks_registered)}")
             self._stop_keyboard_listener_flag.wait()
-            print("Keyboard listener stop signal received.")
+            print("[LOG][Hotkey] Keyboard listener stop signal received.")
         except ImportError: print("\n[ERROR] 'keyboard' library requires root/admin privileges.\n")
         except Exception as e: print(f"[ERROR] Error in keyboard listener setup: {e}")
         finally:
-            print("Unhooking all keyboard hotkeys...")
+            print("[LOG][Hotkey] Unhooking all keyboard hotkeys...")
             keyboard.unhook_all()
-            print("Keyboard listener thread finished.")
+            print("[LOG][Hotkey] Keyboard listener thread finished.")
 
     # --- Копирование в буфер обмена ---
     def copy_to_clipboard(self):
-        """Слот для копирования рекомендуемой команды в буфер."""
         copy_to_clipboard(self.logic)
+
+    def _reset_hotkey_cursor_after_clear(self):
+         list_widget = self.right_list_widget
+         if list_widget and list_widget.isVisible() and self.mode != 'min':
+            old_index = self.hotkey_cursor_index
+            count = list_widget.count()
+            self.hotkey_cursor_index = 0 if count > 0 else -1
+            if self.hotkey_cursor_index != old_index or old_index != 0:
+                self._update_hotkey_highlight(old_index)
+         else:
+            self.hotkey_cursor_index = -1

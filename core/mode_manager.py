@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCombo
 from PySide6.QtCore import Qt, QTimer
 
 # <<< ИСПРАВЛЕНО: Используем абсолютные импорты >>>
-import left_panel
+import left_panel # Импортируем модуль, а не класс/функцию
 import right_panel
 import images_load
 import translations
@@ -47,7 +47,7 @@ class ModeManager:
             print(f"[ERROR] Попытка установить неизвестный режим: {new_mode_name}")
             return
         if self.current_mode == new_mode_name:
-            # print(f"Режим уже установлен: {new_mode_name}") # Можно раскомментировать для отладки
+            # print(f"Режим уже установлен: {new_mode_name}")
             return
 
         print(f"[MODE] Сохранение позиции для режима '{self.current_mode}'...")
@@ -58,13 +58,10 @@ class ModeManager:
 
         print(f"[MODE] Установка нового режима: {new_mode_name}")
         self.current_mode = new_mode_name
-        # Обновляем атрибут mode в главном окне
-        # <<< ИСПРАВЛЕНО: Проверяем наличие атрибута перед установкой >>>
         if hasattr(self.main_window, 'mode'):
              self.main_window.mode = new_mode_name
         else:
              print("[WARN] Атрибут 'mode' не найден в main_window при смене режима в ModeManager.")
-        # <<< ---------------------------------------------------- >>>
 
     def clear_layout_recursive(self, layout):
         """Рекурсивно очищает layout."""
@@ -83,7 +80,5 @@ class ModeManager:
                     spacer = item.spacerItem()
                     if spacer is not None: layout.removeItem(item)
 
-
 # Функция change_mode теперь является методом MainWindow
-
 # Функция update_interface_for_mode теперь является методом MainWindow

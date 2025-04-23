@@ -16,12 +16,12 @@ print(f"Core directory added to sys.path: {core_dir}")
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 # <<< ИСПРАВЛЕНО: Используем абсолютные импорты (от корня или от core) >>>
 # Модули из корня проекта
-import logic # Зависит от heroes_bd, translations
-import images_load # Зависит от heroes_bd
-import utils # Зависит от heroes_bd
-import heroes_bd # Загружаем отдельно
+import logic
+import images_load
+import utils
+import heroes_bd
 import translations
-# Модули из core
+# Модули из папки core
 from main_window import MainWindow
 # <<< ---------------------------------------------------------------- >>>
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # 1. Валидация данных
     print("[LOG] Запуск валидации героев...")
-    validation_errors = utils.validate_heroes() # Используем utils.
+    validation_errors = utils.validate_heroes()
     if validation_errors:
         error_msg = "Обнаружены ошибки в данных героев:\n\n" + "\n".join(validation_errors) + "\n\nПриложение может работать некорректно."
         temp_app = QApplication.instance()
@@ -61,8 +61,8 @@ if __name__ == "__main__":
     # 4. Загрузка ресурсов
     print("[LOG] Предварительная загрузка ресурсов...")
     try:
-        images_load.load_original_images() # Используем images_load.
-        hero_templates = images_load.load_hero_templates() # Используем images_load.
+        images_load.load_original_images()
+        hero_templates = images_load.load_hero_templates()
         if hero_templates is None:
              raise RuntimeError("Словарь шаблонов не был загружен (None).")
         elif not hero_templates:
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # 5. Создание экземпляра логики
     print("[LOG] Создание экземпляра CounterpickLogic...")
     try:
-        logic_instance = logic.CounterpickLogic() # Используем logic.
+        logic_instance = logic.CounterpickLogic()
     except Exception as e:
         print(f"[ERROR] Не удалось создать экземпляр CounterpickLogic: {e}")
         QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
@@ -88,7 +88,6 @@ if __name__ == "__main__":
     # 6. Создание главного окна
     print("[LOG] Создание MainWindow...")
     try:
-        # Передаем созданный экземпляр logic_instance
         window = MainWindow(logic_instance, hero_templates if hero_templates else {})
         window.show()
     except Exception as e:
