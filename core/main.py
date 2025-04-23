@@ -50,6 +50,34 @@ if __name__ == "__main__":
     print("[LOG] Создание QApplication...")
     app = QApplication(sys.argv)
 
+    # --- Проверка прав администратора (для hotkeys) ---
+    is_admin = False
+    try:
+        if sys.platform == 'win32':
+            # is_admin = (os.getuid() == 0) # Unix-like check (won't work on Windows)
+            import ctypes
+            try:
+                is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+            except Exception as e_admin:
+                 print(f"[WARN] Не удалось проверить права администратора: {e_admin}")
+                 # Предполагаем, что нет прав, если проверка не удалась
+                 is_admin = False
+        elif sys.platform == 'darwin' or sys.platform.startswith('linux'):
+            is_admin = (os.geteuid() == 0)
+    except AttributeError: # os.getuid / os.geteuid может отсутствовать
+        print("[WARN] Не удалось определить права доступа (os.getuid/os.geteuid).")
+    except Exception as e:
+        print(f"[WARN] Неожиданная ошибка при проверке прав: {e}")
+
+    if not is_admin:
+         print("[WARN] Приложение запущено без прав администратора. Глобальные горячие клавиши (keyboard) могут не работать.")
+         # Можно показать QMessageBox, но это может быть навязчиво при каждом запуске
+         # QMessageBox.warning(None, "Внимание", "Приложение запущено без прав администратора.\nГлобальные горячие клавиши могут не работать.")
+    else:
+         print("[INFO] Приложение запущено с правами администратора.")
+    # --- ---
+
+
     # 3. Установка стиля
     available_styles = QStyleFactory.keys()
     if "Fusion" in available_styles:
