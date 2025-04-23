@@ -8,28 +8,23 @@ import platform
 import logging
 
 # --- Настройка логирования для скрипта сборки ---
+# Устанавливаем уровень INFO
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s', datefmt='%H:%M:%S')
 
 # --- Определяем пути ---
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, '..', '..')) # Корень проекта
-core_dir = os.path.join(project_root, "core") # Папка core
+project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+core_dir = os.path.join(project_root, "core")
 resources_dir_abs = os.path.join(project_root, "resources")
-templates_dir_abs = os.path.join(resources_dir_abs, "templates")
 dist_dir = os.path.join(project_root, 'dist')
-main_script = os.path.join(core_dir, "main.py") # Главный скрипт в core
-hooks_dir = script_dir # Хуки рядом с build.py
+main_script = os.path.join(core_dir, "main.py")
+hooks_dir = script_dir
 # --- ---
 
-# --- Версия ---
+# --- Версия и Генерация файла версии (ДО вызова PyInstaller) ---
 now = datetime.datetime.now()
 version = f"{now.month}.{now.day}"
-app_version_env_var = "APP_VERSION" # Оставляем на всякий случай, но не полагаемся
-os.environ[app_version_env_var] = version
-logging.info(f"Переменная окружения '{app_version_env_var}' установлена в '{version}' (но использовать не будем)")
 output_name = f"rivals_counter_{version}"
-
-# --- Генерация файла версии (Баг 4) ---
 version_file_path = os.path.join(core_dir, "_version.py")
 logging.info(f"Генерация файла версии: {version_file_path}")
 try:
@@ -39,112 +34,67 @@ try:
     logging.info(f"Файл версии успешно создан с версией: {version}")
 except Exception as e:
     logging.error(f"Не удалось создать файл версии: {e}", exc_info=True)
-    sys.exit(1) # Выход, если не можем создать файл версии
+    sys.exit(1)
+# --- ---
 
-# --- Формируем список данных для --add-data ---
+# --- Формируем список данных ---
 data_to_add = [
     f'--add-data "{resources_dir_abs}{os.pathsep}resources"',
     f'--add-data "{os.path.join(project_root, "heroes_bd.py")}{os.pathsep}."',
-    # _version.py будет включен автоматически через импорт
+    # _version.py теперь импортируется, PyInstaller должен найти его сам
 ]
 # --- ---
 
 # --- Формируем команду PyInstaller ---
 command_parts = [
-    'pyinstaller',
-    '--noconfirm',
-    '--onefile',
-    '--windowed',
-    f'--name "{output_name}"',
-    f'--distpath "{dist_dir}"',
-    f'--workpath "{os.path.join(project_root, "build_cache")}"',
-    f'--specpath "{project_root}"',
-    f'--additional-hooks-dir "{hooks_dir}"',
-    f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"',
-    '--hidden-import keyboard',
-    '--hidden-import mss',
-    '--hidden-import cv2',
-    '--hidden-import numpy',
-    '--hidden-import pyperclip',
-    '--hidden-import ctypes',
-    '--hidden-import ctypes.wintypes',
-    f'--paths "{core_dir}"',
-    f'--paths "{project_root}"'
+    'pyinstaller', '--noconfirm', '--onefile', '--windowed',
+    f'--name "{output_name}"', f'--distpath "{dist_dir}"',
+    f'--workpath "{os.path.join(project_root, "build_cache")}"', f'--specpath "{project_root}"',
+    f'--additional-hooks-dir "{hooks_dir}"', f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"',
+    '--hidden-import keyboard', '--hidden-import mss', '--hidden-import cv2',
+    '--hidden-import numpy', '--hidden-import pyperclip', '--hidden-import ctypes',
+    '--hidden-import ctypes.wintypes', f'--paths "{core_dir}"', f'--paths "{project_root}"'
 ]
-
 manifest_path = os.path.join(script_dir, "manifest.xml")
-if platform.system() == "Windows" and os.path.exists(manifest_path):
-     command_parts.append(f'--manifest "{manifest_path}"')
-     logging.info(f"Используется манифест: {manifest_path}")
-elif platform.system() == "Windows":
-     logging.warning(f"Файл манифеста не найден по пути: {manifest_path}.")
-
-command_parts.extend(data_to_add)
-command_parts.append(f'"{main_script}"')
-command = " ".join(command_parts)
+if platform.system() == "Windows" and os.path.exists(manifest_path): command_parts.append(f'--manifest "{manifest_path}"')
+elif platform.system() == "Windows": logging.warning(f"Файл манифеста не найден: {manifest_path}.")
+command_parts.extend(data_to_add); command_parts.append(f'"{main_script}"'); command = " ".join(command_parts)
 # --- ---
 
 # --- Вывод информации и запуск сборки ---
-print("-" * 60)
-logging.info(f"Папка скрипта build.py: {script_dir}")
-logging.info(f"Корневая папка проекта: {project_root}")
-logging.info(f"Папка core: {core_dir}")
-logging.info(f"Папка ресурсов: {resources_dir_abs}")
-logging.info(f"Папка назначения: {dist_dir}")
-logging.info(f"Главный скрипт: {main_script}")
-logging.info(f"Версия приложения (из файла): {version}")
-logging.info(f"Имя выходного файла: {output_name}.exe")
-logging.info(f"Используемая иконка: {os.path.join(resources_dir_abs, 'icon.ico')}")
-logging.info(f"Используемый манифест: {manifest_path if platform.system() == 'Windows' and os.path.exists(manifest_path) else 'N/A'}")
-print("-" * 60)
-logging.info(f"Выполняем команду:\n{command}")
-print("-" * 60)
-
-logging.info("Запуск PyInstaller...")
+print("-" * 60); logging.info(f"Версия приложения: {version}"); logging.info(f"Имя выходного файла: {output_name}.exe");
+logging.info(f"Выполняем команду:\n{command}"); print("-" * 60); logging.info("Запуск PyInstaller...")
 rc = 1
 try:
     build_process = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=project_root, check=False)
     print("--- PyInstaller STDOUT ---"); print(build_process.stdout or "N/A"); print("-" * 26)
     print("--- PyInstaller STDERR ---"); print(build_process.stderr or "N/A"); print("-" * 26)
-    rc = build_process.returncode
-    print("-" * 60)
+    rc = build_process.returncode; print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
          exe_path = os.path.join(dist_dir, output_name + '.exe')
          logging.info(f"Исполняемый файл создан в: {exe_path}")
          if not os.path.exists(exe_path): logging.error("EXE файл не найден!"); rc = -1
-    else:
-         logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
-except Exception as e:
-    logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
-    rc = -1
+    else: logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
+except Exception as e: logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True); rc = -1
 # --- ---
 
 # --- Очистка временных файлов ---
 force_clean = False
 if rc == 0 or force_clean:
     logging.info("Очистка временных файлов...")
-    spec_file = os.path.join(project_root, f"{output_name}.spec")
-    build_dir = os.path.join(project_root, "build_cache")
-
-    # Удаляем _version.py ТОЛЬКО после успешной сборки
+    spec_file = os.path.join(project_root, f"{output_name}.spec"); build_dir = os.path.join(project_root, "build_cache")
+    # Удаляем _version.py только после успешной сборки
     if rc == 0 and os.path.exists(version_file_path):
         try: os.remove(version_file_path); logging.info(f"Удален файл версии: {version_file_path}")
         except Exception as e: logging.warning(f"Не удалось удалить {version_file_path}: {e}")
-    elif rc != 0:
-         logging.warning(f"Сборка не удалась, файл версии {version_file_path} не удален.")
-
-
+    elif rc != 0: logging.warning(f"Сборка не удалась, файл версии {version_file_path} не удален.")
     if os.path.exists(spec_file):
         try: os.remove(spec_file); logging.info(f"Удален файл: {spec_file}")
         except Exception as e: logging.warning(f"Не удалось удалить {spec_file}: {e}")
-
     if os.path.exists(build_dir):
         try: shutil.rmtree(build_dir); logging.info(f"Удалена папка: {build_dir}")
         except Exception as e: logging.warning(f"Не удалось удалить папку {build_dir}: {e}")
-else:
-    logging.warning("Сборка завершилась с ошибкой, временные файлы не удалены для анализа.")
+else: logging.warning("Сборка завершилась с ошибкой, временные файлы не удалены для анализа.")
 # --- ---
-
-logging.info("Скрипт сборки завершен.")
-sys.exit(rc)
+logging.info("Скрипт сборки завершен."); sys.exit(rc)

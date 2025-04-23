@@ -4,6 +4,7 @@ import time
 import threading
 import os
 import logging
+import cv2 # Для сохранения скриншота
 
 from PySide6.QtWidgets import (
     QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
@@ -27,6 +28,7 @@ from recognition import RecognitionManager, RecognitionWorker
 from top_panel import TopPanel
 from left_panel import LeftPanel, create_left_panel
 from right_panel import RightPanel, HERO_NAME_ROLE
+import utils
 
 from translations import get_text, set_language, SUPPORTED_LANGUAGES
 from utils_gui import copy_to_clipboard
@@ -54,12 +56,13 @@ class MainWindow(QMainWindow):
     clear_all_signal = Signal()
     recognize_heroes_signal = Signal()
     recognition_complete_signal = Signal(list)
+    debug_capture_signal = Signal()
 
-    def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict):
+    def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict, app_version: str):
         super().__init__()
         logging.info("Initializing MainWindow...")
         self.logic = logic_instance; self.hero_templates = hero_templates_dict
-        self.app_version = self.logic.APP_VERSION
+        self.app_version = app_version
         logging.info(f"App Version used by MainWindow: {self.app_version}")
         self.win_api_manager = WinApiManager(self); self.mode_manager = ModeManager(self)
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
@@ -99,6 +102,7 @@ class MainWindow(QMainWindow):
         central_widget = QWidget(self); self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
+        if not hasattr(self, 'change_mode'): raise AttributeError("MainWindow is missing change_mode method")
         self.top_panel_instance = TopPanel(self, self.change_mode, self.logic, self.app_version)
         self.top_frame = self.top_panel_instance.top_frame
         self.author_button = self.top_panel_instance.author_button
@@ -129,6 +133,7 @@ class MainWindow(QMainWindow):
         self.recognize_heroes_signal.connect(self.rec_manager.recognize_heroes_signal.emit)
         self.rec_manager.recognition_complete_signal.connect(self._on_recognition_complete)
         self.rec_manager.error.connect(self._on_recognition_error)
+        self.debug_capture_signal.connect(self._handle_debug_capture)
         logging.debug("Signals connected.")
 
     def closeEvent(self, event):
@@ -164,53 +169,49 @@ class MainWindow(QMainWindow):
             try: logging.debug("Updating viewport to remove old hotkey highlight."); self.right_list_widget.viewport().update()
             except Exception as e: logging.warning(f"Failed to update viewport for hotkey reset: {e}")
         self.mode_manager.change_mode(mode_name); self.mode = mode_name; logging.info(f"Mode set to '{self.mode}'")
-        self._update_interface_for_mode()
-        target_pos = self.mode_positions.get(self.mode)
+        self._update_interface_for_mode(); target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible(): logging.info(f"Restoring position for mode '{self.mode}': {target_pos}"); self.move(target_pos)
+        else: logging.debug(f"No saved position found or window not visible for mode '{self.mode}'.")
         self._reset_hotkey_cursor_after_mode_change()
         end_time = time.time(); logging.info(f"--- Mode change to {mode_name} FINISHED (took: {end_time - start_time:.4f} sec) ---")
 
     def _update_interface_for_mode(self):
         t0 = time.time(); current_mode = self.mode
-        logging.info(f"Updating interface for mode '{current_mode}'")
-        current_selection_ids = set(self.logic.selected_heroes)
-        logging.debug(f"Current logic selection (before UI update): {current_selection_ids}")
-        t1 = time.time(); logging.debug("Clearing old panel widgets...")
+        logging.info(f"Updating interface for mode '{current_mode}'"); current_selection_ids = set(self.logic.selected_heroes)
+        logging.debug(f"Current logic selection (before UI update): {current_selection_ids}"); t1 = time.time(); logging.debug("Clearing old panel widgets...")
         widgets_to_delete = []
         if self.left_panel_widget: widgets_to_delete.append(self.left_panel_widget)
         if self.right_panel_widget: widgets_to_delete.append(self.right_panel_widget)
         if self.inner_layout:
             for widget in widgets_to_delete: self.inner_layout.removeWidget(widget); widget.setParent(None); widget.deleteLater()
         else: logging.warning("inner_layout is None during cleanup")
-        self.left_panel_widget = None; self.canvas = None; self.result_frame = None; self.result_label = None; self.update_scrollregion = lambda: None
-        self.right_panel_widget = None; self.right_frame = None; self.selected_heroes_label = None; self.right_list_widget = None; self.hero_items.clear(); self.right_panel_instance = None
-        logging.debug("Old panel widget references cleared."); t2 = time.time(); logging.debug(f"[TIMING] -> Clear/Detach old panels: {t2-t1:.4f} s")
-        t1 = time.time()
+        self.left_panel_widget=None; self.canvas=None; self.result_frame=None; self.result_label=None; self.update_scrollregion=lambda:None
+        self.right_panel_widget=None; self.right_frame=None; self.selected_heroes_label=None; self.right_list_widget=None; self.hero_items.clear(); self.right_panel_instance=None
+        logging.debug("Old panel widget references cleared."); t2=time.time(); logging.debug(f"[TIMING] -> Clear/Detach old panels: {t2-t1:.4f} s")
+        t1=time.time()
         try: self.right_images, self.left_images, self.small_images, self.horizontal_images = get_images_for_mode(current_mode)
         except Exception as e: logging.critical(f"Image loading error: {e}"); QMessageBox.critical(self, "Ошибка", f"Не удалось загрузить изображения: {e}"); return
-        logging.debug(f"Images loaded/retrieved for mode '{current_mode}'"); t2 = time.time(); logging.debug(f"[TIMING] -> Load/Get images: {t2-t1:.4f} s")
-        t1 = time.time(); logging.debug("Creating left panel...")
+        logging.debug(f"Images loaded/retrieved for mode '{current_mode}'"); t2=time.time(); logging.debug(f"[TIMING] -> Load/Get images: {t2-t1:.4f} s")
+        t1=time.time(); logging.debug("Creating left panel...")
         self.canvas, self.result_frame, self.result_label, self.update_scrollregion = create_left_panel(self.main_widget)
         parent_widget = self.canvas.parentWidget()
         if isinstance(parent_widget, QFrame): self.left_panel_widget = parent_widget; self.left_panel_widget.setObjectName("left_panel_container_frame")
         else: logging.error(f"Left panel parent is not QFrame: {type(parent_widget)}"); self.left_panel_widget = self.canvas
         self.left_panel_widget.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('left', 0))
-        self.inner_layout.addWidget(self.left_panel_widget, stretch=1); logging.debug(f"Left panel widget added to inner_layout."); t2 = time.time(); logging.debug(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
-        t1 = time.time()
+        self.inner_layout.addWidget(self.left_panel_widget, stretch=1); logging.debug(f"Left panel widget added to inner_layout."); t2=time.time(); logging.debug(f"[TIMING] -> Create left panel: {t2-t1:.4f} s")
+        t1=time.time()
         if current_mode != "min":
             logging.debug("Creating right panel..."); self.right_panel_instance = RightPanel(self, current_mode)
             self.right_panel_widget = self.right_panel_instance.frame; self.right_panel_widget.setObjectName("right_panel_container_frame")
             self.right_frame = self.right_panel_instance.frame; self.selected_heroes_label = self.right_panel_instance.selected_heroes_label
             self.right_list_widget = self.right_panel_instance.list_widget; self.hero_items = self.right_panel_instance.hero_items
             if self.right_list_widget:
-                logging.debug("Connecting signals and setting delegate for new right_list_widget");
-                delegate_instance = delegate.HotkeyFocusDelegate(self); self.right_list_widget.setItemDelegate(delegate_instance)
+                logging.debug("Connecting signals and setting delegate for new right_list_widget"); delegate_instance = delegate.HotkeyFocusDelegate(self); self.right_list_widget.setItemDelegate(delegate_instance)
                 try: self.right_list_widget.itemSelectionChanged.disconnect()
                 except RuntimeError: pass
                 try: self.right_list_widget.customContextMenuRequested.disconnect()
                 except RuntimeError: pass
-                self.right_list_widget.itemSelectionChanged.connect(self.handle_selection_changed)
-                self.right_list_widget.customContextMenuRequested.connect(self.show_priority_context_menu)
+                self.right_list_widget.itemSelectionChanged.connect(self.handle_selection_changed); self.right_list_widget.customContextMenuRequested.connect(self.show_priority_context_menu)
             else: logging.warning("right_list_widget is None after RightPanel creation.")
             self.right_panel_widget.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('right', 0))
             self.inner_layout.addWidget(self.right_panel_widget, stretch=1); logging.debug(f"Right panel widget added to inner_layout.")
@@ -218,14 +219,12 @@ class MainWindow(QMainWindow):
             if left_widget_for_stretch: self.inner_layout.setStretchFactor(left_widget_for_stretch, 2)
             self.inner_layout.setStretchFactor(self.right_panel_widget, 1)
         else: logging.debug("Right panel skipped for 'min' mode.")
-        t2 = time.time(); logging.debug(f"[TIMING] -> Create/Hide right panel: {t2-t1:.4f} s")
+        t2=time.time(); logging.debug(f"[TIMING] -> Create/Hide right panel: {t2-t1:.4f} s")
 
-        t1 = time.time(); logging.debug("Configuring window flags and top panel visibility...")
-        top_h = self.top_frame.sizeHint().height() if self.top_frame else 40
-        horiz_size = SIZES.get(current_mode, {}).get('horizontal', (35,35)); h_icon_h = horiz_size[1]
-        icons_h = h_icon_h + 12
+        t1=time.time(); logging.debug("Configuring window flags and top panel visibility...")
+        top_h = self.top_frame.sizeHint().height() if self.top_frame else 40; horiz_size = SIZES.get(current_mode, {}).get('horizontal', (35,35)); h_icon_h = horiz_size[1]
+        icons_h = h_icon_h + 12; spacing = self.main_layout.spacing() if self.main_layout else 0; base_h = top_h + icons_h + spacing
         if self.icons_scroll_area: self.icons_scroll_area.setFixedHeight(icons_h); logging.debug(f"Icons scroll area height set to {icons_h}")
-        spacing = self.main_layout.spacing() if self.main_layout else 0; base_h = top_h + icons_h + spacing
         self.setMinimumHeight(0); self.setMaximumHeight(16777215)
         is_min_mode = (current_mode == "min"); current_flags_before = self.windowFlags(); logging.debug(f"Window flags BEFORE update: {current_flags_before}")
         target_flags = Qt.WindowType(0); current_topmost_state = self._is_win_topmost
@@ -243,7 +242,12 @@ class MainWindow(QMainWindow):
             logging.debug("Setting up MIN mode UI specifics...")
             if lang_label: lang_label.hide()
             if lang_combo: lang_combo.hide()
-            if version_label: version_label.hide(); logging.debug("Hiding version label in MIN mode")
+            # <<< ИСПРАВЛЕНО: SyntaxError, разнесено по строкам >>>
+            if version_label:
+                version_label.hide()
+                logging.debug("Hiding version label in MIN mode")
+            # <<< ---------------------------------------- >>>
+            else: logging.warning("version_label not found in MIN mode setup")
             if self.author_button: self.author_button.hide()
             if self.rating_button: self.rating_button.hide()
             if close_button: close_button.show()
@@ -255,22 +259,26 @@ class MainWindow(QMainWindow):
             if lang_label: lang_label.show()
             if lang_combo: lang_combo.show()
             if version_label: version_label.show(); logging.debug(f"Showing version label in {current_mode.upper()} mode")
+            else: logging.warning(f"version_label not found in {current_mode.upper()} mode setup")
             if close_button: close_button.hide()
             self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
             if self.left_panel_widget: self.left_panel_widget.show()
             if self.icons_scroll_area: self.icons_scroll_area.show()
             if current_mode == "max":
-                calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}")
-                if self.author_button: self.author_button.show()
-                if self.rating_button: self.rating_button.show()
+                calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}");
+                # <<< ИСПРАВЛЕНО: SyntaxError, разнесено по строкам >>>
+                if self.author_button:
+                    self.author_button.show()
+                if self.rating_button:
+                    self.rating_button.show()
+                # <<< -------------------------------------------- >>>
             else: # middle
-                calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}")
-                if self.author_button: self.author_button.hide()
+                calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
+                if self.author_button: self.author_button.hide();
                 if self.rating_button: self.rating_button.hide()
-        logging.info("Calling window.show() after updating flags and UI visibility.")
-        self.show(); t2 = time.time(); logging.debug(f"[TIMING] -> Setup window flags/visibility: {t2-t1:.4f} s")
+        logging.info("Calling window.show() after updating flags and UI visibility."); self.show(); t2 = time.time(); logging.debug(f"[TIMING] -> Setup window flags/visibility: {t2-t1:.4f} s")
 
-        t1 = time.time(); self.update_language(); self.main_layout.activate()
+        t1 = time.time(); self.update_language(); self.main_layout.activate();
         if self.inner_layout: self.inner_layout.activate()
         self.updateGeometry(); t2 = time.time(); logging.debug(f"[TIMING] -> Update language/layout/geometry: {t2-t1:.4f} s")
 
@@ -288,8 +296,8 @@ class MainWindow(QMainWindow):
             logging.debug("Scheduled _update_list_item_selection_states with force_update=True after 50ms delay.")
         else: logging.debug("Right list widget not available, skipping selection state restoration.")
         t2 = time.time(); logging.info(f"[TIMING] -> Restore UI state (scheduling selection): {t2-t1:.4f} s")
-
         t_end = time.time(); logging.info(f"[TIMING] _update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
+
 
     def _reset_hotkey_cursor_after_mode_change(self):
         logging.debug("_reset_hotkey_cursor_after_mode_change called")
@@ -398,11 +406,26 @@ class MainWindow(QMainWindow):
     def _on_recognition_error(self, error_message):
         logging.error(f"Recognition error: {error_message}"); QMessageBox.warning(self, get_text('error', language=self.logic.DEFAULT_LANGUAGE), f"{get_text('recognition_error_prefix', language=self.logic.DEFAULT_LANGUAGE)}\n{error_message}")
 
+    @Slot()
+    def _handle_debug_capture(self):
+        logging.info("[Debug Capture] Received debug_capture_signal. Capturing screen area...")
+        try:
+            screenshot = utils.capture_screen_area(utils.RECOGNITION_AREA)
+            if screenshot is not None:
+                filename = "debug_screenshot_test.png"; project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')); filepath = os.path.join(project_dir, filename)
+                cv2.imwrite(filepath, screenshot); logging.info(f"[Debug Capture] Screenshot saved to: {filepath}")
+                QMessageBox.information(self, "Debug Screenshot", f"Тестовый скриншот сохранен как:\n{filepath}")
+            else:
+                logging.warning("[Debug Capture] Failed to capture screenshot (capture_screen_area returned None).")
+                QMessageBox.warning(self, "Debug Screenshot", "Не удалось сделать тестовый скриншот.")
+        except Exception as e:
+            logging.error(f"[Debug Capture] Error during debug capture: {e}", exc_info=True)
+            QMessageBox.critical(self, "Debug Screenshot Error", f"Ошибка при сохранении скриншота:\n{e}")
+
     def update_ui_after_logic_change(self):
         logging.info("Updating UI after logic change."); start_time = time.time()
         self._update_selected_label(); self._update_counterpick_display(); update_horizontal_icon_list(self)
-        self._update_list_item_selection_states()
-        self._update_priority_labels()
+        self._update_list_item_selection_states(); self._update_priority_labels()
         end_time = time.time(); logging.info(f"UI Update Finished in {end_time - start_time:.4f} sec.")
 
     def _update_selected_label(self):
@@ -450,7 +473,6 @@ class MainWindow(QMainWindow):
             logging.debug(f"Items whose selection state was changed/forced: {items_changed_count}")
             self._update_selected_label()
             if list_widget and list_widget.viewport(): logging.debug("Calling list_widget.viewport().update() immediately after loop."); list_widget.viewport().update()
-            # QTimer.singleShot(0, lambda: list_widget.viewport().update() if list_widget and list_widget.viewport() else None)
         except Exception as e: logging.error(f"Unexpected error in _update_list_item_selection_states: {e}", exc_info=True)
         finally:
             try:
@@ -522,25 +544,20 @@ class MainWindow(QMainWindow):
             if list_widget and list_widget.isVisible():
                  focused_tooltip_base = None; current_focused_item = None
                  if 0 <= self.hotkey_cursor_index < list_widget.count():
-                      # <<< ИСПРАВЛЕНО: SyntaxError, блок try/except завершен >>>
                       try:
                           current_focused_item = list_widget.item(self.hotkey_cursor_index)
-                          if current_focused_item:
-                              focused_tooltip_base = current_focused_item.data(HERO_NAME_ROLE)
-                      except RuntimeError:
-                          logging.warning(f"RuntimeError getting focused item ({self.hotkey_cursor_index})")
-                          pass # Игнорируем ошибку, если виджет удален
-                      # <<< -------------------------------------------------- >>>
+                          if current_focused_item: focused_tooltip_base = current_focused_item.data(HERO_NAME_ROLE)
+                      except RuntimeError: logging.warning(f"RuntimeError getting focused item ({self.hotkey_cursor_index})")
                  for hero, item in hero_items_dict.items():
                       if item is None: continue
                       try: item_text = hero if self.mode == "max" else ""; item.setText(item_text); item.setToolTip(hero)
                       except RuntimeError: continue
-                 # Восстанавливаем тултип фокуса, если он был
                  if focused_tooltip_base and current_focused_item:
                      try: current_focused_item.setToolTip(f">>> {focused_tooltip_base} <<<")
                      except RuntimeError: pass
         if self.result_label and not self.logic.selected_heroes: self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
         logging.info("Language update finished.")
+
 
     def _calculate_columns(self) -> int:
         list_widget = self.right_list_widget
@@ -618,6 +635,8 @@ class MainWindow(QMainWindow):
             'tab+num /': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+num / -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
             'tab+keypad /': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad / -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
             'tab+/': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+/ -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
+            'tab+*': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+* -> Debug Capture Signal Emit"), self.debug_capture_signal.emit()), True),
+            'tab+keypad *': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad * -> Debug Capture Signal Emit"), self.debug_capture_signal.emit()), True),
         }
         hooks_registered_count = 0
         try:

@@ -3,22 +3,36 @@ import sys
 import os
 import logging
 
-# --- Настройка логирования для main.py ---
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', datefmt='%H:%M:%S')
+# <<< ИЗМЕНЕНО: Уровень логирования по умолчанию INFO >>>
+logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', datefmt='%H:%M:%S')
+# <<< ---------------------------------------------- >>>
 
 # --- Настройка путей ---
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+if project_root not in sys.path: sys.path.insert(0, project_root)
 logging.debug(f"Project root added to sys.path: {project_root}")
 core_dir = os.path.dirname(__file__)
-if core_dir not in sys.path:
-     sys.path.insert(0, core_dir)
+if core_dir not in sys.path: sys.path.insert(0, core_dir)
 logging.debug(f"Core directory added to sys.path: {core_dir}")
 # --- ---
 
+# <<< ИЗМЕНЕНО: Читаем версию из _version.py (Баг 4) >>>
+app_version = "unknown"
+try:
+    # Пробуем импортировать _version (должен быть создан build.py)
+    from _version import __version__ as version_from_file
+    app_version = version_from_file
+    logging.info(f"[Main] Version successfully read via import: {app_version}")
+except ImportError:
+    logging.error("[Main] Failed to import from _version.py. Run build script first or check path.")
+    app_version = "dev" # Запасной вариант
+except Exception as e_general:
+     logging.error(f"[Main] General error reading version: {e_general}")
+     app_version = "error"
+# <<< ---------------------------------------------------- >>>
+
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
-import logic # Импортируем logic ДО того, как используем logic.CounterpickLogic
+import logic
 import images_load
 import utils
 import heroes_bd
@@ -78,8 +92,7 @@ if __name__ == "__main__":
     # 5. Создание экземпляра логики
     logging.info("Создание экземпляра CounterpickLogic...")
     try:
-        logic_instance = logic.CounterpickLogic()
-        # Логируем версию ПОСЛЕ инициализации logic
+        logic_instance = logic.CounterpickLogic(app_version=app_version) # Передаем прочитанную версию
         logging.info(f"Logic instance created. App version from logic: {logic_instance.APP_VERSION}")
     except Exception as e:
         logging.error(f"Не удалось создать экземпляр CounterpickLogic: {e}", exc_info=True)
@@ -89,7 +102,7 @@ if __name__ == "__main__":
     # 6. Создание главного окна
     logging.info("Создание MainWindow...")
     try:
-        window = MainWindow(logic_instance, hero_templates if hero_templates else {})
+        window = MainWindow(logic_instance, hero_templates if hero_templates else {}, app_version=app_version)
         window.show()
     except Exception as e:
         logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)

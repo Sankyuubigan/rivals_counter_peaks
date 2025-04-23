@@ -2,17 +2,7 @@
 from collections import deque
 from heroes_bd import heroes, heroes_counters, hero_roles, heroes_compositions
 from core.translations import get_text, DEFAULT_LANGUAGE as global_default_language
-# <<< ИЗМЕНЕНО: Импортируем версию из файла (Баг 4) >>>
-try:
-    # Используем относительный импорт, так как _version.py в той же папке (core)
-    from ._version import __version__ as app_version_from_file
-except ImportError:
-    # Пробуем абсолютный импорт на случай прямого запуска скриптов не из корня
-    try:
-        from _version import __version__ as app_version_from_file
-    except ImportError:
-        app_version_from_file = "dev" # Запасной вариант, если файл не найден
-# <<< ---------------------------------------------------------- >>>
+# <<< УБРАН импорт _version отсюда (Баг 4) >>>
 
 import cv2
 import numpy as np
@@ -22,33 +12,31 @@ import logging
 MIN_TANKS = 1; MAX_TANKS = 3; MIN_SUPPORTS = 2; MAX_SUPPORTS = 3; TEAM_SIZE = 6
 
 class CounterpickLogic:
-    def __init__(self):
+    # <<< ИЗМЕНЕНО: Принимаем версию как аргумент (Баг 4) >>>
+    def __init__(self, app_version="unknown"):
         self.selected_heroes = deque(maxlen=TEAM_SIZE)
         self.priority_heroes = set()
         self.effective_team = []
         self.DEFAULT_LANGUAGE = global_default_language
-        self.APP_VERSION = app_version_from_file # Используем версию из файла
-        logging.info(f"[Logic] Initialized. APP_VERSION from _version import: '{self.APP_VERSION}'")
+        # Используем переданную версию
+        self.APP_VERSION = app_version
+        logging.info(f"[Logic] Initialized. APP_VERSION set to: '{self.APP_VERSION}'")
+        # <<< ------------------------------------------------ >>>
 
+    # ... (остальные методы без изменений) ...
     def set_selection(self, desired_selection_set):
         logging.debug(f"[Logic] set_selection called with set: {desired_selection_set}")
         logging.debug(f"[Logic] Current internal selection (before): {list(self.selected_heroes)}")
-        current_selection_list = list(self.selected_heroes)
-        current_selection_set = set(current_selection_list)
-        added_heroes = desired_selection_set - current_selection_set
-        removed_heroes = current_selection_set - desired_selection_set
-        logging.debug(f"[Logic] Heroes to add: {added_heroes}")
-        logging.debug(f"[Logic] Heroes to remove: {removed_heroes}")
+        current_selection_list = list(self.selected_heroes); current_selection_set = set(current_selection_list)
+        added_heroes = desired_selection_set - current_selection_set; removed_heroes = current_selection_set - desired_selection_set
+        logging.debug(f"[Logic] Heroes to add: {added_heroes}"); logging.debug(f"[Logic] Heroes to remove: {removed_heroes}")
         new_deque = deque(maxlen=TEAM_SIZE)
         for hero in current_selection_list:
             if hero not in removed_heroes: new_deque.append(hero)
         for hero in added_heroes:
             if hero not in new_deque: new_deque.append(hero); logging.debug(f"[Logic] Appended '{hero}'. Deque state: {list(new_deque)}")
-        self.selected_heroes = new_deque
-        self.priority_heroes.intersection_update(set(self.selected_heroes))
-        logging.debug(f"[Logic] Final internal selection: {list(self.selected_heroes)}")
-        logging.debug(f"[Logic] Final priority: {self.priority_heroes}")
-        self.effective_team = []
+        self.selected_heroes = new_deque; self.priority_heroes.intersection_update(set(self.selected_heroes))
+        logging.debug(f"[Logic] Final internal selection: {list(self.selected_heroes)}"); logging.debug(f"[Logic] Final priority: {self.priority_heroes}"); self.effective_team = []
 
     def clear_all(self):
         logging.info("[Logic] Clearing all selections.")
@@ -94,8 +82,7 @@ class CounterpickLogic:
             return (2, -s)
         role_sorted_candidates = sorted(candidates.items(), key=role_priority_key)
         for hero, score in role_sorted_candidates:
-             if tanks_count < MIN_TANKS and hero in hero_roles.get("tanks", []):
-                 effective_team.append(hero); added_heroes_set.add(hero); tanks_count += 1; break
+             if tanks_count < MIN_TANKS and hero in hero_roles.get("tanks", []): effective_team.append(hero); added_heroes_set.add(hero); tanks_count += 1; break
         support_added_count_step1 = 0
         for hero, score in role_sorted_candidates:
              if hero not in added_heroes_set and support_added_count_step1 < MIN_SUPPORTS and hero in hero_roles.get("supports", []):
@@ -105,8 +92,7 @@ class CounterpickLogic:
         while len(effective_team) < TEAM_SIZE and remaining_candidates:
             best_hero_to_add = None; best_adjusted_score = -float('inf'); candidate_index_to_remove = -1
             for i, (hero, score) in enumerate(remaining_candidates):
-                 can_add = False; role = "unknown"
-                 role_tanks = hero_roles.get("tanks", []); role_supports = hero_roles.get("supports", []); role_attackers = hero_roles.get("attackers", [])
+                 can_add = False; role = "unknown"; role_tanks = hero_roles.get("tanks", []); role_supports = hero_roles.get("supports", []); role_attackers = hero_roles.get("attackers", [])
                  if hero in role_tanks: role = "tanks"
                  elif hero in role_supports: role = "supports"
                  elif hero in role_attackers: role = "attackers"
@@ -129,13 +115,12 @@ class CounterpickLogic:
                 if 0 <= candidate_index_to_remove < len(remaining_candidates): remaining_candidates.pop(candidate_index_to_remove)
                 else: logging.warning(f"[Logic] Invalid index {candidate_index_to_remove} for remaining_candidates"); break
             else: break
-        self.effective_team = list(effective_team)
-        return self.effective_team
+        self.effective_team = list(effective_team); return self.effective_team
 
     def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=0.8):
         if image_cv2 is None: logging.error("[ERROR][recognize] Входное изображение пустое."); return []
         if not hero_templates: logging.error("[ERROR][recognize] Словарь шаблонов пуст."); return []
-        recognized_heroes = set()
+        recognized_heroes = set();
         try: image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
         except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка конвертации изображения в серое: {e}"); return []
         logging.info(f"[RECOGNIZE] Начало распознавания. Изображение: {image_gray.shape}, Шаблонов: {len(hero_templates)}, Порог: {threshold}")
@@ -154,11 +139,8 @@ class CounterpickLogic:
                     if res is None: continue
                     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
                     if max_val > best_match_val: best_match_val = max_val
-                    if max_val >= threshold:
-                        logging.info(f"[RECOGNIZE] НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f})")
-                        recognized_heroes.add(hero_name); found_hero = True; break
+                    if max_val >= threshold: logging.info(f"[RECOGNIZE] НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f})"); recognized_heroes.add(hero_name); found_hero = True; break
                 except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка OpenCV при обработке шаблона {i} для {hero_name}: {e}")
                 except Exception as e: logging.error(f"[ERROR][recognize] Неожиданная ошибка при обработке шаблона {i} для {hero_name}: {e}")
         final_list = list(recognized_heroes)
-        logging.info(f"[RECOGNIZE] Распознавание завершено. Итог ({len(final_list)}): {final_list}")
-        return final_list[:TEAM_SIZE]
+        logging.info(f"[RECOGNIZE] Распознавание завершено. Итог ({len(final_list)}): {final_list}"); return final_list[:TEAM_SIZE]
