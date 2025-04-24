@@ -115,22 +115,16 @@ class CounterpickLogic:
             else: break
         self.effective_team = list(effective_team); return self.effective_team
 
-    # <<< ИЗМЕНЕНО: Добавлено логирование уверенности распознавания >>>
     def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=0.8):
         if image_cv2 is None: logging.error("[ERROR][recognize] Входное изображение пустое."); return []
         if not hero_templates: logging.error("[ERROR][recognize] Словарь шаблонов пуст."); return []
-        recognized_heroes = set(); all_match_values = {} # Словарь для хранения лучших совпадений
+        recognized_heroes = set(); all_match_values = {}
         try: image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
         except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка конвертации изображения в серое: {e}"); return []
         logging.info(f"[RECOGNIZE] Начало распознавания. Изображение: {image_gray.shape}, Шаблонов: {len(hero_templates)}, Порог: {threshold}")
 
         for hero_name, templates in hero_templates.items():
-            # Не прерываем цикл, чтобы получить значения для всех героев
-            # if hero_name in recognized_heroes and len(recognized_heroes) >= TEAM_SIZE : continue
-
-            best_match_val_for_hero = -1 # Лучшее совпадение для ЭТОГО героя
-            found_hero_this_iteration = False
-
+            best_match_val_for_hero = -1; found_hero_this_iteration = False
             for i, template_cv2 in enumerate(templates):
                 if template_cv2 is None: continue
                 try:
@@ -139,44 +133,28 @@ class CounterpickLogic:
                     if template_gray is None: continue
                     h, w = template_gray.shape
                     if h > image_gray.shape[0] or w > image_gray.shape[1]: continue
-                    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+                    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED) # TM_CCOEFF_NORMED TM_CCORR_NORMED TM_SQDIFF_NORMED
                     if res is None: continue
                     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-                    # Обновляем лучшее значение для текущего героя
-                    if max_val > best_match_val_for_hero:
-                        best_match_val_for_hero = max_val
-
-                    # Проверяем порог для добавления в результат
+                    if max_val > best_match_val_for_hero: best_match_val_for_hero = max_val
                     if max_val >= threshold:
-                        # Логируем только ПЕРВОЕ успешное распознавание для героя
-                        if not found_hero_this_iteration:
-                             logging.info(f"[RECOGNIZE] ----- НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f} >= {threshold}) -----")
-                        recognized_heroes.add(hero_name)
-                        found_hero_this_iteration = True
-                        # Можно было бы прервать внутренний цикл (break), но для логов оставим проверку всех шаблонов
+                        if not found_hero_this_iteration: logging.info(f"[RECOGNIZE] ----- НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f} >= {threshold}) -----")
+                        recognized_heroes.add(hero_name); found_hero_this_iteration = True
                 except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка OpenCV при обработке шаблона {i} для {hero_name}: {e}")
                 except Exception as e: logging.error(f"[ERROR][recognize] Неожиданная ошибка при обработке шаблона {i} для {hero_name}: {e}")
 
-            # Сохраняем ЛУЧШЕЕ значение уверенности для героя, даже если порог не пройден
             all_match_values[hero_name] = best_match_val_for_hero
-            # Логируем лучшее значение, если герой НЕ был распознан (ни один шаблон не прошел порог)
-            if not found_hero_this_iteration and best_match_val_for_hero > 0: # Логируем только если было хоть какое-то совпадение
+            # <<< ИЗМЕНЕНО: Логгируем нераспознанных героев уровнем INFO, остальных DEBUG >>>
+            if not found_hero_this_iteration and best_match_val_for_hero > 0.1: # Порог для логирования, чтобы не спамить нулевыми
                  logging.info(f"[RECOGNIZE] Герой НЕ найден: {hero_name} (Лучшая уверенность: {best_match_val_for_hero:.4f} < {threshold})")
             elif not found_hero_this_iteration:
                  logging.debug(f"[RECOGNIZE] Нет значимых совпадений для: {hero_name} (Max val: {best_match_val_for_hero:.4f})")
-
+            # <<< -------------------------------------------------------------------- >>>
 
         final_list = list(recognized_heroes)
-        # Логируем итоговый список распознанных
         logging.info(f"[RECOGNIZE] Распознавание завершено. Итог ({len(final_list)}/{TEAM_SIZE}): {final_list}")
-        # Логируем топ N лучших совпадений для отладки порога
         if all_match_values:
-            sorted_matches = sorted(all_match_values.items(), key=lambda item: item[1], reverse=True)
-            top_n = 10 # Сколько лучших показать
+            sorted_matches = sorted(all_match_values.items(), key=lambda item: item[1], reverse=True); top_n = 10
             logging.info(f"[RECOGNIZE] Топ-{top_n} лучших совпадений (даже ниже порога):")
-            for i, (hero, val) in enumerate(sorted_matches[:top_n]):
-                logging.info(f"[RECOGNIZE]   {i+1}. {hero}: {val:.4f}")
-
+            for i, (hero, val) in enumerate(sorted_matches[:top_n]): logging.info(f"[RECOGNIZE]   {i+1}. {hero}: {val:.4f}")
         return final_list[:TEAM_SIZE]
-    # <<< -------------------------------------------------------- >>>

@@ -98,7 +98,7 @@ class MainWindow(QMainWindow):
         logging.info("MainWindow.__init__ finished")
 
     def _create_main_ui_layout(self):
-        logging.debug("Creating main UI layout...")
+        logging.debug("Creating main UI layout...") # Оставляем DEBUG для структуры
         central_widget = QWidget(self); self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
@@ -242,11 +242,7 @@ class MainWindow(QMainWindow):
             logging.debug("Setting up MIN mode UI specifics...")
             if lang_label: lang_label.hide()
             if lang_combo: lang_combo.hide()
-            # <<< ИСПРАВЛЕНО: SyntaxError, разнесено по строкам >>>
-            if version_label:
-                version_label.hide()
-                logging.debug("Hiding version label in MIN mode")
-            # <<< ---------------------------------------- >>>
+            if version_label: version_label.hide(); logging.debug("Hiding version label in MIN mode")
             else: logging.warning("version_label not found in MIN mode setup")
             if self.author_button: self.author_button.hide()
             if self.rating_button: self.rating_button.hide()
@@ -266,12 +262,8 @@ class MainWindow(QMainWindow):
             if self.icons_scroll_area: self.icons_scroll_area.show()
             if current_mode == "max":
                 calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}");
-                # <<< ИСПРАВЛЕНО: SyntaxError, разнесено по строкам >>>
-                if self.author_button:
-                    self.author_button.show()
-                if self.rating_button:
-                    self.rating_button.show()
-                # <<< -------------------------------------------- >>>
+                if self.author_button: self.author_button.show() # Разделили if
+                if self.rating_button: self.rating_button.show()
             else: # middle
                 calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
                 if self.author_button: self.author_button.hide();
@@ -297,7 +289,6 @@ class MainWindow(QMainWindow):
         else: logging.debug("Right list widget not available, skipping selection state restoration.")
         t2 = time.time(); logging.info(f"[TIMING] -> Restore UI state (scheduling selection): {t2-t1:.4f} s")
         t_end = time.time(); logging.info(f"[TIMING] _update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
-
 
     def _reset_hotkey_cursor_after_mode_change(self):
         logging.debug("_reset_hotkey_cursor_after_mode_change called")
@@ -372,18 +363,13 @@ class MainWindow(QMainWindow):
             item = list_widget.item(self.hotkey_cursor_index)
             if item:
                 try:
-                    is_selected = item.isSelected()
-                    new_state = not is_selected
+                    is_selected = item.isSelected(); new_state = not is_selected
                     logging.debug(f"Toggling selection for item {self.hotkey_cursor_index} ('{item.data(HERO_NAME_ROLE)}'). State: {is_selected} -> {new_state}")
                     item.setSelected(new_state)
-                except RuntimeError:
-                    logging.warning(f"RuntimeError accessing item during toggle selection (index {self.hotkey_cursor_index}). Might be deleting.")
-                except Exception as e:
-                    logging.error(f"Error toggling selection via hotkey: {e}", exc_info=True)
-            else:
-                logging.warning(f"Item at index {self.hotkey_cursor_index} is None.")
-        else:
-            logging.warning(f"Invalid hotkey cursor index: {self.hotkey_cursor_index}")
+                except RuntimeError: logging.warning(f"RuntimeError accessing item during toggle selection (index {self.hotkey_cursor_index}). Might be deleting.")
+                except Exception as e: logging.error(f"Error toggling selection via hotkey: {e}", exc_info=True)
+            else: logging.warning(f"Item at index {self.hotkey_cursor_index} is None.")
+        else: logging.warning(f"Invalid hotkey cursor index: {self.hotkey_cursor_index}")
 
     @Slot()
     def _handle_toggle_mode(self):
@@ -425,7 +411,8 @@ class MainWindow(QMainWindow):
     def update_ui_after_logic_change(self):
         logging.info("Updating UI after logic change."); start_time = time.time()
         self._update_selected_label(); self._update_counterpick_display(); update_horizontal_icon_list(self)
-        self._update_list_item_selection_states(); self._update_priority_labels()
+        self._update_list_item_selection_states()
+        self._update_priority_labels()
         end_time = time.time(); logging.info(f"UI Update Finished in {end_time - start_time:.4f} sec.")
 
     def _update_selected_label(self):
