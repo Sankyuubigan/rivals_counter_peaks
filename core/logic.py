@@ -2,6 +2,10 @@
 from collections import deque
 from heroes_bd import heroes, heroes_counters, hero_roles, heroes_compositions
 from core.translations import get_text, DEFAULT_LANGUAGE as global_default_language
+# <<< ИЗМЕНЕНО: Импорт актуальных констант AKAZE >>>
+from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
+                       AKAZE_DESCRIPTOR_TYPE)
+# <<< ------------------------------------------- >>>
 try:
     from ._version import __version__ as app_version_from_file
 except ImportError:
@@ -115,46 +119,59 @@ class CounterpickLogic:
             else: break
         self.effective_team = list(effective_team); return self.effective_team
 
-    def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=0.8):
-        if image_cv2 is None: logging.error("[ERROR][recognize] Входное изображение пустое."); return []
-        if not hero_templates: logging.error("[ERROR][recognize] Словарь шаблонов пуст."); return []
-        recognized_heroes = set(); all_match_values = {}
-        try: image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
-        except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка конвертации изображения в серое: {e}"); return []
-        logging.info(f"[RECOGNIZE] Начало распознавания. Изображение: {image_gray.shape}, Шаблонов: {len(hero_templates)}, Порог: {threshold}")
+    def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=None): # threshold не используется
+        """
+        Ищет героев на изображении image_cv2 с использованием AKAZE Feature Matching.
+        Порог определяется константой AKAZE_MIN_MATCH_COUNT из utils.
+        """
+        if image_cv2 is None: logging.error("[ERROR][recognize_akaze] Input image is None."); return []
+        if not hero_templates: logging.error("[ERROR][recognize_akaze] Template dictionary is empty."); return []
+        try:
+            image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
+            if image_gray is None: raise ValueError("Failed to convert screenshot to grayscale")
+        except cv2.error as e: logging.error(f"[ERROR][recognize_akaze] OpenCV error converting screenshot to gray: {e}"); return []
+        except Exception as e: logging.error(f"[ERROR][recognize_akaze] Error converting screenshot to gray: {e}"); return []
 
+        logging.info(f"[RECOGNIZE AKAZE] Starting AKAZE recognition. Screenshot shape: {image_gray.shape}, Templates: {len(hero_templates)}, Min Matches: {AKAZE_MIN_MATCH_COUNT}")
+        try:
+            akaze = cv2.AKAZE_create(descriptor_type=AKAZE_DESCRIPTOR_TYPE)
+            kp_screenshot, des_screenshot = akaze.detectAndCompute(image_gray, None)
+            if des_screenshot is None or len(kp_screenshot) == 0: logging.warning("[WARN][recognize_akaze] No descriptors found in screenshot."); return []
+            logging.debug(f"[RECOGNIZE AKAZE] Found {len(kp_screenshot)} keypoints in screenshot.")
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        except cv2.error as e: logging.error(f"[ERROR][recognize_akaze] OpenCV error during AKAZE/Matcher initialization or screenshot processing: {e}"); return []
+        except Exception as e: logging.error(f"[ERROR][recognize_akaze] Error during AKAZE/Matcher initialization or screenshot processing: {e}"); return []
+
+        recognized_heroes_scores = {}
         for hero_name, templates in hero_templates.items():
-            best_match_val_for_hero = -1; found_hero_this_iteration = False
+            max_good_matches_for_hero = 0
             for i, template_cv2 in enumerate(templates):
-                if template_cv2 is None: continue
+                if template_cv2 is None: logging.warning(f"[WARN][recognize_akaze] Template {i} for hero '{hero_name}' is None."); continue
                 try:
                     if len(template_cv2.shape) == 3: template_gray = cv2.cvtColor(template_cv2, cv2.COLOR_BGR2GRAY)
                     else: template_gray = template_cv2
-                    if template_gray is None: continue
-                    h, w = template_gray.shape
-                    if h > image_gray.shape[0] or w > image_gray.shape[1]: continue
-                    res = cv2.matchTemplate(image_gray, template_gray, cv2.TM_CCOEFF_NORMED) # TM_CCOEFF_NORMED TM_CCORR_NORMED TM_SQDIFF_NORMED
-                    if res is None: continue
-                    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-                    if max_val > best_match_val_for_hero: best_match_val_for_hero = max_val
-                    if max_val >= threshold:
-                        if not found_hero_this_iteration: logging.info(f"[RECOGNIZE] ----- НАЙДЕН: {hero_name} (шаблон {i}, уверенность: {max_val:.4f} >= {threshold}) -----")
-                        recognized_heroes.add(hero_name); found_hero_this_iteration = True
-                except cv2.error as e: logging.error(f"[ERROR][recognize] Ошибка OpenCV при обработке шаблона {i} для {hero_name}: {e}")
-                except Exception as e: logging.error(f"[ERROR][recognize] Неожиданная ошибка при обработке шаблона {i} для {hero_name}: {e}")
+                    if template_gray is None: logging.warning(f"[WARN][recognize_akaze] Failed to convert template {i} for '{hero_name}' to grayscale."); continue
+                    kp_template, des_template = akaze.detectAndCompute(template_gray, None)
+                    if des_template is None or len(kp_template) == 0: logging.warning(f"[WARN][recognize_akaze] No descriptors found for template {i} of hero '{hero_name}'."); continue
+                    matches = bf.knnMatch(des_template, des_screenshot, k=2)
+                    good_matches = []; valid_matches = [m for m in matches if len(m) == 2]
+                    for m, n in valid_matches:
+                        if m.distance < AKAZE_LOWE_RATIO * n.distance: good_matches.append(m)
+                    num_good_matches = len(good_matches)
+                    logging.debug(f"[RECOGNIZE AKAZE] Hero: '{hero_name}', Template: {i}, Good Matches: {num_good_matches}") # DEBUG
+                    if num_good_matches > max_good_matches_for_hero: max_good_matches_for_hero = num_good_matches
+                except cv2.error as e: logging.error(f"[ERROR][recognize_akaze] OpenCV error processing template {i} for '{hero_name}': {e}")
+                except Exception as e: logging.error(f"[ERROR][recognize_akaze] Unexpected error processing template {i} for '{hero_name}': {e}", exc_info=True)
 
-            all_match_values[hero_name] = best_match_val_for_hero
-            # <<< ИЗМЕНЕНО: Логгируем нераспознанных героев уровнем INFO, остальных DEBUG >>>
-            if not found_hero_this_iteration and best_match_val_for_hero > 0.1: # Порог для логирования, чтобы не спамить нулевыми
-                 logging.info(f"[RECOGNIZE] Герой НЕ найден: {hero_name} (Лучшая уверенность: {best_match_val_for_hero:.4f} < {threshold})")
-            elif not found_hero_this_iteration:
-                 logging.debug(f"[RECOGNIZE] Нет значимых совпадений для: {hero_name} (Max val: {best_match_val_for_hero:.4f})")
-            # <<< -------------------------------------------------------------------- >>>
+            recognized_heroes_scores[hero_name] = max_good_matches_for_hero
+            if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT: logging.info(f"[RECOGNIZE AKAZE] ----- РАСПОЗНАН: {hero_name} (Matches: {max_good_matches_for_hero} >= {AKAZE_MIN_MATCH_COUNT}) -----")
+            elif max_good_matches_for_hero > 0 : logging.info(f"[RECOGNIZE AKAZE] Герой НЕ распознан: {hero_name} (Matches: {max_good_matches_for_hero} < {AKAZE_MIN_MATCH_COUNT})")
 
-        final_list = list(recognized_heroes)
-        logging.info(f"[RECOGNIZE] Распознавание завершено. Итог ({len(final_list)}/{TEAM_SIZE}): {final_list}")
-        if all_match_values:
-            sorted_matches = sorted(all_match_values.items(), key=lambda item: item[1], reverse=True); top_n = 10
-            logging.info(f"[RECOGNIZE] Топ-{top_n} лучших совпадений (даже ниже порога):")
-            for i, (hero, val) in enumerate(sorted_matches[:top_n]): logging.info(f"[RECOGNIZE]   {i+1}. {hero}: {val:.4f}")
-        return final_list[:TEAM_SIZE]
+        final_heroes = [hero for hero, score in recognized_heroes_scores.items() if score >= AKAZE_MIN_MATCH_COUNT]
+        final_heroes_sorted = sorted(final_heroes, key=lambda h: recognized_heroes_scores.get(h, 0), reverse=True)
+        logging.info(f"[RECOGNIZE AKAZE] Распознавание завершено. Итог ({len(final_heroes_sorted)}/{TEAM_SIZE}): {final_heroes_sorted}")
+        if recognized_heroes_scores:
+            sorted_matches_all = sorted(recognized_heroes_scores.items(), key=lambda item: item[1], reverse=True); top_n = 10
+            logging.info(f"[RECOGNIZE AKAZE] Топ-{top_n} лучших совпадений (по кол-ву good matches):")
+            for i, (hero, val) in enumerate(sorted_matches_all[:top_n]): logging.info(f"[RECOGNIZE AKAZE]   {i+1}. {hero}: {val}")
+        return final_heroes_sorted[:TEAM_SIZE]

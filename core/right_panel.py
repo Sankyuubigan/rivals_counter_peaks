@@ -9,9 +9,9 @@ from PySide6.QtWidgets import (
 )
 from heroes_bd import heroes
 from images_load import is_invalid_pixmap
-# <<< ИЗМЕНЕНО: Импортируем logic и используем константу TEAM_SIZE напрямую >>>
-import logic
-# <<< ------------------------------------------------------------------ >>>
+# <<< ИЗМЕНЕНО: Импортируем только TEAM_SIZE из logic >>>
+from logic import TEAM_SIZE
+# <<< ---------------------------------------------- >>>
 import logging
 
 HERO_NAME_ROLE = Qt.UserRole + 1
@@ -26,9 +26,9 @@ class RightPanel:
 
         self.frame = QFrame(window); self.frame.setObjectName("right_frame"); self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.list_widget = QListWidget(); self.list_widget.setObjectName("right_list_widget")
-        # <<< ИЗМЕНЕНО: Используем импортированную константу logic.TEAM_SIZE >>>
-        self.selected_heroes_label = QLabel(translations.get_text("selected_none", language=self.logic.DEFAULT_LANGUAGE, max_team_size=logic.TEAM_SIZE))
-        # <<< ----------------------------------------------------------------- >>>
+        # <<< ИЗМЕНЕНО: Используем TEAM_SIZE напрямую >>>
+        self.selected_heroes_label = QLabel(translations.get_text("selected_none", language=self.logic.DEFAULT_LANGUAGE, max_team_size=TEAM_SIZE))
+        # <<< -------------------------------------- >>>
         self.selected_heroes_label.setObjectName("selected_heroes_label"); self.selected_heroes_label.setWordWrap(True)
         self.copy_button = QPushButton(translations.get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE)); self.copy_button.setObjectName("copy_button")
         self.clear_button = QPushButton(translations.get_text("clear_all", language=self.logic.DEFAULT_LANGUAGE)); self.clear_button.setObjectName("clear_button")
@@ -40,7 +40,6 @@ class RightPanel:
         self._connect_signals()
 
     def _setup_list_widget(self):
-        """Настраивает QListWidget."""
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)
         self.list_widget.setResizeMode(QListView.ResizeMode.Adjust)
         self.list_widget.setMovement(QListView.Movement.Static)
@@ -55,7 +54,6 @@ class RightPanel:
         logging.debug(f"[RightPanel] List widget configured for mode '{self.initial_mode}'")
 
     def _populate_list_widget(self):
-        """Заполняет QListWidget элементами героев."""
         self.hero_items.clear()
         right_images = getattr(self.window, 'right_images', {})
         if not right_images: logging.warning("[RightPanel] 'right_images' not found or empty in main window.")
@@ -64,10 +62,8 @@ class RightPanel:
             item = QListWidgetItem(); item_text = hero if self.initial_mode == "max" else ""
             item.setText(item_text); item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
             icon_pixmap : QPixmap | None = right_images.get(hero)
-            if is_invalid_pixmap(icon_pixmap):
-                logging.warning(f"[RightPanel] Invalid or missing icon for hero: '{hero}'. Setting placeholder.")
-            else:
-                item.setIcon(QIcon(icon_pixmap))
+            if is_invalid_pixmap(icon_pixmap): logging.warning(f"[RightPanel] Invalid or missing icon for hero: '{hero}'. Setting placeholder.")
+            else: item.setIcon(QIcon(icon_pixmap))
             item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
             item.setData(HERO_NAME_ROLE, hero); item.setToolTip(hero)
             self.list_widget.addItem(item); self.hero_items[hero] = item
