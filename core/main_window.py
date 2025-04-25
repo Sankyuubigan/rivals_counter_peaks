@@ -90,9 +90,12 @@ class MainWindow(QMainWindow):
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
         self.top_panel_instance: TopPanel | None = None; self.right_panel_instance: RightPanel | None = None
         self.main_layout: QVBoxLayout | None = None; self.top_frame: QFrame | None = None
-        self.author_button: QPushButton | None = None; self.rating_button: QPushButton | None = None
-        self.close_button: QPushButton | None = None # Добавим ссылку
-        self.topmost_button: QPushButton | None = None # Добавим ссылку
+        # Объявляем атрибуты кнопок до вызова _create_main_ui_layout
+        self.author_button: QPushButton | None = None
+        self.rating_button: QPushButton | None = None
+        self.close_button: QPushButton | None = None
+        self.topmost_button: QPushButton | None = None
+        # ---
         self.icons_scroll_area: QScrollArea | None = None
         self.icons_scroll_content: QWidget | None = None
         self.icons_main_h_layout: QHBoxLayout | None = None
@@ -125,8 +128,8 @@ class MainWindow(QMainWindow):
         if not self.isVisible(): self.setGeometry(100, 100, 950, 350)
         self.setMinimumSize(400, 100)
         self._create_main_ui_layout();
-        QTimer.singleShot(0, lambda: self._update_interface_for_mode())
-        self._connect_signals() # Важно вызвать ПОСЛЕ _create_main_ui_layout
+        QTimer.singleShot(0, lambda: self._update_interface_for_mode()) # Вызываем обновление после инициализации
+        self._connect_signals() # Вызываем ПОСЛЕ _create_main_ui_layout
         if keyboard: self.start_keyboard_listener()
         else: logging.warning("Keyboard library not available or no admin rights, hotkeys disabled.")
         logging.info("MainWindow.__init__ finished")
@@ -201,14 +204,25 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def _update_topmost_button_property(self, is_active):
+        """Слот для обновления свойства и текста кнопки topmost."""
+        logging.debug(f"[MainWindow Slot] _update_topmost_button_property called with is_active={is_active}")
         if self.topmost_button:
-            logging.debug(f"Setting topmostActive property to: {is_active}")
-            self.topmost_button.setProperty("topmostActive", is_active)
-            self.topmost_button.style().unpolish(self.topmost_button)
-            self.topmost_button.style().polish(self.topmost_button)
-            self.topmost_button.update()
+            current_prop = self.topmost_button.property("topmostActive")
+            if current_prop != is_active:
+                self.topmost_button.setProperty("topmostActive", is_active)
+                logging.debug(f"   Property 'topmostActive' set to: {is_active}")
+                self.topmost_button.style().unpolish(self.topmost_button)
+                self.topmost_button.style().polish(self.topmost_button)
+                self.topmost_button.update()
+                logging.debug("   Style re-polished.")
+            else:
+                logging.debug(f"   Property 'topmostActive' already '{current_prop}'.")
+            button_text_key = 'topmost_on' if is_active else 'topmost_off'
+            button_text = get_text(button_text_key, language=self.logic.DEFAULT_LANGUAGE)
+            self.topmost_button.setText(button_text)
+            logging.debug(f"   Topmost button text set to: '{button_text}'")
         else:
-            logging.warning("Attempted to update property on non-existent topmost_button")
+            logging.warning("[MainWindow Slot] Attempted to update property on non-existent topmost_button")
 
     def _connect_signals(self):
         logging.debug("Connecting signals...")
@@ -226,11 +240,11 @@ class MainWindow(QMainWindow):
         self.toggle_mouse_invisible_mode_signal.connect(self._handle_toggle_mouse_invisible_mode)
 
         # Подключаем сигнал для обновления свойства кнопки к слоту
-        if self.topmost_button: # Проверяем, что кнопка существует
+        if self.topmost_button:
              self.update_topmost_button_property_signal.connect(self._update_topmost_button_property)
              logging.debug("Connected update_topmost_button_property_signal to _update_topmost_button_property slot.")
         else:
-            logging.error("Cannot connect update_topmost_button_property_signal: topmost_button is None!")
+            logging.error("Cannot connect update_topmost_button_property_signal: topmost_button is None at connection time!")
 
         # Подключение сигнала об изменении состояния topmost (от WinApiManager)
         if self.win_api_manager:
@@ -239,25 +253,22 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def _handle_topmost_state_change(self, is_topmost):
-        """Обновляет свойство кнопки и принудительно отключает невидимость, если в min режиме."""
+        """Обновляет свойство кнопки и ПЕРЕПРИМЕНЯЕТ флаг прозрачности."""
         logging.debug(f"[MainWindow] Received topmost_state_changed signal: {is_topmost}.")
-        # Испускаем сигнал для обновления свойства кнопки
+        # Испускаем сигнал для обновления свойства/текста кнопки
         self.update_topmost_button_property_signal.emit(is_topmost)
         logging.debug(f"Emitted update_topmost_button_property_signal({is_topmost})")
 
-        # Проверяем, нужно ли принудительно отключить режим невидимости
-        if self.mode == 'min' and is_topmost:
-            if self.mouse_invisible_mode_enabled:
-                logging.info("Topmost enabled while in min mode. Forcing mouse invisible mode OFF.")
-                self.mouse_invisible_mode_enabled = False
-                # Применяем изменение флагов окна
-                self._apply_mouse_invisible_mode()
-        elif self.mouse_invisible_mode_enabled:
-            # Если topmost выключен, но режим невидимости включен,
-            # нужно переприменить флаги (чтобы снять прозрачность, если она была)
-            logging.debug("Topmost changed, re-applying mouse invisible mode state.")
-            self._apply_mouse_invisible_mode()
+        # --- ИСПРАВЛЕНИЕ: Убираем принудительное отключение mouse_invisible_mode ---
+        # if self.mode == 'min' and is_topmost:
+        #     if self.mouse_invisible_mode_enabled:
+        #         logging.info("Topmost enabled while in min mode. Forcing mouse invisible mode OFF.")
+        #         self.mouse_invisible_mode_enabled = False
+        # --------------------------------------------------------------------------
 
+        # В любом случае переприменяем флаг прозрачности, т.к. условия могли измениться
+        logging.debug("Topmost state changed, re-applying mouse invisible mode state.")
+        self._apply_mouse_invisible_mode()
 
     @Slot()
     def _handle_toggle_mouse_invisible_mode(self):
@@ -265,17 +276,18 @@ class MainWindow(QMainWindow):
         logging.info("[Hotkey Handler] Toggle mouse invisible mode requested.")
         current_state = self.mouse_invisible_mode_enabled
         new_state = not current_state
-        is_min_topmost = (self.mode == 'min' and self._is_win_topmost)
-
-        if new_state is True and is_min_topmost:
-            logging.warning("Cannot ENABLE mouse invisible mode when in 'min' mode and 'topmost' is active. Keeping it OFF.")
-            new_state = False
+        # --- ИСПРАВЛЕНИЕ: Убираем проверку на min+topmost отсюда ---
+        # is_min_topmost = (self.mode == 'min' and self._is_win_topmost)
+        # if new_state is True and is_min_topmost:
+        #    logging.warning("Cannot ENABLE mouse invisible mode when in 'min' mode and 'topmost' is active. Keeping it OFF.")
+        #    new_state = False
+        # ---------------------------------------------------------
 
         if current_state != new_state:
             logging.info(f"Setting mouse invisible mode to: {new_state}")
             self.mouse_invisible_mode_enabled = new_state
             # Применяем флаги окна
-            self._apply_mouse_invisible_mode()
+            self._apply_mouse_invisible_mode() # <--- ВЫЗЫВАЕМ ЗДЕСЬ
             logging.debug(f"Internal mouse_invisible_mode_enabled set to {self.mouse_invisible_mode_enabled}")
         else:
             logging.debug(f"Mouse invisible mode state remains: {current_state}")
@@ -288,8 +300,9 @@ class MainWindow(QMainWindow):
         initial_flags = flags
         logging.debug(f"[ApplyMouseInv] Window flags BEFORE: {initial_flags:#x}")
 
-        # Проверяем, нужно ли вообще менять флаг
+        # Определяем, должен ли флаг быть установлен (исходя ТОЛЬКО из ручного переключателя)
         should_be_transparent = self.mouse_invisible_mode_enabled
+
         is_currently_transparent = bool(flags & Qt.WindowTransparentForInput)
 
         flags_changed = False
@@ -335,7 +348,7 @@ class MainWindow(QMainWindow):
                 self._mouse_pressed = True
                 self._old_pos = event.globalPosition().toPoint()
                 event.accept()
-                return # Важно вернуть управление здесь, чтобы super не вызывался
+                return
         self._mouse_pressed = False
         super().mousePressEvent(event)
 
@@ -358,6 +371,7 @@ class MainWindow(QMainWindow):
         else:
             super().mouseReleaseEvent(event)
     # ---------------------------------------------------------
+
 
     def change_mode(self, mode_name: str):
         """Изменяет режим отображения окна (min, middle, max)."""
@@ -385,7 +399,7 @@ class MainWindow(QMainWindow):
         self.mode_manager.change_mode(mode_name); self.mode = mode_name; logging.info(f"Mode set to '{self.mode}'")
 
         logging.info(f"[ChangeMode PreUpdate] Pos: {self.pos()}, Geom: {self.geometry()}")
-        self._update_interface_for_mode(new_mode=self.mode)
+        self._update_interface_for_mode(new_mode=self.mode) # Обновит UI и вызовет _apply_mouse_invisible_mode
         logging.info(f"[ChangeMode PostUpdate] Pos: {self.pos()}, Geom: {self.geometry()}")
 
         target_pos = self.mode_positions.get(self.mode)
@@ -400,12 +414,13 @@ class MainWindow(QMainWindow):
         else:
             logging.debug(f"[ChangeMode RestorePos] Window not visible after mode change, skipping position restore for mode '{self.mode}'.")
 
-        # Принудительно отключаем режим невидимости мыши, если перешли в min + topmost
-        if self.mode == 'min' and self._is_win_topmost:
-             if self.mouse_invisible_mode_enabled:
-                 logging.info(f"Entered 'min' mode while 'topmost' is active. Forcing mouse invisible mode OFF.")
-                 self.mouse_invisible_mode_enabled = False
-                 self._apply_mouse_invisible_mode() # Применяем изменение флагов
+        # --- ИСПРАВЛЕНИЕ: Убираем принудительное отключение ---
+        # if self.mode == 'min' and self._is_win_topmost:
+        #      if self.mouse_invisible_mode_enabled:
+        #          logging.info(f"Entered 'min' mode while 'topmost' is active. Forcing mouse invisible mode OFF.")
+        #          self.mouse_invisible_mode_enabled = False
+        #          self._apply_mouse_invisible_mode()
+        # ------------------------------------------------------
 
         self._reset_hotkey_cursor_after_mode_change()
         end_time = time.time();
@@ -526,7 +541,7 @@ class MainWindow(QMainWindow):
         if version_label: logging.debug(f"Version label found. Text: '{version_label.text()}', Visible: {version_label.isVisible()}")
         else: logging.warning("Version label not found in top_frame.")
 
-        # Специфичные настройки для каждого режима
+        # --- ИСПРАВЛЕНИЕ 4: Явно управляем видимостью всех кнопок ---
         if is_min_mode:
             logging.debug("Setting up MIN mode UI specifics...")
             if lang_label: lang_label.hide()
@@ -534,8 +549,11 @@ class MainWindow(QMainWindow):
             if version_label: version_label.hide()
             if author_button: author_button.hide()
             if rating_button: rating_button.hide()
-            if close_button: close_button.show()
-            else: logging.warning("Close button ref is None for MIN mode setup")
+            if close_button:
+                logging.debug("Showing close button for MIN mode")
+                close_button.show()
+            else:
+                logging.error("Close button ref is None for MIN mode setup!") # Используем error для важности
 
             self.setWindowTitle(""); calculated_fixed_min_height = base_h + 5; self.setMinimumHeight(calculated_fixed_min_height); self.setMaximumHeight(calculated_fixed_min_height); logging.debug(f"Set fixed height: {calculated_fixed_min_height}")
             if self.left_panel_widget: self.left_panel_widget.hide()
@@ -550,8 +568,11 @@ class MainWindow(QMainWindow):
             if lang_label: lang_label.show()
             if lang_combo: lang_combo.show()
             if version_label: version_label.show()
-            if close_button: close_button.hide()
-            else: logging.warning("Close button ref is None for MIDDLE/MAX mode setup")
+            if close_button:
+                logging.debug("Hiding close button for MIDDLE/MAX mode")
+                close_button.hide()
+            else:
+                logging.error("Close button ref is None for MIDDLE/MAX mode setup!")
 
             self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
             if self.left_panel_widget: self.left_panel_widget.show()
@@ -569,6 +590,7 @@ class MainWindow(QMainWindow):
                 calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
                 if author_button: author_button.hide()
                 if rating_button: rating_button.hide()
+        # --- Конец исправления 4 ---
 
         # Показываем окно ПОСЛЕ применения флагов И настройки виджетов
         logging.info("Calling window.show() after updating flags and UI visibility."); self.show();
