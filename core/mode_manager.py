@@ -23,57 +23,38 @@ PANEL_MIN_WIDTHS = {
 MODE_DEFAULT_WINDOW_SIZES = {
     'max': {'width': 1100, 'height': 800},
     'middle': {'width': 950, 'height': 600},
-    # <<< ИЗМЕНЕНО: Увеличена ширина еще немного для min режима >>>
-    'min': {'width': 750, 'height': 0} # Попробуем 750px, должно хватить с запасом
-    # <<< END ИЗМЕНЕНО >>>
+    # Увеличена ширина для min режима, чтобы иконки влезали
+    'min': {'width': 1400, 'height': 0} # Height будет рассчитана автоматически
 }
 # --- ---
 
 class ModeManager:
-    """Управляет текущим режимом окна и его позициями."""
+    """Управляет текущим режимом окна."""
     def __init__(self, main_window):
         self.main_window = main_window
         self.current_mode = "middle"
-        self.mode_positions = {
-            "min": None,
-            "middle": main_window.pos() if main_window.isVisible() else None,
-            "max": None
-        }
+        # Позиции теперь хранятся и управляются в MainWindow
+        # self.mode_positions = { ... } # Убрано
 
     def change_mode(self, new_mode_name: str):
-        """Устанавливает новый режим и сохраняет позицию старого."""
-        if new_mode_name not in self.mode_positions:
-            logging.error(f"[ERROR] Попытка установить неизвестный режим: {new_mode_name}")
+        """Устанавливает новый режим."""
+        # Проверка корректности режима
+        if new_mode_name not in MODE_DEFAULT_WINDOW_SIZES: # Проверяем по ключам размеров
+            logging.error(f"[ERROR][ModeManager] Попытка установить неизвестный режим: {new_mode_name}")
             return
+        # Если режим не изменился, ничего не делаем
         if self.current_mode == new_mode_name:
             return
 
-        logging.info(f"[MODE] Сохранение позиции для режима '{self.current_mode}'...")
-        if self.main_window.isVisible():
-             current_pos = self.main_window.pos()
-             self.mode_positions[self.current_mode] = current_pos
-             logging.info(f"[MODE] Позиция для '{self.current_mode}' сохранена: {current_pos}")
-
-        logging.info(f"[MODE] Установка нового режима: {new_mode_name}")
+        logging.info(f"[MODE][ModeManager] Установка нового режима: {new_mode_name}")
         self.current_mode = new_mode_name
+        # Обновляем атрибут mode в главном окне (если он есть)
         if hasattr(self.main_window, 'mode'):
              self.main_window.mode = new_mode_name
         else:
-             logging.warning("[WARN] Атрибут 'mode' не найден в main_window при смене режима в ModeManager.")
+             logging.warning("[WARN][ModeManager] Атрибут 'mode' не найден в main_window при смене режима.")
 
-    def clear_layout_recursive(self, layout):
-        """Рекурсивно очищает layout."""
-        if layout is None: return
-        while layout.count():
-            item = layout.takeAt(0)
-            if item is None: continue
-            widget = item.widget()
-            if widget is not None: widget.deleteLater()
-            else:
-                sub_layout = item.layout()
-                if sub_layout is not None:
-                    self.clear_layout_recursive(sub_layout)
-                    layout.removeItem(item)
-                else:
-                    spacer = item.spacerItem()
-                    if spacer is not None: layout.removeItem(item)
+        # Логика сохранения/восстановления позиции ПЕРЕНЕСЕНА в MainWindow.change_mode
+
+    # Метод очистки layout больше не нужен здесь, если он не используется
+    # def clear_layout_recursive(self, layout): ...

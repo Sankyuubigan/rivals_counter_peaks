@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import (
     QFrame, QLabel, QSlider, QComboBox, QPushButton, QHBoxLayout, QSpacerItem, QSizePolicy, QWidget
 )
-from PySide6.QtCore import Qt, QMetaObject, QTimer
+from PySide6.QtCore import Qt, QMetaObject, QTimer, Property, Slot # Добавлен Property, Slot
 import translations
 import dialogs
 from translations import get_text, SUPPORTED_LANGUAGES
@@ -20,7 +20,32 @@ class TopPanel:
         self.logic = logic; self.app_version = app_version
         logging.debug(f"[TopPanel] Initialized with app_version: {self.app_version}")
         self.top_frame = QFrame(parent); self.top_frame.setObjectName("top_frame")
-        self.top_frame.setStyleSheet("QFrame#top_frame { background-color: lightgray; }")
+        # Устанавливаем стиль с property селекторами один раз при инициализации
+        self.top_frame.setStyleSheet("""
+            QFrame#top_frame {
+                background-color: lightgray;
+            }
+            QPushButton#topmost_button { /* Базовый стиль (серый) */
+                font-size: 10pt;
+                padding: 2px;
+                border: 1px solid #555555;
+                background-color: #888888;
+                color: white;
+                border-radius: 4px;
+                min-width: 80px;
+                min-height: 22px;
+            }
+            QPushButton#topmost_button:hover {
+                 background-color: #A9A9A9;
+            }
+            QPushButton#topmost_button[topmostActive="true"] { /* Стиль для активного состояния */
+                border-color: #388E3C;
+                background-color: #4CAF50; /* Зеленый */
+            }
+            QPushButton#topmost_button[topmostActive="true"]:hover {
+                background-color: #45a049; /* Зеленый светлее */
+            }
+        """)
         self.top_frame.setFixedHeight(40)
         self.transparency_slider: QSlider | None = None; self.language_label: QLabel | None = None
         self.language_combo: QComboBox | None = None; self.mode_label: QLabel | None = None
@@ -48,9 +73,9 @@ class TopPanel:
         logging.debug(f"[TopPanel._setup_ui] Creating version_label with text: '{version_text}' (raw version: {self.app_version})")
         layout.addWidget(self.version_label)
         self.close_button = self._create_close_button(); layout.addWidget(self.close_button)
-        # Убираем вызов обновления кнопки отсюда, он будет сделан по сигналу из WinApiManager
-        # QTimer.singleShot(50, lambda: self._update_topmost_button_visuals())
-
+        # Обновляем текст кнопки и свойство один раз после создания UI
+        if self.topmost_button:
+             QTimer.singleShot(0, lambda: self._update_topmost_button_text_and_property())
 
     def _create_slider(self) -> QSlider:
         slider = QSlider(Qt.Orientation.Horizontal); slider.setObjectName("transparency_slider"); slider.setRange(10, 100); slider.setValue(100); slider.setFixedWidth(100)
@@ -67,46 +92,46 @@ class TopPanel:
         button.clicked.connect(lambda: self.switch_mode_callback(mode_name)); return button
 
     def _create_topmost_button(self) -> QPushButton:
+        """Создает кнопку переключения режима 'поверх окон'."""
         button = QPushButton(); button.setObjectName("topmost_button")
         button.setMinimumSize(80, 22)
-
-        def update_visual_state():
-            # <<< ИЗМЕНЕНО: Добавлено логирование вызова и состояния >>>
-            logging.debug(f"[TopPanel] Calling _update_visual_state for topmost_button")
-            if not button or not self.parent:
-                logging.warning("[TopPanel] Cannot update topmost button: button or parent is None.")
-                return
-            try:
-                is_topmost = self.parent._is_win_topmost
-                logging.debug(f"[TopPanel] Current topmost state from parent: {is_topmost}")
-                button.setText(get_text('topmost_on' if is_topmost else 'topmost_off', language=self.logic.DEFAULT_LANGUAGE))
-                bg_color = "#4CAF50" if is_topmost else "darkGray"
-                border_color = "#388E3C" if is_topmost else "#555555"
-                hover_bg_color = "#45a049" if is_topmost else "#888888"
-                text_color = "white"
-                style_sheet = f"""
-                    QPushButton {{
-                        font-size: 10pt;
-                        padding: 2px;
-                        background-color: {bg_color};
-                        border: 1px solid {border_color};
-                        border-radius: 4px;
-                        color: {text_color};
-                        min-width: 80px;
-                        min-height: 22px;
-                    }}
-                    QPushButton:hover {{
-                        background-color: {hover_bg_color};
-                    }}"""
-                logging.debug(f"[TopPanel] Applying stylesheet: {style_sheet.replace(chr(10),' ')}") # Логируем стиль
-                button.setStyleSheet(style_sheet)
-                # <<< END ИЗМЕНЕНО >>>
-            except Exception as e:
-                logging.error(f"Error updating topmost button visual state: {e}", exc_info=True)
-
-        setattr(button, '_update_visual_state', update_visual_state)
+        # Устанавливаем начальное значение свойства (False), чтобы стиль применился сразу
+        button.setProperty("topmostActive", False)
+        # Подключаем клик к методу переключения в MainWindow
         button.clicked.connect(self.parent.toggle_topmost_winapi)
         return button
+
+    def _update_topmost_button_text_and_property(self):
+        """Обновляет текст кнопки и свойство topmostActive."""
+        if not self.topmost_button or not self.parent:
+            logging.warning("[TopPanel._update_topmost_button_text_and_property] Button or parent not found.")
+            return
+
+        try:
+            is_topmost = self.parent._is_win_topmost
+            logging.debug(f"[TopPanel._update_topmost_button_text_and_property] Updating for state: {is_topmost}")
+
+            # Обновляем текст
+            button_text_key = 'topmost_on' if is_topmost else 'topmost_off'
+            button_text = get_text(button_text_key, language=self.logic.DEFAULT_LANGUAGE)
+            self.topmost_button.setText(button_text)
+            logging.debug(f"[TopPanel._update_topmost_button_text_and_property] Text set to: '{button_text}'")
+
+            # Обновляем свойство (важно для CSS)
+            current_prop = self.topmost_button.property("topmostActive")
+            if current_prop != is_topmost:
+                self.topmost_button.setProperty("topmostActive", is_topmost)
+                logging.debug(f"[TopPanel._update_topmost_button_text_and_property] Property 'topmostActive' set to: {is_topmost}")
+                # Принудительно переприменяем стиль (важно для Qt Properties)
+                self.topmost_button.style().unpolish(self.topmost_button)
+                self.topmost_button.style().polish(self.topmost_button)
+                self.topmost_button.update()
+                logging.debug("[TopPanel._update_topmost_button_text_and_property] Style re-polished.")
+            else:
+                logging.debug(f"[TopPanel._update_topmost_button_text_and_property] Property 'topmostActive' already '{current_prop}'.")
+
+        except Exception as e:
+            logging.error(f"[TopPanel._update_topmost_button_text_and_property] Error: {e}", exc_info=True)
 
     def _create_info_button(self, text_key: str, callback) -> QPushButton:
         button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE)); button.setObjectName(f"{text_key}_button"); button.setStyleSheet("font-size: 10pt; padding: 2px;")
@@ -123,10 +148,8 @@ class TopPanel:
         if self.min_button: self.min_button.setText(get_text('mode_min', language=current_lang))
         if self.middle_button: self.middle_button.setText(get_text('mode_middle', language=current_lang))
         if self.max_button: self.max_button.setText(get_text('mode_max', language=current_lang))
-        # <<< ИЗМЕНЕНО: Убрали вызов invokeMethod отсюда, он теперь по сигналу >>>
-        # if self.topmost_button:
-        #     QMetaObject.invokeMethod(self.topmost_button, '_update_visual_state', Qt.ConnectionType.QueuedConnection)
-        # <<< END ИЗМЕНЕНО >>>
+        # Обновляем текст и свойство кнопки topmost
+        self._update_topmost_button_text_and_property()
         if self.author_button: self.author_button.setText(get_text('about_author', language=current_lang))
         if self.rating_button: self.rating_button.setText(get_text('hero_rating', language=current_lang))
         if self.version_label:
@@ -137,6 +160,3 @@ class TopPanel:
         if self.language_combo:
             current_code = self.logic.DEFAULT_LANGUAGE; index_to_select = self.language_combo.findData(current_code)
             if index_to_select != -1: self.language_combo.blockSignals(True); self.language_combo.setCurrentIndex(index_to_select); self.language_combo.blockSignals(False)
-
-    # Убираем метод _update_topmost_button_visuals, т.к. обновление инициируется извне по сигналу
-    # def _update_topmost_button_visuals(self): ...
