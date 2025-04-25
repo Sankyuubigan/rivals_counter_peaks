@@ -1,10 +1,13 @@
 # File: core/win_api.py
 import sys
 import time
-from PySide6.QtCore import Qt, QTimer
+# <<< ИЗМЕНЕНО: Добавлен QObject и Signal >>>
+from PySide6.QtCore import Qt, QTimer, QMetaObject, QObject, Signal
+# <<< END ИЗМЕНЕНО >>>
 from PySide6.QtWidgets import QPushButton, QApplication, QWidget
+import logging
 
-# Проверка платформы и импорт WinAPI
+# ... (импорты WinAPI остаются без изменений) ...
 if sys.platform == 'win32':
     import ctypes
     from ctypes import wintypes
@@ -12,6 +15,8 @@ if sys.platform == 'win32':
     HWND_NOTOPMOST = -2
     SWP_NOMOVE = 0x0002
     SWP_NOSIZE = 0x0001
+    GWL_EXSTYLE = -20
+    WS_EX_TOPMOST = 0x00000008
     try:
         user32 = ctypes.WinDLL('user32', use_last_error=True)
         user32.SetWindowPos.restype = wintypes.BOOL
@@ -19,103 +24,198 @@ if sys.platform == 'win32':
             wintypes.HWND, wintypes.HWND, wintypes.INT, wintypes.INT,
             wintypes.INT, wintypes.INT, wintypes.UINT
         ]
-        print("[WinAPI] user32.dll и SetWindowPos загружены успешно.")
+        if ctypes.sizeof(ctypes.c_void_p) == 8: GetWindowLongPtr = user32.GetWindowLongPtrW
+        else: GetWindowLongPtr = user32.GetWindowLongW
+        GetWindowLongPtr.restype = ctypes.c_longlong if ctypes.sizeof(ctypes.c_void_p) == 8 else wintypes.LONG
+        GetWindowLongPtr.argtypes = [wintypes.HWND, wintypes.INT]
+        logging.info("[WinAPI] user32.dll и функции загружены успешно.")
     except Exception as e:
-        print(f"[ERROR][WinAPI] Ошибка при загрузке user32.dll или SetWindowPos: {e}")
-        user32 = None
+        logging.error(f"[ERROR][WinAPI] Ошибка при загрузке user32.dll или функций: {e}", exc_info=True)
+        user32 = None; GetWindowLongPtr = None
 else:
-    print("[WinAPI] Платформа не Windows, WinAPI недоступно.")
-    user32 = None
+    logging.warning("[WinAPI] Платформа не Windows, WinAPI недоступно.")
+    user32 = None; GetWindowLongPtr = None
+# --- ---
 
-class WinApiManager:
+# <<< ИЗМЕНЕНО: Класс наследуется от QObject для использования сигналов >>>
+class WinApiManager(QObject):
     """Управляет состоянием Topmost окна с помощью WinAPI."""
+    # Сигнал, испускаемый после изменения состояния topmost
+    topmost_state_changed = Signal(bool)
+ # <<< END ИЗМЕНЕНО >>>
+
     def __init__(self, main_window: QWidget):
+        # <<< ИЗМЕНЕНО: Добавлен вызов super().__init__() >>>
+        super().__init__(main_window) # Вызываем конструктор родителя (QObject)
+        # <<< END ИЗМЕНЕНО >>>
         self.main_window = main_window
         self._is_win_topmost = False
         self.user32 = user32
         self._last_hwnd_check_time = 0
         self._hwnd = None
+        self._check_initial_topmost_state() # Проверяем начальное состояние
+
+    def _check_initial_topmost_state(self):
+        # ... (код проверки остается без изменений) ...
+        qt_flag_state = False
+        try:
+            if self.main_window: qt_flag_state = bool(self.main_window.windowFlags() & Qt.WindowStaysOnTopHint)
+        except RuntimeError: logging.warning("[WinAPI Initial Check] Окно уже удалено при проверке флага Qt.")
+
+        if self.user32 and GetWindowLongPtr:
+            hwnd = self._get_hwnd(force_check=True)
+            logging.debug(f"[WinAPI Initial Check] Получен HWND: {hwnd}")
+            if hwnd:
+                try:
+                    ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE)
+                    self._is_win_topmost = bool(ex_style & WS_EX_TOPMOST)
+                    logging.info(f"[WinAPI Initial Check] HWND={hwnd}, ExStyle={ex_style:#x}, WS_EX_TOPMOST set={self._is_win_topmost}")
+                except Exception as e:
+                    logging.error(f"[ERROR][WinAPI] Ошибка при вызове GetWindowLongPtr для начальной проверки: {e}")
+                    self._is_win_topmost = qt_flag_state
+                    logging.warning(f"[WinAPI] GetWindowLongPtr failed, fallback to Qt flag state: {self._is_win_topmost}")
+            else:
+                 self._is_win_topmost = qt_flag_state
+                 logging.warning(f"[WinAPI] HWND not available, fallback to Qt flag state: {self._is_win_topmost}")
+        else:
+             self._is_win_topmost = qt_flag_state
+             logging.warning(f"[WinAPI] WinAPI not available, fallback to Qt flag state: {self._is_win_topmost}")
+
+        logging.info(f"[WinAPI] Initial topmost state determined as: {self._is_win_topmost}")
+        # Испускаем сигнал с начальным состоянием, чтобы кнопка обновилась
+        self.topmost_state_changed.emit(self._is_win_topmost)
+
+    def _log_window_style(self, hwnd: int | None, when: str):
+       # ... (код логирования остается без изменений) ...
+        if not hwnd or not self.user32 or not GetWindowLongPtr:
+            logging.debug(f"[WinAPI Style Log {when}] HWND invalid or WinAPI not available.")
+            return
+        try:
+            ex_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE)
+            is_set = bool(ex_style & WS_EX_TOPMOST)
+            logging.info(f"[WinAPI Style Log {when}] HWND={hwnd}, ExStyle={ex_style:#x}, WS_EX_TOPMOST is set: {is_set}")
+        except Exception as e:
+            logging.error(f"[ERROR][WinAPI Style Log {when}] Ошибка при вызове GetWindowLongPtr: {e}")
+
 
     @property
     def is_win_topmost(self) -> bool:
         return self._is_win_topmost
 
     def _get_hwnd(self, force_check=False) -> int | None:
+        # ... (код получения hwnd остается без изменений) ...
         current_time = time.time()
-        if force_check or self._hwnd is None or current_time - self._last_hwnd_check_time > 1.0:
+        if force_check or self._hwnd is None or current_time - self._last_hwnd_check_time > 0.5:
             self._last_hwnd_check_time = current_time
             try:
-                self._hwnd = int(self.main_window.winId()) if self.main_window else 0
-                if not self._hwnd: self._hwnd = None
+                if self.main_window and self.main_window.isVisible():
+                    self._hwnd = int(self.main_window.winId())
+                    if not self._hwnd: self._hwnd = None
+                else: self._hwnd = None
+            except RuntimeError:
+                 logging.warning("[WinAPI] Ошибка Runtime: Окно удалено при получении winId().")
+                 self._hwnd = None
             except Exception as e:
-                 print(f"[ERROR][WinAPI] Ошибка при получении winId(): {e}")
+                 logging.error(f"[ERROR][WinAPI] Ошибка при получении winId(): {e}")
                  self._hwnd = None
         return self._hwnd
 
     def _set_window_pos_api(self, hwnd: int, insert_after: int, flags: int) -> bool:
+        # ... (код вызова SetWindowPos остается без изменений) ...
         if not self.user32 or not hasattr(self.user32, 'SetWindowPos'): return False
         try:
-            print(f"[API] Вызов SetWindowPos: HWND={hwnd}, InsertAfter={'TOPMOST' if insert_after == HWND_TOPMOST else 'NOTOPMOST'}, Flags={flags}")
+            logging.info(f"[API] Вызов SetWindowPos: HWND={hwnd}, InsertAfter={'TOPMOST' if insert_after == HWND_TOPMOST else 'NOTOPMOST'}, Flags={flags:#04x}")
             success = self.user32.SetWindowPos(hwnd, insert_after, 0, 0, 0, 0, flags)
             if not success:
                  error_code = ctypes.get_last_error()
-                 print(f"[API ERROR] SetWindowPos не удался: Код ошибки {error_code}")
+                 error_msg = "N/A"
+                 try:
+                     error_msg = ctypes.FormatError(error_code).strip()
+                 except Exception as fmt_e:
+                     logging.error(f"Failed to format WinAPI error code {error_code}: {fmt_e}")
+                 logging.error(f"[API ERROR] SetWindowPos не удался: Код {error_code} - {error_msg}")
                  ctypes.set_last_error(0)
             return bool(success)
         except Exception as e:
-            print(f"[ERROR][WinAPI] Исключение при вызове SetWindowPos: {e}")
+            logging.error(f"[ERROR][WinAPI] Исключение при вызове SetWindowPos: {e}", exc_info=True)
             return False
 
     def _apply_qt_fallback(self, enable: bool):
-        print("[INFO][WinAPI] Попытка использовать Qt.WindowStaysOnTopHint как fallback.")
+        """Применяет Qt флаг WindowStaysOnTopHint."""
+        logging.warning("[WinAPI] Используется Qt.WindowStaysOnTopHint как fallback.")
         try:
+            if not self.main_window:
+                logging.error("[WinAPI Fallback] Main window object is None.")
+                return
             current_flags = self.main_window.windowFlags()
             flag_set = bool(current_flags & Qt.WindowStaysOnTopHint)
             if enable != flag_set:
+                logging.info(f"[WinAPI Fallback] Установка Qt.WindowStaysOnTopHint: {enable}")
                 self.main_window.setWindowFlag(Qt.WindowStaysOnTopHint, enable)
                 if self.main_window.isVisible(): self.main_window.show()
-            self._is_win_topmost = enable
-            QTimer.singleShot(0, self._update_topmost_button_visuals)
-        except RuntimeError: print("[WARN][WinAPI] Окно уже удалено, не удалось применить Qt fallback.")
-        except Exception as e: print(f"[ERROR][WinAPI] Ошибка при применении Qt fallback: {e}")
+            else:
+                 logging.debug(f"[WinAPI Fallback] Qt.WindowStaysOnTopHint уже в состоянии {enable}.")
+
+            # <<< ИЗМЕНЕНО: Испускаем сигнал после изменения состояния >>>
+            if self._is_win_topmost != enable:
+                self._is_win_topmost = enable
+                self.topmost_state_changed.emit(self._is_win_topmost)
+            # <<< END ИЗМЕНЕНО >>>
+            # Убираем QTimer отсюда, обновление кнопки будет по сигналу
+            # QTimer.singleShot(0, self._update_topmost_button_visuals)
+
+        except RuntimeError: logging.warning("[WinAPI Fallback] Окно уже удалено, не удалось применить Qt fallback.")
+        except Exception as e: logging.error(f"[ERROR][WinAPI] Ошибка при применении Qt fallback: {e}", exc_info=True)
 
     def set_topmost_winapi(self, enable: bool):
-        print(f"[ACTION][WinAPI] Запрос на установку Topmost: {enable}")
-        api_success = False
+        """Устанавливает или снимает состояние Topmost с использованием WinAPI или Qt Fallback."""
+        logging.info(f"[ACTION][WinAPI] Запрос на установку Topmost: {enable}")
+        applied_state = self._is_win_topmost # Запоминаем текущее состояние
+
         if self.user32:
             hwnd = self._get_hwnd(force_check=True)
+            logging.debug(f"[WinAPI Set] Получен HWND: {hwnd}")
             if hwnd:
+                self._log_window_style(hwnd, "before SetWindowPos")
                 insert_after = HWND_TOPMOST if enable else HWND_NOTOPMOST
                 flags = SWP_NOMOVE | SWP_NOSIZE
                 api_success = self._set_window_pos_api(hwnd, insert_after, flags)
+                self._log_window_style(hwnd, "after SetWindowPos")
+
                 if api_success:
-                    print(f"[API] SetWindowPos успешно: Topmost {'включен' if enable else 'выключен'}.")
-                    self._is_win_topmost = enable
+                    logging.info(f"[API] SetWindowPos успешно: Topmost {'включен' if enable else 'выключен'}.")
+                    applied_state = enable # Успешно применили новое состояние
                 else:
-                    print("[API ERROR] Вызов SetWindowPos не удался.")
-                    self._is_win_topmost = enable # Обновляем флаг до желаемого состояния
+                    logging.warning("[API WARN] Вызов SetWindowPos не удался, пробуем Qt fallback.")
+                    self._apply_qt_fallback(enable) # Fallback сам обновит _is_win_topmost и испустит сигнал
+                    return # Выходим, т.к. fallback обработал
             else:
-                print("[WARN][WinAPI] Не удалось получить HWND для SetWindowPos.")
-                self._apply_qt_fallback(enable)
-                return
+                logging.warning("[WARN][WinAPI] Не удалось получить HWND для SetWindowPos, используем Qt fallback.")
+                self._apply_qt_fallback(enable) # Fallback сам обновит _is_win_topmost и испустит сигнал
+                return # Выходим
         else:
-            print("[INFO][WinAPI] WinAPI недоступно.")
-            self._apply_qt_fallback(enable)
-            return
-        QTimer.singleShot(0, self._update_topmost_button_visuals)
+            logging.info("[INFO][WinAPI] WinAPI недоступно, используем Qt fallback.")
+            self._apply_qt_fallback(enable) # Fallback сам обновит _is_win_topmost и испустит сигнал
+            return # Выходим
 
-    def _update_topmost_button_visuals(self):
-        try:
-            if self.main_window and hasattr(self.main_window, 'top_panel_instance') and self.main_window.top_panel_instance:
-                button = getattr(self.main_window.top_panel_instance, 'topmost_button', None)
-                if button:
-                    update_func = getattr(button, '_update_visual_state', None)
-                    if callable(update_func): update_func()
-        except RuntimeError: print("[WARN][WinAPI] Окно или панель удалены, не удалось обновить кнопку topmost.")
-        except Exception as e: print(f"[WARN][WinAPI] Не удалось обновить вид кнопки topmost: {e}")
+        # <<< ИЗМЕНЕНО: Испускаем сигнал только если состояние действительно изменилось >>>
+        if self._is_win_topmost != applied_state:
+            self._is_win_topmost = applied_state
+            logging.info(f"[WinAPI] Состояние Topmost изменено на {self._is_win_topmost}, испускаем сигнал.")
+            self.topmost_state_changed.emit(self._is_win_topmost)
+        # <<< END ИЗМЕНЕНО >>>
+        # Убираем QTimer отсюда
+        # QTimer.singleShot(0, self._update_topmost_button_visuals)
 
+    # Убираем _update_topmost_button_visuals, т.к. кнопка будет обновляться по сигналу в MainWindow
+    # def _update_topmost_button_visuals(self): ...
+
+
+# Функция is_window_topmost остается без изменений
 def is_window_topmost(window: QWidget) -> bool:
+    """Проверяет, установлено ли окно как Topmost (используя WinApiManager)."""
     if hasattr(window, 'win_api_manager') and isinstance(window.win_api_manager, WinApiManager):
         return window.win_api_manager.is_win_topmost
-    print("[WARN] Атрибут 'win_api_manager' не найден в окне. Используется Qt fallback для is_window_topmost.")
-    return bool(window.windowFlags() & Qt.WindowStaysOnTopHint)
+    logging.warning("[WARN] Атрибут 'win_api_manager' не найден в окне. Используется Qt fallback для is_window_topmost.")
+    try: return bool(window.windowFlags() & Qt.WindowStaysOnTopHint)
+    except RuntimeError: return False

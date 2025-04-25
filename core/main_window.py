@@ -20,7 +20,7 @@ import logic
 import delegate
 import dialogs
 import display
-import horizontal_list
+import horizontal_list # Импортируем модуль
 import images_load
 from mode_manager import ModeManager, PANEL_MIN_WIDTHS, MODE_DEFAULT_WINDOW_SIZES
 from win_api import WinApiManager, user32 as winapi_user32, is_window_topmost
@@ -34,8 +34,8 @@ from translations import get_text, set_language, SUPPORTED_LANGUAGES
 from utils_gui import copy_to_clipboard
 from logic import CounterpickLogic, TEAM_SIZE
 from images_load import get_images_for_mode, SIZES, load_default_pixmap, is_invalid_pixmap
-from horizontal_list import update_horizontal_icon_list, clear_layout as clear_layout_util
-from display import generate_counterpick_display, generate_minimal_icon_list
+from horizontal_list import update_horizontal_icon_list, update_enemy_horizontal_list, clear_layout as clear_layout_util
+from display import generate_counterpick_display
 
 try:
     import keyboard
@@ -57,24 +57,46 @@ class MainWindow(QMainWindow):
     recognize_heroes_signal = Signal()
     recognition_complete_signal = Signal(list)
     debug_capture_signal = Signal()
+    # <<< НОВОЕ: Сигнал для хоткея topmost >>>
+    toggle_topmost_signal = Signal()
+    # <<< END НОВОЕ >>>
 
     def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict, app_version: str):
         super().__init__()
         logging.info("Initializing MainWindow...")
         self.logic = logic_instance; self.hero_templates = hero_templates_dict
         self.app_version = app_version
+        self.logic.main_window = self
         logging.info(f"App Version used by MainWindow: {self.app_version}")
         self.win_api_manager = WinApiManager(self); self.mode_manager = ModeManager(self)
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
         self.mode = self.mode_manager.current_mode; logging.info(f"Initial mode: {self.mode}")
-        self.initial_pos = self.pos(); self.mode_positions = self.mode_manager.mode_positions
-        self.mode_positions["middle"] = self.initial_pos; self.is_programmatically_updating_selection = False
+        # <<< ИЗМЕНЕНО: Инициализация позиций окна >>>
+        # Сохраняем начальную позицию только если окно видимо, иначе None
+        initial_pos = self.pos() if self.isVisible() else None
+        self.mode_positions = {
+            "min": None,
+            "middle": initial_pos,
+            "max": None
+        }
+        # <<< END ИЗМЕНЕНО >>>
+        self.is_programmatically_updating_selection = False
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
         self.top_panel_instance: TopPanel | None = None; self.right_panel_instance: RightPanel | None = None
         self.main_layout: QVBoxLayout | None = None; self.top_frame: QFrame | None = None
         self.author_button: QPushButton | None = None; self.rating_button: QPushButton | None = None
-        self.icons_scroll_area: QScrollArea | None = None; self.icons_scroll_content: QWidget | None = None
-        self.icons_scroll_content_layout: QHBoxLayout | None = None; self.main_widget: QWidget | None = None
+        self.icons_scroll_area: QScrollArea | None = None
+        self.icons_scroll_content: QWidget | None = None
+        self.icons_main_h_layout: QHBoxLayout | None = None
+        self.counters_widget: QWidget | None = None
+        self.counters_layout: QHBoxLayout | None = None
+        self.enemies_widget: QWidget | None = None
+        self.enemies_layout: QHBoxLayout | None = None
+        self.horizontal_info_label: QLabel = QLabel()
+        self.horizontal_info_label.setObjectName("horizontal_info_label")
+        self.horizontal_info_label.setStyleSheet("color: gray; margin-left: 5px;")
+        self.horizontal_info_label.hide()
+        self.main_widget: QWidget | None = None
         self.inner_layout: QHBoxLayout | None = None; self.left_panel_widget: QWidget | None = None
         self.canvas: QScrollArea | None = None; self.result_frame: QFrame | None = None
         self.result_label: QLabel | None = None; self.update_scrollregion = lambda: None
@@ -85,6 +107,7 @@ class MainWindow(QMainWindow):
         self._stop_keyboard_listener_flag = threading.Event(); self._mouse_pressed = False
         self._old_pos: QPoint | None = None; self._recognition_thread: QThread | None = None
         self._recognition_worker: RecognitionWorker | None = None
+        self._last_mode_toggle_time = 0
 
         self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
         icon_path = images_load.resource_path("resources/icon.png")
@@ -98,7 +121,7 @@ class MainWindow(QMainWindow):
         logging.info("MainWindow.__init__ finished")
 
     def _create_main_ui_layout(self):
-        logging.debug("Creating main UI layout...") # Оставляем DEBUG для структуры
+        logging.debug("Creating main UI layout...")
         central_widget = QWidget(self); self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
@@ -108,21 +131,58 @@ class MainWindow(QMainWindow):
         self.author_button = self.top_panel_instance.author_button
         self.rating_button = self.top_panel_instance.rating_button
         self.main_layout.addWidget(self.top_frame); logging.debug("Top panel created and added.")
-        self._create_icons_scroll_area(); self.main_layout.addWidget(self.icons_scroll_area); logging.debug("Icons scroll area created and added.")
+        self._create_icons_scroll_area_structure()
+        self.main_layout.addWidget(self.icons_scroll_area); logging.debug("Icons scroll area structure created and added.")
         self.main_widget = QWidget(); self.main_widget.setObjectName("main_widget")
         self.inner_layout = QHBoxLayout(self.main_widget); self.inner_layout.setObjectName("inner_layout")
         self.inner_layout.setContentsMargins(0,0,0,0); self.inner_layout.setSpacing(0)
         self.main_layout.addWidget(self.main_widget, stretch=1); logging.debug("Main widget and inner_layout created and added.")
         logging.debug("Main UI layout creation finished.")
 
-    def _create_icons_scroll_area(self):
+    def _create_icons_scroll_area_structure(self):
         self.icons_scroll_area = QScrollArea(); self.icons_scroll_area.setObjectName("icons_scroll_area")
-        self.icons_scroll_area.setWidgetResizable(True); self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff); self.icons_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.icons_scroll_area.setStyleSheet("QScrollArea#icons_scroll_area { border: none; background-color: #f0f0f0; }")
+        self.icons_scroll_area.setWidgetResizable(True)
+        self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.icons_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.icons_scroll_area.setStyleSheet("QScrollArea#icons_scroll_area { border: none; background-color: #f0f0f0; padding: 0px; margin: 0px; }")
+
         self.icons_scroll_content = QWidget(); self.icons_scroll_content.setObjectName("icons_scroll_content")
-        self.icons_scroll_content_layout = QHBoxLayout(self.icons_scroll_content); self.icons_scroll_content_layout.setObjectName("icons_scroll_content_layout")
-        self.icons_scroll_content_layout.setContentsMargins(5, 2, 5, 2); self.icons_scroll_content_layout.setSpacing(4); self.icons_scroll_content_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.icons_scroll_content.setStyleSheet("background-color: transparent;")
+
+        self.icons_main_h_layout = QHBoxLayout(self.icons_scroll_content)
+        self.icons_main_h_layout.setObjectName("icons_main_h_layout")
+        self.icons_main_h_layout.setContentsMargins(5, 2, 5, 2)
+        self.icons_main_h_layout.setSpacing(10)
+        self.icons_main_h_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        self.counters_widget = QWidget()
+        self.counters_widget.setObjectName("counters_widget")
+        self.counters_layout = QHBoxLayout(self.counters_widget)
+        self.counters_layout.setObjectName("counters_layout")
+        self.counters_layout.setContentsMargins(0, 0, 0, 0)
+        self.counters_layout.setSpacing(4)
+        self.counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.icons_main_h_layout.addWidget(self.counters_widget, stretch=1)
+
+        self.enemies_widget = QWidget()
+        self.enemies_widget.setObjectName("enemies_widget")
+        self.enemies_widget.setStyleSheet("QWidget#enemies_widget { border: none; padding: 1px; }")
+        self.enemies_layout = QHBoxLayout(self.enemies_widget)
+        self.enemies_layout.setObjectName("enemies_layout")
+        self.enemies_layout.setContentsMargins(2, 2, 2, 2)
+        self.enemies_layout.setSpacing(4)
+        self.enemies_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.icons_main_h_layout.addWidget(self.enemies_widget, stretch=0)
+        self.enemies_widget.hide()
+
+        if self.horizontal_info_label.parentWidget():
+            current_layout = self.horizontal_info_label.parentWidget().layout()
+            if current_layout:
+                current_layout.removeWidget(self.horizontal_info_label)
+            self.horizontal_info_label.setParent(None)
+
         self.icons_scroll_area.setWidget(self.icons_scroll_content)
+        logging.debug("Icons scroll area structure created.")
 
     def _connect_signals(self):
         logging.debug("Connecting signals...")
@@ -134,7 +194,30 @@ class MainWindow(QMainWindow):
         self.rec_manager.recognition_complete_signal.connect(self._on_recognition_complete)
         self.rec_manager.error.connect(self._on_recognition_error)
         self.debug_capture_signal.connect(self._handle_debug_capture)
+        # <<< ИЗМЕНЕНО: Подключение сигнала topmost >>>
+        self.toggle_topmost_signal.connect(self.toggle_topmost_winapi) # Хоткей вызывает этот слот
+        if self.win_api_manager:
+            self.win_api_manager.topmost_state_changed.connect(self._handle_topmost_state_change) # Ловим сигнал об изменении
+        # <<< END ИЗМЕНЕНО >>>
         logging.debug("Signals connected.")
+
+    # <<< ИЗМЕНЕНО: Слот для обработки изменения состояния topmost >>>
+    @Slot(bool)
+    def _handle_topmost_state_change(self, is_topmost):
+        """Обновляет вид кнопки и флаг прозрачности для мыши."""
+        logging.debug(f"Received topmost_state_changed signal: {is_topmost}")
+        # Обновляем кнопку
+        if self.top_panel_instance and self.top_panel_instance.topmost_button:
+            QMetaObject.invokeMethod(self.top_panel_instance.topmost_button, '_update_visual_state', Qt.ConnectionType.QueuedConnection)
+        # Обновляем флаг прозрачности для мыши (только если мы в min режиме)
+        self._update_mouse_transparency()
+    # <<< END ИЗМЕНЕНО >>>
+
+
+    # <<< НОВОЕ: Слот для обновления вида кнопки (вызывается извне) >>>
+    # @Slot(bool) # Этот слот больше не нужен, используем _handle_topmost_state_change
+    # def _update_topmost_button(self, is_topmost): ...
+    # <<< END НОВОЕ >>>
 
     def closeEvent(self, event):
         logging.info("Close event triggered."); self.stop_keyboard_listener()
@@ -146,38 +229,80 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
+        # <<< ИЗМЕНЕНО: Игнорируем нажатие в min режиме, если включен topmost и прозрачность >>>
+        if self.mode == "min" and self._is_win_topmost and bool(self.windowFlags() & Qt.WindowTransparentForInput):
+            logging.debug("Mouse press ignored (min mode, topmost, transparent)")
+            event.ignore() # Игнорируем событие, оно должно пройти "сквозь" окно
+            return
+        # <<< END ИЗМЕНЕНО >>>
         if self.mode == "min" and self.top_frame and self.top_frame.underMouse():
             if event.button() == Qt.MouseButton.LeftButton: self._mouse_pressed = True; self._old_pos = event.globalPosition().toPoint(); event.accept(); return
         self._mouse_pressed = False; super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        # <<< ИЗМЕНЕНО: Игнорируем движение в min режиме, если включен topmost и прозрачность >>>
+        if self.mode == "min" and self._is_win_topmost and bool(self.windowFlags() & Qt.WindowTransparentForInput):
+             event.ignore()
+             return
+        # <<< END ИЗМЕНЕНО >>>
         if self.mode == "min" and self._mouse_pressed and self._old_pos is not None:
             delta = event.globalPosition().toPoint() - self._old_pos; self.move(self.pos() + delta); self._old_pos = event.globalPosition().toPoint(); event.accept()
         else: super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
+        # <<< ИЗМЕНЕНО: Игнорируем отпускание в min режиме, если включен topmost и прозрачность >>>
+        if self.mode == "min" and self._is_win_topmost and bool(self.windowFlags() & Qt.WindowTransparentForInput):
+             event.ignore()
+             return
+        # <<< END ИЗМЕНЕНО >>>
         if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton: self._mouse_pressed = False; self._old_pos = None; event.accept()
         else: super().mouseReleaseEvent(event)
 
+    # <<< ИЗМЕНЕНО: Логика сохранения/восстановления позиции окна >>>
     def change_mode(self, mode_name: str):
         logging.info(f"--- Attempting to change mode to: {mode_name} (Current: {self.mode}) ---")
         if self.mode == mode_name: logging.info(f"Mode '{mode_name}' is already set."); return
         start_time = time.time()
-        if self.mode in self.mode_positions and self.isVisible(): self.mode_positions[self.mode] = self.pos(); logging.info(f"Position saved for mode '{self.mode}': {self.mode_positions[self.mode]}")
+
+        # 1. Сохраняем позицию ТЕКУЩЕГО режима ПЕРЕД изменениями UI
+        if self.isVisible():
+            current_pos = self.pos()
+            self.mode_positions[self.mode] = current_pos
+            logging.info(f"[Position] Saved position for mode '{self.mode}': {current_pos}")
+        else:
+            logging.info(f"[Position] Window not visible, skipping position save for mode '{self.mode}'.")
+
+        # 2. Сбрасываем курсор хоткея
         old_cursor_index = self.hotkey_cursor_index; self.hotkey_cursor_index = -1
         if self.right_list_widget and self.right_list_widget.isVisible() and old_cursor_index >= 0:
             try: logging.debug("Updating viewport to remove old hotkey highlight."); self.right_list_widget.viewport().update()
             except Exception as e: logging.warning(f"Failed to update viewport for hotkey reset: {e}")
+
+        # 3. Устанавливаем новый режим в менеджере и окне
         self.mode_manager.change_mode(mode_name); self.mode = mode_name; logging.info(f"Mode set to '{self.mode}'")
-        self._update_interface_for_mode(); target_pos = self.mode_positions.get(self.mode)
-        if target_pos and self.isVisible(): logging.info(f"Restoring position for mode '{self.mode}': {target_pos}"); self.move(target_pos)
-        else: logging.debug(f"No saved position found or window not visible for mode '{self.mode}'.")
+
+        # 4. Обновляем интерфейс под НОВЫЙ режим (включая show(), resize(), setWindowFlags())
+        self._update_interface_for_mode(new_mode=self.mode)
+
+        # 5. Восстанавливаем позицию для НОВОГО режима ПОСЛЕ обновления UI
+        target_pos = self.mode_positions.get(self.mode)
+        if target_pos and self.isVisible():
+            logging.info(f"[Position] Restoring position for mode '{self.mode}': {target_pos}")
+            self.move(target_pos)
+        else:
+            logging.debug(f"[Position] No saved position found or window not visible for mode '{self.mode}'.")
+
+        # 6. Сбрасываем курсор хоткея для нового режима (если нужно)
         self._reset_hotkey_cursor_after_mode_change()
         end_time = time.time(); logging.info(f"--- Mode change to {mode_name} FINISHED (took: {end_time - start_time:.4f} sec) ---")
+    # <<< END ИЗМЕНЕНО >>>
 
-    def _update_interface_for_mode(self):
-        t0 = time.time(); current_mode = self.mode
-        logging.info(f"Updating interface for mode '{current_mode}'"); current_selection_ids = set(self.logic.selected_heroes)
+    # <<< ИЗМЕНЕНО: Добавлено управление флагом WindowTransparentForInput >>>
+    def _update_interface_for_mode(self, new_mode=None):
+        if new_mode is None: new_mode = self.mode
+        t0 = time.time(); current_mode = new_mode
+        logging.info(f"Updating interface for mode '{current_mode}'")
+        current_selection_ids = set(self.logic.selected_heroes)
         logging.debug(f"Current logic selection (before UI update): {current_selection_ids}"); t1 = time.time(); logging.debug("Clearing old panel widgets...")
         widgets_to_delete = []
         if self.left_panel_widget: widgets_to_delete.append(self.left_panel_widget)
@@ -223,16 +348,37 @@ class MainWindow(QMainWindow):
 
         t1=time.time(); logging.debug("Configuring window flags and top panel visibility...")
         top_h = self.top_frame.sizeHint().height() if self.top_frame else 40; horiz_size = SIZES.get(current_mode, {}).get('horizontal', (35,35)); h_icon_h = horiz_size[1]
-        icons_h = h_icon_h + 12; spacing = self.main_layout.spacing() if self.main_layout else 0; base_h = top_h + icons_h + spacing
-        if self.icons_scroll_area: self.icons_scroll_area.setFixedHeight(icons_h); logging.debug(f"Icons scroll area height set to {icons_h}")
+        icons_h = h_icon_h + 12
+        spacing = self.main_layout.spacing() if self.main_layout else 0; base_h = top_h + icons_h + spacing
+        if self.icons_scroll_area:
+             self.icons_scroll_area.setFixedHeight(icons_h); logging.debug(f"Icons scroll area height set to {icons_h}")
         self.setMinimumHeight(0); self.setMaximumHeight(16777215)
-        is_min_mode = (current_mode == "min"); current_flags_before = self.windowFlags(); logging.debug(f"Window flags BEFORE update: {current_flags_before}")
-        target_flags = Qt.WindowType(0); current_topmost_state = self._is_win_topmost
-        if is_min_mode: target_flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window
-        else: target_flags = Qt.WindowType.Window
-        if current_topmost_state: target_flags |= Qt.WindowType.WindowStaysOnTopHint
-        logging.debug(f"Setting TARGET window flags: {target_flags} (current topmost state was {current_topmost_state})")
-        self.setWindowFlags(target_flags); current_flags_after = self.windowFlags(); logging.debug(f"Window flags AFTER setWindowFlags: {current_flags_after}")
+        is_min_mode = (current_mode == "min")
+        current_flags_before = self.windowFlags()
+        current_topmost_state = self._is_win_topmost # Получаем текущее состояние "поверх"
+        logging.debug(f"Window flags BEFORE update: {current_flags_before:#x}, Is Topmost: {current_topmost_state}")
+
+        # --- Собираем новые флаги ---
+        target_flags = Qt.WindowType(0)
+        if is_min_mode:
+            target_flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window
+            # Добавляем флаг прозрачности для мыши, ТОЛЬКО если включен режим "поверх"
+            if current_topmost_state:
+                 target_flags |= Qt.WindowType.WindowTransparentForInput
+                 logging.info("Setting WindowTransparentForInput flag for min mode + topmost")
+        else:
+            target_flags = Qt.WindowType.Window
+
+        # Добавляем флаг "поверх" если он нужен
+        if current_topmost_state:
+            target_flags |= Qt.WindowType.WindowStaysOnTopHint
+        # --- ---
+
+        logging.debug(f"Setting TARGET window flags: {target_flags:#x}")
+        self.setWindowFlags(target_flags)
+        current_flags_after = self.windowFlags()
+        logging.debug(f"Window flags AFTER setWindowFlags: {current_flags_after:#x}")
+
         lang_label = self.top_frame.findChild(QLabel, "language_label"); lang_combo = self.top_frame.findChild(QComboBox, "language_combo")
         version_label = self.top_frame.findChild(QLabel, "version_label"); close_button = self.top_frame.findChild(QPushButton, "close_button")
         if version_label: logging.debug(f"Version label found. Text: '{version_label.text()}', Visible: {version_label.isVisible()}")
@@ -250,6 +396,11 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(""); calculated_fixed_min_height = base_h + 5; self.setMinimumHeight(calculated_fixed_min_height); self.setMaximumHeight(calculated_fixed_min_height); logging.debug(f"Set fixed height: {calculated_fixed_min_height}")
             if self.left_panel_widget: self.left_panel_widget.hide()
             if self.icons_scroll_area: self.icons_scroll_area.show()
+            if self.enemies_widget: self.enemies_widget.show()
+            if self.counters_widget: self.counters_widget.show()
+            if self.icons_main_h_layout:
+                self.icons_main_h_layout.setStretchFactor(self.counters_widget, 1)
+                self.icons_main_h_layout.setStretchFactor(self.enemies_widget, 0)
         else:
             logging.debug(f"Setting up {current_mode.upper()} mode UI specifics...")
             if lang_label: lang_label.show()
@@ -260,14 +411,20 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
             if self.left_panel_widget: self.left_panel_widget.show()
             if self.icons_scroll_area: self.icons_scroll_area.show()
+            if self.enemies_widget: self.enemies_widget.hide()
+            if self.counters_widget: self.counters_widget.show()
+            if self.icons_main_h_layout:
+                self.icons_main_h_layout.setStretchFactor(self.counters_widget, 1)
+                self.icons_main_h_layout.setStretchFactor(self.enemies_widget, 0)
             if current_mode == "max":
                 calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}");
-                if self.author_button: self.author_button.show() # Разделили if
+                if self.author_button: self.author_button.show()
                 if self.rating_button: self.rating_button.show()
             else: # middle
                 calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
                 if self.author_button: self.author_button.hide();
                 if self.rating_button: self.rating_button.hide()
+
         logging.info("Calling window.show() after updating flags and UI visibility."); self.show(); t2 = time.time(); logging.debug(f"[TIMING] -> Setup window flags/visibility: {t2-t1:.4f} s")
 
         t1 = time.time(); self.update_language(); self.main_layout.activate();
@@ -289,6 +446,8 @@ class MainWindow(QMainWindow):
         else: logging.debug("Right list widget not available, skipping selection state restoration.")
         t2 = time.time(); logging.info(f"[TIMING] -> Restore UI state (scheduling selection): {t2-t1:.4f} s")
         t_end = time.time(); logging.info(f"[TIMING] _update_interface_for_mode: Finished (Total: {t_end - t0:.4f} s)")
+    # <<< END ИЗМЕНЕНО >>>
+
 
     def _reset_hotkey_cursor_after_mode_change(self):
         logging.debug("_reset_hotkey_cursor_after_mode_change called")
@@ -310,13 +469,44 @@ class MainWindow(QMainWindow):
         if not hasattr(self, 'win_api_manager'): logging.warning("win_api_manager not found."); return False
         return self.win_api_manager.is_win_topmost
 
+    # <<< ИЗМЕНЕНО: toggle_topmost_winapi теперь вызывает _update_mouse_transparency >>>
     def set_topmost_winapi(self, enable: bool):
-        if hasattr(self, 'win_api_manager'): self.win_api_manager.set_topmost_winapi(enable)
-        else: logging.warning("win_api_manager not found.")
+        if hasattr(self, 'win_api_manager'):
+            self.win_api_manager.set_topmost_winapi(enable)
+            # После попытки изменить состояние, обновляем прозрачность мыши
+            QTimer.singleShot(10, self._update_mouse_transparency) # Небольшая задержка
+        else:
+            logging.warning("win_api_manager not found.")
 
     def toggle_topmost_winapi(self):
-        if hasattr(self, 'win_api_manager'): self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
-        else: logging.warning("win_api_manager not found.")
+        if hasattr(self, 'win_api_manager'):
+            self.win_api_manager.set_topmost_winapi(not self.win_api_manager.is_win_topmost)
+            # После попытки изменить состояние, обновляем прозрачность мыши
+            QTimer.singleShot(10, self._update_mouse_transparency) # Небольшая задержка
+        else:
+             logging.warning("win_api_manager not found.")
+    # <<< END ИЗМЕНЕНО >>>
+
+
+    # <<< НОВОЕ: Метод для обновления прозрачности мыши >>>
+    def _update_mouse_transparency(self):
+        """Устанавливает или снимает флаг WindowTransparentForInput в зависимости от режима и состояния topmost."""
+        if self.mode == 'min' and self._is_win_topmost:
+            # Включить прозрачность мыши
+            current_flags = self.windowFlags()
+            if not (current_flags & Qt.WindowTransparentForInput):
+                logging.info("Enabling mouse transparency (min mode + topmost)")
+                self.setWindowFlags(current_flags | Qt.WindowTransparentForInput)
+                if self.isVisible(): self.show() # Переприменяем флаги
+        else:
+            # Выключить прозрачность мыши
+            current_flags = self.windowFlags()
+            if current_flags & Qt.WindowTransparentForInput:
+                logging.info("Disabling mouse transparency")
+                self.setWindowFlags(current_flags & ~Qt.WindowTransparentForInput)
+                if self.isVisible(): self.show() # Переприменяем флаги
+    # <<< END НОВОЕ >>>
+
 
     @Slot(str)
     def _handle_move_cursor(self, direction):
@@ -340,11 +530,17 @@ class MainWindow(QMainWindow):
                 new_index = min(new_index, count - 1)
             elif direction == 'up':
                 new_index -= num_columns
-                if new_index < 0: last_row_index = (count - 1) // num_columns; potential_index = last_row_index * num_columns + current_col; new_index = min(potential_index, count - 1)
+                if new_index < 0:
+                   last_row_index = (count - 1) // num_columns
+                   potential_index = last_row_index * num_columns + current_col
+                   new_index = min(potential_index, count - 1)
             elif direction == 'down':
                 new_index += num_columns
-                if new_index >= count: potential_index = current_col; new_index = min(potential_index, count - 1);
-                if new_index >= count : new_index = 0
+                if new_index >= count:
+                    potential_index = current_col
+                    new_index = min(potential_index, count - 1);
+                    if new_index >= count : new_index = 0
+
             new_index = max(0, min(count - 1, new_index))
         if old_index != new_index:
             self.hotkey_cursor_index = new_index; self._update_hotkey_highlight(old_index=old_index); logging.debug(f"Cursor moved to index {new_index}")
@@ -354,17 +550,17 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _handle_toggle_selection(self):
-        logging.debug("[GUI Slot] _handle_toggle_selection triggered")
+        logging.info("[GUI Slot] _handle_toggle_selection triggered")
         list_widget = self.right_list_widget
         if not list_widget or not list_widget.isVisible() or self.mode == 'min' or self.hotkey_cursor_index < 0:
-            logging.debug(f"Toggle selection ignored (list: {list_widget is not None}, visible: {list_widget.isVisible() if list_widget else 'N/A'}, mode: {self.mode}, index: {self.hotkey_cursor_index})")
+            logging.warning(f"Toggle selection ignored (list: {list_widget is not None}, visible: {list_widget.isVisible() if list_widget else 'N/A'}, mode: {self.mode}, index: {self.hotkey_cursor_index})")
             return
         if 0 <= self.hotkey_cursor_index < list_widget.count():
             item = list_widget.item(self.hotkey_cursor_index)
             if item:
                 try:
                     is_selected = item.isSelected(); new_state = not is_selected
-                    logging.debug(f"Toggling selection for item {self.hotkey_cursor_index} ('{item.data(HERO_NAME_ROLE)}'). State: {is_selected} -> {new_state}")
+                    logging.info(f"Toggling selection for item {self.hotkey_cursor_index} ('{item.data(HERO_NAME_ROLE)}'). State: {is_selected} -> {new_state}")
                     item.setSelected(new_state)
                 except RuntimeError: logging.warning(f"RuntimeError accessing item during toggle selection (index {self.hotkey_cursor_index}). Might be deleting.")
                 except Exception as e: logging.error(f"Error toggling selection via hotkey: {e}", exc_info=True)
@@ -373,7 +569,13 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _handle_toggle_mode(self):
-        logging.info("[GUI Slot] _handle_toggle_mode triggered");
+        logging.info("[GUI Slot] _handle_toggle_mode triggered")
+        debounce_time = 0.3
+        current_time = time.time()
+        if current_time - self._last_mode_toggle_time < debounce_time:
+            logging.warning(f"Mode toggle ignored due to debounce ({current_time - self._last_mode_toggle_time:.2f}s < {debounce_time}s)")
+            return
+        self._last_mode_toggle_time = current_time
         target_mode = "middle" if self.mode == "min" else "min"; self.change_mode(target_mode)
 
     @Slot()
@@ -398,7 +600,9 @@ class MainWindow(QMainWindow):
         try:
             screenshot = utils.capture_screen_area(utils.RECOGNITION_AREA)
             if screenshot is not None:
-                filename = "debug_screenshot_test.png"; project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')); filepath = os.path.join(project_dir, filename)
+                filename = "debug_screenshot_test.png"; project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'));
+                filepath = os.path.join(project_dir, filename)
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 cv2.imwrite(filepath, screenshot); logging.info(f"[Debug Capture] Screenshot saved to: {filepath}")
                 QMessageBox.information(self, "Debug Screenshot", f"Тестовый скриншот сохранен как:\n{filepath}")
             else:
@@ -409,64 +613,127 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Debug Screenshot Error", f"Ошибка при сохранении скриншота:\n{e}")
 
     def update_ui_after_logic_change(self):
+        """Обновляет все элементы интерфейса, зависящие от состояния логики."""
         logging.info("Updating UI after logic change."); start_time = time.time()
-        self._update_selected_label(); self._update_counterpick_display(); update_horizontal_icon_list(self)
+        self._update_selected_label()
+        self._update_counterpick_display()
+        self._update_horizontal_lists()
         self._update_list_item_selection_states()
         self._update_priority_labels()
         end_time = time.time(); logging.info(f"UI Update Finished in {end_time - start_time:.4f} sec.")
 
+
     def _update_selected_label(self):
         label_to_update = self.selected_heroes_label
-        if label_to_update:
+        if label_to_update and self.right_panel_widget and self.right_panel_widget.isVisible():
              try: label_to_update.setText(self.logic.get_selected_heroes_text())
              except RuntimeError: pass
              except Exception as e: logging.error(f"Error updating selected label: {e}")
 
     def _update_counterpick_display(self):
-        if not self.result_frame or not self.canvas: logging.warning("result_frame or canvas not found"); return
-        images_ok = bool(self.left_images) and (self.mode == 'min' or bool(self.small_images))
+        if self.mode == "min":
+             logging.debug("Counterpick display skipped in min mode.")
+             return
+
+        if not self.result_frame or not self.canvas: logging.warning("result_frame or canvas not found for counterpick display"); return
+
+        images_ok = bool(self.left_images) and bool(self.small_images)
         if not images_ok:
-             logging.warning(f"Images not loaded for mode '{self.mode}'. Attempting reload.")
+             logging.warning(f"Images not loaded for mode '{self.mode}' (left/small). Attempting reload.")
              try: _, self.left_images, self.small_images, _ = get_images_for_mode(self.mode)
-             except Exception as e: logging.error(f"Error reloading images: {e}"); return
+             except Exception as e: logging.error(f"Error reloading images for counterpick display: {e}"); return
+
         try:
-            if self.mode != "min": display.generate_counterpick_display(self.logic, self.result_frame, self.left_images, self.small_images)
-            else: display.generate_minimal_icon_list(self.logic, self.result_frame, self.left_images)
+            display.generate_counterpick_display(self.logic, self.result_frame, self.left_images, self.small_images)
             if self.update_scrollregion: QTimer.singleShot(0, self.update_scrollregion)
-        except RuntimeError as e: logging.error(f"RuntimeError during display generation: {e}")
-        except Exception as e: logging.error(f"Error generating display: {e}"); import traceback; traceback.print_exc()
+            logging.debug("Counterpick display (left panel) updated.")
+        except RuntimeError as e: logging.error(f"RuntimeError during counterpick display generation: {e}")
+        except Exception as e: logging.error(f"Error generating counterpick display: {e}"); import traceback; traceback.print_exc()
+
+    def _update_horizontal_lists(self):
+        """Обновляет горизонтальные списки контрпиков и врагов."""
+        logging.debug("Updating horizontal lists...")
+        if not self.counters_layout or not self.enemies_layout or not self.horizontal_info_label:
+            logging.error("Horizontal list layouts or info label not initialized.")
+            return
+
+        if self.horizontal_info_label.parentWidget():
+            parent_layout = self.horizontal_info_label.parentWidget().layout()
+            if parent_layout:
+                parent_layout.removeWidget(self.horizontal_info_label)
+            self.horizontal_info_label.setParent(None)
+        self.horizontal_info_label.hide()
+
+        clear_layout_util(self.counters_layout)
+        clear_layout_util(self.enemies_layout)
+
+        if not self.logic.selected_heroes:
+            self.horizontal_info_label.setText(get_text("select_enemies_for_recommendations", language=self.logic.DEFAULT_LANGUAGE))
+            self.counters_layout.addWidget(self.horizontal_info_label)
+            self.horizontal_info_label.show()
+            self.counters_layout.addStretch(1)
+            self.enemies_layout.addStretch(1)
+            logging.debug("Showing 'select enemies' message in horizontal list.")
+        else:
+            horizontal_list.update_horizontal_icon_list(self, self.counters_layout)
+            if self.mode == "min":
+                horizontal_list.update_enemy_horizontal_list(self, self.enemies_layout)
+            else:
+                 self.enemies_layout.addStretch(1)
+
+            counters_items_count = sum(1 for i in range(self.counters_layout.count()) if self.counters_layout.itemAt(i).widget())
+            enemies_items_count = sum(1 for i in range(self.enemies_layout.count()) if self.enemies_layout.itemAt(i).widget())
+
+            show_no_recs = counters_items_count == 0
+
+            if show_no_recs:
+                 self.horizontal_info_label.setText(get_text("no_recommendations", language=self.logic.DEFAULT_LANGUAGE))
+                 self.counters_layout.insertWidget(0, self.horizontal_info_label)
+                 self.horizontal_info_label.show()
+                 if self.counters_layout.count() == 0 or self.counters_layout.itemAt(self.counters_layout.count() - 1).spacerItem() is None:
+                     self.counters_layout.addStretch(1)
+
+                 logging.debug("Showing 'no recommendations' message in horizontal list.")
+
+        if self.icons_scroll_area:
+            QTimer.singleShot(0, self.icons_scroll_area.updateGeometry)
+            QTimer.singleShot(10, lambda: self.icons_scroll_content.adjustSize() if self.icons_scroll_content else None)
 
     def _update_list_item_selection_states(self, force_update=False):
         list_widget = self.right_list_widget; hero_items_dict = self.hero_items
         if not list_widget or not list_widget.isVisible(): logging.debug("Skipping selection state update (no list widget or not visible)"); return
         if not hero_items_dict or list_widget.count() == 0 or list_widget.count() != len(hero_items_dict):
              logging.warning(f"Selection state update skipped: mismatch or empty (list:{list_widget.count()} vs dict:{len(hero_items_dict)})")
-             return
-        logging.info(f"Updating list item selection states... (force_update={force_update})")
+             if not hero_items_dict and list_widget.count() > 0 and self.right_panel_instance:
+                  logging.warning("Hero items dictionary is empty but list widget is not. Re-populating...")
+                  self.right_panel_instance._populate_list_widget()
+                  hero_items_dict = self.hero_items
+                  if not hero_items_dict:
+                       logging.error("Failed to repopulate hero items dictionary.")
+                       return
+             elif not hero_items_dict:
+                  return
+
         self.is_programmatically_updating_selection = True; items_changed_count = 0
         try:
             list_widget.blockSignals(True); current_logic_selection = set(self.logic.selected_heroes)
-            logging.debug(f"Applying logic selection to UI: {current_logic_selection}"); items_to_check = list(hero_items_dict.items())
+            items_to_check = list(hero_items_dict.items())
             for hero, item in items_to_check:
                 if item is None: logging.warning(f"Item for hero '{hero}' is None"); continue
                 try:
                     is_currently_selected_in_widget = item.isSelected(); should_be_selected_in_logic = (hero in current_logic_selection)
                     if is_currently_selected_in_widget != should_be_selected_in_logic or force_update:
-                        if force_update and is_currently_selected_in_widget == should_be_selected_in_logic: logging.debug(f"Forcing selection update for '{hero}': state {should_be_selected_in_logic}")
-                        else: logging.debug(f"Updating selection for '{hero}': widget={is_currently_selected_in_widget}, logic={should_be_selected_in_logic} -> Setting selected to {should_be_selected_in_logic}")
                         item.setSelected(should_be_selected_in_logic); items_changed_count += 1
                 except RuntimeError: logging.warning(f"RuntimeError accessing item for hero '{hero}'"); continue
                 except Exception as e: logging.error(f"Error updating selection state for hero '{hero}': {e}")
-            logging.debug(f"Items whose selection state was changed/forced: {items_changed_count}")
             self._update_selected_label()
-            if list_widget and list_widget.viewport(): logging.debug("Calling list_widget.viewport().update() immediately after loop."); list_widget.viewport().update()
+            if list_widget and list_widget.viewport(): QMetaObject.invokeMethod(list_widget.viewport(), "update", Qt.ConnectionType.QueuedConnection)
         except Exception as e: logging.error(f"Unexpected error in _update_list_item_selection_states: {e}", exc_info=True)
         finally:
             try:
                 if list_widget: list_widget.blockSignals(False)
             except RuntimeError: pass
             self.is_programmatically_updating_selection = False
-        logging.info("Finished updating list item selection states.")
 
     def _update_priority_labels(self):
         list_widget = self.right_list_widget; hero_items_dict = self.hero_items
@@ -494,7 +761,14 @@ class MainWindow(QMainWindow):
         current_logic_selection = set(self.logic.selected_heroes); logging.debug(f"UI Selection: {current_ui_selection_names} ({len(current_ui_selection_names)}), Logic Selection before update: {current_logic_selection} ({len(current_logic_selection)})")
         if current_logic_selection != current_ui_selection_names:
             logging.debug(f"Selection mismatch detected. Updating logic with UI state.")
-            self.logic.set_selection(current_ui_selection_names); self.update_ui_after_logic_change()
+            try:
+                self.logic.set_selection(current_ui_selection_names)
+                self.update_ui_after_logic_change()
+            except RuntimeError as e:
+                 logging.error(f"Unhandled RuntimeError during selection change update: {e}", exc_info=True)
+                 raise e
+            except Exception as e:
+                logging.error(f"Unexpected error during selection change update: {e}", exc_info=True)
         else: logging.debug("UI selection matches logic. No logic update needed.")
 
     def show_priority_context_menu(self, pos: QPoint):
@@ -525,10 +799,10 @@ class MainWindow(QMainWindow):
         logging.info("Updating language for UI elements..."); current_lang = self.logic.DEFAULT_LANGUAGE
         self.setWindowTitle(f"{get_text('title', language=current_lang)} v{self.app_version}")
         if self.top_panel_instance: self.top_panel_instance.update_language()
-        if self.right_panel_instance:
+        if self.right_panel_instance and self.right_panel_widget and self.right_panel_widget.isVisible():
             self.right_panel_instance.update_language()
             list_widget = self.right_list_widget; hero_items_dict = self.hero_items
-            if list_widget and list_widget.isVisible():
+            if list_widget:
                  focused_tooltip_base = None; current_focused_item = None
                  if 0 <= self.hotkey_cursor_index < list_widget.count():
                       try:
@@ -542,7 +816,25 @@ class MainWindow(QMainWindow):
                  if focused_tooltip_base and current_focused_item:
                      try: current_focused_item.setToolTip(f">>> {focused_tooltip_base} <<<")
                      except RuntimeError: pass
-        if self.result_label and not self.logic.selected_heroes: self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
+
+        try:
+            if self.result_label and not self.logic.selected_heroes:
+                self.result_label.setText(get_text('no_heroes_selected', language=current_lang))
+
+            if self.horizontal_info_label and self.horizontal_info_label.isVisible():
+                 if not self.logic.selected_heroes:
+                     self.horizontal_info_label.setText(get_text('select_enemies_for_recommendations', language=current_lang))
+                 else:
+                     counters_items_count = 0
+                     if self.counters_layout:
+                         counters_items_count = sum(1 for i in range(self.counters_layout.count()) if self.counters_layout.itemAt(i).widget())
+                     if counters_items_count == 0:
+                         self.horizontal_info_label.setText(get_text('no_recommendations', language=current_lang))
+        except RuntimeError as e:
+            logging.error(f"RuntimeError during language update (label access?): {e}")
+        except Exception as e:
+             logging.error(f"Unexpected error during language update: {e}", exc_info=True)
+
         logging.info("Language update finished.")
 
 
@@ -553,9 +845,13 @@ class MainWindow(QMainWindow):
             viewport = list_widget.viewport();
             if not viewport: return self._num_columns_cache
             vp_width = viewport.width(); grid_size = list_widget.gridSize(); spacing = list_widget.spacing()
-            if grid_size.width() <= 0: return self._num_columns_cache
+            if grid_size.width() <= 0:
+                 logging.warning("Grid size width is zero or negative, cannot calculate columns.")
+                 return self._num_columns_cache
             effective_grid_width = grid_size.width() + spacing
-            if effective_grid_width <= 0: return self._num_columns_cache
+            if effective_grid_width <= 0:
+                 logging.warning("Effective grid width is zero or negative, cannot calculate columns.")
+                 return self._num_columns_cache
             cols = max(1, int(vp_width / effective_grid_width))
             if cols != self._num_columns_cache: logging.debug(f"Calculated columns: {cols} (vp_width={vp_width}, grid_w={grid_size.width()}, spacing={spacing})"); self._num_columns_cache = cols
             return cols
@@ -571,24 +867,27 @@ class MainWindow(QMainWindow):
         if old_index is not None and old_index != new_index and 0 <= old_index < count:
             try:
                 old_item = list_widget.item(old_index)
-                if old_item: hero_name = old_item.data(HERO_NAME_ROLE); current_tooltip = old_item.toolTip()
-                if hero_name and current_tooltip and current_tooltip.startswith(">>>"): old_item.setToolTip(hero_name)
-                self._update_priority_labels(); needs_viewport_update = True
+                if old_item:
+                    hero_name = old_item.data(HERO_NAME_ROLE); current_tooltip = old_item.toolTip()
+                    if hero_name and current_tooltip and current_tooltip.startswith(">>>"): old_item.setToolTip(hero_name)
+                    self._update_priority_labels()
+                    needs_viewport_update = True
             except RuntimeError: pass
             except Exception as e: logging.error(f"Error restoring old item state (idx {old_index}): {e}")
         if 0 <= new_index < count:
             try:
                 new_item = list_widget.item(new_index)
-                if new_item: hero_name = new_item.data(HERO_NAME_ROLE); focus_tooltip = f">>> {hero_name} <<<"
-                if hero_name and new_item.toolTip() != focus_tooltip: new_item.setToolTip(focus_tooltip)
-                self._update_priority_labels()
-                list_widget.scrollToItem(new_item, QAbstractItemView.ScrollHint.EnsureVisible)
-                needs_viewport_update = True
+                if new_item:
+                    hero_name = new_item.data(HERO_NAME_ROLE); focus_tooltip = f">>> {hero_name} <<<"
+                    if hero_name and new_item.toolTip() != focus_tooltip: new_item.setToolTip(focus_tooltip)
+                    self._update_priority_labels()
+                    list_widget.scrollToItem(new_item, QAbstractItemView.ScrollHint.EnsureVisible)
+                    needs_viewport_update = True
             except RuntimeError: pass
             except Exception as e: logging.error(f"Error setting new item state/scrolling (idx {new_index}): {e}")
         if list_widget.viewport() and needs_viewport_update:
              logging.debug("Scheduling viewport update for hotkey highlight")
-             QTimer.singleShot(0, lambda: list_widget.viewport().update() if list_widget and list_widget.viewport() else None)
+             QMetaObject.invokeMethod(list_widget.viewport(), "update", Qt.ConnectionType.QueuedConnection)
 
     def start_keyboard_listener(self):
         if not keyboard: logging.warning("Keyboard library not available."); return
@@ -606,34 +905,52 @@ class MainWindow(QMainWindow):
     def _keyboard_listener_loop(self):
         if not keyboard: return
         logging.info("[Hotkey] Listener thread started.")
+        # <<< ИЗМЕНЕНО: Добавлен хоткей Tab + Num 7 >>>
         hotkeys_map = {
-            'tab+up': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+up -> Signal Emit"), self.move_cursor_signal.emit('up')), True),
-            'tab+down': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+down -> Signal Emit"), self.move_cursor_signal.emit('down')), True),
-            'tab+left': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+left -> Signal Emit"), self.move_cursor_signal.emit('left')), True),
-            'tab+right': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+right -> Signal Emit"), self.move_cursor_signal.emit('right')), True),
-            'tab+num 0': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+num 0 -> Signal Emit"), self.toggle_selection_signal.emit()), True),
-            'tab+keypad 0': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad 0 -> Signal Emit"), self.toggle_selection_signal.emit()), True),
-            'tab+num -': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+num - -> Signal Emit"), self.clear_all_signal.emit()), True),
-            'tab+keypad -': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad - -> Signal Emit"), self.clear_all_signal.emit()), True),
-            'tab+-': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+- -> Signal Emit"), self.clear_all_signal.emit()), True),
-            'tab+delete': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+delete -> Signal Emit"), self.toggle_mode_signal.emit()), True),
-            'tab+del': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+del -> Signal Emit"), self.toggle_mode_signal.emit()), True),
-            'tab+.': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+. -> Signal Emit"), self.toggle_mode_signal.emit()), True),
-            'tab+num /': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+num / -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
-            'tab+keypad /': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad / -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
-            'tab+/': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+/ -> Signal Emit"), self.recognize_heroes_signal.emit()), True),
-            'tab+*': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+* -> Debug Capture Signal Emit"), self.debug_capture_signal.emit()), True),
-            'tab+keypad *': (lambda: (logging.debug("[Hotkey Listener] Hook triggered: tab+keypad * -> Debug Capture Signal Emit"), self.debug_capture_signal.emit()), True),
+            'tab+up': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+up -> Move Up"), self.move_cursor_signal.emit('up')), True),
+            'tab+down': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+down -> Move Down"), self.move_cursor_signal.emit('down')), True),
+            'tab+left': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+left -> Move Left"), self.move_cursor_signal.emit('left')), True),
+            'tab+right': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+right -> Move Right"), self.move_cursor_signal.emit('right')), True),
+            'tab+num 0': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 0 -> Toggle Selection"), self.toggle_selection_signal.emit()), True),
+            'tab+num -': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num - -> Clear All"), self.clear_all_signal.emit()), True),
+            'tab+-': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+- -> Clear All"), self.clear_all_signal.emit()), True),
+            'tab+decimal': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+decimal -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num . (NumLock ON)
+            'tab+delete': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+delete -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num Del (NumLock OFF) / Standard Delete
+            'tab+.': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+. -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Обычная точка
+            'tab+num /': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num / -> Recognize"), self.recognize_heroes_signal.emit()), True),
+            'tab+/': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+/ -> Recognize"), self.recognize_heroes_signal.emit()), True), # Обычный слеш
+            'tab+num *': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num * -> Debug Capture"), self.debug_capture_signal.emit()), True),
+            'tab+*': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+* -> Debug Capture"), self.debug_capture_signal.emit()), True), # Обычная * (Shift+8)
+            'tab+num 7': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 7 -> Toggle Topmost"), self.toggle_topmost_signal.emit()), True), # Новый хоткей
         }
+        # <<< END ИЗМЕНЕНО >>>
         hooks_registered_count = 0
         try:
-            logging.info(f"Registering hooks...")
+            logging.info(f"Registering {len(hotkeys_map)} hooks...")
             for hotkey, (callback, suppress_flag) in hotkeys_map.items():
-                try: keyboard.add_hotkey(hotkey, callback, suppress=suppress_flag, trigger_on_release=False); hooks_registered_count += 1
-                except ValueError as e: logging.warning(f"Hook registration failed for '{hotkey}' (ValueError): {e}")
-                except Exception as e: logging.error(f"Hook registration failed for '{hotkey}': {e}")
+                try:
+                    keyboard.add_hotkey(hotkey, callback, suppress=suppress_flag, trigger_on_release=False)
+                    hooks_registered_count += 1
+                    logging.debug(f"Registered hotkey: {hotkey}")
+                except ValueError as e:
+                    logging.warning(f"Hook registration failed for '{hotkey}'. Error: {e}. Raw Error: {repr(e)}")
+                    try:
+                        err_args = getattr(e, 'args', None)
+                        if err_args and isinstance(err_args, tuple) and len(err_args) > 0:
+                            logging.warning(f"  Error message details: {err_args[0]}")
+                            if isinstance(err_args[0], str) and "not mapped to any known key" in err_args[0]:
+                                problematic_key = err_args[0].split("'")[1] if "'" in err_args[0] else "[unknown key]"
+                                logging.warning(f"  -> Problematic key seems to be: '{problematic_key}'")
+                    except Exception as inner_e:
+                        logging.warning(f"  (Could not extract further details from ValueError: {inner_e})")
+                except Exception as e: logging.error(f"Hook registration failed for '{hotkey}': {e}", exc_info=True)
             logging.info(f"Hooks registered: {hooks_registered_count}/{len(hotkeys_map)}")
-            self._stop_keyboard_listener_flag.wait(); logging.info("[Hotkey Listener] Stop signal received.")
+            if hooks_registered_count < len(hotkeys_map):
+                 logging.warning(f"Some hotkeys failed to register ({len(hotkeys_map) - hooks_registered_count} failed). Check warnings above.")
+            if hooks_registered_count == 0 and len(hotkeys_map) > 0:
+                logging.error("No keyboard hooks were registered successfully! Hotkeys will not work.")
+            else:
+                self._stop_keyboard_listener_flag.wait(); logging.info("[Hotkey Listener] Stop signal received.")
         except ImportError: logging.error("keyboard library requires root/admin privileges.")
         except Exception as e: logging.error(f"Error in keyboard listener loop: {e}", exc_info=True)
         finally:
@@ -649,8 +966,10 @@ class MainWindow(QMainWindow):
          if list_widget and list_widget.isVisible() and self.mode != 'min':
             old_index = self.hotkey_cursor_index; count = list_widget.count()
             self.hotkey_cursor_index = 0 if count > 0 else -1
-            if self.hotkey_cursor_index != old_index or old_index != -1: self._update_hotkey_highlight(old_index)
+            if self.hotkey_cursor_index != old_index or old_index != -1:
+                 self._update_hotkey_highlight(old_index)
             if self.hotkey_cursor_index == 0:
                 first_item = list_widget.item(0)
                 if first_item: list_widget.scrollToItem(first_item, QAbstractItemView.ScrollHint.EnsureVisible)
-         else: self.hotkey_cursor_index = -1
+         else:
+             self.hotkey_cursor_index = -1
