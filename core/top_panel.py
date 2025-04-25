@@ -122,7 +122,7 @@ class TopPanel:
             if current_prop != is_topmost:
                 self.topmost_button.setProperty("topmostActive", is_topmost)
                 logging.debug(f"[TopPanel._update_topmost_button_text_and_property] Property 'topmostActive' set to: {is_topmost}")
-                # Принудительно переприменяем стиль (важно для Qt Properties)
+                # Принудительно переприменяем стиль
                 self.topmost_button.style().unpolish(self.topmost_button)
                 self.topmost_button.style().polish(self.topmost_button)
                 self.topmost_button.update()
@@ -138,7 +138,7 @@ class TopPanel:
         button.clicked.connect(callback); button.setVisible(False); return button
     def _create_close_button(self) -> QPushButton:
         button = QPushButton("X"); button.setObjectName("close_button"); button.setFixedSize(25, 25)
-        button.setStyleSheet(""" QPushButton { font-size: 10pt; font-weight: bold; padding: 1px; color: black; background-color: #ff605c; border-radius: 5px; margin-left: 5px; border: 1px solid #E04340; } QPushButton:hover { background-color: #e04340; } QPushButton:pressed { background-color: #c0302c; } """)
+        button.setStyleSheet(""" QPushButton#close_button { font-size: 10pt; font-weight: bold; padding: 1px; color: black; background-color: #ff605c; border-radius: 5px; margin-left: 5px; border: 1px solid #E04340; } QPushButton#close_button:hover { background-color: #e04340; } QPushButton#close_button:pressed { background-color: #c0302c; } """)
         button.clicked.connect(self.parent.close); button.setVisible(False); return button
 
     def update_language(self):
