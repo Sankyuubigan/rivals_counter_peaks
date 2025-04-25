@@ -16,19 +16,19 @@ RECOGNITION_AREA = {
     'width_pct': 40,
     'height_pct': 50
 }
-RECOGNITION_THRESHOLD = 0.8 # Для Template Matching
 
-# ORB (оставляем на всякий случай)
-ORB_NFEATURES = 1000
-ORB_MIN_MATCH_COUNT = 10
-ORB_LOWE_RATIO = 0.75
+# <<< НОВОЕ: Константы для метода Эмбеддингов >>>
+# !!! Слегка повышаем порог, чтобы отсечь Iron Man (0.68) !!!
+SIMILARITY_THRESHOLD = 0.72 # Попробуем 0.72
+# Размер и шаг скользящего окна (подбери под размер иконок на твоем скриншоте)
+SLIDING_WINDOW_SIZE = (50, 50)
+SLIDING_WINDOW_STEP = (10, 10)
+# <<< ---------------------------------------- >>>
 
-# <<< ИЗМЕНЕНО: Константы для AKAZE >>>
-AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
-# !!! Понижаем порог еще немного, до 4 !!!
-AKAZE_MIN_MATCH_COUNT = 4
-AKAZE_LOWE_RATIO = 0.75 # Вернем 0.75, как было у ORB, часто это стандартное значение
-# <<< ---------------------------- >>>
+# Старые константы
+RECOGNITION_THRESHOLD = 0.8
+ORB_NFEATURES = 1000; ORB_MIN_MATCH_COUNT = 10; ORB_LOWE_RATIO = 0.75
+AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB; AKAZE_MIN_MATCH_COUNT = 3; AKAZE_LOWE_RATIO = 0.75
 
 
 def _get_root_path():

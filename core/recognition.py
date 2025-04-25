@@ -7,8 +7,8 @@ import numpy as np
 
 import utils
 import translations
-# Используем актуальные константы
-from utils import RECOGNITION_AREA, AKAZE_MIN_MATCH_COUNT, capture_screen_area
+# Используем актуальные константы (AKAZE_MIN_MATCH_COUNT не нужен здесь напрямую)
+from utils import RECOGNITION_AREA, capture_screen_area
 from translations import get_text
 
 class RecognitionWorker(QObject):
@@ -16,10 +16,13 @@ class RecognitionWorker(QObject):
     finished = Signal(list)
     error = Signal(str)
 
+    # templates снова нужен для AKAZE
     def __init__(self, logic, recognition_area, templates, parent=None):
         super().__init__(parent)
-        self.logic = logic; self.recognition_area = recognition_area
-        self.templates = templates; self._is_running = True
+        self.logic = logic
+        self.recognition_area = recognition_area
+        self.templates = templates # Передаем шаблоны
+        self._is_running = True
         logging.debug(f"[RecognitionWorker] Initialized.")
 
     @Slot()
@@ -27,9 +30,7 @@ class RecognitionWorker(QObject):
         """Основная функция воркера."""
         logging.info("[THREAD][RecognitionWorker] Worker started execution.")
         recognized_heroes = []
-        if not self._is_running:
-            logging.warning("[THREAD][RecognitionWorker] Worker stopped before starting."); self.error.emit("Recognition cancelled before start.")
-            logging.info(f"[THREAD][RecognitionWorker] Worker run method finished early (stopped)."); return
+        if not self._is_running: logging.warning("[THREAD][RecognitionWorker] Worker stopped before starting."); self.error.emit("Recognition cancelled before start."); logging.info(f"[THREAD][RecognitionWorker] Worker run method finished early (stopped)."); return
 
         screenshot_cv2 = capture_screen_area(self.recognition_area)
         if screenshot_cv2 is None:
@@ -38,13 +39,20 @@ class RecognitionWorker(QObject):
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (screenshot error)."); return
 
         if not self._is_running: logging.info("[THREAD][RecognitionWorker] Worker stopped after screenshot."); return
+        # Проверяем наличие шаблонов
         if not self.templates:
             logging.error("[THREAD][RecognitionWorker] Hero templates not loaded.")
             if self._is_running: self.error.emit(get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE))
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (no templates)."); return
 
-        # Вызов функции распознавания AKAZE
-        recognized_heroes = self.logic.recognize_heroes_from_image( screenshot_cv2, self.templates)
+        # <<< ИЗМЕНЕНО: Вызов функции распознавания AKAZE, передаем шаблоны >>>
+        recognized_heroes = self.logic.recognize_heroes_from_image(
+            screenshot_cv2,
+            self.templates
+            # Порог берется из utils внутри функции
+        )
+        # <<< ------------------------------------------------------------- >>>
+
         if not self._is_running: logging.info("[THREAD][RecognitionWorker] Worker stopped after recognition."); return
 
         self.finished.emit(recognized_heroes)
@@ -73,15 +81,18 @@ class RecognitionManager(QObject):
     def _handle_recognize_heroes(self):
         """Запускает процесс распознавания героев в отдельном потоке."""
         logging.info("[ACTION][RecognitionManager] Recognition requested...")
+        # Убираем проверку на embedding_model
         if self._recognition_thread and self._recognition_thread.isRunning():
             logging.warning("[WARN][RecognitionManager] Recognition process already running.")
             QMessageBox.information(self.main_window, "Распознавание", "Процесс распознавания уже выполняется.")
             return
-        if not self.main_window.hero_templates:
-             logging.error("[ERROR][RecognitionManager] Hero templates not loaded.")
+        if not self.main_window.hero_templates: # Проверяем наличие шаблонов в MainWindow
+             logging.error("[ERROR][RecognitionManager] Hero templates not loaded in MainWindow.")
              QMessageBox.warning(self.main_window, get_text('error', language=self.logic.DEFAULT_LANGUAGE), get_text('recognition_no_templates', language=self.logic.DEFAULT_LANGUAGE)); return
 
-        self._recognition_worker = RecognitionWorker( self.logic, RECOGNITION_AREA, self.main_window.hero_templates)
+        # <<< ИЗМЕНЕНО: Передаем шаблоны в Worker >>>
+        self._recognition_worker = RecognitionWorker( self.logic, RECOGNITION_AREA, self.main_window.hero_templates, parent=None)
+        # <<< ----------------------------------- >>>
         self._recognition_thread = QThread(self.main_window)
         self._recognition_worker.moveToThread(self._recognition_thread)
         self._recognition_thread.started.connect(self._recognition_worker.run)

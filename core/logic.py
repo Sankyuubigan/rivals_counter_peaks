@@ -1,8 +1,8 @@
 # File: core/logic.py
-from collections import deque
+from collections import deque, defaultdict
 from heroes_bd import heroes, heroes_counters, hero_roles, heroes_compositions
 from core.translations import get_text, DEFAULT_LANGUAGE as global_default_language
-# <<< ИЗМЕНЕНО: Импорт актуальных констант AKAZE >>>
+# <<< ИЗМЕНЕНО: Импорт констант AKAZE из utils >>>
 from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
                        AKAZE_DESCRIPTOR_TYPE)
 # <<< ------------------------------------------- >>>
@@ -16,6 +16,17 @@ import cv2
 import numpy as np
 import os
 import logging
+import time # Убираем неиспользуемый import time
+
+# Убираем импорты torch, torchvision, PIL, т.к. возвращаемся к AKAZE
+# import torch
+# import torchvision.transforms as transforms
+# import torchvision.models as models
+# from PIL import Image
+# import torch.nn.functional as F
+from core import images_load
+# from PySide6.QtCore import QBuffer, QByteArray, QIODevice # Убираем
+# import io # Убираем
 
 MIN_TANKS = 1; MAX_TANKS = 3; MIN_SUPPORTS = 2; MAX_SUPPORTS = 3; TEAM_SIZE = 6
 
@@ -25,6 +36,23 @@ class CounterpickLogic:
         self.priority_heroes = set(); self.effective_team = []
         self.DEFAULT_LANGUAGE = global_default_language; self.APP_VERSION = app_version
         logging.info(f"[Logic] Initialized. APP_VERSION set to: '{self.APP_VERSION}'")
+        # <<< Убираем инициализацию модели эмбеддингов >>>
+        # self.embedding_model = None
+        # self.preprocess = None
+        # self.device = None
+        # self.hero_embeddings = {}
+        # self.icon_size = (95, 95)
+        # self._initialize_embedding_model()
+        # if self.embedding_model: self._precompute_hero_embeddings()
+        # else: logging.error("[Logic Init] Embedding model failed to initialize, skipping embedding precomputation.")
+        # <<< ------------------------------------------ >>>
+
+
+    # <<< Убираем методы, связанные с эмбеддингами >>>
+    # def _initialize_embedding_model(self): ...
+    # def _precompute_hero_embeddings(self): ...
+    # <<< ------------------------------------- >>>
+
 
     def set_selection(self, desired_selection_set):
         logging.debug(f"[Logic] set_selection called with set: {desired_selection_set}")
@@ -119,6 +147,7 @@ class CounterpickLogic:
             else: break
         self.effective_team = list(effective_team); return self.effective_team
 
+    # <<< ВОЗВРАЩАЕМ ЛОГИКУ С AKAZE >>>
     def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=None): # threshold не используется
         """
         Ищет героев на изображении image_cv2 с использованием AKAZE Feature Matching.
@@ -126,6 +155,7 @@ class CounterpickLogic:
         """
         if image_cv2 is None: logging.error("[ERROR][recognize_akaze] Input image is None."); return []
         if not hero_templates: logging.error("[ERROR][recognize_akaze] Template dictionary is empty."); return []
+
         try:
             image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
             if image_gray is None: raise ValueError("Failed to convert screenshot to grayscale")
@@ -158,20 +188,28 @@ class CounterpickLogic:
                     for m, n in valid_matches:
                         if m.distance < AKAZE_LOWE_RATIO * n.distance: good_matches.append(m)
                     num_good_matches = len(good_matches)
-                    logging.debug(f"[RECOGNIZE AKAZE] Hero: '{hero_name}', Template: {i}, Good Matches: {num_good_matches}") # DEBUG
+                    logging.debug(f"[RECOGNIZE AKAZE] Hero: '{hero_name}', Template: {i}, Good Matches: {num_good_matches}")
                     if num_good_matches > max_good_matches_for_hero: max_good_matches_for_hero = num_good_matches
                 except cv2.error as e: logging.error(f"[ERROR][recognize_akaze] OpenCV error processing template {i} for '{hero_name}': {e}")
                 except Exception as e: logging.error(f"[ERROR][recognize_akaze] Unexpected error processing template {i} for '{hero_name}': {e}", exc_info=True)
 
-            recognized_heroes_scores[hero_name] = max_good_matches_for_hero
+            recognized_heroes_scores[hero_name] = max_good_matches_for_hero # Сохраняем лучший результат для героя
             if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT: logging.info(f"[RECOGNIZE AKAZE] ----- РАСПОЗНАН: {hero_name} (Matches: {max_good_matches_for_hero} >= {AKAZE_MIN_MATCH_COUNT}) -----")
             elif max_good_matches_for_hero > 0 : logging.info(f"[RECOGNIZE AKAZE] Герой НЕ распознан: {hero_name} (Matches: {max_good_matches_for_hero} < {AKAZE_MIN_MATCH_COUNT})")
 
         final_heroes = [hero for hero, score in recognized_heroes_scores.items() if score >= AKAZE_MIN_MATCH_COUNT]
         final_heroes_sorted = sorted(final_heroes, key=lambda h: recognized_heroes_scores.get(h, 0), reverse=True)
         logging.info(f"[RECOGNIZE AKAZE] Распознавание завершено. Итог ({len(final_heroes_sorted)}/{TEAM_SIZE}): {final_heroes_sorted}")
+
+        # Логирование топ-N лучших скоров (по количеству совпадений)
         if recognized_heroes_scores:
-            sorted_matches_all = sorted(recognized_heroes_scores.items(), key=lambda item: item[1], reverse=True); top_n = 10
-            logging.info(f"[RECOGNIZE AKAZE] Топ-{top_n} лучших совпадений (по кол-ву good matches):")
-            for i, (hero, val) in enumerate(sorted_matches_all[:top_n]): logging.info(f"[RECOGNIZE AKAZE]   {i+1}. {hero}: {val}")
+            sorted_best_scores = sorted(recognized_heroes_scores.items(), key=lambda item: item[1], reverse=True)
+            top_n = 15
+            logging.info(f"[RECOGNIZE AKAZE] Top-{top_n} best match counts found:") # Используем INFO
+            for i, (hero, score) in enumerate(sorted_best_scores[:top_n]):
+                status = "PASSED" if score >= AKAZE_MIN_MATCH_COUNT else "FAILED"
+                logging.info(f"[RECOGNIZE AKAZE]   {i+1}. {hero}: {score} ({status})") # Используем INFO
+            logging.info("-" * 30)
+
         return final_heroes_sorted[:TEAM_SIZE]
+    # <<< ------------------------------------------------------ >>>
