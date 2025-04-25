@@ -3,27 +3,27 @@
 # Словарь контрпиков: ключ - герой, значение - список тех, кого он контрит
 heroes_counters = {
     "Hulk": ["Iron Man", "Psylocke", "Storm", "Punisher", "Namor", "Thor", "Peni Parker", "Wolverine", "Mantis",
-             "Luna Snow", "Bucky", "Adam Warlock"],
+             "Luna Snow", "Bucky", "Adam Warlock","Emma Frost"],
     "Groot": ["Punisher", "Hulk", "Venom", "Storm", "Wolverine", "Iron Man", "Bucky", "Hela", "Cloak and Dagger", # <<< ИЗМЕНЕНО
               "Captain America", "Thor", "Rocket Racoon", "Luna Snow", "Mantis", "Invisible Woman", "Psylocke",
               "StarLord", "SpiderMan", "Emma Frost"],
     "Thor": ["Peni Parker", "Iron Man", "Storm", "Wolverine", "Punisher", "StarLord", "Witch", "Mantis",
              "Psylocke", "Bucky", "Luna Snow",
-             "Adam Warlock", "Witch", "Namor", "Squirrel Girl"],
+             "Adam Warlock", "Witch", "Namor", "Squirrel Girl","Emma Frost"],
     "Doctor Strange": ["Wolverine", "Black Panther", "Hulk", "Magik", "Punisher", "Psylocke",
                        "Invisible Woman", "Mantis", "Luna Snow", "Mr Fantastic", "Bucky"], # <<< ИЗМЕНЕНО
     "The Thing": ["Groot", "Iron Man", "Squirrel Girl", "Storm", "Hela", "Adam Warlock", "Witch", "Moon Knight",
                   "Doctor Strange", "StarLord", "Peni Parker", "Punisher", "Psylocke", "Hawkeye",
-                  "Widow", "Namor", "Human Torch", "Loki", "Jeff", "Rocket Racoon", "Cloak and Dagger"], # <<< ИЗМЕНЕНО
+                  "Widow", "Namor", "Human Torch", "Loki", "Jeff", "Rocket Racoon", "Cloak and Dagger","Emma Frost"], # <<< ИЗМЕНЕНО
     "Venom": ["Wolverine", "Punisher", "Storm", "Iron Man", "Bucky", "Peni Parker", "Adam Warlock",
-              "Witch", "Squirrel Girl", "Namor", "Luna Snow", "Mantis", "The Thing"],
+              "Witch", "Squirrel Girl", "Namor", "Luna Snow", "Mantis", "The Thing","Emma Frost"],
     "Peni Parker": ["Iron Man", "Storm", "Punisher", "StarLord", "Doctor Strange", "Namor", "Groot", "Loki",
                     "Bucky", "Hela", "Moon Knight", "Psylocke", "Adam Warlock", "Invisible Woman"],
     "Captain America": ["Groot", "Namor", "Hela", "Storm", "Witch", "Loki", "Peni Parker", "Iron Man",
-                        "Human Torch", "Jeff", "Rocket Racoon", "Adam Warlock", "Witch", "The Thing"],
+                        "Human Torch", "Jeff", "Rocket Racoon", "Adam Warlock", "Witch", "The Thing","Emma Frost"],
     "Magneto": ["Storm", "Groot", "Magik", "Loki", "Adam Warlock",
                 "Luna Snow", "Mr Fantastic", "Bucky", "SpiderMan", "The Thing"], # <<< ИЗМЕНЕНО
-    "Emma Frost": [],
+    "Emma Frost": ["Punisher", "Hela",  "Hawkeye", "Widow"],
 
 
     "Punisher": ["Hela", "Hawkeye", "Fister", "Magik", "Black Panther",
@@ -42,7 +42,7 @@ heroes_counters = {
                  "Captain America", "Magneto", "Rocket Racoon", "Loki", "Cloak and Dagger"], # <<< ИЗМЕНЕНО
     "Mr Fantastic": ["Groot", "Storm", "Punisher", "Iron Man", "Hawkeye", "Hela", "Bucky", "Widow", # <<< ИЗМЕНЕНО (ключ)
                       "Squirrel Girl", "Mantis", "Luna Snow", "Adam Warlock", "Cloak and Dagger", "Jeff", "Peni Parker", # <<< ИЗМЕНЕНО
-                      "Witch"],
+                      "Witch","Emma Frost"],
     "Storm": [
         "Doctor Strange", "Punisher", "Hela", "Namor", "Fister", "Psylocke",
         "Widow", "SpiderMan", "StarLord",
@@ -58,7 +58,7 @@ heroes_counters = {
                       "Iron Man", "Witch", "Human Torch", "Magneto", "Hulk", "Hela", "Widow"],
     "SpiderMan": ["Namor", "Hela", "Hawkeye", "Luna Snow", "Cloak and Dagger", # <<< ИЗМЕНЕНО
                    "Adam Warlock", "Rocket Racoon", "Jeff",
-                   "Squirrel Girl", "Peni Parker", "Captain America", "Witch", "Bucky", "Punisher"],
+                   "Squirrel Girl", "Peni Parker", "Captain America", "Witch", "Bucky", "Punisher","The Thing","Emma Frost"],
     "StarLord": ["Magneto", "Luna Snow", "Loki", "Doctor Strange", "Hela", "Punisher", "Hawkeye", "Namor", "Mantis",
                   "Invisible Woman", "Hulk", "Witch"],
     "Wolverine": ["Peni Parker", "Iron Man", "Namor", "Storm", "Invisible Woman", "Captain America", "Psylocke",
@@ -67,7 +67,7 @@ heroes_counters = {
     "Hawkeye": ["Psylocke", "Groot", "SpiderMan", "Hela", "Doctor Strange", "Black Panther", "Fister",
                 "Rocket Racoon", "Loki"],
     "Magik": ["Iron Man", "Namor", "Storm", "Doctor Strange", "Luna Snow", "Peni Parker", "Magneto", "Thor",
-              "Bucky", "Adam Warlock", "Cloak and Dagger", "Jeff", "Rocket Racoon", "Witch"], # <<< ИЗМЕНЕНО
+              "Bucky", "Adam Warlock", "Cloak and Dagger", "Jeff", "Rocket Racoon", "Witch", "The Thing","Emma Frost"], # <<< ИЗМЕНЕНО
     "Widow": ["Psylocke", "Magik", "Black Panther", "Doctor Strange", "Venom", "Captain America",
                     "Witch"],
     "Witch": ["Punisher", "Hawkeye", "Hela", "Peni Parker", "Mantis", "Luna Snow"],
@@ -75,7 +75,7 @@ heroes_counters = {
               "Loki", "Cloak and Dagger", "Adam Warlock"], # <<< ИЗМЕНЕНО
     "Fister": ["Namor", "Captain America", "Invisible Woman", "Rocket Racoon", "Loki", "Storm",
                   "Luna Snow", "Bucky", "Punisher", "Mantis", "Hulk", "Peni Parker", "Witch",
-                  "Squirrel Girl", "Magik", "Hela", "Adam Warlock"],
+                  "Squirrel Girl", "Magik", "Hela", "Adam Warlock","Emma Frost"],
     "Human Torch": ["Hela", "Hawkeye", "Punisher", "Psylocke", "SpiderMan", "Luna Snow", "Hulk", "Witch"],
 
 
@@ -127,7 +127,7 @@ heroes_compositions = {
     "Venom": [],
     "Peni Parker": ["Venom", "Groot", "Luna Snow", "Invisible Woman", "Cloak and Dagger"], # <<< ИЗМЕНЕНО
     "Captain America": ["Thor"],
-    "Magneto": ["Witch"],
+    "Magneto": [],
 
     "Punisher": ["Doctor Strange", "Rocket Racoon"],
     "Hela": [],
@@ -171,10 +171,18 @@ hero_roles = {
                  "Adam Warlock"]
 }
 
+flunkers={
+"Hulk" "Thor" "The Thing" "Venom" "Captain America" "Psylocke" "Mr Fantastic" "Black Panther" "SpiderMan" "Magik" "Witch" "Fister" "Jeff"
+}
+
+range ={
+"Punisher" "Hela" "Bucky" "Hawkeye" "Widow"
+}
+
 # Информационные списки (не используются в логике напрямую)
-teammates_healers_noobs = {
+if_teammates_healers_noobs = {
     "SpiderMan", "Jeff", "Fister", "Witch", "Psylocke", "Captain America"
 }
-need_defend_healers={
+if_need_defend_healers={
 # грут стрендж пени магнето 3хила "Bucky" "Punisher" "Hela" "Psylocke" "Storm" "Hawkeye" "Witch" "Namor"
 }

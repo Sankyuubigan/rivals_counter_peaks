@@ -7,7 +7,6 @@
       <requestedPrivileges>
         <!-- <<< ИЗМЕНЕНО: Запрашиваем права администратора для keyboard >>> -->
         <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
-        <!-- <<< ---------------------------------------------------- >>> -->
       </requestedPrivileges>
     </security>
   </trustInfo>

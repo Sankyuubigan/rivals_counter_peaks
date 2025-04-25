@@ -8,7 +8,6 @@ import platform
 import logging
 
 # --- Настройка логирования для скрипта сборки ---
-# Устанавливаем уровень INFO
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s', datefmt='%H:%M:%S')
 
 # --- Определяем пути ---
@@ -17,6 +16,7 @@ project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
 core_dir = os.path.join(project_root, "core")
 resources_dir_abs = os.path.join(project_root, "resources")
 dist_dir = os.path.join(project_root, 'dist')
+build_cache_dir = os.path.join(project_root, "build_cache") # <--- Переменная для папки кэша
 main_script = os.path.join(core_dir, "main.py")
 hooks_dir = script_dir
 # --- ---
@@ -26,6 +26,8 @@ now = datetime.datetime.now()
 version = f"{now.month}.{now.day}"
 output_name = f"rivals_counter_{version}"
 version_file_path = os.path.join(core_dir, "_version.py")
+spec_file_path = os.path.join(project_root, f"{output_name}.spec") # <--- Переменная для spec файла
+
 logging.info(f"Генерация файла версии: {version_file_path}")
 try:
     with open(version_file_path, "w", encoding="utf-8") as vf:
@@ -37,11 +39,26 @@ except Exception as e:
     sys.exit(1)
 # --- ---
 
+# <<< --- Принудительная очистка перед сборкой --- >>>
+logging.info("Принудительная очистка перед сборкой...")
+if os.path.exists(spec_file_path):
+    try:
+        os.remove(spec_file_path)
+        logging.info(f"Удален старый spec файл: {spec_file_path}")
+    except Exception as e:
+        logging.warning(f"Не удалось удалить старый spec файл {spec_file_path}: {e}")
+if os.path.exists(build_cache_dir):
+    try:
+        shutil.rmtree(build_cache_dir)
+        logging.info(f"Удалена папка кэша: {build_cache_dir}")
+    except Exception as e:
+        logging.warning(f"Не удалось удалить папку кэша {build_cache_dir}: {e}")
+# <<< --- КОНЕЦ ОЧИСТКИ --- >>>
+
 # --- Формируем список данных ---
 data_to_add = [
     f'--add-data "{resources_dir_abs}{os.pathsep}resources"',
-    f'--add-data "{os.path.join(project_root, "heroes_bd.py")}{os.pathsep}."',
-    # _version.py теперь импортируется, PyInstaller должен найти его сам
+    f'--add-data "{os.path.join(core_dir, "heroes_bd.py")}{os.pathsep}."',
 ]
 # --- ---
 
@@ -49,8 +66,12 @@ data_to_add = [
 command_parts = [
     'pyinstaller', '--noconfirm', '--onefile', '--windowed',
     f'--name "{output_name}"', f'--distpath "{dist_dir}"',
-    f'--workpath "{os.path.join(project_root, "build_cache")}"', f'--specpath "{project_root}"',
-    f'--additional-hooks-dir "{hooks_dir}"', f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"',
+    f'--workpath "{build_cache_dir}"',
+    f'--specpath "{project_root}"',
+    f'--additional-hooks-dir "{hooks_dir}"',
+    # <<< --- УДАЛЕНО: Строка с --icon --- >>>
+    # f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"',
+    # <<< --- КОНЕЦ УДАЛЕНИЯ --- >>>
     '--hidden-import keyboard', '--hidden-import mss', '--hidden-import cv2',
     '--hidden-import numpy', '--hidden-import pyperclip', '--hidden-import ctypes',
     '--hidden-import ctypes.wintypes', f'--paths "{core_dir}"', f'--paths "{project_root}"'
@@ -66,6 +87,7 @@ print("-" * 60); logging.info(f"Версия приложения: {version}"); 
 logging.info(f"Выполняем команду:\n{command}"); print("-" * 60); logging.info("Запуск PyInstaller...")
 rc = 1
 try:
+    # Устанавливаем check=True, чтобы subprocess бросил исключение при ошибке, если нужно
     build_process = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=project_root, check=False)
     print("--- PyInstaller STDOUT ---"); print(build_process.stdout or "N/A"); print("-" * 26)
     print("--- PyInstaller STDERR ---"); print(build_process.stderr or "N/A"); print("-" * 26)
@@ -80,21 +102,18 @@ except Exception as e: logging.critical(f"Критическая ошибка п
 # --- ---
 
 # --- Очистка временных файлов ---
-force_clean = False
-if rc == 0 or force_clean:
-    logging.info("Очистка временных файлов...")
-    spec_file = os.path.join(project_root, f"{output_name}.spec"); build_dir = os.path.join(project_root, "build_cache")
-    # Удаляем _version.py только после успешной сборки
-    if rc == 0 and os.path.exists(version_file_path):
+if rc == 0:
+    logging.info("Очистка временных файлов после успешной сборки...")
+    if os.path.exists(version_file_path):
         try: os.remove(version_file_path); logging.info(f"Удален файл версии: {version_file_path}")
         except Exception as e: logging.warning(f"Не удалось удалить {version_file_path}: {e}")
-    elif rc != 0: logging.warning(f"Сборка не удалась, файл версии {version_file_path} не удален.")
-    if os.path.exists(spec_file):
-        try: os.remove(spec_file); logging.info(f"Удален файл: {spec_file}")
-        except Exception as e: logging.warning(f"Не удалось удалить {spec_file}: {e}")
-    if os.path.exists(build_dir):
-        try: shutil.rmtree(build_dir); logging.info(f"Удалена папка: {build_dir}")
-        except Exception as e: logging.warning(f"Не удалось удалить папку {build_dir}: {e}")
-else: logging.warning("Сборка завершилась с ошибкой, временные файлы не удалены для анализа.")
+    if os.path.exists(spec_file_path):
+        try: os.remove(spec_file_path); logging.info(f"Удален файл spec: {spec_file_path}")
+        except Exception as e: logging.warning(f"Не удалось удалить spec файл {spec_file_path} после сборки: {e}")
+    if os.path.exists(build_cache_dir):
+        try: shutil.rmtree(build_cache_dir); logging.info(f"Удалена папка build_cache: {build_cache_dir}")
+        except Exception as e: logging.warning(f"Не удалось удалить папку {build_cache_dir} после сборки: {e}")
+else:
+    logging.warning("Сборка завершилась с ошибкой, временные файлы (_version.py, *.spec, build_cache) не удалены для анализа.")
 # --- ---
 logging.info("Скрипт сборки завершен."); sys.exit(rc)
