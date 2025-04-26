@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import os
 import sys
-from heroes_bd import heroes_counters, heroes
+from database.heroes_bd import heroes_counters, heroes
 import logging
 
 # --- Константы для распознавания ---

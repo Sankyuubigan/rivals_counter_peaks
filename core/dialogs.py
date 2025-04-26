@@ -3,10 +3,9 @@
 from PySide6.QtWidgets import QDialog, QTextBrowser, QPushButton, QVBoxLayout
 # <<< -------------------------------------------------- >>>
 from PySide6.QtCore import Qt
-import translations
-import heroes_bd
+from database import heroes_bd
 from translations import get_text, TRANSLATIONS
-import pyperclip
+
 
 class AuthorDialog(QDialog):
     def __init__(self, parent):

@@ -1,12 +1,11 @@
 # File: images_load.py
-from PySide6.QtGui import QPixmap, Qt, QColor, QTransform
+from PySide6.QtGui import QPixmap, Qt, QColor
 from PySide6.QtCore import QSize
 import os
 import sys
 import cv2
-import numpy as np
 from collections import defaultdict
-from heroes_bd import heroes as ALL_HERO_NAMES
+from database.heroes_bd import heroes as ALL_HERO_NAMES
 import logging
 
 def resource_path(relative_path):

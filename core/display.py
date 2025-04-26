@@ -1,11 +1,10 @@
 # File: core/display.py
-from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollArea, QMessageBox
-from PySide6.QtGui import QPixmap, QIcon # Добавляем QIcon
+from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollArea
 from PySide6.QtCore import Qt
-from heroes_bd import heroes_counters
+from database.heroes_bd import heroes_counters
 from translations import get_text
 # <<< ИЗМЕНЕНО: Импорт is_invalid_pixmap >>>
-from images_load import is_invalid_pixmap, load_default_pixmap
+from images_load import is_invalid_pixmap
 # <<< ---------------------------------- >>>
 import logging
 

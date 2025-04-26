@@ -1,13 +1,12 @@
 # File: core/right_panel.py
 import translations
-import delegate
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QFrame, QLabel, QListWidget, QListWidgetItem,
-    QListView, QPushButton, QVBoxLayout, QWidget, QMenu
+    QListView, QPushButton, QVBoxLayout, QWidget
 )
-from heroes_bd import heroes
+from database.heroes_bd import heroes
 from images_load import is_invalid_pixmap
 # <<< ИЗМЕНЕНО: Импортируем только TEAM_SIZE из logic >>>
 from logic import TEAM_SIZE

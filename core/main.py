@@ -35,8 +35,6 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 import logic
 import images_load
 import utils
-import heroes_bd
-import translations
 from main_window import MainWindow
 
 if __name__ == "__main__":

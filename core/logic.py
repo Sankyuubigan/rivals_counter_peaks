@@ -1,6 +1,7 @@
 # File: core/logic.py
-from collections import deque, defaultdict
-from heroes_bd import heroes, heroes_counters, hero_roles, heroes_compositions
+from collections import deque
+from database.heroes_bd import heroes, heroes_counters, heroes_compositions
+from database.roles_and_groups import hero_roles
 from core.translations import get_text, DEFAULT_LANGUAGE as global_default_language
 # <<< ИЗМЕНЕНО: Импорт констант AKAZE из utils >>>
 from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
@@ -13,10 +14,7 @@ except ImportError:
     except ImportError: app_version_from_file = "dev"
 
 import cv2
-import numpy as np
-import os
 import logging
-import time # Убираем неиспользуемый import time
 
 # Убираем импорты torch, torchvision, PIL, т.к. возвращаемся к AKAZE
 # import torch
@@ -24,7 +22,6 @@ import time # Убираем неиспользуемый import time
 # import torchvision.models as models
 # from PIL import Image
 # import torch.nn.functional as F
-from core import images_load
 # from PySide6.QtCore import QBuffer, QByteArray, QIODevice # Убираем
 # import io # Убираем
 
