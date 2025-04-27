@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
 core_dir = os.path.join(project_root, "core")
+db_dir = os.path.join(project_root, "database")
 resources_dir_abs = os.path.join(project_root, "resources")
 dist_dir = os.path.join(project_root, 'dist')
 build_cache_dir = os.path.join(project_root, "build_cache") # <--- Переменная для папки кэша
@@ -58,7 +59,8 @@ if os.path.exists(build_cache_dir):
 # --- Формируем список данных ---
 data_to_add = [
     f'--add-data "{resources_dir_abs}{os.pathsep}resources"',
-    f'--add-data "{os.path.join(core_dir, "heroes_bd.py")}{os.pathsep}."',
+    f'--add-data "{os.path.join(db_dir, "heroes_bd.py")}{os.pathsep}."',
+    f'--add-data "{os.path.join(db_dir, "roles_and_groups.py")}{os.pathsep}."',
 ]
 # --- ---
 

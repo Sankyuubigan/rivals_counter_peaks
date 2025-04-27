@@ -740,8 +740,12 @@ class MainWindow(QMainWindow):
     def _on_recognition_complete(self, recognized_heroes):
         logging.info(f"Recognition complete. Heroes: {recognized_heroes}")
         if recognized_heroes:
-            self.logic.set_selection(set(recognized_heroes)); self.update_ui_after_logic_change(); self._reset_hotkey_cursor_after_clear()
-        else: logging.info("No heroes recognized."); QMessageBox.information(self, "Распознавание", get_text('recognition_failed', language=self.logic.DEFAULT_LANGUAGE))
+            self.logic.set_selection(set(recognized_heroes))
+            self.update_ui_after_logic_change()
+            self._reset_hotkey_cursor_after_clear()
+        else:
+            logging.info("No heroes recognized.")
+            # QMessageBox.information(self, "Распознавание", get_text('recognition_failed', language=self.logic.DEFAULT_LANGUAGE))
 
     @Slot(str)
     def _on_recognition_error(self, error_message):
@@ -1066,14 +1070,14 @@ class MainWindow(QMainWindow):
             'tab+right': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+right -> Move Right"), self.move_cursor_signal.emit('right')), True),
             'tab+num 0': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 0 -> Toggle Selection"), self.toggle_selection_signal.emit()), True),
             'tab+num -': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num - -> Clear All"), self.clear_all_signal.emit()), True),
-            'tab+-': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+- -> Clear All"), self.clear_all_signal.emit()), True),
-            'tab+decimal': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+decimal -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num . (NumLock ON)
-            'tab+delete': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+delete -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num Del (NumLock OFF) / Standard Delete
-            'tab+.': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+. -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Обычная точка
+            # 'tab+-': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+- -> Clear All"), self.clear_all_signal.emit()), True),
+            # 'tab+decimal': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+decimal -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num . (NumLock ON)
+            'tab+num *': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+delete -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num Del (NumLock OFF) / Standard Delete
+            # 'tab+.': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+. -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Обычная точка
             'tab+num /': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num / -> Recognize"), self.recognize_heroes_signal.emit()), True),
-            'tab+/': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+/ -> Recognize"), self.recognize_heroes_signal.emit()), True), # Обычный слеш
-            'tab+num *': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num * -> Debug Capture"), self.debug_capture_signal.emit()), True),
-            'tab+*': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+* -> Debug Capture"), self.debug_capture_signal.emit()), True), # Обычная * (Shift+8)
+            # 'tab+/': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+/ -> Recognize"), self.recognize_heroes_signal.emit()), True), # Обычный слеш
+            'tab+num 3': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num * -> Debug Capture"), self.debug_capture_signal.emit()), True),
+            # 'tab+*': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+* -> Debug Capture"), self.debug_capture_signal.emit()), True), # Обычная * (Shift+8)
             'tab+num 7': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 7 -> Toggle Topmost"), self.toggle_topmost_signal.emit()), True), # Переключение Topmost
             'tab+num 9': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 9 -> Toggle Mouse Invisible Mode"), self.toggle_mouse_invisible_mode_signal.emit()), True), # Переключение невидимости мыши
         }

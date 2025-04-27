@@ -1,28 +1,27 @@
 maps = {
-    "Krakoa",  # поинты
-    "Yggdrasill Path",  # телега
-    "Royal Palace",  # иггсгард поинты
-    "Shin-Shibuya",  # гибридная
-    "Spider-Islands",  # телега
-    "Birnin T'Challa",  # поинты
-    "Hall of Djalia",  # открытая гибридная
-    "Symbiotic Surface",  # клинтар гибридная
-    "Hell's Heaven",  # поинты
-    "Midtown",  # телега
-    "Central Park",  # гибридная
+    "Krakoa":[жч],  # поинты
+    "Yggdrasill Path":["пени" спайдер шторм жч],  # телега
+    "Royal Palace":[],  # иггсгард поинты
+    "Shin-Shibuya":[],  # гибридная
+    "Spider-Islands":["шторм" жч],  # телега
+    "Birnin T'Challa":[],  # поинты
+    "Hall of Djalia":["спайдер"],  # открытая гибридная
+    "Symbiotic Surface":[],  # клинтар гибридная
+    "Hell's Heaven":[],  # поинты
+    "Midtown":[грут],  # телега
+    "Central Park":[грут],  # гибридная
 }
 
-good_heroes_for_maps={
+
     # https://u.gg/marvel-rivals/maps-tier-list
-"Yggdrasill Path":["пени"],
-"Hall of Djalia":["спайдер"]
-}
+
 
 # карты
 # пени паркер, грут - закрытые пространства комнаты коридоры
 # торч , паук - открытые пространства
 # игсгард телега - грут
 # клинтар веномская = стрендж
+# летающие персы = там где укрытия типа островов
 
 # атака - кэп, веном, фистер, пантера
 # оборона - пени паркер

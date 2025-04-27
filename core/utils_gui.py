@@ -25,14 +25,14 @@ def copy_to_clipboard(logic):
     print(f"Эффективная команда для копирования: {effective_team}")
 
     if effective_team:
-        text_to_copy = ', '.join(effective_team)
+        text_to_copy = 'we need these heroes: ' +', '.join(effective_team)
         try:
             pyperclip.copy(text_to_copy)
             print(f"Скопировано в буфер: {text_to_copy}")
             # <<< ИСПРАВЛЕНО: Используем translations.get_text >>>
-            QMessageBox.information(None,
-                                     translations.get_text('success', language=logic.DEFAULT_LANGUAGE),
-                                     translations.get_text('copied_to_clipboard', language=logic.DEFAULT_LANGUAGE))
+            # QMessageBox.information(None,
+            #                          translations.get_text('success', language=logic.DEFAULT_LANGUAGE),
+            #                          translations.get_text('copied_to_clipboard', language=logic.DEFAULT_LANGUAGE))
         except pyperclip.PyperclipException as e:
              print(f"Ошибка pyperclip при копировании: {e}")
              QMessageBox.warning(None,

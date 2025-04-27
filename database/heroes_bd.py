@@ -167,3 +167,4 @@ heroes_compositions = {
 #     "Rocket Racoon", "Invisible Woman", "Adam Warlock",
 # ]
 
+# https://rivalsmeta.com/characters/spider-man/matchups
