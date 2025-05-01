@@ -1,6 +1,6 @@
 maps = {
     "Krakoa":[жч],  # поинты
-    "Yggdrasill Path":["пени" спайдер шторм жч],  # телега
+    "Yggdrasill Path":["пени" спайдер шторм жч белка],  # телега
     "Royal Palace":[],  # иггсгард поинты
     "Shin-Shibuya":[],  # гибридная
     "Spider-Islands":["шторм" жч],  # телега
@@ -9,11 +9,11 @@ maps = {
     "Symbiotic Surface":[],  # клинтар гибридная
     "Hell's Heaven":[],  # поинты
     "Midtown":[грут],  # телега
-    "Central Park":[грут],  # гибридная
+    "Central Park":[грут белка пени],  # гибридная
 }
 
-
-    # https://u.gg/marvel-rivals/maps-tier-list
+# https://marvelrivals.fandom.com/wiki/Maps
+# https://u.gg/marvel-rivals/maps-tier-list
 
 
 # карты
