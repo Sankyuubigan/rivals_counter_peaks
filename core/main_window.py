@@ -9,9 +9,10 @@ import cv2 # Для сохранения скриншота
 from PySide6.QtWidgets import (
     QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
     QLabel, QPushButton, QComboBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QMenu, QStyleFactory, QApplication, QMessageBox
+    QMenu, QStyleFactory, QApplication, QMessageBox, QDialog, QTextBrowser, QLineEdit, QTextEdit
 )
-from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QPoint, QModelIndex, QMetaObject, Q_ARG, QRect
+from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QPoint, QModelIndex, QMetaObject, Q_ARG, QRect, QEvent, \
+    QObject
 from PySide6.QtGui import QIcon, QMouseEvent, QColor, QBrush, QPixmap
 
 import translations
@@ -29,6 +30,10 @@ from top_panel import TopPanel
 from left_panel import LeftPanel, create_left_panel
 from right_panel import RightPanel, HERO_NAME_ROLE
 import utils
+# <<< ДОБАВЛЕНО: Импорт для логов >>>
+from log_handler import QLogHandler
+from dialogs import LogDialog, HotkeysDialog # Импортируем новые диалоги
+# <<< ----------------------------- >>>
 
 from translations import get_text, set_language, SUPPORTED_LANGUAGES
 from utils_gui import copy_to_clipboard
@@ -63,6 +68,9 @@ class MainWindow(QMainWindow):
     toggle_mouse_invisible_mode_signal = Signal()
     # Сигнал для обновления свойства кнопки topmost
     update_topmost_button_property_signal = Signal(bool)
+    # <<< ДОБАВЛЕНО: Сигнал для копирования состава >>>
+    copy_team_signal = Signal()
+    # <<< --------------------------------------- >>>
 
 
     def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict, app_version: str):
@@ -72,6 +80,24 @@ class MainWindow(QMainWindow):
         self.app_version = app_version
         self.logic.main_window = self
         logging.info(f"App Version used by MainWindow: {self.app_version}")
+
+        # <<< ДОБАВЛЕНО: Инициализация окна и хендлера логов >>>
+        self.log_dialog = LogDialog(self)
+        self.log_handler = QLogHandler(self)
+        self.log_handler.message_logged.connect(self.log_dialog.append_log)
+        log_format = '%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s'
+        date_format = '%H:%M:%S'
+        formatter = logging.Formatter(log_format, datefmt=date_format)
+        self.log_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(self.log_handler)
+        # Устанавливаем уровень DEBUG для корневого логгера, чтобы всё шло в GUI
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.info("GUI Log Handler initialized and connected.")
+        # <<< --------------------------------------------- >>>
+        # <<< ДОБАВЛЕНО: Инициализация окна хоткеев >>>
+        self.hotkeys_dialog = HotkeysDialog(self)
+        # <<< -------------------------------------- >>>
+
         self.win_api_manager = WinApiManager(self); self.mode_manager = ModeManager(self)
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
         self.mode = self.mode_manager.current_mode; logging.info(f"Initial mode: {self.mode}")
@@ -127,12 +153,32 @@ class MainWindow(QMainWindow):
         else: logging.warning("Failed to load application icon.")
         if not self.isVisible(): self.setGeometry(100, 100, 950, 350)
         self.setMinimumSize(400, 100)
+
+        # <<< ДОБАВЛЕНО: Установка eventFilter для обработки Tab >>>
+        QApplication.instance().installEventFilter(self)
+        # <<< ------------------------------------------------- >>>
+
         self._create_main_ui_layout();
         QTimer.singleShot(0, lambda: self._update_interface_for_mode()) # Вызываем обновление после инициализации
         self._connect_signals() # Вызываем ПОСЛЕ _create_main_ui_layout
         if keyboard: self.start_keyboard_listener()
         else: logging.warning("Keyboard library not available or no admin rights, hotkeys disabled.")
         logging.info("MainWindow.__init__ finished")
+
+    # <<< ДОБАВЛЕНО: eventFilter для блокировки одиночного Tab >>>
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.KeyPress:
+            # Проверяем, что нажата ТОЛЬКО Tab и окно активно
+            if event.key() == Qt.Key_Tab and QApplication.keyboardModifiers() == Qt.KeyboardModifier.NoModifier and self.isActiveWindow():
+                 # Дополнительно проверим, что фокус не на элементе ввода (на всякий случай)
+                 focused_widget = QApplication.focusWidget()
+                 if not isinstance(focused_widget, (QComboBox, QLineEdit, QTextEdit, QTextBrowser, QListWidget)): # Добавили QListWidget, чтобы Tab не работал и там
+                     logging.debug("Ignoring single Tab press to prevent focus change.")
+                     return True # Игнорируем событие
+        # Для всех остальных событий возвращаем False, чтобы они обрабатывались стандартно
+        return super().eventFilter(watched, event)
+    # <<< ---------------------------------------------------- >>>
+
 
     def _create_main_ui_layout(self):
         logging.debug("Creating main UI layout...")
@@ -238,6 +284,9 @@ class MainWindow(QMainWindow):
         self.toggle_topmost_signal.connect(self.toggle_topmost_winapi)
         # Подключение сигнала невидимости мыши (от хоткея)
         self.toggle_mouse_invisible_mode_signal.connect(self._handle_toggle_mouse_invisible_mode)
+        # <<< ДОБАВЛЕНО: Подключение сигнала копирования состава (от хоткея) >>>
+        self.copy_team_signal.connect(self.copy_to_clipboard)
+        # <<< ----------------------------------------------------------- >>>
 
         # Подключаем сигнал для обновления свойства кнопки к слоту
         if self.topmost_button:
@@ -258,14 +307,6 @@ class MainWindow(QMainWindow):
         # Испускаем сигнал для обновления свойства/текста кнопки
         self.update_topmost_button_property_signal.emit(is_topmost)
         logging.debug(f"Emitted update_topmost_button_property_signal({is_topmost})")
-
-        # --- ИСПРАВЛЕНИЕ: Убираем принудительное отключение mouse_invisible_mode ---
-        # if self.mode == 'min' and is_topmost:
-        #     if self.mouse_invisible_mode_enabled:
-        #         logging.info("Topmost enabled while in min mode. Forcing mouse invisible mode OFF.")
-        #         self.mouse_invisible_mode_enabled = False
-        # --------------------------------------------------------------------------
-
         # В любом случае переприменяем флаг прозрачности, т.к. условия могли измениться
         logging.debug("Topmost state changed, re-applying mouse invisible mode state.")
         self._apply_mouse_invisible_mode()
@@ -276,12 +317,6 @@ class MainWindow(QMainWindow):
         logging.info("[Hotkey Handler] Toggle mouse invisible mode requested.")
         current_state = self.mouse_invisible_mode_enabled
         new_state = not current_state
-        # --- ИСПРАВЛЕНИЕ: Убираем проверку на min+topmost отсюда ---
-        # is_min_topmost = (self.mode == 'min' and self._is_win_topmost)
-        # if new_state is True and is_min_topmost:
-        #    logging.warning("Cannot ENABLE mouse invisible mode when in 'min' mode and 'topmost' is active. Keeping it OFF.")
-        #    new_state = False
-        # ---------------------------------------------------------
 
         if current_state != new_state:
             logging.info(f"Setting mouse invisible mode to: {new_state}")
@@ -292,10 +327,16 @@ class MainWindow(QMainWindow):
         else:
             logging.debug(f"Mouse invisible mode state remains: {current_state}")
 
-    # --- ИСПРАВЛЕНИЕ 3: Восстанавливаем метод и используем ТОЛЬКО WindowTransparentForInput ---
+    # --- ИСПРАВЛЕНИЕ 5: Используем ТОЛЬКО WindowTransparentForInput и следим за видимостью ---
     def _apply_mouse_invisible_mode(self):
         """Применяет или снимает флаг WindowTransparentForInput."""
         logging.debug(f"[ApplyMouseInv] Applying mouse invisible mode state: {self.mouse_invisible_mode_enabled}")
+        if not self.isVisible():
+            logging.warning("[ApplyMouseInv] Window is not visible, cannot apply flags reliably. Skipping.")
+            # Установим только внутренний флаг, но не трогаем флаги окна
+            # self.mouse_invisible_mode_enabled = False # Не сбрасываем флаг, просто не применяем
+            return
+
         flags = self.windowFlags()
         initial_flags = flags
         logging.debug(f"[ApplyMouseInv] Window flags BEFORE: {initial_flags:#x}")
@@ -318,21 +359,36 @@ class MainWindow(QMainWindow):
         logging.debug(f"[ApplyMouseInv] Window flags CALCULATED: {flags:#x}")
 
         if flags_changed:
+            # Запоминаем геометрию перед сменой флагов
+            old_geometry = self.geometry()
+            logging.debug(f"[ApplyMouseInv] Geometry BEFORE setWindowFlags: {old_geometry}")
             self.setWindowFlags(flags)
             current_flags_after_set = self.windowFlags()
             logging.debug(f"[ApplyMouseInv] Window flags IMMEDIATELY AFTER setWindowFlags: {current_flags_after_set:#x}")
-            if self.isVisible():
-                logging.debug("[ApplyMouseInv] Calling self.show() to re-apply flags...")
-                self.show() # Переприменяем флаги
-                QTimer.singleShot(0, lambda: logging.debug(f"[ApplyMouseInv] Window isVisible() state AFTER self.show(): {self.isVisible()}"))
-            else:
-                logging.debug("[ApplyMouseInv] Window not visible, skipping self.show()")
+
+            # ВАЖНО: После setWindowFlags окно может скрыться или изменить размер/положение.
+            # Принудительно показываем его и восстанавливаем геометрию.
+            logging.debug("[ApplyMouseInv] Calling self.show() and restoring geometry to re-apply flags...")
+            self.show()
+            # Небольшая задержка перед восстановлением геометрии, чтобы окно успело появиться
+            QTimer.singleShot(10, lambda: self.setGeometry(old_geometry))
+            QTimer.singleShot(20, lambda: logging.debug(f"[ApplyMouseInv] Geometry AFTER restore (async check): {self.geometry()}, Visible: {self.isVisible()}"))
+
         else:
             logging.debug("[ApplyMouseInv] Window flags for mouse transparency already set correctly.")
+            # Если флаги не менялись, но окно не видно, покажем его
+            if not self.isVisible():
+                logging.warning("[ApplyMouseInv] Flags unchanged, but window not visible. Calling show().")
+                self.show()
     # ----------------------------------------------------------------------------------
 
     def closeEvent(self, event):
-        logging.info("Close event triggered."); self.stop_keyboard_listener()
+        logging.info("Close event triggered.");
+        # <<< ДОБАВЛЕНО: Скрываем окна логов и хоткеев при закрытии >>>
+        if self.log_dialog: self.log_dialog.hide()
+        if self.hotkeys_dialog: self.hotkeys_dialog.hide()
+        # <<< ---------------------------------------------------- >>>
+        self.stop_keyboard_listener()
         if hasattr(self, 'rec_manager') and self.rec_manager: self.rec_manager.stop_recognition()
         if self._keyboard_listener_thread and self._keyboard_listener_thread.is_alive():
              logging.info("Waiting for keyboard listener thread..."); self._keyboard_listener_thread.join(timeout=0.5)
@@ -340,9 +396,8 @@ class MainWindow(QMainWindow):
              else: logging.info("Keyboard listener thread joined.")
         super().closeEvent(event)
 
-    # --- ИСПРАВЛЕНИЕ 3: Убираем проверки из обработчиков мыши ---
+    # --- Обработчики мыши без изменений ---
     def mousePressEvent(self, event: QMouseEvent):
-        # Логика перетаскивания для min режима
         if self.mode == "min" and self.top_frame and self.top_frame.underMouse():
             if event.button() == Qt.MouseButton.LeftButton:
                 self._mouse_pressed = True
@@ -353,7 +408,6 @@ class MainWindow(QMainWindow):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        # Логика перетаскивания для min режима
         if self.mode == "min" and self._mouse_pressed and self._old_pos is not None:
             delta = event.globalPosition().toPoint() - self._old_pos
             self.move(self.pos() + delta)
@@ -363,7 +417,6 @@ class MainWindow(QMainWindow):
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        # Логика перетаскивания для min режима
         if self.mode == "min" and event.button() == Qt.MouseButton.LeftButton:
             self._mouse_pressed = False
             self._old_pos = None
@@ -414,13 +467,8 @@ class MainWindow(QMainWindow):
         else:
             logging.debug(f"[ChangeMode RestorePos] Window not visible after mode change, skipping position restore for mode '{self.mode}'.")
 
-        # --- ИСПРАВЛЕНИЕ: Убираем принудительное отключение ---
-        # if self.mode == 'min' and self._is_win_topmost:
-        #      if self.mouse_invisible_mode_enabled:
-        #          logging.info(f"Entered 'min' mode while 'topmost' is active. Forcing mouse invisible mode OFF.")
-        #          self.mouse_invisible_mode_enabled = False
-        #          self._apply_mouse_invisible_mode()
-        # ------------------------------------------------------
+        # Переприменяем режим невидимости мыши после смены режима (на всякий случай)
+        QTimer.singleShot(50, self._apply_mouse_invisible_mode)
 
         self._reset_hotkey_cursor_after_mode_change()
         end_time = time.time();
@@ -530,22 +578,25 @@ class MainWindow(QMainWindow):
         logging.debug(f"[UpdateIface Flags] Final flags AFTER setWindowFlags and apply_mouse_invisible_mode: {current_flags_after:#x}")
 
         # Настройка видимости элементов верхней панели и других виджетов
-        lang_label = self.top_frame.findChild(QLabel, "language_label"); lang_combo = self.top_frame.findChild(QComboBox, "language_combo")
+        # --- ИЗМЕНЕНО: Удаляем ссылки на виджеты языка ---
+        # lang_label = self.top_frame.findChild(QLabel, "language_label"); lang_combo = self.top_frame.findChild(QComboBox, "language_combo")
         version_label = self.top_frame.findChild(QLabel, "version_label");
+        # ---
         # Используем сохраненные ссылки на кнопки
         close_button = self.close_button
         author_button = self.author_button
         rating_button = self.rating_button
+        # --- ДОБАВЛЕНО: Ссылка на кнопку меню ---
+        menu_button = self.top_panel_instance.menu_button if self.top_panel_instance else None
         # ---
 
         if version_label: logging.debug(f"Version label found. Text: '{version_label.text()}', Visible: {version_label.isVisible()}")
         else: logging.warning("Version label not found in top_frame.")
 
-        # --- ИСПРАВЛЕНИЕ 4: Явно управляем видимостью всех кнопок ---
+        # --- ИЗМЕНЕНО: Управление видимостью с учетом кнопки Меню ---
         if is_min_mode:
             logging.debug("Setting up MIN mode UI specifics...")
-            if lang_label: lang_label.hide()
-            if lang_combo: lang_combo.hide()
+            if menu_button: menu_button.hide()
             if version_label: version_label.hide()
             if author_button: author_button.hide()
             if rating_button: rating_button.hide()
@@ -563,16 +614,17 @@ class MainWindow(QMainWindow):
             if self.icons_main_h_layout:
                 self.icons_main_h_layout.setStretchFactor(self.counters_widget, 1)
                 self.icons_main_h_layout.setStretchFactor(self.enemies_widget, 0)
-        else: # middle или max
-            logging.debug(f"Setting up {current_mode.upper()} mode UI specifics...")
-            if lang_label: lang_label.show()
-            if lang_combo: lang_combo.show()
+        elif current_mode == "middle":
+            logging.debug("Setting up MIDDLE mode UI specifics...")
+            if menu_button: menu_button.show() # Показываем кнопку Меню
             if version_label: version_label.show()
+            if author_button: author_button.hide() # Скрываем отдельные кнопки
+            if rating_button: rating_button.hide() # Скрываем отдельные кнопки
             if close_button:
-                logging.debug("Hiding close button for MIDDLE/MAX mode")
+                logging.debug("Hiding close button for MIDDLE mode")
                 close_button.hide()
             else:
-                logging.error("Close button ref is None for MIDDLE/MAX mode setup!")
+                logging.error("Close button ref is None for MIDDLE mode setup!")
 
             self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
             if self.left_panel_widget: self.left_panel_widget.show()
@@ -582,15 +634,29 @@ class MainWindow(QMainWindow):
             if self.icons_main_h_layout:
                 self.icons_main_h_layout.setStretchFactor(self.counters_widget, 1)
                 self.icons_main_h_layout.setStretchFactor(self.enemies_widget, 0)
-            if current_mode == "max":
-                calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}");
-                if author_button: author_button.show()
-                if rating_button: rating_button.show()
-            else: # middle
-                calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
-                if author_button: author_button.hide()
-                if rating_button: rating_button.hide()
-        # --- Конец исправления 4 ---
+            calculated_min_h = base_h + 200; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for middle mode: {calculated_min_h}");
+        else: # max
+            logging.debug("Setting up MAX mode UI specifics...")
+            if menu_button: menu_button.hide() # Скрываем кнопку Меню
+            if version_label: version_label.show()
+            if author_button: author_button.show() # Показываем отдельные кнопки
+            if rating_button: rating_button.show() # Показываем отдельные кнопки
+            if close_button:
+                logging.debug("Hiding close button for MAX mode")
+                close_button.hide()
+            else:
+                logging.error("Close button ref is None for MAX mode setup!")
+
+            self.setWindowTitle(f"{get_text('title', language=self.logic.DEFAULT_LANGUAGE)} v{self.app_version}")
+            if self.left_panel_widget: self.left_panel_widget.show()
+            if self.icons_scroll_area: self.icons_scroll_area.show()
+            if self.enemies_widget: self.enemies_widget.hide()
+            if self.counters_widget: self.counters_widget.show()
+            if self.icons_main_h_layout:
+                self.icons_main_h_layout.setStretchFactor(self.counters_widget, 1)
+                self.icons_main_h_layout.setStretchFactor(self.enemies_widget, 0)
+            calculated_min_h = base_h + 300; self.setMinimumHeight(calculated_min_h); logging.debug(f"Set min height for max mode: {calculated_min_h}");
+        # --- Конец ИЗМЕНЕНО ---
 
         # Показываем окно ПОСЛЕ применения флагов И настройки виджетов
         logging.info("Calling window.show() after updating flags and UI visibility."); self.show();
@@ -1070,22 +1136,21 @@ class MainWindow(QMainWindow):
             'tab+right': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+right -> Move Right"), self.move_cursor_signal.emit('right')), True),
             'tab+num 0': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 0 -> Toggle Selection"), self.toggle_selection_signal.emit()), True),
             'tab+num -': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num - -> Clear All"), self.clear_all_signal.emit()), True),
-            # 'tab+-': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+- -> Clear All"), self.clear_all_signal.emit()), True),
-            # 'tab+decimal': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+decimal -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num . (NumLock ON)
-            'tab+num *': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+delete -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num Del (NumLock OFF) / Standard Delete
-            # 'tab+.': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+. -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Обычная точка
+            'tab+num *': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num * -> Toggle Mode"), self.toggle_mode_signal.emit()), True), # Num * / Delete
             'tab+num /': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num / -> Recognize"), self.recognize_heroes_signal.emit()), True),
-            # 'tab+/': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+/ -> Recognize"), self.recognize_heroes_signal.emit()), True), # Обычный слеш
-            'tab+num 3': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num * -> Debug Capture"), self.debug_capture_signal.emit()), True),
-            # 'tab+*': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+* -> Debug Capture"), self.debug_capture_signal.emit()), True), # Обычная * (Shift+8)
+            'tab+num 3': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 3 -> Debug Capture"), self.debug_capture_signal.emit()), True), # Num 3
             'tab+num 7': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 7 -> Toggle Topmost"), self.toggle_topmost_signal.emit()), True), # Переключение Topmost
             'tab+num 9': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 9 -> Toggle Mouse Invisible Mode"), self.toggle_mouse_invisible_mode_signal.emit()), True), # Переключение невидимости мыши
+            # <<< ДОБАВЛЕНО: Хоткей для копирования состава >>>
+            'tab+num 1': (lambda: (logging.info("[Hotkey Listener] HOOK: tab+num 1 -> Copy Team"), self.copy_team_signal.emit()), True),
+            # <<< --------------------------------------- >>>
         }
         hooks_registered_count = 0
         try:
             logging.info(f"Registering {len(hotkeys_map)} hooks...")
             for hotkey, (callback_or_signal_emit, suppress_flag) in hotkeys_map.items():
                 try:
+                    # suppress=True здесь должен предотвращать стандартное поведение Tab, когда он часть хоткея
                     keyboard.add_hotkey(hotkey, callback_or_signal_emit, suppress=suppress_flag, trigger_on_release=False)
                     hooks_registered_count += 1
                     logging.debug(f"Registered hotkey: {hotkey}")
@@ -1116,7 +1181,13 @@ class MainWindow(QMainWindow):
             except Exception as e_unhook: logging.error(f"Error during keyboard.unhook_all(): {e_unhook}")
             logging.info("[Hotkey] Listener thread finished.")
 
-    def copy_to_clipboard(self): copy_to_clipboard(self.logic)
+    # <<< ИЗМЕНЕНО: Слот для копирования, вызывает utils_gui.copy_to_clipboard >>>
+    @Slot()
+    def copy_to_clipboard(self):
+        """Слот для вызова функции копирования из utils_gui."""
+        logging.info("[GUI Slot] copy_to_clipboard triggered.")
+        utils_gui.copy_to_clipboard(self.logic)
+    # <<< ---------------------------------------------------------------- >>>
 
     def _reset_hotkey_cursor_after_clear(self):
          list_widget = self.right_list_widget
@@ -1130,3 +1201,26 @@ class MainWindow(QMainWindow):
                 if first_item: list_widget.scrollToItem(first_item, QAbstractItemView.ScrollHint.EnsureVisible)
          else:
              self.hotkey_cursor_index = -1
+
+    # <<< ДОБАВЛЕНО: Методы для показа окон логов и хоткеев >>>
+    @Slot()
+    def show_log_window(self):
+        """Показывает или скрывает окно логов."""
+        if not self.log_dialog:
+            logging.error("Log dialog not initialized.")
+            return
+        if self.log_dialog.isVisible():
+            self.log_dialog.hide()
+        else:
+            self.log_dialog.show()
+            self.log_dialog.raise_() # Поднять поверх других окон приложения
+            self.log_dialog.activateWindow() # Сделать активным
+
+    @Slot()
+    def _show_hotkeys_dialog(self):
+        """Показывает диалог со списком хоткеев."""
+        if not self.hotkeys_dialog:
+            logging.error("Hotkeys dialog not initialized.")
+            return
+        self.hotkeys_dialog.exec() # Показываем модально
+    # <<< ------------------------------------------------ >>>

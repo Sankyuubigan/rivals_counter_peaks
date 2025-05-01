@@ -71,13 +71,23 @@ command_parts = [
     f'--workpath "{build_cache_dir}"',
     f'--specpath "{project_root}"',
     f'--additional-hooks-dir "{hooks_dir}"',
-    # <<< --- УДАЛЕНО: Строка с --icon --- >>>
-    # f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"',
-    # <<< --- КОНЕЦ УДАЛЕНИЯ --- >>>
+    # Иконка добавляется через spec файл, если он будет использоваться, или здесь для прямого вызова
+    # f'--icon="{os.path.join(resources_dir_abs, "icon.ico")}"', # или .png
+    # Добавляем скрытые импорты, включая pyperclip
     '--hidden-import keyboard', '--hidden-import mss', '--hidden-import cv2',
     '--hidden-import numpy', '--hidden-import pyperclip', '--hidden-import ctypes',
     '--hidden-import ctypes.wintypes', f'--paths "{core_dir}"', f'--paths "{project_root}"'
 ]
+# Добавляем иконку, если файл существует
+icon_path_ico = os.path.join(resources_dir_abs, "icon.ico")
+icon_path_png = os.path.join(resources_dir_abs, "icon.png")
+if os.path.exists(icon_path_ico):
+    command_parts.append(f'--icon="{icon_path_ico}"')
+elif os.path.exists(icon_path_png):
+     command_parts.append(f'--icon="{icon_path_png}"')
+else:
+    logging.warning(f"Icon file not found at {icon_path_ico} or {icon_path_png}")
+
 manifest_path = os.path.join(script_dir, "manifest.xml")
 if platform.system() == "Windows" and os.path.exists(manifest_path): command_parts.append(f'--manifest "{manifest_path}"')
 elif platform.system() == "Windows": logging.warning(f"Файл манифеста не найден: {manifest_path}.")
