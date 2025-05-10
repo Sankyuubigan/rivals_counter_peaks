@@ -1,11 +1,10 @@
 # File: core/dialogs.py
 # <<< ИЗМЕНЕНО: Импортируем QTextBrowser вместо QTextEdit >>>
-from PySide6.QtWidgets import QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QScrollArea, QWidget, \
-    QLabel, QHBoxLayout
+from PySide6.QtWidgets import QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout
 # <<< -------------------------------------------------- >>>
 from PySide6.QtCore import Qt, Slot, QTimer
 from database import heroes_bd
-from translations import get_text, TRANSLATIONS
+from core.lang.translations import get_text, TRANSLATIONS
 # <<< ДОБАВЛЕНО: Импорт pyperclip для копирования логов >>>
 import pyperclip
 # <<< ------------------------------------------------ >>>

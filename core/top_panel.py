@@ -1,11 +1,9 @@
 # File: core/top_panel.py
 from PySide6.QtWidgets import (
-    QFrame, QLabel, QSlider, QComboBox, QPushButton, QHBoxLayout, QSpacerItem, QSizePolicy, QWidget, QMenu
+    QFrame, QLabel, QSlider, QPushButton, QHBoxLayout, QMenu
 )
-from PySide6.QtCore import Qt, QMetaObject, QTimer, Property, Slot # Добавлен Property, Slot
-import translations
-import dialogs
-from translations import get_text, SUPPORTED_LANGUAGES
+from PySide6.QtCore import Qt, QTimer  # Добавлен Property, Slot
+from core.lang.translations import get_text, SUPPORTED_LANGUAGES
 from dialogs import show_author_info, show_hero_rating
 from typing import TYPE_CHECKING
 import logging

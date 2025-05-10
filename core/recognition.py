@@ -2,14 +2,10 @@
 import logging
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import QMessageBox
-import cv2
-import numpy as np
 
-import utils
-import translations
 # Используем актуальные константы (AKAZE_MIN_MATCH_COUNT не нужен здесь напрямую)
 from utils import RECOGNITION_AREA, capture_screen_area
-from translations import get_text
+from core.lang.translations import get_text
 
 class RecognitionWorker(QObject):
     """Воркер для распознавания героев в отдельном потоке."""

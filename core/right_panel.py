@@ -1,5 +1,5 @@
 # File: core/right_panel.py
-import translations
+from core.lang import translations
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
@@ -26,7 +26,8 @@ class RightPanel:
         self.frame = QFrame(window); self.frame.setObjectName("right_frame"); self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.list_widget = QListWidget(); self.list_widget.setObjectName("right_list_widget")
         # <<< ИЗМЕНЕНО: Используем TEAM_SIZE напрямую >>>
-        self.selected_heroes_label = QLabel(translations.get_text("selected_none", language=self.logic.DEFAULT_LANGUAGE, max_team_size=TEAM_SIZE))
+        self.selected_heroes_label = QLabel(
+            translations.get_text("selected_none", language=self.logic.DEFAULT_LANGUAGE, max_team_size=TEAM_SIZE))
         # <<< -------------------------------------- >>>
         self.selected_heroes_label.setObjectName("selected_heroes_label"); self.selected_heroes_label.setWordWrap(True)
         self.copy_button = QPushButton(translations.get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE)); self.copy_button.setObjectName("copy_button")

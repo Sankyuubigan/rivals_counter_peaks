@@ -1,18 +1,5 @@
 # File: core/mode_manager.py
-import time
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QScrollArea)
-from PySide6.QtCore import Qt, QTimer
-import left_panel
-import right_panel
-import images_load
-import translations
 import logging
-
-from left_panel import LeftPanel, create_left_panel
-from right_panel import RightPanel
-from images_load import get_images_for_mode, SIZES
-from translations import get_text
-
 
 # --- Константы ---
 PANEL_MIN_WIDTHS = {

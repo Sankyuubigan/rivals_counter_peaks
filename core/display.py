@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollArea
 from PySide6.QtCore import Qt
 from database.heroes_bd import heroes_counters
-from translations import get_text
+from core.lang.translations import get_text
 # <<< ИЗМЕНЕНО: Импорт is_invalid_pixmap >>>
 from images_load import is_invalid_pixmap
 # <<< ---------------------------------- >>>

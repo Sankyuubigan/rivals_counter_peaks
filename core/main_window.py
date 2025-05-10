@@ -9,25 +9,22 @@ import cv2 # Для сохранения скриншота
 from PySide6.QtWidgets import (
     QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
     QLabel, QPushButton, QComboBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QMenu, QStyleFactory, QApplication, QMessageBox, QDialog, QTextBrowser, QLineEdit, QTextEdit
+    QMenu, QApplication, QMessageBox, QTextBrowser, QLineEdit, QTextEdit
 )
-from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QPoint, QModelIndex, QMetaObject, Q_ARG, QRect, QEvent, \
+from PySide6.QtCore import Qt, Signal, Slot, QTimer, QThread, QPoint, QMetaObject, QEvent, \
     QObject
 from PySide6.QtGui import QIcon, QMouseEvent, QColor, QBrush, QPixmap
 
-import translations
 import utils_gui
-import logic
 import delegate
-import dialogs
 import display
 import horizontal_list # Импортируем модуль
 import images_load
 from mode_manager import ModeManager, PANEL_MIN_WIDTHS, MODE_DEFAULT_WINDOW_SIZES
-from win_api import WinApiManager, user32 as winapi_user32, is_window_topmost
+from win_api import WinApiManager
 from recognition import RecognitionManager, RecognitionWorker
 from top_panel import TopPanel
-from left_panel import LeftPanel, create_left_panel
+from left_panel import create_left_panel
 from right_panel import RightPanel, HERO_NAME_ROLE
 import utils
 # <<< ДОБАВЛЕНО: Импорт для логов >>>
@@ -35,12 +32,10 @@ from log_handler import QLogHandler
 from dialogs import LogDialog, HotkeysDialog # Импортируем новые диалоги
 # <<< ----------------------------- >>>
 
-from translations import get_text, set_language, SUPPORTED_LANGUAGES
-from utils_gui import copy_to_clipboard
+from core.lang.translations import get_text, set_language, SUPPORTED_LANGUAGES
 from logic import CounterpickLogic, TEAM_SIZE
-from images_load import get_images_for_mode, SIZES, load_default_pixmap, is_invalid_pixmap
-from horizontal_list import update_horizontal_icon_list, update_enemy_horizontal_list, clear_layout as clear_layout_util
-from display import generate_counterpick_display
+from images_load import get_images_for_mode, SIZES, load_default_pixmap
+from horizontal_list import clear_layout as clear_layout_util
 
 try:
     import keyboard

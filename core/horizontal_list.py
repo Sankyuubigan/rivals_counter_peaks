@@ -1,10 +1,9 @@
 # File: core/horizontal_list.py
-from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QFrame, QHBoxLayout
+from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
 from PySide6.QtCore import QSize, Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QBrush, QPixmap
-import translations
-from translations import get_text
-from images_load import is_invalid_pixmap, SIZES as IMG_SIZES, load_default_pixmap
+from core.lang.translations import get_text
+from images_load import is_invalid_pixmap, SIZES as IMG_SIZES
 import math
 import logging
 

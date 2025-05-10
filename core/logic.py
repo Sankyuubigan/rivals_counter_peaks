@@ -2,7 +2,7 @@
 from collections import deque
 from database.heroes_bd import heroes, heroes_counters, heroes_compositions
 from database.roles_and_groups import hero_roles
-from core.translations import get_text, DEFAULT_LANGUAGE as global_default_language
+from core.lang.translations import get_text, DEFAULT_LANGUAGE as global_default_language
 # <<< ИЗМЕНЕНО: Импорт констант AKAZE из utils >>>
 from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
                        AKAZE_DESCRIPTOR_TYPE)
