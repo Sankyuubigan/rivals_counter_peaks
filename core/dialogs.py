@@ -1,6 +1,6 @@
 # File: core/dialogs.py
 from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout,
-                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit)
+                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit, QApplication) # Добавил QApplication
 # ИЗМЕНЕНО: Добавлен импорт Signal
 from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal
 from PySide6.QtGui import QKeySequence
@@ -23,13 +23,23 @@ def resource_path_dialogs(relative_path):
     try:
         base_path = sys._MEIPASS # Используем sys здесь
     except Exception:
-        base_path = os.path.abspath(os.path.dirname(__file__))
-    return os.path.join(base_path, "lang", relative_path)
+        base_path = os.path.abspath(os.path.dirname(__file__)) # Изменено на __file__ для корректности
+    # Предполагаем, что lang находится в том же каталоге, что и dialogs.py, если не в MEIPASS
+    # Или если структура core/lang/, то os.path.join(base_path, '..', 'lang', relative_path)
+    # Для текущей структуры:
+    if base_path.endswith("core"): # Если мы в core/dialogs.py
+        lang_path_base = os.path.join(base_path, "lang")
+    else: # Если MEIPASS или другая структура
+        lang_path_base = os.path.join(base_path, "core", "lang")
+
+    return os.path.join(lang_path_base, relative_path)
 
 
 class AboutProgramDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
+        self.parent_window = parent 
+        self.setObjectName("AboutProgramDialog") # Имя для поиска через findChild
         self.setWindowTitle(get_text('about_program'))
         self.setGeometry(0, 0, 700, 550)
         self.setModal(True)
@@ -38,53 +48,95 @@ class AboutProgramDialog(QDialog):
         layout = QVBoxLayout(self)
         self.text_browser = QTextBrowser()
         self.text_browser.setOpenExternalLinks(True)
-
-        current_lang_code = 'ru_RU'
-        if hasattr(parent, 'logic') and hasattr(parent.logic, 'DEFAULT_LANGUAGE'):
-             current_lang_code = parent.logic.DEFAULT_LANGUAGE
-
-        md_filename_key = "information_ru.md"
-        if current_lang_code.startswith('en'):
-            md_filename_key = "information_en.md"
-
-        md_filepath = resource_path_dialogs(md_filename_key)
-        logging.debug(f"Attempting to load markdown from: {md_filepath}")
-
-        if os.path.exists(md_filepath):
-            md_content = ""
-            try: # Оставим try-except для чтения файла, т.к. это I/O операция
-                with open(md_filepath, "r", encoding="utf-8") as f:
-                    md_content = f.read()
-                css = """<style> body { font-family: sans-serif; font-size: 10pt; line-height: 1.6; } h1 { font-size: 16pt; margin-bottom: 10px; color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;} h2 { font-size: 14pt; margin-top: 20px; margin-bottom: 8px; color: #444;} h3 { font-size: 12pt; margin-top: 15px; margin-bottom: 5px; color: #555;} p { margin-bottom: 10px; } ul, ol { margin-left: 20px; margin-bottom: 10px; } li { margin-bottom: 5px; } code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; font-family: monospace; } a { color: #007bff; text-decoration: none; } a:hover { text-decoration: underline; } hr { border: 0; height: 1px; background: #ccc; margin: 20px 0; } </style> """
-                html_content = markdown.markdown(md_content, extensions=['extra', 'sane_lists'])
-                self.text_browser.setHtml(css + html_content)
-            except Exception as e: # Ошибка парсинга markdown или чтения файла
-                logging.error(f"Error loading or parsing {md_filepath}: {e}")
-                self.text_browser.setPlainText(f"Error loading content for {md_filename_key}: {e}")
-        else:
-            logging.warning(f"Markdown file not found: {md_filepath} (searched for {md_filename_key})")
-            self.text_browser.setPlainText(f"Information file not found: {md_filename_key}")
+        self.update_content_theme() 
 
         self.close_button = QPushButton("OK")
         self.close_button.clicked.connect(self.accept)
         layout.addWidget(self.text_browser)
         layout.addWidget(self.close_button)
 
+    def update_content_theme(self):
+        current_lang_code = 'ru_RU'
+        if hasattr(self.parent_window, 'logic') and hasattr(self.parent_window.logic, 'DEFAULT_LANGUAGE'):
+             current_lang_code = self.parent_window.logic.DEFAULT_LANGUAGE
+
+        md_filename_key = "information_ru.md"
+        if current_lang_code.startswith('en'):
+            md_filename_key = "information_en.md"
+        
+        md_filepath = resource_path_dialogs(md_filename_key)
+        logging.debug(f"Attempting to load markdown for AboutDialog from: {md_filepath}")
+        
+        current_theme = "light"
+        if hasattr(self.parent_window, 'appearance_manager') and self.parent_window.appearance_manager: # Проверка на None
+            current_theme = self.parent_window.appearance_manager.current_theme
+        elif hasattr(self.parent_window, 'current_theme'): # Старая проверка на случай, если appearance_manager еще не инициализирован
+            current_theme = self.parent_window.current_theme
+
+
+        body_bg_color = "#ffffff"
+        body_text_color = "#000000"
+        h_color = "#333"
+        link_color = "#007bff"
+        code_bg_color = "#f0f0f0"
+
+        if current_theme == "dark":
+            body_bg_color = "#2e2e2e"
+            body_text_color = "#e0e0e0"
+            h_color = "#cccccc"
+            link_color = "#58a6ff" 
+            code_bg_color = "#3c3c3c"
+
+
+        if os.path.exists(md_filepath):
+            md_content = ""
+            try:
+                with open(md_filepath, "r", encoding="utf-8") as f:
+                    md_content = f.read()
+                css = f"""
+                <style>
+                    body {{ 
+                        font-family: sans-serif; font-size: 10pt; line-height: 1.6; 
+                        background-color: {body_bg_color}; color: {body_text_color}; 
+                    }}
+                    h1 {{ font-size: 16pt; margin-bottom: 10px; color: {h_color}; border-bottom: 1px solid #ccc; padding-bottom: 5px;}}
+                    h2 {{ font-size: 14pt; margin-top: 20px; margin-bottom: 8px; color: {h_color};}}
+                    h3 {{ font-size: 12pt; margin-top: 15px; margin-bottom: 5px; color: {h_color};}}
+                    p {{ margin-bottom: 10px; }}
+                    ul, ol {{ margin-left: 20px; margin-bottom: 10px; }}
+                    li {{ margin-bottom: 5px; }}
+                    code {{ background-color: {code_bg_color}; padding: 2px 4px; border-radius: 3px; font-family: monospace; }}
+                    a {{ color: {link_color}; text-decoration: none; }}
+                    a:hover {{ text-decoration: underline; }}
+                    hr {{ border: 0; height: 1px; background: #ccc; margin: 20px 0; }}
+                </style>
+                """
+                html_content = markdown.markdown(md_content, extensions=['extra', 'sane_lists'])
+                self.text_browser.setHtml(css + html_content)
+            except Exception as e:
+                logging.error(f"Error loading or parsing {md_filepath}: {e}")
+                self.text_browser.setPlainText(f"Error loading content for {md_filename_key}: {e}")
+        else:
+            logging.warning(f"Markdown file not found: {md_filepath} (searched for {md_filename_key})")
+            self.text_browser.setPlainText(f"Information file not found: {md_filename_key}")
+
+
     def center_on_parent(self):
         if self.parent():
             parent_geometry = self.parent().geometry()
             center_point = parent_geometry.center() - self.rect().center()
             screen_geometry = self.screen().availableGeometry()
-            if screen_geometry: # Проверка, что screen() вернул валидный объект
+            if screen_geometry: 
                 center_point.setX(max(screen_geometry.left(), min(center_point.x(), screen_geometry.right() - self.width())))
                 center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
 
-class HeroRatingDialog(QDialog):
+class HeroRatingDialog(QDialog): # Будет переименован в UniversalHeroesDialog
     def __init__(self, parent, app_version):
         super().__init__(parent)
-        self.setWindowTitle(get_text('hero_rating_title', version=app_version))
+        # Используем ключ 'hero_rating_title' для заголовка, но сам ключ в translations.py изменен
+        self.setWindowTitle(get_text('hero_rating_title', version=app_version)) 
         self.setGeometry(0, 0, 400, 600)
         self.setModal(True)
         self.center_on_parent()
@@ -95,12 +147,21 @@ class HeroRatingDialog(QDialog):
         text_browser.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard)
 
         counter_counts = {hero: 0 for hero in heroes_bd.heroes}
-        for counters_list in heroes_bd.heroes_counters.values():
-            for counter_hero in counters_list:
-                if counter_hero in counter_counts:
-                     counter_counts[counter_hero] += 1
+        # Логика подсчета должна быть пересмотрена, если "универсальность" означает что-то другое
+        # Пока оставляем как есть (подсчет, скольких героев контрит данный герой)
+        for hero_being_countered, counters_data in heroes_bd.heroes_counters.items():
+            if isinstance(counters_data, dict):
+                for counter_hero in counters_data.get("hard", []) + counters_data.get("soft", []):
+                    if counter_hero in counter_counts:
+                        counter_counts[counter_hero] +=1
+            # Если старая структура (список имен):
+            # elif isinstance(counters_data, list):
+            #     for counter_hero in counters_data:
+            #         if counter_hero in counter_counts:
+            #             counter_counts[counter_hero] += 1
 
-        sorted_heroes = sorted(counter_counts.items(), key=lambda item: item[1])
+
+        sorted_heroes = sorted(counter_counts.items(), key=lambda item: item[1], reverse=True) # Сортировка по убыванию
         rating_lines = [f"{hero} ({count})" for hero, count in sorted_heroes]
         text_browser.setText("\n".join(rating_lines))
         layout.addWidget(text_browser)
@@ -161,13 +222,13 @@ class LogDialog(QDialog):
         if not all_logs:
             QMessageBox.information(self, get_text('info'), get_text('log_copy_no_logs'))
             return
-        try: # Оставим try-except для pyperclip, так как он может бросать свои исключения
+        try: 
             pyperclip.copy(all_logs)
             logging.info("Logs copied to clipboard.")
         except pyperclip.PyperclipException as e:
             logging.error(f"Pyperclip error copying logs: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
-        except Exception as e: # Общий на случай других проблем с буфером
+        except Exception as e: 
             logging.error(f"Unexpected error copying logs: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
 
@@ -185,6 +246,7 @@ class LogDialog(QDialog):
 class HotkeyDisplayDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.parent_window = parent 
         self.setWindowTitle(get_text('hotkeys_window_title'))
         self.setMinimumWidth(550)
         self.setModal(True)
@@ -193,8 +255,44 @@ class HotkeyDisplayDialog(QDialog):
         self.text_browser = QTextBrowser(self)
         self.text_browser.setReadOnly(True)
         self.text_browser.setOpenExternalLinks(False)
+        
+        self.update_html_content() 
+
+        self.close_button = QPushButton("OK")
+        self.close_button.clicked.connect(self.accept)
+        self.layout.addWidget(self.text_browser)
+        self.layout.addWidget(self.close_button, alignment=Qt.AlignmentFlag.AlignRight)
+        QTimer.singleShot(0, self.center_on_parent)
+
+    def update_html_content(self):
+        current_theme = "light"
+        if hasattr(self.parent_window, 'appearance_manager') and self.parent_window.appearance_manager:
+            current_theme = self.parent_window.appearance_manager.current_theme
+        elif hasattr(self.parent_window, 'current_theme'):
+             current_theme = self.parent_window.current_theme
+        
+        body_bg_color = "white"
+        body_text_color = "black"
+        code_bg_color = "#f0f0f0"
+        h_color = "#333"
+
+        if current_theme == "dark":
+            body_bg_color = "#2e2e2e"
+            body_text_color = "#e0e0e0"
+            code_bg_color = "#3c3c3c"
+            h_color = "#cccccc"
+
         hotkeys_text_html = f"""
-        <html><head><style> body {{ font-family: sans-serif; font-size: 10pt; }} h3 {{ margin-bottom: 5px; margin-top: 10px; }} ul {{ margin-top: 0px; padding-left: 20px; }} li {{ margin-bottom: 3px; }} code {{ background-color: #f0f0f0; padding: 1px 4px; border-radius: 3px; }} </style></head><body>
+        <html><head><style> 
+            body {{ 
+                font-family: sans-serif; font-size: 10pt; 
+                background-color: {body_bg_color}; color: {body_text_color}; 
+            }} 
+            h3 {{ margin-bottom: 5px; margin-top: 10px; color: {h_color}; }} 
+            ul {{ margin-top: 0px; padding-left: 20px; }} 
+            li {{ margin-bottom: 3px; }} 
+            code {{ background-color: {code_bg_color}; padding: 1px 4px; border-radius: 3px; }} 
+        </style></head><body>
             <h3>{get_text('hotkeys_section_main')}</h3><ul>
                 <li><code>Tab + ↑/↓/←/→</code>: {get_text('hotkey_desc_navigation')}</li>
                 <li><code>Tab + Num 0</code>: {get_text('hotkey_desc_select')}</li>
@@ -212,11 +310,7 @@ class HotkeyDisplayDialog(QDialog):
                 <li><code>{get_text('hotkey_desc_slider')}</code>: {get_text('hotkey_desc_slider_transparency')}</li></ul>
         </body></html>"""
         self.text_browser.setHtml(hotkeys_text_html)
-        self.close_button = QPushButton("OK")
-        self.close_button.clicked.connect(self.accept)
-        self.layout.addWidget(self.text_browser)
-        self.layout.addWidget(self.close_button, alignment=Qt.AlignmentFlag.AlignRight)
-        QTimer.singleShot(0, self.center_on_parent)
+
 
     def center_on_parent(self):
         if self.parent():
@@ -285,10 +379,19 @@ class HotkeySettingsDialog(QDialog):
         if not action_id or action_id not in self.action_widgets: return
 
         logging.debug(f"Change hotkey requested for action: {action_id}")
-        self.action_widgets[action_id]['hotkey'].setText(f"<i>{get_text('hotkey_settings_press_keys')}</i>")
-        self.action_widgets[action_id]['hotkey'].setStyleSheet("font-style: italic; color: orange;")
         
-        # Используем HotkeyCaptureLineEdit в модальном диалоге
+        current_theme = "light"
+        if hasattr(self.parent_window, 'appearance_manager') and self.parent_window.appearance_manager:
+            current_theme = self.parent_window.appearance_manager.current_theme
+        elif hasattr(self.parent_window, 'current_theme'):
+             current_theme = self.parent_window.current_theme
+        text_color_during_capture = "orange"
+        if current_theme == "dark":
+             text_color_during_capture = "#FFA500" 
+
+        self.action_widgets[action_id]['hotkey'].setText(f"<i>{get_text('hotkey_settings_press_keys')}</i>")
+        self.action_widgets[action_id]['hotkey'].setStyleSheet(f"font-style: italic; color: {text_color_during_capture};")
+        
         capture_dialog = QDialog(self)
         capture_dialog.setWindowTitle(get_text('hotkey_settings_capture_title'))
         capture_dialog.setModal(True)
@@ -298,35 +401,36 @@ class HotkeySettingsDialog(QDialog):
         info_label = QLabel(get_text('hotkey_settings_press_new_hotkey_for').format(action=action_desc))
         dialog_layout.addWidget(info_label)
         
-        hotkey_input_field = HotkeyCaptureLineEdit(action_id, capture_dialog) # родитель - capture_dialog
+        hotkey_input_field = HotkeyCaptureLineEdit(action_id, capture_dialog) 
         dialog_layout.addWidget(hotkey_input_field)
         
         cancel_btn = QPushButton(get_text('hotkey_settings_cancel_capture'))
-        cancel_btn.clicked.connect(capture_dialog.reject)
+        cancel_btn.clicked.connect(capture_dialog.reject) 
         dialog_layout.addWidget(cancel_btn)
         
         hotkey_input_field.setFocus()
         
-        # Локальные слоты для обработки результата от HotkeyCaptureLineEdit
         def on_captured(act_id, key_str):
             if act_id == action_id:
                 self.update_hotkey_for_action(act_id, key_str)
                 capture_dialog.accept()
         
-        def on_canceled(act_id):
-            if act_id == action_id:
-                self.cancel_hotkey_capture(act_id)
-                capture_dialog.reject()
+        def on_canceled_or_rejected(): 
+            if hotkey_input_field and hotkey_input_field.action_id == action_id:
+                self.cancel_hotkey_capture(action_id)
 
         hotkey_input_field.hotkey_captured.connect(on_captured)
-        hotkey_input_field.capture_canceled.connect(on_canceled)
+        capture_dialog.rejected.connect(on_canceled_or_rejected)
         
-        capture_dialog.exec() # Показываем диалог ввода хоткея
+        capture_dialog.exec()
 
-        # После закрытия диалога ввода, отсоединяем временные слоты
-        if hotkey_input_field: # Проверка, что он еще существует
-            hotkey_input_field.hotkey_captured.disconnect(on_captured)
-            hotkey_input_field.capture_canceled.disconnect(on_canceled)
+        try:
+            if hotkey_input_field: 
+                 hotkey_input_field.hotkey_captured.disconnect(on_captured)
+        except RuntimeError: pass 
+        try:
+             capture_dialog.rejected.disconnect(on_canceled_or_rejected)
+        except RuntimeError: pass
 
 
     @Slot(str, str)
@@ -335,26 +439,26 @@ class HotkeySettingsDialog(QDialog):
             logging.info(f"Updating hotkey for {action_id} to {new_hotkey_str}")
             self.current_hotkeys[action_id] = new_hotkey_str
             self.action_widgets[action_id]['hotkey'].setText(f"<code>{new_hotkey_str}</code>")
-            self.action_widgets[action_id]['hotkey'].setStyleSheet("")
+            self.action_widgets[action_id]['hotkey'].setStyleSheet("") 
 
     @Slot(str)
     def cancel_hotkey_capture(self, action_id: str):
-        if action_id in self.action_widgets and self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
-            # Получаем оригинальный хоткей из менеджера (сохраненный или дефолтный)
-            # или из self.current_hotkeys, если он там уже был до попытки изменения.
-            original_hotkey = self.current_hotkeys.get(action_id)
-            if not original_hotkey: # Если вдруг в current_hotkeys нет (не должно быть)
-                 original_hotkey = self.parent_window.hotkey_manager.get_hotkey_for_action(action_id) or get_text('hotkey_not_set')
+        if action_id in self.action_widgets:
+            original_hotkey = self.current_hotkeys.get(action_id) 
+            if not original_hotkey and self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
+                 original_hotkey = self.parent_window.hotkey_manager.get_hotkey_for_action(action_id)
+
+            if not original_hotkey: original_hotkey = get_text('hotkey_not_set')
             
             self.action_widgets[action_id]['hotkey'].setText(f"<code>{original_hotkey}</code>")
-            self.action_widgets[action_id]['hotkey'].setStyleSheet("")
-            logging.debug(f"Hotkey capture canceled for {action_id}, reverted to {original_hotkey}")
+            self.action_widgets[action_id]['hotkey'].setStyleSheet("") 
+            logging.debug(f"Hotkey capture canceled/reverted for {action_id}, to {original_hotkey}")
 
     def reset_to_defaults(self):
         if self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
             default_hotkeys = self.parent_window.hotkey_manager.get_default_hotkeys()
             self.current_hotkeys = dict(default_hotkeys)
-            self._populate_hotkey_list()
+            self._populate_hotkey_list() 
             QMessageBox.information(self, get_text('hotkey_settings_defaults_reset_title'), get_text('hotkey_settings_defaults_reset_msg'))
         else:
             logging.error("Hotkey manager not found in parent window for resetting defaults.")
@@ -371,10 +475,16 @@ class HotkeySettingsDialog(QDialog):
                 else: hotkey_map[hotkey_str] = action_id
             if duplicates:
                 QMessageBox.warning(self, get_text('hotkey_settings_duplicate_title'), get_text('hotkey_settings_duplicate_message') + "\n- " + "\n- ".join(duplicates)); return
+            
+            # Сохраняем перед эмиссией сигналов, чтобы HotkeyManager уже имел новые значения
+            self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys) 
+            
             for action_id, new_hotkey_str in self.current_hotkeys.items():
-                self.hotkey_changed_signal.emit(action_id, new_hotkey_str)
-            self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys)
-            self.accept()
+                self.hotkey_changed_signal.emit(action_id, new_hotkey_str) 
+            
+            # После сохранения и эмиссии, HotkeyManager должен перерегистрировать хоткеи
+            self.parent_window.hotkey_manager.reregister_all_hotkeys()
+            self.accept() 
         else: logging.error("Hotkey manager not found in parent window for saving.")
 
     def center_on_parent(self):
@@ -388,156 +498,214 @@ class HotkeySettingsDialog(QDialog):
             self.move(center_point)
 
 class HotkeyCaptureLineEdit(QLineEdit):
-    hotkey_captured = Signal(str, str)
-    capture_canceled = Signal(str)
+    hotkey_captured = Signal(str, str)  
+    capture_canceled = Signal(str)      
 
     def __init__(self, action_id, parent_dialog):
         super().__init__(parent_dialog)
         self.action_id = action_id
         self.setReadOnly(True)
-        self.setText(get_text('hotkey_settings_press_keys_field'))
-        self.setStyleSheet("font-style: italic; color: gray;")
-        self._pressed_keys_qt = set() # Для хранения кодов Qt.Key + Qt.KeyboardModifier
-
-    def keyPressEvent(self, event: QEvent.KeyPress):
-        key = event.key()
-        modifiers = event.modifiers()
         
-        if key == Qt.Key_unknown:
-            super().keyPressEvent(event)
+        self._current_qt_modifiers = Qt.KeyboardModifier.NoModifier
+        self._current_qt_key = Qt.Key.Key_unknown
+        self._keypad_modifier_active_on_press = False 
+        self._reset_field_to_prompt() 
+
+    def _reset_field_to_prompt(self):
+        self.setText(get_text('hotkey_settings_press_keys'))
+        text_color = "gray" 
+        parent_main_window = None
+        if self.parent() and hasattr(self.parent(), 'parent_window'): 
+            parent_main_window = self.parent().parent_window
+        if parent_main_window and hasattr(parent_main_window, 'appearance_manager') and parent_main_window.appearance_manager:
+            if parent_main_window.appearance_manager.current_theme == "dark":
+                text_color = "#888888"
+        elif parent_main_window and hasattr(parent_main_window, 'current_theme'):
+             if parent_main_window.current_theme == "dark":
+                text_color = "#888888"
+        self.setStyleSheet(f"font-style: italic; color: {text_color};")
+
+    def focusInEvent(self, event: QEvent): 
+        self._reset_state_and_field()
+        super().focusInEvent(event)
+
+    def _reset_state_and_field(self):
+        self._current_qt_modifiers = Qt.KeyboardModifier.NoModifier
+        self._current_qt_key = Qt.Key.Key_unknown
+        self._keypad_modifier_active_on_press = False
+        self._reset_field_to_prompt()
+
+    def keyPressEvent(self, event: QEvent.KeyPress): 
+        current_key = event.key()
+        app_mods = QApplication.keyboardModifiers() 
+        current_event_mods = event.modifiers()
+        
+        if current_key == Qt.Key_Escape and app_mods == Qt.KeyboardModifier.NoModifier :
+            logging.debug(f"Hotkey capture canceled by Escape for {self.action_id}")
+            self.capture_canceled.emit(self.action_id) 
+            self._reset_state_and_field() 
+            if self.parent() and isinstance(self.parent(), QDialog):
+                self.parent().reject() 
             return
 
-        # Сохраняем полную комбинацию (клавиша + модификаторы)
-        # QKeyCombination хранит это удобно.
-        # Но для преобразования в строку для `keyboard` нам нужен свой формат.
+        if current_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
+            self._current_qt_key = Qt.Key_unknown 
+            self._current_qt_modifiers = app_mods
+            self._keypad_modifier_active_on_press = False 
+        else: 
+            self._current_qt_key = current_key
+            self._current_qt_modifiers = app_mods 
+            self._keypad_modifier_active_on_press = bool(current_event_mods & Qt.KeyboardModifier.KeypadModifier)
         
-        current_combination = modifiers | Qt.KeyboardModifier(key) # Объединяем модификаторы и клавишу
-        
-        # Игнорируем нажатие только модификаторов, если еще не было основной клавиши
-        is_only_modifier_press = key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta) and \
-                                 not (modifiers & ~ (Qt.KeyboardModifier.ControlModifier |
-                                                      Qt.KeyboardModifier.ShiftModifier |
-                                                      Qt.KeyboardModifier.AltModifier |
-                                                      Qt.KeyboardModifier.MetaModifier)) # Убедимся, что это ТОЛЬКО модификатор
-        
-        if is_only_modifier_press and not self._pressed_keys_qt:
-            self._pressed_keys_qt.add(current_combination) # Сохраняем модификатор как часть комбинации
-            self._update_text_from_pressed()
-            return
+        self._update_display_text()
+        event.accept() 
 
-        if key == Qt.Key_Escape:
-            if not modifiers: # Чистый Escape отменяет ввод
-                logging.debug(f"Hotkey capture canceled by Escape for {self.action_id}")
-                self.capture_canceled.emit(self.action_id)
-                # Родительский диалог должен закрыться сам, если это был reject()
-                if self.parent() and isinstance(self.parent(), QDialog):
-                    self.parent().reject()
-                return
-            # Если Escape с модификаторами, то это может быть валидный хоткей
-        
-        self._pressed_keys_qt.add(current_combination)
-        self._update_text_from_pressed()
-
-    def keyReleaseEvent(self, event: QEvent.KeyRelease):
-        if not self._pressed_keys_qt or event.isAutoRepeat():
-            super().keyReleaseEvent(event)
+    def keyReleaseEvent(self, event: QEvent.KeyRelease): 
+        if event.isAutoRepeat():
+            event.accept()
             return
 
         released_key = event.key()
-        # Если отпущена не-модификаторная клавиша, или если это последняя отпущенная клавиша
-        is_modifier_released = released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta)
         
-        # Завершаем ввод, если отпущена основная клавиша (не модификатор)
-        # или если остался только один элемент в _pressed_keys_qt, который является отпущенной клавишей
-        # Это позволяет корректно обрабатывать отпускание последней клавиши, даже если это модификатор.
-        should_finalize = not is_modifier_released or \
-                          (len(self._pressed_keys_qt) == 1 and (event.modifiers() | Qt.KeyboardModifier(released_key)) in self._pressed_keys_qt)
+        is_finalizing_key_release = (self._current_qt_key != Qt.Key_unknown and released_key == self._current_qt_key)
+        
+        is_single_modifier_release = (
+            self._current_qt_key == Qt.Key_unknown and
+            released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta) and
+            QApplication.keyboardModifiers() == Qt.KeyboardModifier.NoModifier
+        )
 
-        if should_finalize:
-            final_str = self._convert_pressed_to_keyboard_str()
-            logging.info(f"Hotkey captured for {self.action_id}: {final_str} (from Qt pressed: {self._pressed_keys_qt})")
-            self.hotkey_captured.emit(self.action_id, final_str)
-            self._pressed_keys_qt.clear()
-            if self.parent() and isinstance(self.parent(), QDialog):
-                self.parent().accept()
+        if is_finalizing_key_release or is_single_modifier_release:
+            final_hotkey_str = self._generate_keyboard_lib_string(
+                self._current_qt_modifiers, 
+                self._current_qt_key, 
+                self._keypad_modifier_active_on_press
+            )
+            
+            if not final_hotkey_str or final_hotkey_str == get_text('hotkey_none'):
+                logging.debug(f"Hotkey capture resulted in empty/none string for {self.action_id}. Canceling.")
+                self.capture_canceled.emit(self.action_id)
+                if self.parent() and isinstance(self.parent(), QDialog):
+                     self.parent().reject()
+            else:
+                logging.info(f"Hotkey captured for {self.action_id}: {final_hotkey_str}")
+                self.hotkey_captured.emit(self.action_id, final_hotkey_str)
+                if self.parent() and isinstance(self.parent(), QDialog):
+                     self.parent().accept()
+            
+            self._reset_state_and_field() 
+            event.accept()
+            return
+
+        if released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
+            self._current_qt_modifiers = QApplication.keyboardModifiers()
+            if self._current_qt_key == Qt.Key_unknown and self._current_qt_modifiers == Qt.KeyboardModifier.NoModifier:
+                 self._reset_state_and_field()
+            else: 
+                 self._update_display_text()
+        
+        event.accept()
+
+    def _update_display_text(self):
+        display_str = self._generate_keyboard_lib_string(
+            self._current_qt_modifiers, 
+            self._current_qt_key, 
+            self._keypad_modifier_active_on_press, 
+            for_display=True
+        )
+        
+        if not display_str:
+            self._reset_field_to_prompt()
         else:
-            # Если отпущен модификатор, но еще есть другие нажатые клавиши
-            key_to_remove = event.modifiers() | Qt.KeyboardModifier(released_key)
-            if key_to_remove in self._pressed_keys_qt:
-                self._pressed_keys_qt.remove(key_to_remove)
-            self._update_text_from_pressed() # Обновить отображение оставшихся нажатых
+            self.setText(display_str)
+            self.setStyleSheet("font-style: normal;")
 
-        super().keyReleaseEvent(event)
-
-    def _update_text_from_pressed(self):
-        current_text = self._convert_pressed_to_keyboard_str()
-        self.setText(current_text if current_text else "...")
-        self.setStyleSheet("font-style: normal; color: black;")
-        
-    def _convert_pressed_to_keyboard_str(self) -> str:
-        if not self._pressed_keys_qt:
-            return get_text('hotkey_none')
-
-        # Извлекаем все уникальные модификаторы и клавиши
-        all_modifiers = Qt.KeyboardModifier(0)
-        main_keys_codes = [] # Коды основных клавиш (не модификаторов)
-        
-        for comb in self._pressed_keys_qt:
-            key_part = Qt.Key(int(comb) & ~0xFE000000) # Извлекаем код клавиши без модификаторов Qt::KeyboardModifierMask
-            mod_part = Qt.KeyboardModifier(int(comb) & 0xFE000000) # Извлекаем только модификаторы
-            all_modifiers |= mod_part
-            if key_part not in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta, Qt.Key_unknown, 0):
-                if key_part not in main_keys_codes:
-                     main_keys_codes.append(key_part)
-        
-        # Если нажаты только модификаторы, пока не формируем строку
-        if not main_keys_codes and all_modifiers:
-            # Отображаем только модификаторы, если они есть
-            parts = []
-            if all_modifiers & Qt.KeyboardModifier.ControlModifier: parts.append("ctrl")
-            if all_modifiers & Qt.KeyboardModifier.AltModifier: parts.append("alt")
-            if all_modifiers & Qt.KeyboardModifier.ShiftModifier: parts.append("shift")
-            if all_modifiers & Qt.KeyboardModifier.MetaModifier: parts.append("win") # "meta" или "win"
-            return "+".join(parts) + "+" if parts else "..."
-
-
-        # Формируем строку для библиотеки `keyboard`
-        # Приоритет основной клавиши: последняя нажатая не-модификатор
-        main_key_to_convert = main_keys_codes[-1] if main_keys_codes else Qt.Key(0)
-        
+    def _generate_keyboard_lib_string(self, qt_app_modifiers: Qt.KeyboardModifier, 
+                                      qt_key_enum: Qt.Key, 
+                                      keypad_modifier_was_active: bool, 
+                                      for_display=False) -> str:
         parts = []
-        if all_modifiers & Qt.KeyboardModifier.ControlModifier: parts.append("ctrl")
-        if all_modifiers & Qt.KeyboardModifier.AltModifier: parts.append("alt")
-        if all_modifiers & Qt.KeyboardModifier.ShiftModifier: parts.append("shift")
-        if all_modifiers & Qt.KeyboardModifier.MetaModifier: parts.append("win")
+        
+        if qt_app_modifiers & Qt.KeyboardModifier.ControlModifier: parts.append("ctrl")
+        if qt_app_modifiers & Qt.KeyboardModifier.AltModifier: parts.append("alt")
+        if qt_app_modifiers & Qt.KeyboardModifier.ShiftModifier: parts.append("shift")
+        if qt_app_modifiers & Qt.KeyboardModifier.MetaModifier: parts.append("win") 
+        
+        key_str_for_lib = ""
+        is_key_a_qt_modifier_type = qt_key_enum in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta)
 
-        if int(main_key_to_convert) != 0:
-            key_str = QKeySequence(main_key_to_convert).toString(QKeySequence.PortableText)
+        if qt_key_enum != Qt.Key_unknown and not is_key_a_qt_modifier_type:
+            if keypad_modifier_was_active and qt_key_enum == Qt.Key_Period:
+                key_str_for_lib = "num ."
+            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Delete: # Numpad Del (often same as Numpad .)
+                key_str_for_lib = "num ."
+            elif Qt.Key_0 <= qt_key_enum <= Qt.Key_9:
+                key_str_for_lib = str(qt_key_enum - Qt.Key_0)
+                if keypad_modifier_was_active: key_str_for_lib = "num " + key_str_for_lib
+            elif Qt.Key_A <= qt_key_enum <= Qt.Key_Z:
+                key_str_for_lib = chr(qt_key_enum).lower()
+            elif Qt.Key_F1 <= qt_key_enum <= Qt.Key_F24:
+                key_str_for_lib = "f" + str(qt_key_enum - Qt.Key_F1 + 1)
+            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Asterisk: key_str_for_lib = "num *"
+            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Plus: key_str_for_lib = "num +" # или просто "+" если keyboard так понимает
+            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Minus: key_str_for_lib = "num -" # или просто "-"
+            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Slash: key_str_for_lib = "num /" # или просто "/"
+            elif qt_key_enum == Qt.Key_Tab: key_str_for_lib = "tab"
+            elif qt_key_enum == Qt.Key_Return or qt_key_enum == Qt.Key_Enter : key_str_for_lib = "enter"
+            elif qt_key_enum == Qt.Key_Escape: key_str_for_lib = "esc"
+            elif qt_key_enum == Qt.Key_Space: key_str_for_lib = "space"
+            elif qt_key_enum == Qt.Key_Backspace: key_str_for_lib = "backspace"
+            elif qt_key_enum == Qt.Key_Delete: key_str_for_lib = "delete" 
+            elif qt_key_enum == Qt.Key_Insert: key_str_for_lib = "insert"
+            elif qt_key_enum == Qt.Key_Home: key_str_for_lib = "home"
+            elif qt_key_enum == Qt.Key_End: key_str_for_lib = "end"
+            elif qt_key_enum == Qt.Key_PageUp: key_str_for_lib = "page up"
+            elif qt_key_enum == Qt.Key_PageDown: key_str_for_lib = "page down"
+            elif qt_key_enum == Qt.Key_Up: key_str_for_lib = "up"
+            elif qt_key_enum == Qt.Key_Down: key_str_for_lib = "down"
+            elif qt_key_enum == Qt.Key_Left: key_str_for_lib = "left"
+            elif qt_key_enum == Qt.Key_Right: key_str_for_lib = "right"
+            elif qt_key_enum == Qt.Key_Print: key_str_for_lib = "print screen"
+            elif qt_key_enum == Qt.Key_ScrollLock: key_str_for_lib = "scroll lock"
+            elif qt_key_enum == Qt.Key_Pause: key_str_for_lib = "pause"
+            elif qt_key_enum == Qt.Key_CapsLock: key_str_for_lib = "caps lock"
+            elif qt_key_enum == Qt.Key_NumLock: key_str_for_lib = "num lock"
+            elif qt_key_enum == Qt.Key_Period: key_str_for_lib = "." 
+            elif qt_key_enum == Qt.Key_Comma: key_str_for_lib = ","
+            elif qt_key_enum == Qt.Key_Slash: key_str_for_lib = "/" 
+            elif qt_key_enum == Qt.Key_Backslash: key_str_for_lib = "\\"
+            elif qt_key_enum == Qt.Key_Semicolon: key_str_for_lib = ";"
+            elif qt_key_enum == Qt.Key_Apostrophe: key_str_for_lib = "'"
+            elif qt_key_enum == Qt.Key_BracketLeft: key_str_for_lib = "["
+            elif qt_key_enum == Qt.Key_BracketRight: key_str_for_lib = "]"
+            elif qt_key_enum == Qt.Key_Minus: key_str_for_lib = "-" 
+            elif qt_key_enum == Qt.Key_Equal: key_str_for_lib = "="
+            # keyboard lib обычно понимает 'plus' или '+' для основной клавиши.
+            # Qt.Key_Plus обычно для Numpad, но если приходит без KeypadModifier, это может быть основная '+'.
+            elif qt_key_enum == Qt.Key_Plus and not keypad_modifier_was_active: key_str_for_lib = "+" 
+            else: 
+                key_str_qt = QKeySequence(qt_key_enum).toString(QKeySequence.PortableText)
+                if key_str_qt: 
+                    key_str_for_lib = key_str_qt.lower()
+                    if key_str_for_lib == "del": key_str_for_lib = "delete" 
             
-            # Адаптация для `keyboard`
-            if key_str.startswith("Num+") and len(key_str) > 4: key_str = "num " + key_str[4:].lower()
-            elif key_str.lower() == "decimal": key_str = "num ."
-            elif key_str.lower() == "multiply": key_str = "num *"
-            elif key_str.lower() == "add": key_str = "num +"
-            elif key_str.lower() == "subtract": key_str = "num -"
-            elif key_str.lower() == "divide": key_str = "num /"
-            elif key_str.lower() == "escape": key_str = "esc"
-            elif key_str.lower() == "print": key_str = "print screen" # или просто "print" в зависимости от keyboard
-            elif key_str.lower() == "del": key_str = "delete"
-            elif key_str.lower() == "ins": key_str = "insert"
-            # ... другие возможные преобразования ...
-            else: key_str = key_str.lower()
-            
-            if key_str: parts.append(key_str)
+            if key_str_for_lib: 
+                parts.append(key_str_for_lib)
 
-        return "+".join(parts) if parts else get_text('hotkey_none')
+        if not parts: return ""
+        
+        if for_display and (qt_key_enum == Qt.Key_unknown or is_key_a_qt_modifier_type):
+            if any(m in parts for m in ["ctrl", "alt", "shift", "win"]):
+                 return "+".join(parts) + ("+" if parts else "") 
+        
+        return "+".join(parts)
 
 
 def show_about_program_info(parent):
     dialog = AboutProgramDialog(parent)
     dialog.exec()
 
-def show_hero_rating(parent, app_version):
+def show_hero_rating(parent, app_version): # Будет переименован в show_universal_heroes_dialog
     dialog = HeroRatingDialog(parent, app_version)
     dialog.exec()
 

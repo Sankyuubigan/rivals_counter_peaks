@@ -30,17 +30,34 @@ class CounterpickLogic:
         self.main_window = None # Будет установлено из MainWindow
 
     def set_selection(self, desired_selection_set):
-        # ... (без изменений)
         logging.debug(f"[Logic] set_selection called with set: {desired_selection_set}")
-        current_selection_list = list(self.selected_heroes); current_selection_set = set(current_selection_list)
-        added_heroes = desired_selection_set - current_selection_set; removed_heroes = current_selection_set - desired_selection_set
+        current_selection_list = list(self.selected_heroes)
+        current_selection_set = set(current_selection_list)
+
+        # Герои, которых нужно добавить (новые в desired_selection_set)
+        added_heroes = list(desired_selection_set - current_selection_set) # Сохраняем порядок добавления, если он важен
+        # Герои, которых нужно удалить (присутствуют в current_selection_set, но отсутствуют в desired_selection_set)
+        removed_heroes = current_selection_set - desired_selection_set
+
         new_deque = deque(maxlen=TEAM_SIZE)
+        
+        # Сначала добавляем тех, кто уже был выбран и не удаляется
         for hero in current_selection_list:
-            if hero not in removed_heroes: new_deque.append(hero)
-        for hero in added_heroes: # Добавляем только те, которых еще нет
-            if hero not in new_deque and len(new_deque) < TEAM_SIZE: new_deque.append(hero)
-        self.selected_heroes = new_deque; self.priority_heroes.intersection_update(set(self.selected_heroes))
+            if hero not in removed_heroes:
+                new_deque.append(hero)
+        
+        # Затем добавляем новых героев. deque сам обработает maxlen.
+        for hero_to_add in added_heroes:
+            # Проверяем, что герой еще не в new_deque (на случай если desired_selection_set был больше TEAM_SIZE)
+            # и что герой действительно новый (не был в current_selection_list)
+            if hero_to_add not in new_deque:
+                 new_deque.append(hero_to_add) # deque автоматически удалит самый старый элемент, если достиг maxlen
+
+        self.selected_heroes = new_deque
+        self.priority_heroes.intersection_update(set(self.selected_heroes)) # Обновляем приоритетных, удаляя тех, кого больше нет в выборе
         self.effective_team = [] # Сбрасываем команду при изменении выбора
+        logging.debug(f"[Logic] Selection updated. New selection: {list(self.selected_heroes)}")
+
 
     def clear_all(self):
         # ... (без изменений)
