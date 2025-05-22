@@ -3,5 +3,5 @@
 *.spec
 .idea/
 dist/
-/core/__pycache__/
+__pycache__
 .idx/dev.nix
