@@ -95,8 +95,9 @@ class AppearanceManager:
             return 
 
         try:
-            mw.setWindowTitle(f"{get_text('title')} v{mw.app_version}") 
-        except RuntimeError: # Окно могло быть удалено
+            if mw.mode != "min": 
+                 mw.setWindowTitle(f"{get_text('title')} v{mw.app_version}") 
+        except RuntimeError: 
             logging.warning("AppearanceManager: MainWindow was deleted before setWindowTitle could be called.")
             return
 
@@ -135,11 +136,10 @@ class AppearanceManager:
            not mw.logic.selected_heroes:
             try:
                 mw.result_label.setText(get_text('no_heroes_selected'))
-            except RuntimeError:
+            except RuntimeError: 
                 logging.warning("AppearanceManager: mw.result_label was deleted before setText could be called.")
 
         
-        # Исправлена опечатка mw на self.mw
         if hasattr(self.mw, 'hotkey_display_dialog') and self.mw.hotkey_display_dialog and self.mw.hotkey_display_dialog.isVisible():
             try:
                 self.mw.hotkey_display_dialog.update_html_content()
@@ -172,9 +172,8 @@ class AppearanceManager:
         
         if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
             self.mw.ui_updater.update_interface_for_mode() 
-            self.mw.ui_updater._update_counterpick_display() # Явный вызов для перерисовки с новыми цветами
+            self.mw.ui_updater._update_counterpick_display() 
         
-        # Исправлена опечатка mw на self.mw
         if hasattr(self.mw, 'hotkey_display_dialog') and self.mw.hotkey_display_dialog and self.mw.hotkey_display_dialog.isVisible():
             try:
                 self.mw.hotkey_display_dialog.update_html_content()
@@ -204,6 +203,7 @@ class AppearanceManager:
             QListWidget::item { color: black; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center; }
             QListWidget::item:selected { background-color: #3399ff; color: white; border: 1px solid #2d8ae5; }
             QListWidget::item:!selected:hover { background-color: #e0f7ff; border: 1px solid #cceeff; }
+            QListWidget QAbstractItemView { background-color: white; } /* Viewport для QListWidget */
             QMenu { background-color: #f8f8f8; border: 1px solid #cccccc; color: black; }
             QMenu::item:selected { background-color: #3399ff; color: white; }
             QScrollArea { border: none; background-color: transparent; }
@@ -212,10 +212,12 @@ class AppearanceManager:
             QComboBox::drop-down { border: none; }
             QComboBox QAbstractItemView { background-color: white; color: black; selection-background-color: #3399ff; selection-color: white; border: 1px solid #cccccc; }
             
+            QWidget#main_widget { background-color: #f0f0f0; } 
             QFrame#top_frame { background-color: #e0e0e0; border-bottom: 1px solid #c0c0c0; }
             QFrame#left_panel_container_frame { background-color: #f7f7f7; } 
             QFrame#result_frame { background-color: transparent; } 
-            QFrame#right_frame { background-color: #f7f7f7; } 
+            QFrame#right_frame { background-color: #f7f7f7 !important; } 
+            QWidget#right_list_widget { background-color: white !important; } 
             QLabel#selected_heroes_label { color: #333333; margin: 2px; }
             QLabel#mode_label { margin-left:5px; color: black;} 
             QLabel#version_label { color: #555555; margin-left: 10px; margin-right: 5px; }
@@ -235,7 +237,6 @@ class AppearanceManager:
             QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 1px; background-color: #ffeeee; }
             QLabel#horizontal_info_label { color: #666666; }
             HotkeyCaptureLineEdit { color: black; background-color: white; }
-            /* Стили для текста в QFrame#result_frame */
             QFrame#result_frame QLabel { color: black !important; } 
             QFrame#result_frame QFrame QLabel { color: black !important; }
         """
@@ -247,10 +248,17 @@ class AppearanceManager:
             QPushButton { background-color: #484848; border: 1px solid #5a5a5a; color: #e0e0e0; padding: 3px; border-radius: 3px; }
             QPushButton:hover { background-color: #585858; }
             QPushButton:pressed { background-color: #383838; }
-            QListWidget { background-color: #252525; border: 1px solid #454545; color: #d0d0d0; }
+            QListWidget { background-color: #252525 !important; border: 1px solid #454545; color: #d0d0d0; }
             QListWidget::item { color: #d0d0d0; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center;}
             QListWidget::item:selected { background-color: #0078d7; color: white; border: 1px solid #005394; }
             QListWidget::item:!selected:hover { background-color: #3a3a3a; border: 1px solid #4f4f4f; }
+            QListWidget QAbstractItemView { 
+                background-color: #252525; /* Фон для области просмотра элементов */
+                color: #d0d0d0; 
+                selection-background-color: #0078d7; 
+                selection-color: white; 
+                border: 1px solid #454545; /* Граница для области просмотра */
+            }
             QMenu { background-color: #383838; border: 1px solid #4f4f4f; color: #e0e0e0; }
             QMenu::item:selected { background-color: #0078d7; color: white; }
             QScrollArea { border: none; background-color: transparent; }
@@ -259,10 +267,12 @@ class AppearanceManager:
             QComboBox::drop-down { border: none; }
             QComboBox QAbstractItemView { background-color: #252525; color: #d0d0d0; selection-background-color: #0078d7; selection-color: white; border: 1px solid #454545; }
 
+            QWidget#main_widget { background-color: #2e2e2e; } 
             QFrame#top_frame { background-color: #202020; border-bottom: 1px solid #353535; }
             QFrame#left_panel_container_frame { background-color: #2a2a2a; } 
             QFrame#result_frame { background-color: transparent; } 
-            QFrame#right_frame { background-color: #2a2a2a; } 
+            QFrame#right_frame { background-color: #2a2a2a !important; } 
+            QWidget#right_list_widget { background-color: #252525 !important; } 
             QLabel#selected_heroes_label { color: #b0b0b0; margin: 2px; }
             QLabel#mode_label { color: #c0c0c0; margin-left:5px; }
             QLabel#version_label { color: #888888; margin-left: 10px; margin-right: 5px; }
@@ -282,7 +292,6 @@ class AppearanceManager:
             QWidget#enemies_widget { border: 2px solid #CC0000; border-radius: 4px; padding: 1px; background-color: #402020; }
             QLabel#horizontal_info_label { color: #999999; }
             HotkeyCaptureLineEdit { color: #e0e0e0; background-color: #3c3c3c; }
-            /* Стили для текста в QFrame#result_frame */
             QFrame#result_frame QLabel { color: #e0e0e0 !important; } 
             QFrame#result_frame QFrame QLabel { color: #e0e0e0 !important; }
         """

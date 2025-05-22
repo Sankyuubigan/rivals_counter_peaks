@@ -8,9 +8,7 @@ from PySide6.QtWidgets import (
 )
 from database.heroes_bd import heroes
 from images_load import is_invalid_pixmap
-# <<< ИЗМЕНЕНО: Импортируем только TEAM_SIZE из logic >>>
 from logic import TEAM_SIZE
-# <<< ---------------------------------------------- >>>
 import logging
 
 HERO_NAME_ROLE = Qt.UserRole + 1
@@ -25,10 +23,10 @@ class RightPanel:
 
         self.frame = QFrame(window); self.frame.setObjectName("right_frame"); self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.list_widget = QListWidget(); self.list_widget.setObjectName("right_list_widget")
-        # <<< ИЗМЕНЕНО: Используем TEAM_SIZE напрямую >>>
+        
         self.selected_heroes_label = QLabel(
             translations.get_text("selected_none", language=self.logic.DEFAULT_LANGUAGE, max_team_size=TEAM_SIZE))
-        # <<< -------------------------------------- >>>
+        
         self.selected_heroes_label.setObjectName("selected_heroes_label"); self.selected_heroes_label.setWordWrap(True)
         self.copy_button = QPushButton(translations.get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE)); self.copy_button.setObjectName("copy_button")
         self.clear_button = QPushButton(translations.get_text("clear_all", language=self.logic.DEFAULT_LANGUAGE)); self.clear_button.setObjectName("clear_button")
@@ -49,9 +47,19 @@ class RightPanel:
         if self.initial_mode == "max": icon_size = QSize(60, 60); grid_size = QSize(85, 95); self.list_widget.setSpacing(10)
         else: icon_size = QSize(40, 40); grid_size = QSize(icon_size.width() + 15, icon_size.height() + 10); self.list_widget.setSpacing(4)
         self.list_widget.setIconSize(icon_size); self.list_widget.setGridSize(grid_size)
-        self.list_widget.setStyleSheet(""" QListWidget { background-color: white; border: 1px solid #d3d3d3; border-radius: 3px; outline: 0; padding: 2px; } QListWidget::item { padding: 2px; margin: 1px; color: black; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center; } QListWidget::item:selected { background-color: #3399ff; color: white; border: 1px solid #2d8ae5; } QListWidget::item:!selected:hover { background-color: #e0f7ff; border: 1px solid #cceeff; } QListWidget::item:focus { border: 1px solid transparent; outline: 0; } """)
+        
+        # Основные стили для QListWidget и его элементов теперь в QSS файлах.
+        # Можно оставить здесь специфичные настройки, если они не перекрываются QSS.
+        # self.list_widget.setStyleSheet("""...""") # Удалено, так как будет в QSS
+
         self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus); self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        logging.debug(f"[RightPanel] List widget configured for mode '{self.initial_mode}'")
+        
+        viewport = self.list_widget.viewport()
+        if viewport:
+            logging.debug(f"[RightPanel] List widget configured for mode '{self.initial_mode}'. ListWidget objectName: '{self.list_widget.objectName()}', Viewport objectName: '{viewport.objectName() if viewport else 'N/A'}'")
+        else:
+            logging.debug(f"[RightPanel] List widget configured for mode '{self.initial_mode}'. ListWidget objectName: '{self.list_widget.objectName()}', Viewport is None.")
+
 
     def _populate_list_widget(self):
         self.hero_items.clear()
@@ -76,8 +84,16 @@ class RightPanel:
         self.layout.addWidget(self.copy_button); self.layout.addWidget(self.clear_button)
 
     def _connect_signals(self):
-        if hasattr(self.window, 'copy_to_clipboard'): self.copy_button.clicked.connect(self.window.copy_to_clipboard)
-        if hasattr(self.window, '_handle_clear_all'): self.clear_button.clicked.connect(self.window._handle_clear_all)
+        # Соединяем сигналы с методами MainWindow, а не ActionController напрямую отсюда
+        # ActionController будет подключен к сигналам MainWindow
+        if hasattr(self.window, 'action_controller') and self.window.action_controller:
+            if hasattr(self.window.action_controller, 'handle_copy_team'):
+                 self.copy_button.clicked.connect(self.window.action_controller.handle_copy_team)
+            if hasattr(self.window.action_controller, 'handle_clear_all'):
+                 self.clear_button.clicked.connect(self.window.action_controller.handle_clear_all)
+        else:
+            logging.error("[RightPanel] ActionController not found in parent window for connecting button signals.")
+
 
     def update_language(self):
         self.selected_heroes_label.setText(self.logic.get_selected_heroes_text())

@@ -3,7 +3,6 @@ import sys
 import time
 import logging
 import os
-# import json # json теперь используется в AppearanceManager
 
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
                                QLabel, QPushButton, QListWidget, QListWidgetItem, QAbstractItemView, 
@@ -106,6 +105,24 @@ class MainWindow(QMainWindow):
         self._initial_ui_update_done = False 
         logging.info("MainWindow.__init__ finished")
 
+    @Slot() 
+    def _do_toggle_mode_slot(self):
+        logging.debug("MainWindow: _do_toggle_mode_slot executing in main thread.")
+        debounce_time = 0.3 
+        current_time = time.time()
+        
+        if not hasattr(self, '_last_mode_toggle_time'):
+             self._last_mode_toggle_time = 0 
+
+        if current_time - self._last_mode_toggle_time < debounce_time:
+            logging.warning(f"Mode toggle (from slot) ignored due to debounce ({current_time - self._last_mode_toggle_time:.2f}s < {debounce_time}s)")
+            return
+        
+        self._last_mode_toggle_time = current_time
+        target_mode = "middle" if self.mode == "min" else "min"
+        self.change_mode(target_mode)
+
+
     def switch_language(self, lang_code: str):
         if self.appearance_manager:
             self.appearance_manager.switch_language(lang_code)
@@ -142,7 +159,7 @@ class MainWindow(QMainWindow):
         self.mode_positions = { "min": None, "middle": initial_pos, "max": None }
         self.mouse_invisible_mode_enabled = False
         self.is_programmatically_updating_selection = False
-        self._last_mode_toggle_time = 0
+        self._last_mode_toggle_time = 0 
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
         self.top_panel_instance: TopPanel | None = None
         self.right_panel_instance = None 
@@ -263,14 +280,14 @@ class MainWindow(QMainWindow):
 
 
     def _connect_signals(self):
-        logging.debug("Connecting signals to ActionController...")
+        logging.info("Connecting signals to ActionController...") 
         if hasattr(self, 'action_controller') and self.action_controller:
             self.action_move_cursor_up.connect(lambda: self.action_controller.handle_move_cursor('up'))
             self.action_move_cursor_down.connect(lambda: self.action_controller.handle_move_cursor('down'))
             self.action_move_cursor_left.connect(lambda: self.action_controller.handle_move_cursor('left'))
             self.action_move_cursor_right.connect(lambda: self.action_controller.handle_move_cursor('right'))
             self.action_toggle_selection.connect(self.action_controller.handle_toggle_selection)
-            self.action_toggle_mode.connect(self.action_controller.handle_toggle_mode)
+            self.action_toggle_mode.connect(self.action_controller.handle_toggle_mode) 
             self.action_clear_all.connect(self.action_controller.handle_clear_all)
             if hasattr(self, 'rec_manager') and self.rec_manager and hasattr(self.rec_manager, 'recognize_heroes_signal'):
                 self.action_recognize_heroes.connect(self.rec_manager.recognize_heroes_signal.emit)
@@ -278,6 +295,7 @@ class MainWindow(QMainWindow):
             self.action_toggle_tray_mode.connect(self.toggle_tray_mode) 
             self.action_toggle_mouse_ignore_independent.connect(self._handle_toggle_mouse_invisible_mode_independent)
             self.action_copy_team.connect(self.action_controller.handle_copy_team)
+            logging.info("ActionController signals connected.")
         else:
             logging.error("ActionController not initialized, cannot connect signals.")
 
@@ -286,12 +304,14 @@ class MainWindow(QMainWindow):
                 self.rec_manager.recognition_complete_signal.connect(self._on_recognition_complete)
             if hasattr(self.rec_manager, 'error'):
                 self.rec_manager.error.connect(self._on_recognition_error)
+            logging.info("RecognitionManager signals connected.")
 
         if self.tray_mode_button and hasattr(self, 'update_tray_button_property_signal'):
              self.update_tray_button_property_signal.connect(self._update_tray_button_property)
         if self.win_api_manager and hasattr(self.win_api_manager, 'topmost_state_changed'):
             self.win_api_manager.topmost_state_changed.connect(self._handle_topmost_state_change)
-        logging.debug("MainWindow signals connected.")
+        logging.info("MainWindow general signals connected.")
+
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.KeyPress:
@@ -312,7 +332,7 @@ class MainWindow(QMainWindow):
             
             if KEYBOARD_AVAILABLE and IS_ADMIN:
                  if hasattr(self, 'hotkey_manager'): 
-                     QTimer.singleShot(100, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None) # Увеличена задержка для теста
+                     QTimer.singleShot(200, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None) 
 
             self._initial_ui_update_done = True
 
@@ -364,13 +384,17 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'update_tray_button_property_signal'):
             self.update_tray_button_property_signal.emit(is_topmost)
         
+        # Синхронизируем mouse_invisible_mode_enabled с is_topmost, если они различаются
+        # Это важно, так как tray_mode объединяет оба состояния
         if self.mouse_invisible_mode_enabled != is_topmost:
             self.mouse_invisible_mode_enabled = is_topmost
-            self._apply_mouse_invisible_mode()
+        
+        self._apply_mouse_invisible_mode()
 
 
     @Slot()
     def _handle_toggle_mouse_invisible_mode_independent(self):
+        logging.info("MainWindow: _handle_toggle_mouse_invisible_mode_independent triggered.")
         if hasattr(self, 'mouse_invisible_mode_enabled'):
             new_state = not self.mouse_invisible_mode_enabled
             self.mouse_invisible_mode_enabled = new_state
@@ -379,58 +403,89 @@ class MainWindow(QMainWindow):
 
 
     def _apply_mouse_invisible_mode(self):
-        if not self.isVisible(): 
-            logging.debug("_apply_mouse_invisible_mode: Window not visible, skipping.")
-            return
-            
-        flags = self.windowFlags()
+        current_flags = self.windowFlags()
         is_min_mode = (self.mode == "min")
         
-        base_flags = Qt.WindowType.Window 
         if is_min_mode:
-            base_flags |= Qt.WindowType.FramelessWindowHint
-            # base_flags |= Qt.WindowType.WindowSystemMenuHint # Убрано, т.к. не помогло с иконкой
+            # Для минимального режима: Убираем WindowSystemMenuHint, если он вызывает проблемы с панелью задач.
+            # Оставляем просто Window | FramelessWindowHint.
+            # Qt.Tool может убрать иконку из панели задач, но также и из Alt+Tab.
+            # Попробуем просто Window | FramelessWindowHint
+            base_flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
+        else:
+            base_flags = Qt.WindowType.Window | Qt.WindowType.WindowSystemMenuHint | \
+                         Qt.WindowType.WindowMinimizeButtonHint | Qt.WindowType.WindowCloseButtonHint | \
+                         Qt.WindowType.WindowMaximizeButtonHint
         
-        current_topmost_flag_to_add = Qt.WindowType(0) 
-        if self._is_win_topmost: 
-            current_topmost_flag_to_add = Qt.WindowType.WindowStaysOnTopHint
+        topmost_flag_to_add = Qt.WindowType.WindowStaysOnTopHint if self._is_win_topmost else Qt.WindowType(0)
+        transparent_flag_to_add = Qt.WindowType.WindowTransparentForInput if getattr(self, 'mouse_invisible_mode_enabled', False) else Qt.WindowType(0)
 
-        new_flags = base_flags | current_topmost_flag_to_add
-        should_be_transparent_for_input = getattr(self, 'mouse_invisible_mode_enabled', False)
+        new_flags = base_flags | topmost_flag_to_add | transparent_flag_to_add
         
-        if should_be_transparent_for_input: 
-            new_flags |= Qt.WindowType.WindowTransparentForInput
-        
-        if flags != new_flags:
-            logging.debug(f"_apply_mouse_invisible_mode: current_flags={flags:#x}, new_flags={new_flags:#x}")
+        logging.info(f"[FLAGS_APPLY] Mode: {self.mode}, Topmost: {self._is_win_topmost}, MouseInvisible: {getattr(self, 'mouse_invisible_mode_enabled', False)}")
+        logging.info(f"[FLAGS_APPLY] Current Qt Flags: {current_flags:#x} (Visible: {self.isVisible()}, Minimized: {self.isMinimized()})")
+        logging.info(f"[FLAGS_APPLY] Calculated New Qt Flags: {new_flags:#x}")
+
+        if current_flags != new_flags:
+            logging.info(f"[FLAGS_APPLY] Flags are different. Current: {current_flags:#x}, New: {new_flags:#x}. Applying new flags...")
+            
             current_geometry = self.geometry()
             is_visible_before = self.isVisible()
+            is_minimized_before = self.isMinimized()
+            logging.info(f"[FLAGS_APPLY] Before setWindowFlags: Visible={is_visible_before}, Minimized={is_minimized_before}, Geometry={current_geometry}")
 
             self.setWindowFlags(new_flags)
+            logging.info(f"[FLAGS_APPLY] After setWindowFlags: New flags set. Current state: Visible={self.isVisible()}, Minimized={self.isMinimized()}")
             
-            if is_visible_before:
-                 self.show() 
+            if is_visible_before and not is_minimized_before :
+                logging.info(f"[FLAGS_APPLY] Window was visible and not minimized. Calling show().")
+                self.show() # Это может быть ключевым моментом для обновления в панели задач
+                logging.info(f"[FLAGS_APPLY] After show(): Visible={self.isVisible()}, Minimized={self.isMinimized()}")
+                if current_geometry.isValid():
+                    logging.info(f"[FLAGS_APPLY] Restoring geometry to: {current_geometry}")
+                    QTimer.singleShot(10, lambda: self.setGeometry(current_geometry) if self.isVisible() else None)
+                
+                def force_taskbar_update():
+                    if self.isVisible() and not self.isMinimized():
+                        logging.info(f"[FLAGS_APPLY] Force taskbar update: Hiding briefly for mode {self.mode}.")
+                        self.hide()
+                        QTimer.singleShot(50, self.show) 
+                QTimer.singleShot(150, force_taskbar_update) # Увеличим задержку
+
+            elif is_minimized_before:
+                 logging.info(f"[FLAGS_APPLY] Window was minimized. Not calling show(), but flags are set.")
             
-            if is_visible_before and current_geometry.isValid(): 
-                QTimer.singleShot(10, lambda: self.setGeometry(current_geometry) if self.isVisible() else None)
-            logging.info(f"WindowTransparentForInput target: {should_be_transparent_for_input}, Topmost target: {bool(current_topmost_flag_to_add)}. Applied flags: {self.windowFlags():#x}")
+            logging.info(f"[FLAGS_APPLY] Final resulting flags: {self.windowFlags():#x}")
         else:
-            logging.debug(f"_apply_mouse_invisible_mode: Flags already set ({flags:#x}). Transparent target: {should_be_transparent_for_input}, Topmost target: {bool(current_topmost_flag_to_add)}.")
+            logging.info(f"[FLAGS_APPLY] Flags are already set ({current_flags:#x}). No changes made.")
 
 
     @Slot()
     def toggle_tray_mode(self):
-        logging.debug(f"toggle_tray_mode called. Current topmost: {self._is_win_topmost}, current mouse_ignore: {self.mouse_invisible_mode_enabled}")
+        logging.info("MainWindow: toggle_tray_mode triggered.")
         if hasattr(self, 'win_api_manager'):
-            target_state = not self._is_win_topmost 
+            target_topmost_state = not self._is_win_topmost 
             
-            self.win_api_manager.set_topmost_winapi(target_state)
+            # Устанавливаем topmost через WinAPI
+            self.win_api_manager.set_topmost_winapi(target_topmost_state) 
             
-            if self.mouse_invisible_mode_enabled != target_state:
-                self.mouse_invisible_mode_enabled = target_state
-                self._apply_mouse_invisible_mode() 
+            # mouse_invisible_mode_enabled должен всегда соответствовать новому состоянию topmost при вызове toggle_tray_mode
+            self.mouse_invisible_mode_enabled = self.win_api_manager.is_win_topmost
             
-            logging.info(f"Tray mode (Topmost + Mouse Invisible) toggled. Target state: {target_state}")
+            # _apply_mouse_invisible_mode будет вызван из _handle_topmost_state_change,
+            # которое эмитится из win_api_manager, если состояние topmost изменилось.
+            # Если состояние topmost не изменилось (например, уже было таким),
+            # то _handle_topmost_state_change не вызовется, и нам нужно
+            # вручную применить флаги, чтобы обновить WindowTransparentForInput.
+            if self.win_api_manager.is_win_topmost == target_topmost_state:
+                # Если состояние topmost УЖЕ было таким, каким мы его хотели сделать,
+                # ИЛИ если winapi не смогло его изменить, но мы хотим, чтобы mouse_invisible соответствовало target_topmost_state,
+                # то мы все равно вызываем _apply_mouse_invisible_mode,
+                # т.к. mouse_invisible_mode_enabled мог измениться.
+                logging.debug(f"Topmost state already {target_topmost_state} or API failed to change. Forcing _apply_mouse_invisible_mode based on new mouse_invisible_mode_enabled: {self.mouse_invisible_mode_enabled}")
+                self._apply_mouse_invisible_mode()
+            
+            logging.info(f"Tray mode toggled. Target topmost: {target_topmost_state}, Actual topmost: {self.win_api_manager.is_win_topmost}, Mouse invisible: {self.mouse_invisible_mode_enabled}")
 
 
     def mousePressEvent(self, event: QMouseEvent):
@@ -450,7 +505,10 @@ class MainWindow(QMainWindow):
 
     def change_mode(self, mode_name: str):
         logging.info(f"--- MainWindow: Attempting to change mode to: {mode_name} (Current: {self.mode}) ---")
-        if self.mode == mode_name: return
+        if self.mode == mode_name: 
+            logging.info(f"Mode is already {mode_name}. No change.")
+            return
+            
         old_mode = self.mode
         if self.isVisible(): self.mode_positions[old_mode] = self.pos()
         
@@ -462,7 +520,7 @@ class MainWindow(QMainWindow):
         self.mode = mode_name 
         
         if hasattr(self, 'ui_updater') and self.ui_updater:
-            self.ui_updater.update_interface_for_mode(new_mode=self.mode) 
+            self.ui_updater.update_interface_for_mode(new_mode=self.mode) # update_interface_for_mode вызовет _apply_mouse_invisible_mode
         
         target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible():
@@ -560,18 +618,21 @@ class MainWindow(QMainWindow):
     @Slot()
     def show_hotkey_settings_window(self):
         if hasattr(self, 'hotkey_manager'):
+            # Возвращаем результат exec, чтобы проверить, были ли сохранены изменения
+            # и если да, то заново запускаем HotkeyManager
             if show_hotkey_settings_dialog(self.hotkey_manager.get_current_hotkeys(),
                                            self.hotkey_manager.get_actions_config(),
-                                           self): 
-                # reregister_all_hotkeys() теперь вызывается из update_hotkey
-                # и при сохранении в HotkeySettingsDialog, так что здесь это может быть избыточно,
-                # но для надежности оставим, если save_hotkeys не вызывает reregister.
-                # В нашей текущей реализации save_hotkeys НЕ вызывает reregister, 
-                # а HotkeySettingsDialog.save_and_close вызывает.
-                # Поэтому здесь reregister не нужен, если HotkeySettingsDialog сам это делает.
-                # self.hotkey_manager.reregister_all_hotkeys() # Убрано, т.к. диалог это делает
-                pass 
-        else: logging.error("HotkeyManager not found in MainWindow.")
+                                           self):
+                logging.info("Hotkey settings were saved. Restarting HotkeyManager listener.")
+                self.hotkey_manager.stop_listening() # Останавливаем текущий слушатель
+                # HotkeyManager.save_hotkeys уже обновил self._current_hotkeys
+                # reregister_all_hotkeys будет вызван внутри start_listening
+                self.hotkey_manager.start_listening() # Запускаем новый слушатель с обновленными хоткеями
+            else:
+                logging.info("Hotkey settings dialog was cancelled or closed without saving.")
+        else: 
+            logging.error("HotkeyManager not found in MainWindow.")
+
 
     def handle_selection_changed(self):
         if self.is_programmatically_updating_selection: return
