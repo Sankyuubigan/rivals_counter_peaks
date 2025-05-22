@@ -1,0 +1,7 @@
+PySide6
+keyboard
+mss
+numpy
+opencv-python
+pyperclip
+markdown
