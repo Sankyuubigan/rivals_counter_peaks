@@ -6,7 +6,7 @@ import os
 
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
                                QLabel, QPushButton, QListWidget, QListWidgetItem, QAbstractItemView, 
-                               QMenu, QApplication, QMessageBox, QComboBox, QLineEdit, QTextEdit, QTextBrowser) 
+                               QMenu, QApplication, QMessageBox, QComboBox, QLineEdit, QTextEdit, QTextBrowser, QDialog)
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QPoint, QMetaObject, QEvent, QObject, QRect 
 from PySide6.QtGui import QIcon, QMouseEvent, QPixmap, QShowEvent, QHideEvent, QCloseEvent 
 
@@ -16,10 +16,9 @@ from logic import CounterpickLogic, TEAM_SIZE
 from top_panel import TopPanel
 from right_panel import HERO_NAME_ROLE 
 from log_handler import QLogHandler
-# ИЗМЕНЕНО: Импортируем HotkeyCaptureLineEdit для type hinting, если понадобится, но в eventFilter будем проверять по objectName
 from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
                      show_hero_rating, show_hotkey_settings_dialog, HotkeyCaptureLineEdit)
-from hotkey_manager import HotkeyManager 
+from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE 
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES 
 from win_api import WinApiManager
 from recognition import RecognitionManager
@@ -30,14 +29,6 @@ from appearance_manager import AppearanceManager
 
 from core.lang.translations import get_text
 
-
-try:
-    import keyboard 
-    KEYBOARD_AVAILABLE = True
-except ImportError:
-    KEYBOARD_AVAILABLE = False
-    keyboard = None
-    logging.error("'keyboard' library not found. Global hotkeys will be disabled.")
 
 IS_ADMIN = False
 if sys.platform == 'win32':
@@ -240,7 +231,8 @@ class MainWindow(QMainWindow):
 
         app_instance = QApplication.instance()
         if app_instance:
-            app_instance.installEventFilter(self) 
+            # Устанавливаем фильтр на QApplication, чтобы ловить события до того, как они достигнут виджетов
+            app_instance.installEventFilter(self)
         else:
             logging.warning("QApplication instance not found, cannot install event filter on MainWindow.")
 
@@ -457,7 +449,7 @@ class MainWindow(QMainWindow):
             else: 
                 QTimer.singleShot(10, lambda: self._apply_mouse_invisible_mode("initial_show_no_ui_updater"))
 
-            if KEYBOARD_AVAILABLE and IS_ADMIN:
+            if PYNPUT_AVAILABLE and IS_ADMIN:
                  if hasattr(self, 'hotkey_manager'): 
                      QTimer.singleShot(200, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None) 
             self._initial_ui_update_done = True
@@ -639,7 +631,7 @@ class MainWindow(QMainWindow):
             if show_hotkey_settings_dialog(self.hotkey_manager.get_current_hotkeys(),
                                            self.hotkey_manager.get_actions_config(),
                                            self):
-                logging.info("Hotkey settings dialog saved. HotkeyManager should have reregistered hotkeys via its save_hotkeys method.")
+                logging.info("Hotkey settings dialog saved. HotkeyManager should have updated hotkeys and restarted listener.")
             else:
                 logging.info("Hotkey settings dialog was cancelled or closed without saving.")
         else: 
@@ -680,35 +672,32 @@ class MainWindow(QMainWindow):
                     self.ui_updater.update_ui_after_logic_change()
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        # Этот фильтр теперь устанавливается на QApplication, а не на MainWindow.
+        # Он должен ловить нажатия Tab ПЕРЕД тем, как они дойдут до любого виджета.
         if event.type() == QEvent.Type.KeyPress:
             key_event = event # QKeyEvent
             
-            active_modal_widget = QApplication.activeModalWidget()
-            # Проверяем, активно ли главное окно ИЛИ один из его модальных диалогов
-            is_our_window_active = self.isActiveWindow()
-            if not is_our_window_active and active_modal_widget:
-                 # Проверяем, является ли модальный диалог потомком MainWindow
-                 # или был создан с MainWindow в качестве родителя
-                 parent_dialog = active_modal_widget
-                 while parent_dialog:
-                     if parent_dialog == self:
-                         is_our_window_active = True
-                         break
-                     parent_dialog = parent_dialog.parent()
-
-
-            if key_event.key() == Qt.Key_Tab and is_our_window_active:
+            if key_event.key() == Qt.Key_Tab:
                 focus_widget = QApplication.focusWidget()
                 
-                # Разрешаем Tab для стандартных QLineEdit, QComboBox, QTextEdit, но не для HotkeyCaptureLineEdit
-                if isinstance(focus_widget, (QComboBox, QTextEdit)) or \
-                   (isinstance(focus_widget, QLineEdit) and getattr(focus_widget, 'objectName', lambda: '')() != "HotkeyCaptureLineEdit"):
-                    logging.debug(f"MainWindow.eventFilter: Tab in a standard input widget ({type(focus_widget)}), allowing. Watched: {watched.objectName() if hasattr(watched, 'objectName') else type(watched)}")
-                    return False # Стандартная обработка Tab
+                # Если фокус на HotkeyCaptureLineEdit, Tab должен обрабатываться им, а не этим фильтром
+                if isinstance(focus_widget, HotkeyCaptureLineEdit) and focus_widget.objectName() == "HotkeyCaptureLineEdit":
+                    logging.debug(f"Application.eventFilter: Tab for HotkeyCaptureLineEdit, not consumed. Watched: {type(watched)}")
+                    return False # Передаем событие дальше HotkeyCaptureLineEdit
 
-                # Блокируем Tab для HotkeyCaptureLineEdit и других случаев в наших окнах
-                logging.debug(f"MainWindow.eventFilter: Tab key press consumed. Watched: {watched.objectName() if hasattr(watched, 'objectName') else type(watched)}, Focus: {focus_widget.objectName() if hasattr(focus_widget, 'objectName') else type(focus_widget) if focus_widget else 'None'}")
-                return True 
+                # Если активное окно - это HotkeySettingsDialog (или его дочерний виджет, КРОМЕ HotkeyCaptureLineEdit),
+                # то Tab должен обрабатываться стандартно для навигации внутри диалога.
+                active_window = QApplication.activeWindow()
+                if active_window and active_window.windowTitle() == get_text('hotkey_settings_window_title'):
+                    # Если фокус внутри HotkeySettingsDialog, но НЕ на HotkeyCaptureLineEdit, позволяем Tab работать
+                    if not (isinstance(focus_widget, HotkeyCaptureLineEdit) and focus_widget.objectName() == "HotkeyCaptureLineEdit"):
+                        logging.debug(f"Application.eventFilter: Tab inside HotkeySettingsDialog (not on capture field), standard processing. Focus: {type(focus_widget)}")
+                        return False # Стандартная обработка Tab для навигации
+
+                # Во всех остальных случаях (например, фокус на MainWindow или других его частях, не в диалоге настроек)
+                # "съедаем" Tab, чтобы предотвратить стандартную навигацию Qt, которая мешает хоткеям с Tab.
+                logging.debug(f"Application.eventFilter: Tab key press consumed by global filter. Focus: {type(focus_widget) if focus_widget else 'None'}")
+                return True # Перехватываем и "съедаем" событие Tab
 
         return super().eventFilter(watched, event)
 
@@ -719,11 +708,16 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'log_dialog') and self.log_dialog and self.log_dialog.isVisible() : 
             self.log_dialog.close() 
         
-        # hotkey_settings_dialog_instance создается и управляется локально в show_hotkey_settings_window
-        # поэтому здесь проверять его не нужно, если он не хранится в self.
-        
         if hasattr(self, 'hotkey_display_dialog') and self.hotkey_display_dialog and self.hotkey_display_dialog.isVisible():
              self.hotkey_display_dialog.reject() 
+
+        active_modals = QApplication.topLevelWidgets()
+        for widget in active_modals:
+            if isinstance(widget, QDialog) and widget.isModal() and widget.parent() == self and \
+               widget.windowTitle() == get_text('hotkey_settings_window_title'):
+                logging.info(f"Closing active HotkeySettingsDialog before main window close.")
+                widget.reject()
+                break
 
         if hasattr(self, 'hotkey_manager'): self.hotkey_manager.stop_listening()
         if hasattr(self, 'rec_manager') and self.rec_manager: self.rec_manager.stop_recognition()

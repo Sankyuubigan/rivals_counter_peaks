@@ -1,5 +1,5 @@
 PySide6
-keyboard
+pynput
 mss
 numpy
 opencv-python

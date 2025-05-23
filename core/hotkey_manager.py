@@ -2,342 +2,504 @@
 import json
 import logging
 import threading
-from typing import Dict, Callable, Any
-import time 
-import os # <<< ИМПОРТ OS НА МЕСТЕ >>>
+from typing import Dict, Callable, Any, Set
+import time
+import os
+import sys
+import re 
 
-from PySide6.QtCore import QObject, Signal, Slot, QTimer, QMetaObject, Q_ARG, Qt 
+from PySide6.QtCore import QObject, Signal, Slot, QTimer, QMetaObject, Q_ARG, Qt
+from PySide6.QtGui import QGuiApplication 
 
 from core.utils import get_settings_path
-from core.lang.translations import get_text 
+from core.lang.translations import get_text
 
 try:
-    import keyboard
-    KEYBOARD_AVAILABLE = True
+    from pynput import keyboard
+    PYNPUT_AVAILABLE = True
 except ImportError:
-    KEYBOARD_AVAILABLE = False
-    keyboard = None
-    logging.error("HotkeyManager: 'keyboard' library not found. Global hotkeys will be disabled.")
+    PYNPUT_AVAILABLE = False
+    keyboard = None 
+    logging.error("HotkeyManager: 'pynput' library not found. Global hotkeys will be disabled.")
 
 
-DEFAULT_HOTKEYS = {
+DEFAULT_HOTKEYS = { 
     "move_cursor_up": "tab+up",
     "move_cursor_down": "tab+down",
     "move_cursor_left": "tab+left",
     "move_cursor_right": "tab+right",
-    "toggle_selection": "tab+num 0",
+    "toggle_selection": "tab+num_0",
     "toggle_mode": "tab+decimal", 
-    "recognize_heroes": "tab+num /",
-    "clear_all": "tab+num -",
-    "copy_team": "tab+num 1",
-    "toggle_tray_mode": "tab+num 7", 
-    "toggle_mouse_ignore_independent": "tab+num 9", 
-    "debug_capture": "tab+num 3",
+    "recognize_heroes": "tab+num_divide",
+    "clear_all": "tab+num_subtract",
+    "copy_team": "tab+num_1",
+    "toggle_tray_mode": "tab+num_7",
+    "toggle_mouse_ignore_independent": "tab+num_9",
+    "debug_capture": "tab+num_3",
 }
-# Платформозависимая настройка для numpad точки
-if os.name == 'nt': 
-    DEFAULT_HOTKEYS["toggle_mode"] = "num ." # Для Windows
-elif sys.platform == 'darwin': # Для macOS
-    DEFAULT_HOTKEYS["toggle_mode"] = "keypad ." # Может потребоваться другая строка
-else: # Для Linux и других
-    DEFAULT_HOTKEYS["toggle_mode"] = "kp_decimal" # keyboard lib на Linux часто использует KP_ префиксы
+
 
 HOTKEY_ACTIONS_CONFIG = {
-    "move_cursor_up": {"desc_key": "hotkey_desc_navigation_up", "signal_name": "action_move_cursor_up"},
-    "move_cursor_down": {"desc_key": "hotkey_desc_navigation_down", "signal_name": "action_move_cursor_down"},
-    "move_cursor_left": {"desc_key": "hotkey_desc_navigation_left", "signal_name": "action_move_cursor_left"},
-    "move_cursor_right": {"desc_key": "hotkey_desc_navigation_right", "signal_name": "action_move_cursor_right"},
-    "toggle_selection": {"desc_key": "hotkey_desc_select", "signal_name": "action_toggle_selection"},
-    "toggle_mode": {"desc_key": "hotkey_desc_toggle_mode", "signal_name": "action_toggle_mode"},
-    "recognize_heroes": {"desc_key": "hotkey_desc_recognize", "signal_name": "action_recognize_heroes"},
-    "clear_all": {"desc_key": "hotkey_desc_clear", "signal_name": "action_clear_all"},
-    "copy_team": {"desc_key": "hotkey_desc_copy_team", "signal_name": "action_copy_team"},
-    "toggle_tray_mode": {"desc_key": "hotkey_desc_toggle_tray", "signal_name": "action_toggle_tray_mode"},
-    "toggle_mouse_ignore_independent": {"desc_key": "hotkey_desc_toggle_mouse_ignore", "signal_name": "action_toggle_mouse_ignore_independent"},
-    "debug_capture": {"desc_key": "hotkey_desc_debug_screenshot", "signal_name": "action_debug_capture"},
+    "move_cursor_up": {"desc_key": "hotkey_desc_navigation_up", "signal_name": "action_move_cursor_up", "suppress": True}, 
+    "move_cursor_down": {"desc_key": "hotkey_desc_navigation_down", "signal_name": "action_move_cursor_down", "suppress": True},
+    "move_cursor_left": {"desc_key": "hotkey_desc_navigation_left", "signal_name": "action_move_cursor_left", "suppress": True},
+    "move_cursor_right": {"desc_key": "hotkey_desc_navigation_right", "signal_name": "action_move_cursor_right", "suppress": True},
+    "toggle_selection": {"desc_key": "hotkey_desc_select", "signal_name": "action_toggle_selection", "suppress": True},
+    "toggle_mode": {"desc_key": "hotkey_desc_toggle_mode", "signal_name": "action_toggle_mode", "suppress": True},
+    "recognize_heroes": {"desc_key": "hotkey_desc_recognize", "signal_name": "action_recognize_heroes", "suppress": True},
+    "clear_all": {"desc_key": "hotkey_desc_clear", "signal_name": "action_clear_all", "suppress": True},
+    "copy_team": {"desc_key": "hotkey_desc_copy_team", "signal_name": "action_copy_team", "suppress": True},
+    "toggle_tray_mode": {"desc_key": "hotkey_desc_toggle_tray", "signal_name": "action_toggle_tray_mode", "suppress": True},
+    "toggle_mouse_ignore_independent": {"desc_key": "hotkey_desc_toggle_mouse_ignore", "signal_name": "action_toggle_mouse_ignore_independent", "suppress": True},
+    "debug_capture": {"desc_key": "hotkey_desc_debug_screenshot", "signal_name": "action_debug_capture", "suppress": True},
 }
+
+PYNPUT_KEY_TO_STRING_MAP = {}
+STRING_TO_PYNPUT_KEY_MAP = {}
+NORMALIZED_MODIFIERS_PYNPUT = {}
+
+if PYNPUT_AVAILABLE and keyboard:
+    PYNPUT_KEY_TO_STRING_MAP = {
+        keyboard.Key.alt: 'alt', keyboard.Key.alt_l: 'alt', keyboard.Key.alt_r: 'alt',
+        keyboard.Key.ctrl: 'ctrl', keyboard.Key.ctrl_l: 'ctrl', keyboard.Key.ctrl_r: 'ctrl',
+        keyboard.Key.shift: 'shift', keyboard.Key.shift_l: 'shift', keyboard.Key.shift_r: 'shift',
+        keyboard.Key.cmd: 'win', keyboard.Key.cmd_l: 'win', keyboard.Key.cmd_r: 'win', # 'win' or 'cmd' for mac
+        keyboard.Key.tab: 'tab',
+        keyboard.Key.space: 'space', keyboard.Key.enter: 'enter', keyboard.Key.esc: 'esc',
+        keyboard.Key.up: 'up', keyboard.Key.down: 'down', keyboard.Key.left: 'left', keyboard.Key.right: 'right',
+        keyboard.Key.f1: 'f1', keyboard.Key.f2: 'f2', keyboard.Key.f3: 'f3', keyboard.Key.f4: 'f4',
+        keyboard.Key.f5: 'f5', keyboard.Key.f6: 'f6', keyboard.Key.f7: 'f7', keyboard.Key.f8: 'f8',
+        keyboard.Key.f9: 'f9', keyboard.Key.f10: 'f10', keyboard.Key.f11: 'f11', keyboard.Key.f12: 'f12',
+        keyboard.Key.insert: 'insert', keyboard.Key.delete: 'delete', keyboard.Key.home: 'home', keyboard.Key.end: 'end',
+        keyboard.Key.page_up: 'page_up', keyboard.Key.page_down: 'page_down',
+        keyboard.Key.backspace: 'backspace',
+        # Numpad keys using KeyCode (VK codes are for Windows)
+        # These might need to be platform-specific or handled by char if not special
+    }
+    STRING_TO_PYNPUT_KEY_MAP = {v: k for k, v in PYNPUT_KEY_TO_STRING_MAP.items()}
+    
+    # Add numpad keys. For cross-platform, KeyCode.from_vk might not be ideal.
+    # pynput often represents numpad numbers as regular numbers when NumLock is on,
+    # and special keys (like arrows) when NumLock is off.
+    # The string "num_0" etc. is a convention for this app.
+    # If using VK codes, it's Windows-specific.
+    if sys.platform == "win32":
+        STRING_TO_PYNPUT_KEY_MAP.update({
+            "num_0": keyboard.KeyCode.from_vk(0x60), "num_1": keyboard.KeyCode.from_vk(0x61),
+            "num_2": keyboard.KeyCode.from_vk(0x62), "num_3": keyboard.KeyCode.from_vk(0x63),
+            "num_4": keyboard.KeyCode.from_vk(0x64), "num_5": keyboard.KeyCode.from_vk(0x65),
+            "num_6": keyboard.KeyCode.from_vk(0x66), "num_7": keyboard.KeyCode.from_vk(0x67),
+            "num_8": keyboard.KeyCode.from_vk(0x68), "num_9": keyboard.KeyCode.from_vk(0x69),
+            "num_multiply": keyboard.KeyCode.from_vk(0x6A), 
+            "num_*": keyboard.KeyCode.from_vk(0x6A), # Alias
+            "num_add": keyboard.KeyCode.from_vk(0x6B),
+            "num_+": keyboard.KeyCode.from_vk(0x6B), # Alias
+            "num_subtract": keyboard.KeyCode.from_vk(0x6D),
+            "num_-": keyboard.KeyCode.from_vk(0x6D), # Alias
+            "num_decimal": keyboard.KeyCode.from_vk(0x6E), # Numpad .
+            "num_.": keyboard.KeyCode.from_vk(0x6E), # Alias
+            "decimal": keyboard.KeyCode.from_vk(0x6E), # Alias for "tab+decimal"
+            "num_divide": keyboard.KeyCode.from_vk(0x6F),
+            "num_/": keyboard.KeyCode.from_vk(0x6F), # Alias
+        })
+    else: # Fallback for non-Windows (less reliable for numpad symbolic names)
+        logging.warning("Numpad symbolic hotkeys (e.g., 'num_multiply') might not work reliably on non-Windows OS for pynput.")
+        # One could try to map numpad characters if pynput provides them as char
+        # e.g. STRING_TO_PYNPUT_KEY_MAP['*'] = keyboard.KeyCode.from_char('*') if that's how numpad * appears
+
+
+    NORMALIZED_MODIFIERS_PYNPUT = {
+        keyboard.Key.alt_l: keyboard.Key.alt, keyboard.Key.alt_r: keyboard.Key.alt,
+        keyboard.Key.ctrl_l: keyboard.Key.ctrl, keyboard.Key.ctrl_r: keyboard.Key.ctrl,
+        keyboard.Key.shift_l: keyboard.Key.shift, keyboard.Key.shift_r: keyboard.Key.shift,
+        keyboard.Key.cmd_l: keyboard.Key.cmd, keyboard.Key.cmd_r: keyboard.Key.cmd,
+    }
+
 
 class HotkeyManager(QObject):
     hotkeys_updated_signal = Signal()
 
-    def __init__(self, main_window: QObject): 
+    def __init__(self, main_window: QObject):
         super().__init__()
-        logging.debug("HotkeyManager.__init__ START")
         self.main_window = main_window
-        self._current_hotkeys: Dict[str, str] = {} 
-        self._hotkey_callbacks: Dict[str, Callable] = {} 
-        self._listener_thread: threading.Thread | None = None
-        self._stop_listener_flag = threading.Event()
+        self._current_hotkeys: Dict[str, str] = {}
+        self._parsed_hotkeys: Dict[str, Dict[str, Any]] = {}
+        self._pynput_listener: keyboard.Listener | None = None # type: ignore
         self.settings_file_path = get_settings_path()
-        self._is_reregistering = False 
-        self._active_hotkey_objects = {} # Храним объекты хуков, {hotkey_string: hook_object}
+        self._pressed_keys: Set[Any] = set() 
+        self._lock = threading.Lock()
 
-        self._prepare_callbacks()
-        logging.debug("HotkeyManager.__init__ FINISHED")
+    def _normalize_key(self, key):
+        if not PYNPUT_AVAILABLE: return key
+        return NORMALIZED_MODIFIERS_PYNPUT.get(key, key)
 
-    def _prepare_callbacks(self):
-        for action_id in HOTKEY_ACTIONS_CONFIG.keys():
-            self._hotkey_callbacks[action_id] = self._create_queued_callback(action_id)
+    def _get_key_id(self, key_obj):
+        if not PYNPUT_AVAILABLE or not keyboard: return str(key_obj)
+        normalized_key_obj = self._normalize_key(key_obj)
 
-    def _create_queued_callback(self, action_id: str):
-        def _callback(): 
-            logging.debug(f"[HotkeyManager Thread] Raw callback for action: {action_id}")
-            try:
-                QMetaObject.invokeMethod(self, "_emit_action_signal_slot", 
-                                         Qt.ConnectionType.QueuedConnection, 
-                                         Q_ARG(str, action_id))
-            except Exception as e:
-                logging.error(f"[HotkeyManager Thread] Error invoking _emit_action_signal_slot for {action_id}: {e}", exc_info=True)
-        return _callback
-
-    @Slot(str) 
-    def _emit_action_signal_slot(self, action_id: str): 
-        logging.info(f"[HotkeyManager MainThread] _emit_action_signal_slot received for action: {action_id}")
-        signal_config = HOTKEY_ACTIONS_CONFIG.get(action_id)
-        if not signal_config:
-            logging.error(f"[HotkeyManager MainThread] No config found for action_id: {action_id}")
-            return
-
-        signal_name = signal_config.get("signal_name")
-        if not signal_name:
-            logging.error(f"[HotkeyManager MainThread] 'signal_name' not found in config for action_id: {action_id}")
-            return
+        if isinstance(normalized_key_obj, keyboard.Key):
+            return ("Key", normalized_key_obj.name) 
+        elif isinstance(normalized_key_obj, keyboard.KeyCode):
+            # For numpad keys from VK codes on Windows, their char might be None or numbers
+            # We need a consistent way to ID them based on how _parse_hotkey_string will ID them from strings like "num_0"
+            if sys.platform == "win32":
+                vk = getattr(normalized_key_obj, 'vk', None)
+                if vk is not None:
+                    # Check if it's one of our conventionally named numpad VKs
+                    # This mapping should align with STRING_TO_PYNPUT_KEY_MAP's numpad keys
+                    vk_to_num_str_map = {
+                        0x60: "num_0", 0x61: "num_1", 0x62: "num_2", 0x63: "num_3", 0x64: "num_4",
+                        0x65: "num_5", 0x66: "num_6", 0x67: "num_7", 0x68: "num_8", 0x69: "num_9",
+                        0x6A: "num_multiply", 0x6B: "num_add", 0x6D: "num_subtract",
+                        0x6E: "num_decimal", 0x6F: "num_divide"
+                    }
+                    if vk in vk_to_num_str_map:
+                        return ("KeyCode_ConventionalNum", vk_to_num_str_map[vk])
             
-        if not hasattr(self.main_window, signal_name):
-            logging.error(f"[HotkeyManager MainThread] Signal '{signal_name}' not found in MainWindow for action '{action_id}'. MainWindow type: {type(self.main_window)}")
-            return
+            # Fallback for other KeyCodes or non-Windows
+            char = getattr(normalized_key_obj, 'char', None)
+            if char is not None:
+                return ("KeyCode_char", char.lower())
+            # If no char (e.g. some special keys on non-Windows), use vk if available
+            vk = getattr(normalized_key_obj, 'vk', None)
+            if vk is not None:
+                return ("KeyCode_vk_only", vk)
+            return ("KeyCode_unknown", str(normalized_key_obj)) # Should not happen often
+        return ("Unknown", str(normalized_key_obj))
+
+
+    def _get_key_str(self, key) -> str: 
+        if not PYNPUT_AVAILABLE or not keyboard: return ''
+        normalized_key = self._normalize_key(key)
+
+        if isinstance(normalized_key, keyboard.KeyCode):
+            if sys.platform == "win32" and hasattr(normalized_key, 'vk') and normalized_key.vk is not None:
+                vk_to_num_str = {
+                    0x60: "num_0", 0x61: "num_1", 0x62: "num_2", 0x63: "num_3", 0x64: "num_4",
+                    0x65: "num_5", 0x66: "num_6", 0x67: "num_7", 0x68: "num_8", 0x69: "num_9",
+                    0x6A: "num_multiply", 0x6B: "num_add", 0x6D: "num_subtract",
+                    0x6E: "num_decimal", 0x6F: "num_divide"
+                }
+                if normalized_key.vk in vk_to_num_str:
+                    return vk_to_num_str[normalized_key.vk]
+            # Fallback or non-Windows
+            return normalized_key.char.lower() if hasattr(normalized_key, 'char') and normalized_key.char else f"vk_{getattr(normalized_key, 'vk', 'None')}"
+        elif isinstance(normalized_key, keyboard.Key):
+            return PYNPUT_KEY_TO_STRING_MAP.get(normalized_key, normalized_key.name)
+        return str(normalized_key) 
+
+    def _parse_hotkey_string(self, hotkey_str: str) -> Dict[str, Any] | None:
+        if not PYNPUT_AVAILABLE or not keyboard: return None
+        
+        hk_str_lower = hotkey_str.lower().strip()
+        if not hk_str_lower or hk_str_lower == 'none' or hk_str_lower == get_text('hotkey_none').lower() or hk_str_lower == get_text('hotkey_not_set').lower():
+            return None
+
+        # Normalize "num <symbol>" to "num_<word>" e.g. "num ." -> "num_decimal"
+        num_symbol_map = {'.': 'decimal', '/': 'divide', '*': 'multiply', '-': 'subtract', '+': 'add'}
+        def replace_num_symbol(match_obj):
+            symbol = match_obj.group(1)
+            return f"num_{num_symbol_map.get(symbol, symbol)}" 
+
+        # Handle "num <digit>" and "num <symbol>"
+        hk_str_lower = re.sub(r'num\s*([0-9])', r'num_\1', hk_str_lower) 
+        # Ensure "num_decimal" (from "num .") is processed before "decimal" (if it's alone)
+        hk_str_lower = re.sub(r'num\s*([\.\/\*\-\+])', replace_num_symbol, hk_str_lower)
+        # Handle standalone "decimal" if it's not part of "num_decimal" already
+        if "num_decimal" not in hk_str_lower:
+             hk_str_lower = hk_str_lower.replace("decimal", "num_decimal") # Treat standalone "decimal" as "num_decimal"
+        
+        parts = hk_str_lower.split('+')
+        if not parts: return None
+
+        modifier_key_ids_set = set() 
+        main_key_obj = None 
+        potential_main_key_str = parts[-1]
+
+        for part_str in parts[:-1]:
+            pynput_mod_key_obj = STRING_TO_PYNPUT_KEY_MAP.get(part_str)
+            # Tab is a modifier here
+            if pynput_mod_key_obj and isinstance(pynput_mod_key_obj, keyboard.Key) and \
+               pynput_mod_key_obj in [keyboard.Key.alt, keyboard.Key.ctrl, keyboard.Key.shift, keyboard.Key.cmd, keyboard.Key.tab]:
+                modifier_key_ids_set.add(self._get_key_id(pynput_mod_key_obj)) 
+            else:
+                logging.warning(f"Invalid or non-modifier part '{part_str}' used as modifier in hotkey string '{hotkey_str}'")
+                return None
+
+        if potential_main_key_str in STRING_TO_PYNPUT_KEY_MAP:
+            main_key_obj = STRING_TO_PYNPUT_KEY_MAP[potential_main_key_str]
+        elif len(potential_main_key_str) == 1: 
+            try: # For simple characters a-z, 0-9 (not numpad), symbols
+                main_key_obj = keyboard.KeyCode.from_char(potential_main_key_str)
+            except ValueError: # Should not happen if HotkeyCaptureLineEdit generates valid chars
+                 logging.warning(f"Cannot parse main key char '{potential_main_key_str}' in '{hotkey_str}'")
+                 return None
+        else:
+            logging.warning(f"Unknown main key part '{potential_main_key_str}' in hotkey string '{hotkey_str}' (normalized: {hk_str_lower})")
+            return None
+
+        if main_key_obj is None: # Should be caught by "Unknown main key part" already
+            logging.error(f"Failed to parse main key for '{hotkey_str}' (normalized: {hk_str_lower})")
+            return None
+
+        main_key_id = self._get_key_id(main_key_obj) 
+        all_keys_for_combo_ids = modifier_key_ids_set.copy()
+        all_keys_for_combo_ids.add(main_key_id)
+
+        return {
+            'keys_ids': all_keys_for_combo_ids, 
+            'main_key_id': main_key_id,    
+            'modifier_ids': modifier_key_ids_set   
+        }
+
+    def _update_parsed_hotkeys(self):
+        if not PYNPUT_AVAILABLE: return
+        with self._lock:
+            self._parsed_hotkeys.clear()
+            parsed_count = 0
+            # logging.debug("--- Updating Parsed Hotkeys ---") 
+            for action_id, hotkey_str in self._current_hotkeys.items():
+                # logging.debug(f"  Parsing for action '{action_id}', string: '{hotkey_str}'") 
+                parsed = self._parse_hotkey_string(hotkey_str)
+                # logging.debug(f"    Parsed result: {parsed}") 
+                if parsed:
+                    config = HOTKEY_ACTIONS_CONFIG.get(action_id, {})
+                    parsed['suppress_flag_from_config'] = config.get('suppress', False) 
+                    parsed['action_id'] = action_id
+                    self._parsed_hotkeys[action_id] = parsed
+                    parsed_count +=1
+                else:
+                    logging.warning(f"Could not parse hotkey string '{hotkey_str}' for action '{action_id}'. It will be ignored.")
+            logging.info(f"Parsed hotkeys updated: {parsed_count} active from {len(self._current_hotkeys)} configured.")
+            # logging.debug("--- Finished Updating Parsed Hotkeys ---")
+
+    def on_press(self, key):
+        if not PYNPUT_AVAILABLE or not keyboard: return True
+        try:
+            with self._lock:
+                normalized_key_obj = self._normalize_key(key)
+                normalized_key_id = self._get_key_id(normalized_key_obj)
+                self._pressed_keys.add(normalized_key_id)
+                
+                current_pressed_ids_repr = sorted([str(k_id) for k_id in self._pressed_keys])
+                # logging.debug(f"Press Event: KeyID='{normalized_key_id}' (Raw: {key}). PynputSetIDs: {current_pressed_ids_repr}")
+
+                for action_id, parsed_combo in self._parsed_hotkeys.items():
+                    # parsed_keys_ids_repr = sorted([str(k_id) for k_id in parsed_combo['keys_ids']])
+                    # logging.debug(f"  Comparing '{action_id}': main_id='{parsed_combo['main_key_id']}', combo_ids={parsed_keys_ids_repr} ||| current_pressed_ids={current_pressed_ids_repr}, current_normalized_key_id='{normalized_key_id}'")
+                    
+                    # Check if the pressed key is the main key of this combo
+                    if normalized_key_id == parsed_combo['main_key_id']:
+                        # logging.debug(f"    Main key ID MATCH for '{action_id}' (Pressed: '{normalized_key_id}', Expected: '{parsed_combo['main_key_id']}')")
+                        # Check if all required modifiers for this combo are currently pressed
+                        # self._pressed_keys should contain all keys needed for parsed_combo['keys_ids']
+                        if parsed_combo['keys_ids'].issubset(self._pressed_keys):
+                            # To avoid triggering "ctrl+a" when "ctrl+shift+a" is pressed,
+                            # ensure the set of pressed keys is EXACTLY what the combo expects.
+                            if self._pressed_keys == parsed_combo['keys_ids']: 
+                                original_hotkey_str = self._current_hotkeys.get(action_id, "N/A")
+                                logging.info(f"SUCCESS: Hotkey triggered: '{original_hotkey_str}' for action '{action_id}'")
+                                try:
+                                    QMetaObject.invokeMethod(self, "_emit_action_signal_slot",
+                                                             Qt.ConnectionType.QueuedConnection,
+                                                             Q_ARG(str, action_id))
+                                except Exception as e_invoke:
+                                    logging.error(f"Error invoking _emit_action_signal_slot for {action_id}: {e_invoke}")
+                                # No break here, allow other potential matches if complex setups exist
+                                # (though typically one combo per action)
+                            # else:
+                                # logging.debug(f"      Exact set IDs MISMATCH for '{action_id}': current_set_ids={current_pressed_ids_repr} vs combo_ids={parsed_keys_ids_repr}")
+                        # else:
+                            # required_combo_ids_repr = sorted([str(k_id) for k_id in parsed_combo['keys_ids']])
+                            # logging.debug(f"      Required combo IDs NOT SUBSET of pressed for '{action_id}': Required_Set_IDs: {required_combo_ids_repr}, Pressed_Set_IDs: {current_pressed_ids_repr}")
+            return True 
+        except Exception as e_global_press:
+            logging.critical(f"CRITICAL ERROR in on_press: {e_global_press}", exc_info=True)
+            return True 
+
+    def on_release(self, key):
+        if not PYNPUT_AVAILABLE or not keyboard: return True
+        try:
+            with self._lock:
+                normalized_key_obj = self._normalize_key(key)
+                normalized_key_id = self._get_key_id(normalized_key_obj)
+                if normalized_key_id in self._pressed_keys:
+                    self._pressed_keys.remove(normalized_key_id)
+                # current_pressed_ids_repr = sorted([str(k_id) for k_id in self._pressed_keys])
+                # logging.debug(f"Release Event: KeyID='{normalized_key_id}'. PynputSetIDs: {current_pressed_ids_repr}")
+            return True
+        except Exception as e_global_release:
+            logging.critical(f"CRITICAL ERROR in on_release: {e_global_release}", exc_info=True)
+            return True
+
+    @Slot(str)
+    def _emit_action_signal_slot(self, action_id: str):
+        signal_config = HOTKEY_ACTIONS_CONFIG.get(action_id)
+        if not signal_config: logging.warning(f"No signal config for action_id {action_id}"); return
+        signal_name = signal_config.get("signal_name")
+        if not signal_name or not hasattr(self.main_window, signal_name):
+            logging.warning(f"Signal name '{signal_name}' not found in main_window for action {action_id}"); return
         
         signal_to_emit = getattr(self.main_window, signal_name)
-        if not isinstance(signal_to_emit, Signal): 
-            logging.error(f"[HotkeyManager MainThread] Attribute '{signal_name}' in MainWindow is not a Signal for action '{action_id}'. Type: {type(signal_to_emit)}")
-            return
-
+        if not isinstance(signal_to_emit, Signal): # type: ignore
+            logging.warning(f"Attribute '{signal_name}' is not a Signal for action {action_id}"); return
         try:
-            logging.debug(f"[HotkeyManager MainThread] Attempting to emit signal for action {action_id} (Signal: {signal_name})")
             signal_to_emit.emit()
-            logging.info(f"[HotkeyManager MainThread] Successfully emitted signal for action {action_id}")
         except Exception as e:
-            logging.error(f"[HotkeyManager MainThread] Error emitting signal for action {action_id}: {e}", exc_info=True)
+            logging.error(f"Error emitting signal for {action_id}: {e}")
+
+    def _normalize_string_for_storage(self, hotkey_str: str) -> str:
+        hk_lower = hotkey_str.lower().strip()
+        
+        num_symbol_map = {'.': 'decimal', '/': 'divide', '*': 'multiply', '-': 'subtract', '+': 'add'}
+        def replace_num_symbol(match_obj):
+            symbol = match_obj.group(1)
+            return f"num_{num_symbol_map.get(symbol, symbol)}"
+        
+        hk_lower = re.sub(r'num\s*([0-9])', r'num_\1', hk_lower)
+        hk_lower = re.sub(r'num\s*([\.\/\*\-\+])', replace_num_symbol, hk_lower)
+        # Ensure standalone "decimal" becomes "num_decimal" for consistency if not already part of "num_decimal"
+        if "num_decimal" not in hk_lower:
+             hk_lower = hk_lower.replace("decimal", "num_decimal")
+        return hk_lower
 
     def load_hotkeys(self):
-        logging.info("HotkeyManager: load_hotkeys START")
-        self._current_hotkeys = DEFAULT_HOTKEYS.copy() 
+        logging.info("HM: load_hotkeys")
+        self._current_hotkeys = {k: self._normalize_string_for_storage(v) for k, v in DEFAULT_HOTKEYS.items()}
+        
         if self.settings_file_path.exists():
             try:
                 with open(self.settings_file_path, 'r', encoding='utf-8') as f:
                     loaded_hotkeys = json.load(f)
                 for action_id, hotkey_str in loaded_hotkeys.items():
                     if action_id in self._current_hotkeys and isinstance(hotkey_str, str):
-                        self._current_hotkeys[action_id] = hotkey_str
-                    else:
-                        logging.warning(f"HotkeyManager: Invalid or unknown action_id '{action_id}' or hotkey_str '{hotkey_str}' in settings file.")
-                logging.info(f"Hotkeys loaded from {self.settings_file_path}")
-            except (json.JSONDecodeError, IOError) as e:
-                logging.error(f"HotkeyManager: Error loading hotkeys from {self.settings_file_path}: {e}. Using defaults.")
-                self._current_hotkeys = DEFAULT_HOTKEYS.copy() 
+                        normalized_str = self._normalize_string_for_storage(hotkey_str)
+                        if hotkey_str.lower().strip() != normalized_str: # Log if normalization changed it
+                             logging.info(f"Normalized hotkey string from '{hotkey_str}' to '{normalized_str}' for {action_id} during load.")
+                        self._current_hotkeys[action_id] = normalized_str
+                    elif action_id in self._current_hotkeys: # Action ID is valid, but hotkey_str is not string
+                         logging.warning(f"Invalid type for hotkey '{action_id}' in settings: {hotkey_str}. Using default.")
+            except Exception as e:
+                logging.error(f"Error loading hotkeys: {e}. Defaults already set and normalized.")
         else:
-            logging.info("HotkeyManager: Settings file not found. Using default hotkeys.")
+            logging.info("Settings file not found. Using defaults (already normalized).")
         
-        if self._listener_thread and self._listener_thread.is_alive():
-            logging.info("HotkeyManager: Listener active after load, queueing reregistration.")
-            QMetaObject.invokeMethod(self, "reregister_all_hotkeys_slot", Qt.ConnectionType.QueuedConnection)
-        
+        if PYNPUT_AVAILABLE:
+            self._update_parsed_hotkeys()
         self.hotkeys_updated_signal.emit()
-        logging.info("HotkeyManager: load_hotkeys FINISHED")
-
 
     def save_hotkeys(self, hotkeys_to_save: Dict[str, str] | None = None):
-        logging.info(f"HotkeyManager: save_hotkeys START. hotkeys_to_save is None: {hotkeys_to_save is None}")
-        data_to_save = hotkeys_to_save if hotkeys_to_save is not None else self._current_hotkeys
+        logging.info(f"HM: save_hotkeys")
+        # logging.debug(f"HM: save_hotkeys received: {hotkeys_to_save}") 
+        data_to_save = {}
+        source_hotkeys = hotkeys_to_save if hotkeys_to_save is not None else self._current_hotkeys
+        
+        for action_id, hotkey_str in source_hotkeys.items():
+            data_to_save[action_id] = self._normalize_string_for_storage(hotkey_str)
+        
+        # logging.debug(f"HM: data_to_save after normalization for file: {data_to_save}")
+
         try:
             with open(self.settings_file_path, 'w', encoding='utf-8') as f:
                 json.dump(data_to_save, f, indent=4, ensure_ascii=False)
-            logging.info(f"Hotkeys saved to {self.settings_file_path}")
-            self._current_hotkeys = data_to_save.copy() 
+            logging.info(f"Hotkeys saved to file.")
             
-            if self._listener_thread and self._listener_thread.is_alive():
-                logging.info("HotkeyManager: Listener active after save, queueing reregistration.")
-                QMetaObject.invokeMethod(self, "reregister_all_hotkeys_slot", Qt.ConnectionType.QueuedConnection)
-            else:
-                 logging.info("HotkeyManager: Listener not active, hotkeys will be registered on next start_listening call.")
+            self._current_hotkeys = data_to_save.copy() 
+            # logging.debug(f"HM: self._current_hotkeys updated to: {self._current_hotkeys}")
+            
+            if PYNPUT_AVAILABLE:
+                self._update_parsed_hotkeys() 
+                self.reregister_all_hotkeys() 
             self.hotkeys_updated_signal.emit()
         except IOError as e:
-            logging.error(f"HotkeyManager: Error saving hotkeys to {self.settings_file_path}: {e}")
-        logging.info("HotkeyManager: save_hotkeys FINISHED")
+            logging.error(f"Error saving hotkeys: {e}")
 
-    @Slot() 
-    def reregister_all_hotkeys_slot(self):
-        logging.debug("HotkeyManager: reregister_all_hotkeys_slot called via QMetaObject.")
-        self.reregister_all_hotkeys()
-
-    def reregister_all_hotkeys(self):
-        if self._is_reregistering:
-            logging.warning("HotkeyManager: Reregistration already in progress, skipping.")
+    def reregister_all_hotkeys(self): 
+        logging.info("HM: reregister_all_hotkeys (stops and starts listener)")
+        if not PYNPUT_AVAILABLE:
+            logging.warning("pynput lib not available. Cannot reregister hotkeys.")
             return
-        
-        self._is_reregistering = True
-        logging.info("HotkeyManager: reregister_all_hotkeys START")
-        
-        if not KEYBOARD_AVAILABLE or not keyboard:
-            logging.warning("HotkeyManager: Cannot reregister, keyboard library not available.")
-            self._is_reregistering = False
-            return
-
-        logging.debug(f"HotkeyManager: Unhooking {len(self._active_hotkey_objects)} previously registered hotkey objects.")
-        unhook_success_count = 0
-        unhook_fail_count = 0
-        # Используем list(), чтобы создать копию ключей для итерации, так как словарь будет изменяться
-        for hotkey_str, hook_obj in list(self._active_hotkey_objects.items()): 
-            try:
-                keyboard.remove_hotkey(hook_obj) 
-                unhook_success_count +=1
-                if hotkey_str in self._active_hotkey_objects: # Проверяем перед удалением
-                    del self._active_hotkey_objects[hotkey_str]
-                logging.debug(f"  Successfully unhooked: {hotkey_str}")
-            except Exception as e_remove: # Ловим KeyError или другие возможные ошибки
-                unhook_fail_count += 1
-                logging.warning(f"  Failed to unhook {hotkey_str} (obj: {hook_obj}): {e_remove}")
-        # self._active_hotkey_objects.clear() # Очищаем в любом случае после попытки
-        logging.info(f"HotkeyManager: Unhooking finished. Success: {unhook_success_count}, Fail: {unhook_fail_count}. Remaining in _active_hotkey_objects: {len(self._active_hotkey_objects)}")
-
-        time.sleep(0.1) 
-
-        registered_count = 0
-        logging.info(f"HotkeyManager: Registering new hotkeys based on current config: {self._current_hotkeys}")
-        
-        hotkeys_to_register = self._current_hotkeys.copy()
-
-        for action_id, hotkey_str in hotkeys_to_register.items():
-            callback = self._hotkey_callbacks.get(action_id)
-            if hotkey_str and hotkey_str.lower() != 'none' and hotkey_str != get_text('hotkey_none') and hotkey_str != get_text('hotkey_not_set') and callback:
-                try:
-                    suppress_hotkey = 'tab+' in hotkey_str.lower() and hotkey_str.lower() != 'tab'
-                    if hotkey_str.lower() == 'tab': suppress_hotkey = False
-
-                    logging.debug(f"  Attempting to register '{hotkey_str}' for action '{action_id}'. Suppress: {suppress_hotkey}")
-                    
-                    hook_object = keyboard.add_hotkey(hotkey_str, callback, suppress=suppress_hotkey, trigger_on_release=False)
-                    self._active_hotkey_objects[hotkey_str] = hook_object 
-                    
-                    registered_count += 1
-                    logging.info(f"  Successfully registered '{hotkey_str}' for action '{action_id}'. Suppress: {suppress_hotkey}. Hook obj: {hook_object}")
-                except ValueError as ve: 
-                    logging.error(f"  Failed to register hotkey '{hotkey_str}' for '{action_id}' due to invalid format: {ve}")
-                except Exception as e: 
-                    logging.error(f"  Failed to register hotkey '{hotkey_str}' for '{action_id}': {e}", exc_info=True)
-            elif not callback:
-                 logging.warning(f"  No callback for action '{action_id}', cannot register hotkey '{hotkey_str}'.")
-            else:
-                 logging.debug(f"  Hotkey '{hotkey_str}' for action '{action_id}' is 'none' or not set, skipping registration.")
-
-        logging.info(f"HotkeyManager: Reregistered {registered_count} hotkeys. Active hook objects: {len(self._active_hotkey_objects)}")
-        if registered_count == 0 and any(hk.lower() != 'none' and hk != get_text('hotkey_none') and hk != get_text('hotkey_not_set') for hk in self._current_hotkeys.values()):
-            logging.error("HotkeyManager: No hotkeys were re-registered successfully despite valid configurations!")
-        
-        self._is_reregistering = False
-        logging.info("HotkeyManager: reregister_all_hotkeys FINISHED")
-
+        self.stop_listening(is_internal_restart=True) 
+        self.start_listening()
+        logging.info("HM: Listener restarted with new hotkey configurations.")
 
     def start_listening(self):
-        logging.info("HotkeyManager: start_listening START")
-        if not KEYBOARD_AVAILABLE or not keyboard:
-            logging.warning("HotkeyManager: Cannot start listener, keyboard library not available.")
+        logging.info("HM: start_listening method called.")
+        if not PYNPUT_AVAILABLE or not keyboard:
+            logging.warning("Pynput not available, cannot start listener.")
             return
-        if self._listener_thread is None or not self._listener_thread.is_alive():
-            logging.info("HotkeyManager: Keyboard listener thread is not running or not existent. Starting new one.")
-            self._stop_listener_flag.clear()
-            
-            logging.debug("HotkeyManager: Queueing reregister_all_hotkeys before starting listener thread.")
-            # Используем BlockingQueuedConnection чтобы убедиться, что хоткеи зарегистрированы до старта потока
-            # Однако, если start_listening вызывается из конструктора, это может вызвать проблемы.
-            # Проще вызвать reregister_all_hotkeys напрямую, если мы уверены, что start_listening вызывается из основного потока.
-            # Для безопасности оставим QueuedConnection, но это может означать, что поток запустится ДО того, как хоткеи будут готовы.
-            # QMetaObject.invokeMethod(self, "reregister_all_hotkeys_slot", Qt.ConnectionType.BlockingQueuedConnection)
-            # Попробуем прямой вызов, т.к. start_listening обычно вызывается в конце инициализации MainWindow или в showEvent.
-            self.reregister_all_hotkeys()
-            
-            self._listener_thread = threading.Thread(target=self._listener_loop, daemon=True, name="HotkeyListenerThread")
-            self._listener_thread.start()
-            logging.info(f"HotkeyManager: Listener thread '{self._listener_thread.name}' started with ID {self._listener_thread.ident}.")
-        else:
-            logging.info(f"HotkeyManager: Keyboard listener thread '{self._listener_thread.name}' (ID: {self._listener_thread.ident}) already running.")
-        logging.info("HotkeyManager: start_listening FINISHED")
 
-    def _listener_loop(self):
-        if not KEYBOARD_AVAILABLE: return
-        current_thread = threading.current_thread()
-        logging.info(f"[HotkeyManager Listener Thread] '{current_thread.name}' (ID: {current_thread.ident}) loop started.")
-        try:
-            while not self._stop_listener_flag.is_set():
-                self._stop_listener_flag.wait(timeout=0.5) 
-            logging.info(f"[HotkeyManager Listener Thread] '{current_thread.name}' (ID: {current_thread.ident}) stop signal received.")
-        except Exception as e:
-            logging.error(f"[HotkeyManager Listener Thread] '{current_thread.name}' (ID: {current_thread.ident}) Error in loop: {e}", exc_info=True)
-        finally:
-            logging.info(f"[HotkeyManager Listener Thread] '{current_thread.name}' (ID: {current_thread.ident}) loop finished.")
+        if self._pynput_listener is not None and self._pynput_listener.is_alive():
+            logging.info("Listener is already running. Forcing stop and restart.")
+            self.stop_listening(is_internal_restart=True) 
+        self._actually_start_listener()
 
+    def _actually_start_listener(self):
+        logging.info("HM: _actually_start_listener executing.")
+        self._pressed_keys.clear() 
 
-    def stop_listening(self):
-        logging.info("HotkeyManager: stop_listening START")
-        if not KEYBOARD_AVAILABLE: return
-
-        current_thread_name = self._listener_thread.name if self._listener_thread else "N/A"
-        current_thread_id = self._listener_thread.ident if self._listener_thread else "N/A"
-        if self._listener_thread and self._listener_thread.is_alive():
-            logging.info(f"HotkeyManager: Signalling our listener thread '{current_thread_name}' (ID: {current_thread_id}) to stop...")
-            self._stop_listener_flag.set() 
-            self._listener_thread.join(timeout=2.0) 
-            if self._listener_thread.is_alive():
-                logging.warning(f"HotkeyManager: Our listener thread '{current_thread_name}' (ID: {current_thread_id}) did not exit cleanly.")
-            else:
-                logging.info(f"HotkeyManager: Our listener thread '{current_thread_name}' (ID: {current_thread_id}) joined and finished.")
-            self._listener_thread = None
-        else:
-            logging.info(f"HotkeyManager: Our listener thread '{current_thread_name}' (ID: {current_thread_id}) not running or already stopped.")
+        if not self._parsed_hotkeys and self._current_hotkeys and PYNPUT_AVAILABLE :
+            logging.info("HM: _parsed_hotkeys is empty, calling _update_parsed_hotkeys before starting listener.")
+            self._update_parsed_hotkeys()
         
-        if keyboard:
-            logging.info("HotkeyManager: Attempting to unhook all active hotkey objects.")
-            unhook_success_count = 0
-            unhook_fail_count = 0
-            for hotkey_str, hook_obj in list(self._active_hotkey_objects.items()):
+        if not self._parsed_hotkeys and PYNPUT_AVAILABLE:
+            logging.warning("HM: No hotkeys parsed. Listener will start but might not do anything.")
+
+        try:
+            self._pynput_listener = keyboard.Listener( 
+                on_press=self.on_press,
+                on_release=self.on_release,
+                suppress=False # We don't suppress globally; individual actions might signal suppression needs
+            )
+            self._pynput_listener.daemon = True 
+            self._pynput_listener.start() 
+            time.sleep(0.05) # Give listener thread a moment to start
+            if self._pynput_listener.is_alive():
+                logging.info(f"Pynput listener started successfully.")
+            else: # pragma: no cover
+                logging.error(f"Pynput listener FAILED to start.")
+                self._pynput_listener = None # Ensure it's None if not started
+        except Exception as e:
+            logging.error(f"Failed to create/start pynput listener: {e}", exc_info=True)
+            self._pynput_listener = None
+        logging.info("HM: start_listening / _actually_start_listener FINISHED")
+
+
+    def stop_listening(self, is_internal_restart=False):
+        logging.info(f"HM: stop_listening called (internal_restart={is_internal_restart})")
+        if not PYNPUT_AVAILABLE: return
+
+        listener_to_stop = self._pynput_listener
+        if listener_to_stop is not None:
+            if listener_to_stop.is_alive(): 
+                logging.debug(f"Attempting to stop pynput listener. Is alive: {listener_to_stop.is_alive()}")
                 try:
-                    keyboard.remove_hotkey(hook_obj)
-                    unhook_success_count += 1
-                    logging.debug(f"  Successfully unhooked (stop_listening): {hotkey_str}")
-                except Exception as e_remove_stop:
-                    unhook_fail_count += 1
-                    logging.warning(f"  Failed to unhook (stop_listening) {hotkey_str}: {e_remove_stop}")
-            self._active_hotkey_objects.clear()
-            logging.info(f"HotkeyManager: Unhooking on stop finished. Success: {unhook_success_count}, Fail: {unhook_fail_count}")
-            
-            # Дополнительно, чтобы быть уверенным, если remove_hotkey(hook_obj) не сработал для всех
-            try:
-                logging.debug("HotkeyManager: Calling keyboard.unhook_all_hotkeys() as a final cleanup.")
-                keyboard.unhook_all_hotkeys()
-            except Exception as e_final_unhook:
-                 logging.warning(f"HotkeyManager: Error during final keyboard.unhook_all_hotkeys(): {e_final_unhook}")
-
-        logging.info("HotkeyManager: stop_listening FINISHED")
-
-    def get_current_hotkeys(self) -> Dict[str, str]:
-        return self._current_hotkeys.copy()
-
-    def get_default_hotkeys(self) -> Dict[str, str]:
-        return DEFAULT_HOTKEYS.copy()
-    
-    def get_actions_config(self) -> Dict[str, Any]:
-        return HOTKEY_ACTIONS_CONFIG.copy()
-
-    def get_hotkey_for_action(self, action_id: str) -> str | None:
-        return self._current_hotkeys.get(action_id)
-
-    def update_hotkey(self, action_id: str, new_hotkey_str: str): 
-        if action_id in self._current_hotkeys: # Проверяем, что action_id существует в наших настройках
-            # Этот метод вызывается из диалога HotkeySettingsDialog, когда пользователь меняет хоткей в UI,
-            # но ДО нажатия кнопки "Сохранить". Поэтому здесь мы только обновляем _current_hotkeys,
-            # чтобы диалог отображал актуальное значение. Фактическое сохранение в файл и перерегистрация
-            # произойдут, когда пользователь нажмет "Сохранить" и вызовется self.save_hotkeys().
-            logging.debug(f"HotkeyManager: Hotkey for action '{action_id}' (in-memory for dialog) changed from '{self._current_hotkeys[action_id]}' to '{new_hotkey_str}'.")
-            # self._current_hotkeys[action_id] = new_hotkey_str # Это должно делаться в HotkeySettingsDialog в его копии current_hotkeys_copy
+                    listener_to_stop.stop() 
+                    if hasattr(listener_to_stop, 'join') and callable(listener_to_stop.join):
+                         logging.debug("Calling join on pynput listener thread...")
+                         listener_to_stop.join(timeout=0.5) # Reduced timeout
+                         if listener_to_stop.is_alive(): # pragma: no cover
+                             logging.warning("Pynput listener thread did not join after stop request.")
+                         else:
+                             logging.debug("Pynput listener thread joined successfully.")
+                    # else: # No join, pynput listener might stop asynchronously
+                         # time.sleep(0.1) # Shorter sleep
+                except Exception as e: # pragma: no cover
+                    logging.warning(f"Exception while stopping/joining pynput listener: {e}", exc_info=True)
+            else:
+                logging.debug("Pynput listener was not alive when stop was called.")
+            self._pynput_listener = None 
         else:
-            logging.warning(f"HotkeyManager: Attempt to update hotkey for unknown action_id '{action_id}'.")
+            logging.debug("No active pynput listener instance to stop.")
+        
+        with self._lock:
+            self._pressed_keys.clear()
+            
+        if not is_internal_restart: 
+            logging.info("HM: stop_listening FINISHED (full stop)")
+        else:
+            logging.info("HM: stop_listening FINISHED (internal restart step)")
+
+    def get_current_hotkeys(self) -> Dict[str, str]: return self._current_hotkeys.copy()
+    def get_default_hotkeys(self) -> Dict[str, str]: return DEFAULT_HOTKEYS.copy()
+    def get_actions_config(self) -> Dict[str, Any]: return HOTKEY_ACTIONS_CONFIG.copy()
