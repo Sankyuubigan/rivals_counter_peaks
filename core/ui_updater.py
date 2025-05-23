@@ -25,9 +25,14 @@ class UiUpdater:
         if new_mode is None: new_mode = self.mw.mode
         current_mode = new_mode
         t0 = time.time()
-        logging.info(f"UiUpdater: Updating interface for mode '{current_mode}'")
+        logging.info(f"--> UiUpdater: update_interface_for_mode for mode '{current_mode}' START")
         if not self.mw: logging.error("UiUpdater: MainWindow reference is None!"); return
         
+        if self.mw._is_applying_flags_operation: # Проверяем флаг из MainWindow
+            logging.warning(f"    UiUpdater: update_interface_for_mode skipped due to _is_applying_flags_operation flag in MainWindow. Mode: {current_mode}")
+            return
+
+        # ... (остальная часть метода по удалению старых виджетов и загрузке изображений - без изменений) ...
         widgets_to_delete = []
         if self.mw.left_panel_widget: widgets_to_delete.append(self.mw.left_panel_widget)
         if self.mw.right_panel_widget: widgets_to_delete.append(self.mw.right_panel_widget)
@@ -35,6 +40,7 @@ class UiUpdater:
         if self.mw.inner_layout:
             for widget in widgets_to_delete:
                 if widget: 
+                    logging.debug(f"    UiUpdater: Removing and deleting old widget: {widget.objectName() if hasattr(widget, 'objectName') else type(widget)}")
                     self.mw.inner_layout.removeWidget(widget)
                     widget.setParent(None)
                     widget.deleteLater()
@@ -52,28 +58,27 @@ class UiUpdater:
             logging.critical(f"Image loading error: {e}")
             QMessageBox.critical(self.mw, "Ошибка", f"Не удалось загрузить изображения: {e}")
             img_load_success = False
-        if not img_load_success: return
+        if not img_load_success: 
+            logging.error("<-- UiUpdater: update_interface_for_mode FINISHED (image load error)")
+            return
 
+        # Создание левой панели
         if self.mw.main_widget: 
             self.mw.canvas, self.mw.result_frame, self.mw.result_label, self.mw.update_scrollregion = create_left_panel(self.mw.main_widget)
             parent_widget_lp = self.mw.canvas.parentWidget() if self.mw.canvas else None
-            if isinstance(parent_widget_lp, QFrame):
-                self.mw.left_panel_widget = parent_widget_lp
-                self.mw.left_panel_widget.setObjectName("left_panel_container_frame")
-            elif self.mw.canvas: 
-                self.mw.left_panel_widget = self.mw.canvas
-            else: 
-                logging.error("Left panel (canvas) could not be created.")
-                return 
+            if isinstance(parent_widget_lp, QFrame): self.mw.left_panel_widget = parent_widget_lp
+            elif self.mw.canvas: self.mw.left_panel_widget = self.mw.canvas
+            else: logging.error("    UiUpdater: Left panel (canvas) could not be created."); return 
 
             if self.mw.left_panel_widget:
+                 self.mw.left_panel_widget.setObjectName("left_panel_container_frame")
                  self.mw.left_panel_widget.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('left', 0))
                  if self.mw.inner_layout: self.mw.inner_layout.addWidget(self.mw.left_panel_widget, stretch=1)
         else:
-            logging.error("UiUpdater: main_widget is None, cannot create left panel.")
+            logging.error("    UiUpdater: main_widget is None, cannot create left panel.")
             return
 
-
+        # Создание правой панели (если не 'min' режим)
         if current_mode != "min" and self.mw.main_widget:
             self.mw.right_panel_instance = RightPanel(self.mw, current_mode)
             if self.mw.right_panel_instance:
@@ -85,15 +90,13 @@ class UiUpdater:
                 if self.mw.right_list_widget:
                     delegate_instance = delegate.HotkeyFocusDelegate(self.mw)
                     self.mw.right_list_widget.setItemDelegate(delegate_instance)
-                    
+                    # Переподключение сигналов
                     try: self.mw.right_list_widget.itemSelectionChanged.disconnect()
                     except RuntimeError: pass 
                     self.mw.right_list_widget.itemSelectionChanged.connect(self.mw.handle_selection_changed)
-
                     try: self.mw.right_list_widget.customContextMenuRequested.disconnect()
                     except RuntimeError: pass
                     self.mw.right_list_widget.customContextMenuRequested.connect(self.mw.show_priority_context_menu)
-
 
                 if self.mw.right_panel_widget and self.mw.inner_layout:
                     self.mw.right_panel_widget.setMinimumWidth(PANEL_MIN_WIDTHS.get(current_mode, {}).get('right', 0))
@@ -101,7 +104,9 @@ class UiUpdater:
                     if self.mw.left_panel_widget: self.mw.inner_layout.setStretchFactor(self.mw.left_panel_widget, 2)
                     self.mw.inner_layout.setStretchFactor(self.mw.right_panel_widget, 1)
         
+        # Обновление высот и видимостей
         if self.mw.top_frame and self.mw.main_layout and self.mw.icons_scroll_area :
+            # ... (логика расчета высот и видимостей для top_frame, icons_scroll_area, кнопок - без изменений) ...
             top_h = self.mw.top_frame.sizeHint().height() if self.mw.top_frame.isVisible() else 0
             h_icon_h = SIZES.get(current_mode, {}).get('horizontal', (35,35))[1]
             icons_h = h_icon_h + 12 if self.mw.icons_scroll_area.isVisible() else 0
@@ -154,36 +159,35 @@ class UiUpdater:
             
             final_w = max(target_w, self.mw.minimumSizeHint().width())
             final_h = self.mw.height() 
-            if current_mode == 'min':
-                final_h = self.mw.minimumHeight() 
-            else:
-                final_h = max(target_h, self.mw.minimumHeight())
+            if current_mode == 'min': final_h = self.mw.minimumHeight() 
+            else: final_h = max(target_h, self.mw.minimumHeight())
 
             if self.mw.size().width() != final_w or self.mw.size().height() != final_h:
+                logging.debug(f"    UiUpdater: Resizing window for mode {current_mode} to {final_w}x{final_h}")
                 self.mw.resize(final_w, final_h)
         
         self.update_ui_after_logic_change() 
         if self.mw.right_list_widget: 
              QTimer.singleShot(50, lambda: self.update_list_item_selection_states(force_update=True))
 
-        QTimer.singleShot(0, self.mw._apply_mouse_invisible_mode)
+        # Вызываем _apply_mouse_invisible_mode в конце, чтобы применить флаги ПОСЛЕ всех изменений UI
+        QTimer.singleShot(0, lambda: self.mw._apply_mouse_invisible_mode(f"ui_update_for_mode_{current_mode}"))
 
-        logging.info(f"UiUpdater: Update interface for mode '{current_mode}' finished in {time.time() - t0:.4f} s")
+        logging.info(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {time.time() - t0:.4f} s")
 
-
+    # ... (остальные методы _update_selected_label, _update_counterpick_display и т.д. без изменений) ...
     def update_ui_after_logic_change(self):
-        logging.debug("UiUpdater: Updating UI after logic change."); start_time = time.time() 
+        logging.debug("    UiUpdater: update_ui_after_logic_change START"); start_time = time.time() 
         self._update_selected_label()
         self._update_counterpick_display() 
         self._update_horizontal_lists()
         self.update_list_item_selection_states() 
         self._update_priority_labels()
-        end_time = time.time(); logging.debug(f"UiUpdater: UI Update Finished in {end_time - start_time:.4f} sec.")
+        end_time = time.time(); logging.debug(f"    UiUpdater: update_ui_after_logic_change FINISHED in {end_time - start_time:.4f} sec.")
 
     def _update_selected_label(self):
         label_to_update = self.mw.selected_heroes_label
         if label_to_update and self.mw.right_panel_widget and self.mw.right_panel_widget.isVisible():
-             # <<< ИСПРАВЛЕНИЕ KeyError >>>
              selected_text = get_text("selected")
              heroes_list_str = ", ".join(self.mw.logic.selected_heroes) if self.mw.logic.selected_heroes else get_text("none_selected_placeholder")
              label_to_update.setText(get_text("selected_heroes_label_format",
@@ -191,12 +195,12 @@ class UiUpdater:
                                                count=len(self.mw.logic.selected_heroes), 
                                                max_team_size=TEAM_SIZE, 
                                                heroes_list=heroes_list_str))
-             # <<< ---------------------- >>>
 
 
     def _update_counterpick_display(self):
         if self.mw.mode == "min": return
         if not (self.mw.result_frame and self.mw.canvas and self.mw.left_images and self.mw.small_images):
+            logging.debug("    UiUpdater: Skipping _update_counterpick_display due to missing elements.")
             return
 
         display.generate_counterpick_display(self.mw.logic, self.mw.result_frame, self.mw.left_images, self.mw.small_images)
@@ -206,6 +210,7 @@ class UiUpdater:
 
     def _update_horizontal_lists(self):
         if not (self.mw.counters_layout and self.mw.enemies_layout and self.mw.horizontal_info_label):
+            logging.debug("    UiUpdater: Skipping _update_horizontal_lists due to missing layout elements.")
             return
 
         if self.mw.horizontal_info_label.parentWidget():

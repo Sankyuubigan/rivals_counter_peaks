@@ -1,37 +1,30 @@
 # File: core/dialogs.py
 from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout,
-                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit, QApplication) # Добавил QApplication
-# ИЗМЕНЕНО: Добавлен импорт Signal
-from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal
-from PySide6.QtGui import QKeySequence
+                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit, QApplication) 
+from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal, QObject
+# ИЗМЕНЕНО: Добавлен QCloseEvent
+from PySide6.QtGui import QKeySequence, QCloseEvent 
 from database import heroes_bd
 from core.lang.translations import get_text
 import pyperclip
 import logging
 import os
-import sys # Добавлен sys для resource_path_dialogs
+import sys 
 import markdown
 
-# Импорты для настроек хоткеев
 import json
-# from core.utils import resource_path as app_resource_path # Не используется здесь
 
-# Идентификатор для кастомного события при изменении хоткея
 HOTKEY_INPUT_FINISHED_EVENT = QEvent.Type(QEvent.User + 1)
 
 def resource_path_dialogs(relative_path):
     try:
-        base_path = sys._MEIPASS # Используем sys здесь
+        base_path = sys._MEIPASS 
     except Exception:
-        base_path = os.path.abspath(os.path.dirname(__file__)) # Изменено на __file__ для корректности
-    # Предполагаем, что lang находится в том же каталоге, что и dialogs.py, если не в MEIPASS
-    # Или если структура core/lang/, то os.path.join(base_path, '..', 'lang', relative_path)
-    # Для текущей структуры:
-    if base_path.endswith("core"): # Если мы в core/dialogs.py
+        base_path = os.path.abspath(os.path.dirname(__file__)) 
+    if base_path.endswith("core"): 
         lang_path_base = os.path.join(base_path, "lang")
-    else: # Если MEIPASS или другая структура
+    else: 
         lang_path_base = os.path.join(base_path, "core", "lang")
-
     return os.path.join(lang_path_base, relative_path)
 
 
@@ -39,7 +32,7 @@ class AboutProgramDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent_window = parent 
-        self.setObjectName("AboutProgramDialog") # Имя для поиска через findChild
+        self.setObjectName("AboutProgramDialog") 
         self.setWindowTitle(get_text('about_program'))
         self.setGeometry(0, 0, 700, 550)
         self.setModal(True)
@@ -68,9 +61,9 @@ class AboutProgramDialog(QDialog):
         logging.debug(f"Attempting to load markdown for AboutDialog from: {md_filepath}")
         
         current_theme = "light"
-        if hasattr(self.parent_window, 'appearance_manager') and self.parent_window.appearance_manager: # Проверка на None
+        if hasattr(self.parent_window, 'appearance_manager') and self.parent_window.appearance_manager: 
             current_theme = self.parent_window.appearance_manager.current_theme
-        elif hasattr(self.parent_window, 'current_theme'): # Старая проверка на случай, если appearance_manager еще не инициализирован
+        elif hasattr(self.parent_window, 'current_theme'): 
             current_theme = self.parent_window.current_theme
 
 
@@ -132,10 +125,9 @@ class AboutProgramDialog(QDialog):
             self.move(center_point)
 
 
-class HeroRatingDialog(QDialog): # Будет переименован в UniversalHeroesDialog
+class HeroRatingDialog(QDialog): 
     def __init__(self, parent, app_version):
         super().__init__(parent)
-        # Используем ключ 'hero_rating_title' для заголовка, но сам ключ в translations.py изменен
         self.setWindowTitle(get_text('hero_rating_title', version=app_version)) 
         self.setGeometry(0, 0, 400, 600)
         self.setModal(True)
@@ -147,21 +139,12 @@ class HeroRatingDialog(QDialog): # Будет переименован в Univer
         text_browser.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard)
 
         counter_counts = {hero: 0 for hero in heroes_bd.heroes}
-        # Логика подсчета должна быть пересмотрена, если "универсальность" означает что-то другое
-        # Пока оставляем как есть (подсчет, скольких героев контрит данный герой)
         for hero_being_countered, counters_data in heroes_bd.heroes_counters.items():
             if isinstance(counters_data, dict):
                 for counter_hero in counters_data.get("hard", []) + counters_data.get("soft", []):
                     if counter_hero in counter_counts:
                         counter_counts[counter_hero] +=1
-            # Если старая структура (список имен):
-            # elif isinstance(counters_data, list):
-            #     for counter_hero in counters_data:
-            #         if counter_hero in counter_counts:
-            #             counter_counts[counter_hero] += 1
-
-
-        sorted_heroes = sorted(counter_counts.items(), key=lambda item: item[1], reverse=True) # Сортировка по убыванию
+        sorted_heroes = sorted(counter_counts.items(), key=lambda item: item[1], reverse=True) 
         rating_lines = [f"{hero} ({count})" for hero, count in sorted_heroes]
         text_browser.setText("\n".join(rating_lines))
         layout.addWidget(text_browser)
@@ -237,7 +220,7 @@ class LogDialog(QDialog):
         self.log_browser.clear()
         logging.info("Log display cleared by user.")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         logging.debug("LogDialog close event: hiding window.")
         self.hide()
         event.ignore()
@@ -323,15 +306,18 @@ class HotkeyDisplayDialog(QDialog):
             self.move(center_point)
 
 class HotkeySettingsDialog(QDialog):
-    hotkey_changed_signal = Signal(str, str)
+    hotkey_changed_signal = Signal(str, str) 
 
     def __init__(self, current_hotkeys, hotkey_actions_config, parent=None):
         super().__init__(parent)
-        self.current_hotkeys = dict(current_hotkeys)
+        self.current_hotkeys_copy = dict(current_hotkeys) 
         self.hotkey_actions_config = hotkey_actions_config
         self.parent_window = parent
         self.setWindowTitle(get_text('hotkey_settings_window_title'))
         self.setMinimumWidth(600); self.setModal(True)
+        
+        self.installEventFilter(self) 
+
         self.main_layout = QVBoxLayout(self)
         self.scroll_area = QScrollArea(); self.scroll_area.setWidgetResizable(True)
         self.scroll_widget = QWidget(); self.grid_layout = QGridLayout(self.scroll_widget)
@@ -339,13 +325,15 @@ class HotkeySettingsDialog(QDialog):
         self.action_widgets = {}
         self._populate_hotkey_list()
         self.scroll_area.setWidget(self.scroll_widget); self.main_layout.addWidget(self.scroll_area)
+        
         self.buttons_layout = QHBoxLayout()
         self.reset_defaults_button = QPushButton(get_text('hotkey_settings_reset_defaults'))
         self.reset_defaults_button.clicked.connect(self.reset_to_defaults)
         self.save_button = QPushButton(get_text('hotkey_settings_save'))
         self.save_button.clicked.connect(self.save_and_close)
         self.cancel_button = QPushButton(get_text('hotkey_settings_cancel'))
-        self.cancel_button.clicked.connect(self.reject)
+        self.cancel_button.clicked.connect(self.reject) 
+        
         self.buttons_layout.addWidget(self.reset_defaults_button); self.buttons_layout.addStretch(1)
         self.buttons_layout.addWidget(self.save_button); self.buttons_layout.addWidget(self.cancel_button)
         self.main_layout.addLayout(self.buttons_layout)
@@ -358,7 +346,7 @@ class HotkeySettingsDialog(QDialog):
         self.action_widgets.clear(); row = 0
         for action_id, config in self.hotkey_actions_config.items():
             desc_key = config['desc_key']; description = get_text(desc_key)
-            current_hotkey_str = self.current_hotkeys.get(action_id, get_text('hotkey_not_set'))
+            current_hotkey_str = self.current_hotkeys_copy.get(action_id, get_text('hotkey_not_set')) 
             desc_label = QLabel(description); hotkey_label = QLabel(f"<code>{current_hotkey_str}</code>")
             hotkey_label.setTextFormat(Qt.TextFormat.RichText)
             change_button = QPushButton(get_text('hotkey_settings_change_btn'))
@@ -395,6 +383,7 @@ class HotkeySettingsDialog(QDialog):
         capture_dialog = QDialog(self)
         capture_dialog.setWindowTitle(get_text('hotkey_settings_capture_title'))
         capture_dialog.setModal(True)
+        
         dialog_layout = QVBoxLayout(capture_dialog)
         
         action_desc = get_text(self.hotkey_actions_config[action_id]['desc_key'])
@@ -402,6 +391,7 @@ class HotkeySettingsDialog(QDialog):
         dialog_layout.addWidget(info_label)
         
         hotkey_input_field = HotkeyCaptureLineEdit(action_id, capture_dialog) 
+        hotkey_input_field.setObjectName("HotkeyCaptureLineEdit") 
         dialog_layout.addWidget(hotkey_input_field)
         
         cancel_btn = QPushButton(get_text('hotkey_settings_cancel_capture'))
@@ -412,12 +402,12 @@ class HotkeySettingsDialog(QDialog):
         
         def on_captured(act_id, key_str):
             if act_id == action_id:
-                self.update_hotkey_for_action(act_id, key_str)
+                self.update_hotkey_for_action(act_id, key_str) 
                 capture_dialog.accept()
         
         def on_canceled_or_rejected(): 
             if hotkey_input_field and hotkey_input_field.action_id == action_id:
-                self.cancel_hotkey_capture(action_id)
+                self.cancel_hotkey_capture(action_id) 
 
         hotkey_input_field.hotkey_captured.connect(on_captured)
         capture_dialog.rejected.connect(on_canceled_or_rejected)
@@ -432,24 +422,18 @@ class HotkeySettingsDialog(QDialog):
              capture_dialog.rejected.disconnect(on_canceled_or_rejected)
         except RuntimeError: pass
 
-
     @Slot(str, str)
     def update_hotkey_for_action(self, action_id: str, new_hotkey_str: str):
         if action_id in self.action_widgets:
-            logging.info(f"Updating hotkey for {action_id} to {new_hotkey_str}")
-            self.current_hotkeys[action_id] = new_hotkey_str
+            logging.info(f"Updating hotkey (in dialog copy) for {action_id} to {new_hotkey_str}")
+            self.current_hotkeys_copy[action_id] = new_hotkey_str 
             self.action_widgets[action_id]['hotkey'].setText(f"<code>{new_hotkey_str}</code>")
             self.action_widgets[action_id]['hotkey'].setStyleSheet("") 
 
     @Slot(str)
     def cancel_hotkey_capture(self, action_id: str):
         if action_id in self.action_widgets:
-            original_hotkey = self.current_hotkeys.get(action_id) 
-            if not original_hotkey and self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
-                 original_hotkey = self.parent_window.hotkey_manager.get_hotkey_for_action(action_id)
-
-            if not original_hotkey: original_hotkey = get_text('hotkey_not_set')
-            
+            original_hotkey = self.current_hotkeys_copy.get(action_id, get_text('hotkey_not_set'))
             self.action_widgets[action_id]['hotkey'].setText(f"<code>{original_hotkey}</code>")
             self.action_widgets[action_id]['hotkey'].setStyleSheet("") 
             logging.debug(f"Hotkey capture canceled/reverted for {action_id}, to {original_hotkey}")
@@ -457,7 +441,7 @@ class HotkeySettingsDialog(QDialog):
     def reset_to_defaults(self):
         if self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
             default_hotkeys = self.parent_window.hotkey_manager.get_default_hotkeys()
-            self.current_hotkeys = dict(default_hotkeys)
+            self.current_hotkeys_copy = dict(default_hotkeys) 
             self._populate_hotkey_list() 
             QMessageBox.information(self, get_text('hotkey_settings_defaults_reset_title'), get_text('hotkey_settings_defaults_reset_msg'))
         else:
@@ -466,7 +450,7 @@ class HotkeySettingsDialog(QDialog):
     def save_and_close(self):
         if self.parent_window and hasattr(self.parent_window, 'hotkey_manager'):
             hotkey_map = {}; duplicates = []
-            for action_id, hotkey_str in self.current_hotkeys.items():
+            for action_id, hotkey_str in self.current_hotkeys_copy.items(): 
                 if hotkey_str == get_text('hotkey_none') or hotkey_str == get_text('hotkey_not_set'): continue
                 if hotkey_str in hotkey_map:
                     action_desc1 = get_text(self.hotkey_actions_config.get(action_id, {}).get('desc_key', action_id))
@@ -476,14 +460,7 @@ class HotkeySettingsDialog(QDialog):
             if duplicates:
                 QMessageBox.warning(self, get_text('hotkey_settings_duplicate_title'), get_text('hotkey_settings_duplicate_message') + "\n- " + "\n- ".join(duplicates)); return
             
-            # Сохраняем перед эмиссией сигналов, чтобы HotkeyManager уже имел новые значения
-            self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys) 
-            
-            for action_id, new_hotkey_str in self.current_hotkeys.items():
-                self.hotkey_changed_signal.emit(action_id, new_hotkey_str) 
-            
-            # После сохранения и эмиссии, HotkeyManager должен перерегистрировать хоткеи
-            self.parent_window.hotkey_manager.reregister_all_hotkeys()
+            self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys_copy) 
             self.accept() 
         else: logging.error("Hotkey manager not found in parent window for saving.")
 
@@ -497,14 +474,30 @@ class HotkeySettingsDialog(QDialog):
                 center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.KeyPress:
+            key_event = event # QKeyEvent(event)
+            if key_event.key() == Qt.Key_Tab:
+                # Проверяем, не находится ли фокус в HotkeyCaptureLineEdit
+                focus_widget = QApplication.focusWidget()
+                if isinstance(focus_widget, HotkeyCaptureLineEdit):
+                    logging.debug(f"HotkeySettingsDialog.eventFilter: Tab pressed in HotkeyCaptureLineEdit, event not consumed by dialog's filter.")
+                    return False # Позволяем HotkeyCaptureLineEdit или MainWindow.eventFilter обработать
+
+                logging.debug(f"HotkeySettingsDialog.eventFilter: Tab key consumed for watched: {watched.objectName() if hasattr(watched, 'objectName') else type(watched)}")
+                return True 
+        return super().eventFilter(watched, event)
+
+
 class HotkeyCaptureLineEdit(QLineEdit):
     hotkey_captured = Signal(str, str)  
     capture_canceled = Signal(str)      
 
-    def __init__(self, action_id, parent_dialog):
+    def __init__(self, action_id, parent_dialog): 
         super().__init__(parent_dialog)
         self.action_id = action_id
         self.setReadOnly(True)
+        self.setObjectName("HotkeyCaptureLineEdit") 
         
         self._current_qt_modifiers = Qt.KeyboardModifier.NoModifier
         self._current_qt_key = Qt.Key.Key_unknown
@@ -515,18 +508,28 @@ class HotkeyCaptureLineEdit(QLineEdit):
         self.setText(get_text('hotkey_settings_press_keys'))
         text_color = "gray" 
         parent_main_window = None
-        if self.parent() and hasattr(self.parent(), 'parent_window'): 
-            parent_main_window = self.parent().parent_window
+        current_parent = self.parent()
+        while current_parent:
+            if hasattr(current_parent, 'parent_window') and current_parent.parent_window is not None: 
+                parent_main_window = current_parent.parent_window
+                break
+            if hasattr(current_parent, 'appearance_manager'): 
+                parent_main_window = current_parent
+                break
+            current_parent = current_parent.parent()
+
         if parent_main_window and hasattr(parent_main_window, 'appearance_manager') and parent_main_window.appearance_manager:
             if parent_main_window.appearance_manager.current_theme == "dark":
                 text_color = "#888888"
-        elif parent_main_window and hasattr(parent_main_window, 'current_theme'):
+        elif parent_main_window and hasattr(parent_main_window, 'current_theme'): 
              if parent_main_window.current_theme == "dark":
                 text_color = "#888888"
         self.setStyleSheet(f"font-style: italic; color: {text_color};")
 
-    def focusInEvent(self, event: QEvent): 
+    def focusInEvent(self, event: QEvent): # QFocusEvent
         self._reset_state_and_field()
+        logging.debug(f"HotkeyCaptureLineEdit for {self.action_id} received focus.")
+        QTimer.singleShot(0, self.deselect)
         super().focusInEvent(event)
 
     def _reset_state_and_field(self):
@@ -535,11 +538,13 @@ class HotkeyCaptureLineEdit(QLineEdit):
         self._keypad_modifier_active_on_press = False
         self._reset_field_to_prompt()
 
-    def keyPressEvent(self, event: QEvent.KeyPress): 
+    def keyPressEvent(self, event: QEvent.KeyPress): # QKeyEvent
         current_key = event.key()
         app_mods = QApplication.keyboardModifiers() 
-        current_event_mods = event.modifiers()
+        current_event_mods = event.modifiers() 
         
+        logging.debug(f"HotkeyCaptureLineEdit.keyPressEvent: key={current_key}, text='{event.text()}', mods={current_event_mods}, app_mods={app_mods}, keypad_mod_active={bool(current_event_mods & Qt.KeyboardModifier.KeypadModifier)}")
+
         if current_key == Qt.Key_Escape and app_mods == Qt.KeyboardModifier.NoModifier :
             logging.debug(f"Hotkey capture canceled by Escape for {self.action_id}")
             self.capture_canceled.emit(self.action_id) 
@@ -549,8 +554,8 @@ class HotkeyCaptureLineEdit(QLineEdit):
             return
 
         if current_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
-            self._current_qt_key = Qt.Key_unknown 
-            self._current_qt_modifiers = app_mods
+            self._current_qt_key = Qt.Key.Key_unknown 
+            self._current_qt_modifiers = app_mods 
             self._keypad_modifier_active_on_press = False 
         else: 
             self._current_qt_key = current_key
@@ -560,37 +565,38 @@ class HotkeyCaptureLineEdit(QLineEdit):
         self._update_display_text()
         event.accept() 
 
-    def keyReleaseEvent(self, event: QEvent.KeyRelease): 
+    def keyReleaseEvent(self, event: QEvent.KeyRelease): # QKeyEvent
         if event.isAutoRepeat():
             event.accept()
             return
 
         released_key = event.key()
+        logging.debug(f"HotkeyCaptureLineEdit.keyReleaseEvent: key={released_key}, _current_qt_key={self._current_qt_key}, _current_qt_mods={self._current_qt_modifiers}")
         
-        is_finalizing_key_release = (self._current_qt_key != Qt.Key_unknown and released_key == self._current_qt_key)
+        is_finalizing_key_release = (self._current_qt_key != Qt.Key.Key_unknown and released_key == self._current_qt_key)
         
-        is_single_modifier_release = (
-            self._current_qt_key == Qt.Key_unknown and
-            released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta) and
-            QApplication.keyboardModifiers() == Qt.KeyboardModifier.NoModifier
+        is_single_modifier_release_and_empty = (
+            self._current_qt_key == Qt.Key.Key_unknown and 
+            released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta) and 
+            QApplication.keyboardModifiers() == Qt.KeyboardModifier.NoModifier 
         )
 
-        if is_finalizing_key_release or is_single_modifier_release:
+        if is_finalizing_key_release or is_single_modifier_release_and_empty:
             final_hotkey_str = self._generate_keyboard_lib_string(
                 self._current_qt_modifiers, 
-                self._current_qt_key, 
-                self._keypad_modifier_active_on_press
+                self._current_qt_key,       
+                self._keypad_modifier_active_on_press 
             )
             
-            if not final_hotkey_str or final_hotkey_str == get_text('hotkey_none'):
-                logging.debug(f"Hotkey capture resulted in empty/none string for {self.action_id}. Canceling.")
+            if not final_hotkey_str or final_hotkey_str.strip() == "" or final_hotkey_str.strip() == "+": 
+                logging.debug(f"Hotkey capture resulted in invalid string ('{final_hotkey_str}') for {self.action_id}. Canceling.")
                 self.capture_canceled.emit(self.action_id)
                 if self.parent() and isinstance(self.parent(), QDialog):
                      self.parent().reject()
             else:
                 logging.info(f"Hotkey captured for {self.action_id}: {final_hotkey_str}")
                 self.hotkey_captured.emit(self.action_id, final_hotkey_str)
-                if self.parent() and isinstance(self.parent(), QDialog):
+                if self.parent() and isinstance(self.parent(), QDialog): 
                      self.parent().accept()
             
             self._reset_state_and_field() 
@@ -598,11 +604,11 @@ class HotkeyCaptureLineEdit(QLineEdit):
             return
 
         if released_key in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta):
-            self._current_qt_modifiers = QApplication.keyboardModifiers()
-            if self._current_qt_key == Qt.Key_unknown and self._current_qt_modifiers == Qt.KeyboardModifier.NoModifier:
-                 self._reset_state_and_field()
+            self._current_qt_modifiers = QApplication.keyboardModifiers() 
+            if self._current_qt_key == Qt.Key.Key_unknown and self._current_qt_modifiers == Qt.KeyboardModifier.NoModifier:
+                 self._reset_state_and_field() 
             else: 
-                 self._update_display_text()
+                 self._update_display_text() 
         
         event.accept()
 
@@ -611,92 +617,89 @@ class HotkeyCaptureLineEdit(QLineEdit):
             self._current_qt_modifiers, 
             self._current_qt_key, 
             self._keypad_modifier_active_on_press, 
-            for_display=True
+            for_display=True 
         )
         
-        if not display_str:
+        if not display_str or display_str.strip() == "" or display_str.strip() == "+":
             self._reset_field_to_prompt()
         else:
             self.setText(display_str)
-            self.setStyleSheet("font-style: normal;")
+            self.setStyleSheet("font-style: normal;") 
 
     def _generate_keyboard_lib_string(self, qt_app_modifiers: Qt.KeyboardModifier, 
                                       qt_key_enum: Qt.Key, 
-                                      keypad_modifier_was_active: bool, 
+                                      keypad_modifier_was_active_on_press: bool, 
                                       for_display=False) -> str:
         parts = []
         
         if qt_app_modifiers & Qt.KeyboardModifier.ControlModifier: parts.append("ctrl")
         if qt_app_modifiers & Qt.KeyboardModifier.AltModifier: parts.append("alt")
         if qt_app_modifiers & Qt.KeyboardModifier.ShiftModifier: parts.append("shift")
-        if qt_app_modifiers & Qt.KeyboardModifier.MetaModifier: parts.append("win") 
+        if qt_app_modifiers & Qt.KeyboardModifier.MetaModifier: parts.append("win")
         
         key_str_for_lib = ""
         is_key_a_qt_modifier_type = qt_key_enum in (Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta)
 
-        if qt_key_enum != Qt.Key_unknown and not is_key_a_qt_modifier_type:
-            if keypad_modifier_was_active and qt_key_enum == Qt.Key_Period:
-                key_str_for_lib = "num ."
-            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Delete: # Numpad Del (often same as Numpad .)
-                key_str_for_lib = "num ."
-            elif Qt.Key_0 <= qt_key_enum <= Qt.Key_9:
-                key_str_for_lib = str(qt_key_enum - Qt.Key_0)
-                if keypad_modifier_was_active: key_str_for_lib = "num " + key_str_for_lib
-            elif Qt.Key_A <= qt_key_enum <= Qt.Key_Z:
-                key_str_for_lib = chr(qt_key_enum).lower()
-            elif Qt.Key_F1 <= qt_key_enum <= Qt.Key_F24:
-                key_str_for_lib = "f" + str(qt_key_enum - Qt.Key_F1 + 1)
-            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Asterisk: key_str_for_lib = "num *"
-            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Plus: key_str_for_lib = "num +" # или просто "+" если keyboard так понимает
-            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Minus: key_str_for_lib = "num -" # или просто "-"
-            elif keypad_modifier_was_active and qt_key_enum == Qt.Key_Slash: key_str_for_lib = "num /" # или просто "/"
-            elif qt_key_enum == Qt.Key_Tab: key_str_for_lib = "tab"
-            elif qt_key_enum == Qt.Key_Return or qt_key_enum == Qt.Key_Enter : key_str_for_lib = "enter"
-            elif qt_key_enum == Qt.Key_Escape: key_str_for_lib = "esc"
-            elif qt_key_enum == Qt.Key_Space: key_str_for_lib = "space"
-            elif qt_key_enum == Qt.Key_Backspace: key_str_for_lib = "backspace"
-            elif qt_key_enum == Qt.Key_Delete: key_str_for_lib = "delete" 
-            elif qt_key_enum == Qt.Key_Insert: key_str_for_lib = "insert"
-            elif qt_key_enum == Qt.Key_Home: key_str_for_lib = "home"
-            elif qt_key_enum == Qt.Key_End: key_str_for_lib = "end"
-            elif qt_key_enum == Qt.Key_PageUp: key_str_for_lib = "page up"
-            elif qt_key_enum == Qt.Key_PageDown: key_str_for_lib = "page down"
-            elif qt_key_enum == Qt.Key_Up: key_str_for_lib = "up"
-            elif qt_key_enum == Qt.Key_Down: key_str_for_lib = "down"
-            elif qt_key_enum == Qt.Key_Left: key_str_for_lib = "left"
-            elif qt_key_enum == Qt.Key_Right: key_str_for_lib = "right"
-            elif qt_key_enum == Qt.Key_Print: key_str_for_lib = "print screen"
-            elif qt_key_enum == Qt.Key_ScrollLock: key_str_for_lib = "scroll lock"
-            elif qt_key_enum == Qt.Key_Pause: key_str_for_lib = "pause"
-            elif qt_key_enum == Qt.Key_CapsLock: key_str_for_lib = "caps lock"
-            elif qt_key_enum == Qt.Key_NumLock: key_str_for_lib = "num lock"
-            elif qt_key_enum == Qt.Key_Period: key_str_for_lib = "." 
-            elif qt_key_enum == Qt.Key_Comma: key_str_for_lib = ","
-            elif qt_key_enum == Qt.Key_Slash: key_str_for_lib = "/" 
-            elif qt_key_enum == Qt.Key_Backslash: key_str_for_lib = "\\"
-            elif qt_key_enum == Qt.Key_Semicolon: key_str_for_lib = ";"
-            elif qt_key_enum == Qt.Key_Apostrophe: key_str_for_lib = "'"
-            elif qt_key_enum == Qt.Key_BracketLeft: key_str_for_lib = "["
-            elif qt_key_enum == Qt.Key_BracketRight: key_str_for_lib = "]"
-            elif qt_key_enum == Qt.Key_Minus: key_str_for_lib = "-" 
-            elif qt_key_enum == Qt.Key_Equal: key_str_for_lib = "="
-            # keyboard lib обычно понимает 'plus' или '+' для основной клавиши.
-            # Qt.Key_Plus обычно для Numpad, но если приходит без KeypadModifier, это может быть основная '+'.
-            elif qt_key_enum == Qt.Key_Plus and not keypad_modifier_was_active: key_str_for_lib = "+" 
-            else: 
-                key_str_qt = QKeySequence(qt_key_enum).toString(QKeySequence.PortableText)
-                if key_str_qt: 
-                    key_str_for_lib = key_str_qt.lower()
-                    if key_str_for_lib == "del": key_str_for_lib = "delete" 
+        if qt_key_enum != Qt.Key.Key_unknown and not is_key_a_qt_modifier_type:
+            if keypad_modifier_was_active_on_press: 
+                if Qt.Key_0 <= qt_key_enum <= Qt.Key_9: key_str_for_lib = "num " + str(qt_key_enum - Qt.Key_0)
+                elif qt_key_enum == Qt.Key_Period: key_str_for_lib = "num ." 
+                elif qt_key_enum == Qt.Key_Asterisk: key_str_for_lib = "num *"
+                elif qt_key_enum == Qt.Key_Plus: key_str_for_lib = "num +"
+                elif qt_key_enum == Qt.Key_Minus: key_str_for_lib = "num -"
+                elif qt_key_enum == Qt.Key_Slash: key_str_for_lib = "num /"
+                else: 
+                    seq = QKeySequence(qt_key_enum)
+                    key_str_for_lib = seq.toString(QKeySequence.PortableText).lower() if not seq.isEmpty() else ""
             
-            if key_str_for_lib: 
+            if not key_str_for_lib: 
+                if Qt.Key_0 <= qt_key_enum <= Qt.Key_9: key_str_for_lib = str(qt_key_enum - Qt.Key_0)
+                elif Qt.Key_A <= qt_key_enum <= Qt.Key_Z: key_str_for_lib = chr(qt_key_enum).lower()
+                elif Qt.Key_F1 <= qt_key_enum <= Qt.Key_F24: key_str_for_lib = "f" + str(qt_key_enum - Qt.Key_F1 + 1)
+                elif qt_key_enum == Qt.Key_Tab: key_str_for_lib = "tab"
+                elif qt_key_enum == Qt.Key_Return or qt_key_enum == Qt.Key_Enter: key_str_for_lib = "enter"
+                elif qt_key_enum == Qt.Key_Escape: key_str_for_lib = "esc"
+                elif qt_key_enum == Qt.Key_Space: key_str_for_lib = "space"
+                elif qt_key_enum == Qt.Key_Backspace: key_str_for_lib = "backspace"
+                elif qt_key_enum == Qt.Key_Delete: key_str_for_lib = "delete"
+                elif qt_key_enum == Qt.Key_Insert: key_str_for_lib = "insert"
+                elif qt_key_enum == Qt.Key_Home: key_str_for_lib = "home"
+                elif qt_key_enum == Qt.Key_End: key_str_for_lib = "end"
+                elif qt_key_enum == Qt.Key_PageUp: key_str_for_lib = "page up"
+                elif qt_key_enum == Qt.Key_PageDown: key_str_for_lib = "page down"
+                elif qt_key_enum == Qt.Key_Up: key_str_for_lib = "up"
+                elif qt_key_enum == Qt.Key_Down: key_str_for_lib = "down"
+                elif qt_key_enum == Qt.Key_Left: key_str_for_lib = "left"
+                elif qt_key_enum == Qt.Key_Right: key_str_for_lib = "right"
+                elif qt_key_enum == Qt.Key_Print: key_str_for_lib = "print screen"
+                elif qt_key_enum == Qt.Key_ScrollLock: key_str_for_lib = "scroll lock"
+                elif qt_key_enum == Qt.Key_Pause: key_str_for_lib = "pause"
+                elif qt_key_enum == Qt.Key_CapsLock: key_str_for_lib = "caps lock"
+                elif qt_key_enum == Qt.Key_NumLock: key_str_for_lib = "num lock"
+                else:
+                    seq = QKeySequence(qt_key_enum)
+                    temp_key_str = seq.toString(QKeySequence.PortableText).lower() if not seq.isEmpty() else ""
+                    
+                    simple_map = {
+                        Qt.Key_Comma: ",", Qt.Key_Period: ".", Qt.Key_Slash: "/",
+                        Qt.Key_Backslash: "\\", Qt.Key_Semicolon: ";", Qt.Key_Apostrophe: "'",
+                        Qt.Key_BracketLeft: "[", Qt.Key_BracketRight: "]",
+                        Qt.Key_Minus: "-", Qt.Key_Equal: "=", Qt.Key_Plus: "+",
+                    }
+                    if qt_key_enum in simple_map:
+                        key_str_for_lib = simple_map[qt_key_enum]
+                    else: 
+                        key_str_for_lib = temp_key_str
+                        if key_str_for_lib == "del": key_str_for_lib = "delete" 
+                        if key_str_for_lib == "escape": key_str_for_lib = "esc"
+            
+            if key_str_for_lib:
                 parts.append(key_str_for_lib)
 
         if not parts: return ""
         
-        if for_display and (qt_key_enum == Qt.Key_unknown or is_key_a_qt_modifier_type):
-            if any(m in parts for m in ["ctrl", "alt", "shift", "win"]):
-                 return "+".join(parts) + ("+" if parts else "") 
+        if for_display and (qt_key_enum == Qt.Key.Key_unknown or is_key_a_qt_modifier_type) and len(parts) > 0:
+            return "+".join(parts) + "+" 
         
         return "+".join(parts)
 
@@ -705,7 +708,7 @@ def show_about_program_info(parent):
     dialog = AboutProgramDialog(parent)
     dialog.exec()
 
-def show_hero_rating(parent, app_version): # Будет переименован в show_universal_heroes_dialog
+def show_hero_rating(parent, app_version): 
     dialog = HeroRatingDialog(parent, app_version)
     dialog.exec()
 
@@ -715,4 +718,4 @@ def show_hotkey_display_dialog(parent):
 
 def show_hotkey_settings_dialog(current_hotkeys, hotkey_actions_config, parent_window):
     dialog = HotkeySettingsDialog(current_hotkeys, hotkey_actions_config, parent_window)
-    return dialog.exec() == QDialog.Accepted
+    return dialog.exec() == QDialog.Accepted 

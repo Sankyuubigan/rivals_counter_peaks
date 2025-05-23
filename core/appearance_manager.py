@@ -203,7 +203,7 @@ class AppearanceManager:
             QListWidget::item { color: black; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center; }
             QListWidget::item:selected { background-color: #3399ff; color: white; border: 1px solid #2d8ae5; }
             QListWidget::item:!selected:hover { background-color: #e0f7ff; border: 1px solid #cceeff; }
-            QListWidget QAbstractItemView { background-color: white; } /* Viewport для QListWidget */
+            QListWidget QAbstractItemView { background-color: white; } 
             QMenu { background-color: #f8f8f8; border: 1px solid #cccccc; color: black; }
             QMenu::item:selected { background-color: #3399ff; color: white; }
             QScrollArea { border: none; background-color: transparent; }
@@ -253,11 +253,11 @@ class AppearanceManager:
             QListWidget::item:selected { background-color: #0078d7; color: white; border: 1px solid #005394; }
             QListWidget::item:!selected:hover { background-color: #3a3a3a; border: 1px solid #4f4f4f; }
             QListWidget QAbstractItemView { 
-                background-color: #252525; /* Фон для области просмотра элементов */
+                background-color: #252525 !important; 
                 color: #d0d0d0; 
                 selection-background-color: #0078d7; 
                 selection-color: white; 
-                border: 1px solid #454545; /* Граница для области просмотра */
+                border: 1px solid #454545;
             }
             QMenu { background-color: #383838; border: 1px solid #4f4f4f; color: #e0e0e0; }
             QMenu::item:selected { background-color: #0078d7; color: white; }
