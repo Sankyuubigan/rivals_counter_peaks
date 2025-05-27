@@ -48,7 +48,6 @@ class HotkeyCaptureLineEdit(QLineEdit):
         event_text = event.text()
         qt_app_mods_enum = QApplication.keyboardModifiers()
         
-        # Упрощенное логгирование без hex форматирования, чтобы избежать TypeError
         logging.debug(f"[HCL.keyPress] START - Key: {QKeySequence(pressed_key_qt).toString()}, Text: '{event_text}', QtMods: {qt_app_mods_enum}")
         logging.debug(f"[HCL.keyPress] Before - ModParts: {self._pressed_modifier_parts}, MainKey: {self._main_key_capture_info}")
 
@@ -107,7 +106,6 @@ class HotkeyCaptureLineEdit(QLineEdit):
         released_key_qt = event.key()
         qt_mods_after_release_enum = QApplication.keyboardModifiers()
 
-        # Упрощенное логгирование
         logging.debug(f"[HCL.keyRelease] START - Released Key: {QKeySequence(released_key_qt).toString()}, QtMods: {qt_mods_after_release_enum}")
         logging.debug(f"[HCL.keyRelease] Before - ModParts: {self._pressed_modifier_parts}, MainKey: {self._main_key_capture_info}")
         
@@ -240,7 +238,8 @@ class HotkeyCaptureLineEdit(QLineEdit):
     def _qt_key_to_pynput_str(self, qt_key, is_keypad, event_text) -> str:
         if is_keypad:
             if Qt.Key_0 <= qt_key <= Qt.Key_9: return f"num_{qt_key - Qt.Key_0}"
-            if qt_key == Qt.Key_Period: return "num_decimal" 
+            # Явно проверяем Qt.Key_Comma для Numpad Decimal
+            if qt_key == Qt.Key_Period or qt_key == Qt.Key_Comma: return "num_decimal" 
             if qt_key == Qt.Key_Asterisk: return "num_multiply"
             if qt_key == Qt.Key_Plus: return "num_add"
             if qt_key == Qt.Key_Minus: return "num_subtract"
@@ -255,7 +254,9 @@ class HotkeyCaptureLineEdit(QLineEdit):
             Qt.Key_F1: "f1", Qt.Key_F2: "f2", Qt.Key_F3: "f3", Qt.Key_F4: "f4", Qt.Key_F5: "f5",
             Qt.Key_F6: "f6", Qt.Key_F7: "f7", Qt.Key_F8: "f8", Qt.Key_F9: "f9", Qt.Key_F10: "f10",
             Qt.Key_F11: "f11", Qt.Key_F12: "f12",
-            Qt.Key_Slash: "/", Qt.Key_Asterisk: "*", Qt.Key_Minus: "-", Qt.Key_Plus: "+", Qt.Key_Period: "."
+            Qt.Key_Slash: "/", Qt.Key_Asterisk: "*", Qt.Key_Minus: "-", Qt.Key_Plus: "+", 
+            Qt.Key_Period: ".", # Основная точка
+            Qt.Key_Comma: ","   # Основная запятая
         }
         if qt_key in qt_to_pynput_map: return qt_to_pynput_map[qt_key]
 
@@ -273,7 +274,8 @@ class HotkeyCaptureLineEdit(QLineEdit):
     def _qt_key_to_display_str(self, qt_key, is_keypad) -> str:
         if is_keypad:
             if Qt.Key_0 <= qt_key <= Qt.Key_9: return f"Num {qt_key - Qt.Key_0}"
-            if qt_key == Qt.Key_Period: return "Num ." 
+            # Явно проверяем Qt.Key_Comma для Numpad Decimal
+            if qt_key == Qt.Key_Period or qt_key == Qt.Key_Comma: return "Num Del" # Или "Num ." по вашему усмотрению
             if qt_key == Qt.Key_Asterisk: return "Num *"
             if qt_key == Qt.Key_Plus: return "Num +"
             if qt_key == Qt.Key_Minus: return "Num -"
@@ -288,6 +290,9 @@ class HotkeyCaptureLineEdit(QLineEdit):
         
         if Qt.Key_A <= qt_key <= Qt.Key_Z: return chr(qt_key)
         if Qt.Key_0 <= qt_key <= Qt.Key_9: return str(qt_key - Qt.Key_0)
+        # Если это Qt.Key_Comma, но не is_keypad, то это обычная запятая
+        if qt_key == Qt.Key_Comma: return ","
+        if qt_key == Qt.Key_Period: return "."
         return "?"
 
 

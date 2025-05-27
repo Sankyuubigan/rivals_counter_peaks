@@ -4,8 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 from core.lang.translations import get_text, SUPPORTED_LANGUAGES
-from dialogs import show_about_program_info, show_hero_rating 
-from typing import TYPE_CHECKING # Добавлено для TYPE_CHECKING
+from dialogs import show_about_program_info, show_hero_rating, show_author_info # Добавлен импорт show_author_info
+from typing import TYPE_CHECKING 
 import logging
 
 if TYPE_CHECKING:
@@ -25,9 +25,6 @@ class TopPanel:
         self.max_button: QPushButton | None = None
         self.tray_mode_button: QPushButton | None = None
         self.menu_button: QPushButton | None = None
-        # Удаляем отдельные кнопки, они будут в меню
-        # self.rating_button_widget: QPushButton | None = None 
-        # self.about_program_button_widget: QPushButton | None = None
         self.version_label: QLabel | None = None; self.close_button: QPushButton | None = None
         self._setup_ui()
 
@@ -45,11 +42,6 @@ class TopPanel:
         layout.addWidget(self.menu_button)
         layout.addStretch(1)
         
-        # Удалены кнопки about и rating из основной панели
-        # self.rating_button_widget = self._create_info_button('hero_rating', lambda: show_hero_rating(self.parent, self.app_version))
-        # self.about_program_button_widget = self._create_info_button('about_program', lambda: show_about_program_info(self.parent))
-        # layout.addWidget(self.rating_button_widget); layout.addWidget(self.about_program_button_widget)
-
         version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
         self.version_label = QLabel(version_text); self.version_label.setObjectName("version_label")
         self.version_label.setToolTip(f"Application version: {self.app_version}")
@@ -75,7 +67,6 @@ class TopPanel:
             logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Button or parent not found.")
             return
         
-        # Используем безопасный доступ к _is_win_topmost
         is_tray_active = getattr(self.parent, '_is_win_topmost', False)
         
         button_text_key = 'tray_mode_on' if is_tray_active else 'tray_mode_off'
@@ -90,8 +81,6 @@ class TopPanel:
                 style.unpolish(self.tray_mode_button)
                 style.polish(self.tray_mode_button)
             self.tray_mode_button.update()
-
-    # _create_info_button больше не нужен, т.к. кнопки переехали в меню
     
     def _create_close_button(self) -> QPushButton: 
         button = QPushButton("✕"); button.setObjectName("close_button"); button.setFixedSize(24, 24); 
@@ -105,13 +94,12 @@ class TopPanel:
 
         lang_menu = QMenu(get_text('language', language=current_lang), menu)
         for lang_code, lang_name_map_or_str in SUPPORTED_LANGUAGES.items():
-            # lang_name_map_or_str может быть строкой или словарем
             lang_display_name = ""
             if isinstance(lang_name_map_or_str, str):
-                lang_display_name = lang_name_map_or_str # Для 'en_US': 'English'
-            elif isinstance(lang_name_map_or_str, dict): # Для 'ru_RU': {'ru_RU': 'Русский', 'en_US': 'Russian'}
+                lang_display_name = lang_name_map_or_str 
+            elif isinstance(lang_name_map_or_str, dict): 
                 lang_display_name = lang_name_map_or_str.get(current_lang, lang_code)
-            else: # Fallback
+            else: 
                 lang_display_name = lang_code
 
             action = lang_menu.addAction(lang_display_name)
@@ -132,7 +120,6 @@ class TopPanel:
         elif hasattr(self.parent, 'current_theme'): 
              current_app_theme = self.parent.current_theme
 
-
         light_theme_action.setChecked(current_app_theme == "light")
         dark_theme_action.setChecked(current_app_theme == "dark")
 
@@ -146,6 +133,11 @@ class TopPanel:
         
         about_program_action = menu.addAction(get_text('about_program', language=current_lang))
         about_program_action.triggered.connect(lambda: show_about_program_info(self.parent))
+
+        # Новый пункт "Об авторе"
+        author_info_action = menu.addAction(get_text('author_info_title', language=current_lang)) # Используем существующий ключ для заголовка
+        author_info_action.triggered.connect(lambda: show_author_info(self.parent))
+        
         menu.addSeparator()
 
         hotkey_settings_action = menu.addAction(get_text('hotkey_settings_menu_item', language=current_lang))
@@ -170,7 +162,6 @@ class TopPanel:
         if self.max_button: self.max_button.setText(get_text('mode_max', language=current_lang))
         if self.menu_button: self.menu_button.setText(get_text('menu', language=current_lang))
         self._update_tray_mode_button_text_and_property()
-        # rating_button_widget и about_program_button_widget удалены из панели, их текст обновлять не нужно
         if self.version_label:
              version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
              self.version_label.setText(version_text); self.version_label.setToolTip(f"Application version: {self.app_version}")

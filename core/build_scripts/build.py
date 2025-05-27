@@ -22,15 +22,14 @@ main_script = os.path.join(core_dir, "main.py")
 hooks_dir = script_dir
 # --- ---
 
-# --- Версия (для информации, если имя файла будет фиксированным) ---
+# --- Версия для имени файла сборки ---
 now = datetime.datetime.now()
-version_for_info = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
-
-# ИМЯ ПРОЦЕССА = КОРЕНЬ ПРОЕКТА (согласно запросу пользователя)
-output_name = "rivals_counter_peaks"
+version_for_filename = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
+# Имя выходного файла будет "rivals_counter_peaks_ДД.ММ.ГГ"
+output_name = f"rivals_counter_peaks_{version_for_filename}"
 spec_file_path = os.path.join(project_root, f"{output_name}.spec") # .spec файл будет в корне проекта
 
-logging.info(f"Имя выходного файла (и процесса) будет: {output_name}.exe. Версия для сборки (информационно): {version_for_info}")
+logging.info(f"Имя выходного файла будет: {output_name}.exe (на основе версии {version_for_filename})")
 # --- ---
 
 
@@ -57,6 +56,8 @@ data_to_add = [
     f'--add-data "{os.path.join(db_dir, "roles_and_groups.py")}{os.pathsep}database"',
     f'--add-data "{os.path.join(core_dir, "lang", "information_ru.md")}{os.pathsep}core/lang"',
     f'--add-data "{os.path.join(core_dir, "lang", "information_en.md")}{os.pathsep}core/lang"',
+    f'--add-data "{os.path.join(core_dir, "lang", "author_ru.md")}{os.pathsep}core/lang"',
+    f'--add-data "{os.path.join(core_dir, "lang", "author_en.md")}{os.pathsep}core/lang"',
 ]
 # --- ---
 
@@ -71,8 +72,8 @@ logging.info(f"Используется Python интерпретатор: {pyth
 # --- Формируем команду PyInstaller ---
 command_parts_pyinstaller_options = [
     '--noconfirm', '--onefile', '--windowed', '--log-level=INFO',
-    f'--name "{output_name}"',
-    f'--distpath "{dist_dir}"', # Указываем PyInstaller, куда класть результат
+    f'--name "{output_name}"', # Используем output_name, который содержит версию
+    f'--distpath "{dist_dir}"', 
     f'--workpath "{build_cache_dir}"',
     f'--specpath "{project_root}"',
     f'--additional-hooks-dir "{hooks_dir}"',
@@ -105,8 +106,8 @@ command = " ".join(command_full_list)
 
 # --- Вывод информации и запуск сборки ---
 print("-" * 60)
-logging.info(f"Версия для информации: {version_for_info}")
-logging.info(f"Имя выходного файла (и процесса): {output_name}.exe")
+logging.info(f"Версия для имени файла: {version_for_filename}")
+logging.info(f"Имя выходного файла: {output_name}.exe") # output_name содержит версию
 logging.info(f"Папка для результатов сборки: {dist_dir}")
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)
@@ -126,11 +127,11 @@ try:
     print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
-         exe_path = os.path.join(dist_dir, output_name + '.exe')
+         exe_path = os.path.join(dist_dir, output_name + '.exe') # output_name содержит версию
          logging.info(f"Исполняемый файл должен быть создан в: {exe_path}")
          if not os.path.exists(exe_path):
              logging.error(f"ОШИБКА: EXE файл не найден по пути {exe_path} после успешной сборки!")
-             rc = -1
+             rc = -1 
     else:
          logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
 except Exception as e:
@@ -141,15 +142,15 @@ except Exception as e:
 # --- Очистка временных файлов (КРОМЕ ПАПКИ DIST) ---
 if rc == 0:
     logging.info("Очистка временных файлов после успешной сборки (кроме папки dist)...")
-    if os.path.exists(spec_file_path):
+    if os.path.exists(spec_file_path): # spec_file_path также будет с версией в имени
         try:
             os.remove(spec_file_path)
             logging.info(f"Удален файл spec: {spec_file_path}")
         except Exception as e:
             logging.warning(f"Не удалось удалить spec файл {spec_file_path} после сборки: {e}")
-    if os.path.exists(build_cache_dir):
+    if os.path.exists(build_cache_dir): 
         logging.info(f"Папка {build_cache_dir} должна была быть удалена PyInstaller. Проверяем...")
-        if os.path.exists(build_cache_dir):
+        if os.path.exists(build_cache_dir): 
             try:
                 shutil.rmtree(build_cache_dir)
                 logging.info(f"Принудительно удалена папка build_cache: {build_cache_dir}")

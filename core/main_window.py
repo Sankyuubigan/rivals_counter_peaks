@@ -17,7 +17,7 @@ from top_panel import TopPanel
 from right_panel import HERO_NAME_ROLE 
 from log_handler import QLogHandler
 from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
-                     show_hero_rating, show_hotkey_settings_dialog)
+                     show_hero_rating, show_hotkey_settings_dialog, show_author_info) # Добавлен импорт show_author_info
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit 
 from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE 
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES 
@@ -27,14 +27,14 @@ from ui_updater import UiUpdater
 from action_controller import ActionController
 from window_drag_handler import WindowDragHandler
 from appearance_manager import AppearanceManager
-from core.window_flags_manager import WindowFlagsManager # Импорт нового менеджера
+from core.window_flags_manager import WindowFlagsManager 
 
 from core.lang.translations import get_text
 
 
 IS_ADMIN = False
 if sys.platform == 'win32':
-    try: # Оставляем try-except для ctypes, т.к. это системный вызов
+    try: 
         import ctypes
         IS_ADMIN = ctypes.windll.shell32.IsUserAnAdmin() != 0
     except Exception: pass
@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         logging.info(f"Initial mode from ModeManager: {self.mode}")
 
         self._init_ui_attributes()
-        self.flags_manager = WindowFlagsManager(self) # Создаем экземпляр менеджера флагов
+        self.flags_manager = WindowFlagsManager(self) 
         self._setup_window_properties() 
         self._create_main_ui_layout() 
         
@@ -99,9 +99,7 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         
         self._initial_ui_update_done = False
-        # _is_applying_flags_operation теперь управляется WindowFlagsManager
-        # _geometry_before_flags_change удален
-
+        
         logging.info(f"<<< MainWindow.__init__ FINISHED. Initial self.windowFlags(): {self.windowFlags():#x}")
 
     def _setup_logging_and_dialogs(self):
@@ -116,7 +114,7 @@ class MainWindow(QMainWindow):
         
         logging.getLogger().addHandler(self.log_handler)
         if logging.getLogger().level == logging.NOTSET: 
-             logging.getLogger().setLevel(logging.DEBUG) 
+             logging.getLogger().setLevel(logging.INFO) # Уменьшим количество логов по умолчанию
         
         logging.info("GUI Log Handler initialized and added to root logger.")
         self.hotkey_display_dialog = None 
@@ -205,29 +203,37 @@ class MainWindow(QMainWindow):
         self.hotkey_cursor_index = -1
         self._num_columns_cache = 1
         self.hotkey_display_dialog = None 
-        # _last_applied_flags теперь в WindowFlagsManager
 
 
     def _setup_window_properties(self):
         logging.debug(f"    [WindowProps] START. Current flags before setup: {self.windowFlags():#x}")
         self.setWindowTitle(f"{get_text('title')} v{self.app_version}")
         
-        icon_path_logo = utils.resource_path("logo.ico") 
-        icon_pixmap_logo = QPixmap(icon_path_logo) if os.path.exists(icon_path_logo) else None
-        if icon_pixmap_logo and not icon_pixmap_logo.isNull():
-            self.setWindowIcon(QIcon(icon_pixmap_logo))
-        else:
-            icon_path_fallback = utils.resource_path("resources/icon.png") 
-            icon_pixmap_fallback = QPixmap(icon_path_fallback) if os.path.exists(icon_path_fallback) else load_default_pixmap((32,32))
-            if not icon_pixmap_fallback.isNull(): self.setWindowIcon(QIcon(icon_pixmap_fallback))
-            else: logging.warning("Failed to load any application icon.")
+        # Упрощенная установка иконки. PyInstaller должен встроить ее через --icon.
+        # QIcon() без аргументов попытается загрузить стандартную иконку приложения,
+        # которая должна быть установлена PyInstaller'ом.
+        app_icon = QIcon() 
+        if app_icon.isNull(): # Если стандартная не нашлась (маловероятно при правильной сборке)
+            logging.warning("Could not load default application icon from resources. Trying explicit path...")
+            icon_path_logo = utils.resource_path("logo.ico") 
+            if os.path.exists(icon_path_logo):
+                app_icon = QIcon(icon_path_logo)
+                if app_icon.isNull():
+                    logging.error(f"Failed to load icon from explicit path: {icon_path_logo}")
+            else:
+                logging.error(f"logo.ico not found at: {icon_path_logo}")
         
+        if not app_icon.isNull():
+            self.setWindowIcon(app_icon)
+            QApplication.setWindowIcon(app_icon) # Также установим для всего приложения
+        else:
+            logging.error("Failed to set application icon.")
+
         initial_width = MODE_DEFAULT_WINDOW_SIZES.get(self.mode, {}).get('width', 950)
         initial_height = MODE_DEFAULT_WINDOW_SIZES.get(self.mode, {}).get('height', 600) 
         
         self.setMinimumSize(300, 70) 
         
-        # self._last_applied_flags теперь в WindowFlagsManager
         logging.debug(f"    [WindowProps] END. Initial self.flags_manager._last_applied_flags set to: {self.flags_manager._last_applied_flags:#x}")
 
         app_instance = QApplication.instance()
@@ -328,9 +334,6 @@ class MainWindow(QMainWindow):
             self.win_api_manager.topmost_state_changed.connect(self._handle_topmost_state_change)
         logging.info("    MainWindow general signals connected.")
 
-    # _apply_window_flags_and_show, _calculate_target_flags, _apply_mouse_invisible_mode, _force_taskbar_update_internal
-    # теперь в WindowFlagsManager. MainWindow будет вызывать методы self.flags_manager.
-
 
     def showEvent(self, event: QShowEvent):
         is_applying_flags = self.flags_manager._is_applying_flags_operation if hasattr(self, 'flags_manager') else False
@@ -359,7 +362,6 @@ class MainWindow(QMainWindow):
             logging.info(f"    showEvent: Initial setup done. Time: {(time.perf_counter() - t_initial_setup_start)*1000:.2f} ms")
         else:
             logging.debug(f"    showEvent: Repeated show or spontaneous event. Current flags: {self.windowFlags():#x}")
-            # При повторном показе окна (например, после сворачивания) обновим иконку
             if self.isVisible():
                 self.setWindowIcon(self.windowIcon())
 
@@ -468,10 +470,8 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'ui_updater') and self.ui_updater:
                 self.ui_updater.update_ui_after_logic_change()
             self._reset_hotkey_cursor_after_clear()
-        elif not recognized_heroes: # Добавлена проверка на пустой список
+        elif not recognized_heroes: 
             logging.info("No heroes recognized or list is empty.")
-            # Можно добавить уведомление пользователю, если это необходимо
-            # QMessageBox.information(self, get_text('info'), get_text('recognition_failed'))
 
 
     @Slot(str)
@@ -588,28 +588,22 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.KeyPress:
-            key_event = event # cast to QKeyEvent
+            key_event = event 
             
             if key_event.key() == Qt.Key_Tab:
                 focus_widget = QApplication.focusWidget()
                 
-                # Если фокус на HotkeyCaptureLineEdit, не мешаем ему обрабатывать Tab
                 if isinstance(focus_widget, HotkeyCaptureLineEdit) and focus_widget.objectName() == "HotkeyCaptureLineEdit":
                     logging.debug(f"Application.eventFilter: Tab for HotkeyCaptureLineEdit. Watched: {type(watched)}. Forwarding to widget.")
-                    return False # НЕ ПОТРЕБЛЯТЬ, пусть виджет сам разберется
+                    return False 
 
-                # Если активное окно - это диалог настройки хоткеев, но фокус не на поле ввода,
-                # также не потребляем Tab, чтобы стандартная навигация в диалоге работала (если она нужна).
-                # Однако, мы отключили фокус для кнопки "Отмена", так что этот случай маловероятен.
                 active_window = QApplication.activeWindow()
                 if active_window and active_window.windowTitle() == get_text('hotkey_settings_window_title'):
                     logging.debug(f"Application.eventFilter: Tab inside HotkeySettingsDialog (not on HotkeyCaptureLineEdit). Standard processing. Focus: {type(focus_widget)}")
                     return False 
                 
-                # Во всех остальных случаях (Tab нажат не в контексте настройки хоткея)
-                # потребляем Tab для предотвращения смены фокуса в основном окне.
                 logging.debug(f"Application.eventFilter: Tab key press consumed by global filter to prevent focus switching. Focus: {type(focus_widget) if focus_widget else 'None'}")
-                return True # ПОТРЕБИТЬ Tab
+                return True 
 
         if self.mode == "min" and hasattr(self, 'drag_handler') and self.drag_handler:
             if event.type() == QEvent.Type.MouseButtonPress:
@@ -636,12 +630,13 @@ class MainWindow(QMainWindow):
 
         active_modals = QApplication.topLevelWidgets()
         for widget in active_modals:
-            if isinstance(widget, QDialog) and widget.isModal() and widget.parent() == self and \
-               widget.windowTitle() == get_text('hotkey_settings_window_title'):
-                logging.info(f"Closing active HotkeySettingsDialog before main window close.")
-                widget.reject()
-                break
-
+            if isinstance(widget, QDialog) and widget.isModal() and widget.parent() == self:
+                 # Проверяем по названию окна или objectName, если нужно быть точнее
+                if widget.windowTitle() == get_text('hotkey_settings_window_title') or \
+                   widget.windowTitle() == get_text('hotkey_settings_capture_title'): # Добавлено для диалога захвата
+                    logging.info(f"Closing active modal dialog '{widget.windowTitle()}' before main window close.")
+                    widget.reject() # Используем reject для отмены
+        
         if hasattr(self, 'hotkey_manager'): self.hotkey_manager.stop_listening()
         if hasattr(self, 'rec_manager') and self.rec_manager: self.rec_manager.stop_recognition()
         

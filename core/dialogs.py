@@ -27,41 +27,41 @@ HOTKEY_INPUT_FINISHED_EVENT = QEvent.Type(QEvent.User + 1)
 def resource_path_dialogs(relative_path):
     try:
         base_path = sys._MEIPASS
-    except Exception: # Используем более общее исключение, т.к. AttributeError специфичен
+    except Exception: 
         base_path = os.path.abspath(os.path.dirname(__file__))
     
-    lang_path_base = "" # Инициализируем переменную
+    lang_path_base = "" 
     if base_path.endswith("core"):
         lang_path_base = os.path.join(base_path, "lang")
     else:
-        # Проверяем, существует ли 'core' как поддиректория
         core_sub_dir = os.path.join(base_path, "core")
         if os.path.isdir(core_sub_dir):
             lang_path_base = os.path.join(core_sub_dir, "lang")
-        else: # Если 'core' не найдено, возможно, мы уже в корне или другой структуре
+        else: 
             logging.warning(f"Не удалось определить путь к 'core/lang' из {base_path}. Попытка использовать 'lang' напрямую.")
-            lang_path_base = os.path.join(base_path, "lang") # Фолбэк
+            lang_path_base = os.path.join(base_path, "lang") 
 
     final_path = os.path.join(lang_path_base, relative_path)
-    if not os.path.exists(final_path): # Дополнительная проверка
+    if not os.path.exists(final_path): 
         logging.warning(f"Файл ресурса не найден по вычисленному пути: {final_path}")
     return final_path
 
 
-class AboutProgramDialog(QDialog):
-    def __init__(self, parent):
+class BaseInfoDialog(QDialog): # Создадим базовый класс для общих частей
+    def __init__(self, parent, window_title_key, md_filename_base):
         super().__init__(parent)
         self.parent_window = parent
-        self.setObjectName("AboutProgramDialog")
-        self.setWindowTitle(get_text('about_program'))
-        self.setGeometry(0, 0, 700, 550)
+        self.md_filename_base = md_filename_base # e.g., "information" or "author"
+        self.setObjectName(f"{md_filename_base.capitalize()}Dialog")
+        self.setWindowTitle(get_text(window_title_key))
+        self.setGeometry(0, 0, 600, 450) # Немного уменьшим размер по умолчанию
         self.setModal(True)
         self.center_on_parent()
 
         layout = QVBoxLayout(self)
         self.text_browser = QTextBrowser()
         self.text_browser.setOpenExternalLinks(True)
-        self.update_content_theme()
+        self.update_content_theme() # Вызовем сразу
 
         self.close_button = QPushButton("OK")
         self.close_button.clicked.connect(self.accept)
@@ -72,10 +72,11 @@ class AboutProgramDialog(QDialog):
         current_lang_code = 'ru_RU'
         if hasattr(self.parent_window, 'logic') and hasattr(self.parent_window.logic, 'DEFAULT_LANGUAGE'):
              current_lang_code = self.parent_window.logic.DEFAULT_LANGUAGE
-        md_filename_key = "information_ru.md"
-        if current_lang_code.startswith('en'): md_filename_key = "information_en.md"
         
-        md_filepath = resource_path_dialogs(md_filename_key)
+        # Формируем имя файла на основе md_filename_base и языка
+        md_filename = f"{self.md_filename_base}_{current_lang_code.split('_')[0]}.md" # e.g., author_ru.md
+
+        md_filepath = resource_path_dialogs(md_filename)
         
         current_theme = "light"
         if hasattr(self.parent_window, 'appearance_manager'): current_theme = self.parent_window.appearance_manager.current_theme
@@ -86,8 +87,7 @@ class AboutProgramDialog(QDialog):
         
         if os.path.exists(md_filepath):
             md_content = ""
-            # Замена try-except на if-else для чтения файла
-            try: # Оставляем try для file IO, т.к. это стандартная практика
+            try: 
                 with open(md_filepath, "r", encoding="utf-8") as f: md_content = f.read()
             except IOError as e:
                  logging.error(f"IOError при чтении {md_filepath}: {e}")
@@ -96,33 +96,40 @@ class AboutProgramDialog(QDialog):
 
             if md_content:
                 css = f"<style>body{{font-family:sans-serif;font-size:10pt;line-height:1.6;background-color:{body_bg_color};color:{body_text_color}}}h1{{font-size:16pt;margin-bottom:10px;color:{h_color};border-bottom:1px solid #ccc;padding-bottom:5px}}h2{{font-size:14pt;margin-top:20px;margin-bottom:8px;color:{h_color}}}h3{{font-size:12pt;margin-top:15px;margin-bottom:5px;color:{h_color}}}p{{margin-bottom:10px}}ul,ol{{margin-left:20px;margin-bottom:10px}}li{{margin-bottom:5px}}code{{background-color:{code_bg_color};padding:2px 4px;border-radius:3px;font-family:monospace}}a{{color:{link_color};text-decoration:none}}a:hover{{text-decoration:underline}}hr{{border:0;height:1px;background:#ccc;margin:20px 0}}</style>"
-                html_content = markdown.markdown(md_content, extensions=['extra', 'sane_lists'])
+                html_content = markdown.markdown(md_content, extensions=['extra', 'sane_lists', 'nl2br']) # Добавлен nl2br для переносов строк
                 self.text_browser.setHtml(css + html_content)
             else:
                 logging.warning(f"Файл {md_filepath} пуст.")
-                self.text_browser.setHtml(f"<p>Content file is empty: {md_filename_key}</p>")
+                self.text_browser.setHtml(f"<p>Content file is empty: {md_filename}</p>")
         else: 
             logging.warning(f"Markdown file not found: {md_filepath}")
-            self.text_browser.setHtml(f"<p>Content file not found: {md_filename_key}</p>")
-
+            self.text_browser.setHtml(f"<p>Content file not found: {md_filename}</p>")
 
     def center_on_parent(self):
         if self.parent():
             parent_geometry = self.parent().geometry()
             center_point = parent_geometry.center() - self.rect().center()
-            # Проверка на None для screen() и availableGeometry()
             screen = self.screen()
             if screen:
                 screen_geometry = screen.availableGeometry()
-                if screen_geometry and screen_geometry.isValid(): # isValid() для QRect
+                if screen_geometry and screen_geometry.isValid(): 
                     center_point.setX(max(screen_geometry.left(), min(center_point.x(), screen_geometry.right() - self.width())))
                     center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
-class HeroRatingDialog(QDialog):
+class AboutProgramDialog(BaseInfoDialog):
+    def __init__(self, parent):
+        super().__init__(parent, window_title_key='about_program', md_filename_base='information')
+
+class AuthorDialog(BaseInfoDialog): # Новый класс
+    def __init__(self, parent):
+        super().__init__(parent, window_title_key='author_info_title', md_filename_base='author')
+
+
+class HeroRatingDialog(QDialog): # Остается без изменений
     def __init__(self, parent, app_version):
         super().__init__(parent)
-        self.setWindowTitle(get_text('hero_rating_title', version=app_version))
+        self.setWindowTitle(get_text('hero_rating_title', version=app_version)) # Используется свой ключ для заголовка
         self.setGeometry(0, 0, 400, 600)
         self.setModal(True)
         self.center_on_parent()
@@ -141,10 +148,9 @@ class HeroRatingDialog(QDialog):
         layout.addWidget(text_browser)
         close_button = QPushButton("OK"); close_button.clicked.connect(self.accept); layout.addWidget(close_button)
     
-    def center_on_parent(self): # Код дублируется, можно вынести в базовый класс или утилиту
+    def center_on_parent(self): 
         if self.parent():
-            parent_geometry = self.parent().geometry()
-            center_point = parent_geometry.center() - self.rect().center()
+            parent_geometry = self.parent().geometry(); center_point = parent_geometry.center() - self.rect().center()
             screen = self.screen()
             if screen:
                 screen_geometry = screen.availableGeometry()
@@ -153,7 +159,7 @@ class HeroRatingDialog(QDialog):
                     center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
-class LogDialog(QDialog):
+class LogDialog(QDialog): # Остается без изменений
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(get_text('logs_window_title')); self.setGeometry(150, 150, 900, 600); self.setModal(False)
@@ -173,16 +179,12 @@ class LogDialog(QDialog):
         if not all_logs: 
             QMessageBox.information(self, get_text('info'), get_text('log_copy_no_logs'))
             return
-        # Замена try-except на if-else для pyperclip не совсем подходит,
-        # т.к. pyperclip.copy может выбросить разные PyperclipException
-        # Оставим try-except для обработки ошибок копирования
         try: 
             pyperclip.copy(all_logs)
-            # QMessageBox.information(self, get_text('success'), get_text('log_copy_success')) # Убрано для меньшей назойливости
-        except pyperclip.PyperclipException as e: # Более конкретное исключение
+        except pyperclip.PyperclipException as e: 
             logging.error(f"PyperclipException при копировании логов: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
-        except Exception as e: # Общее исключение, если pyperclip не установлен или другая проблема
+        except Exception as e: 
             logging.error(f"Неожиданная ошибка при копировании логов: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
 
@@ -190,7 +192,7 @@ class LogDialog(QDialog):
     def clear_log_display(self): self.log_browser.clear()
     def closeEvent(self, event: QCloseEvent): self.hide(); event.ignore()
 
-class HotkeyDisplayDialog(QDialog):
+class HotkeyDisplayDialog(QDialog): # Остается без изменений
     def __init__(self, parent=None):
         super().__init__(parent); self.parent_window = parent; self.setWindowTitle(get_text('hotkeys_window_title')); self.setMinimumWidth(550); self.setModal(True)
         self.layout = QVBoxLayout(self); self.text_browser = QTextBrowser(self); self.text_browser.setReadOnly(True); self.text_browser.setOpenExternalLinks(False)
@@ -205,7 +207,7 @@ class HotkeyDisplayDialog(QDialog):
         s = s.replace("multiply", "*")
         s = s.replace("subtract", "-")
         s = s.replace("add", "+")
-        s = s.replace("tab", "Tab") # Добавлено для корректного отображения Tab
+        s = s.replace("tab", "Tab") 
         return s
 
     def update_html_content(self):
@@ -245,7 +247,7 @@ class HotkeyDisplayDialog(QDialog):
         hotkeys_text_html += f"</ul><h3>{get_text('hotkeys_section_interaction_title')}</h3><ul><li><code>{get_text('hotkey_desc_lmb')}</code>:{get_text('hotkey_desc_lmb_select')}</li><li><code>{get_text('hotkey_desc_rmb')}</code>:{get_text('hotkey_desc_rmb_priority')}</li><li><code>{get_text('hotkey_desc_drag')}</code>:{get_text('hotkey_desc_drag_window')}</li><li><code>{get_text('hotkey_desc_slider')}</code>:{get_text('hotkey_desc_slider_transparency')}</li></ul></body></html>"
         self.text_browser.setHtml(hotkeys_text_html)
 
-    def center_on_parent(self): # Код дублируется
+    def center_on_parent(self): 
         if self.parent():
             parent_geometry = self.parent().geometry(); center_point = parent_geometry.center() - self.rect().center()
             screen = self.screen()
@@ -256,7 +258,7 @@ class HotkeyDisplayDialog(QDialog):
                     center_point.setY(max(screen_geometry.top(),min(center_point.y(),screen_geometry.bottom()-self.height())))
             self.move(center_point)
 
-class HotkeySettingsDialog(QDialog):
+class HotkeySettingsDialog(QDialog): # Остается без изменений
     hotkey_changed_signal = Signal(str, str)
     def __init__(self, current_hotkeys, hotkey_actions_config, parent=None):
         super().__init__(parent); self.current_hotkeys_copy = dict(current_hotkeys); self.hotkey_actions_config = hotkey_actions_config; self.parent_window = parent
@@ -273,12 +275,12 @@ class HotkeySettingsDialog(QDialog):
     def _normalize_for_display(self, hotkey_str: str) -> str:
         s = hotkey_str.replace("num_", "Num ")
         s = s.replace("decimal", "Decimal") 
-        s = s.replace("Num Decimal", "Num .") 
+        s = s.replace("Num Decimal", "Num Del") 
         s = s.replace("divide", "/")
         s = s.replace("multiply", "*")
         s = s.replace("subtract", "-")
         s = s.replace("add", "+")
-        s = s.replace("tab", "Tab") # Добавлено для корректного отображения Tab
+        s = s.replace("tab", "Tab") 
         return s
 
     def _populate_hotkey_list(self):
@@ -310,37 +312,28 @@ class HotkeySettingsDialog(QDialog):
         info_label = QLabel(get_text('hotkey_settings_press_new_hotkey_for').format(action=action_desc)); dialog_layout.addWidget(info_label)
         hotkey_input_field = HotkeyCaptureLineEdit(action_id, capture_dialog); hotkey_input_field.setObjectName("HotkeyCaptureLineEdit"); dialog_layout.addWidget(hotkey_input_field)
         cancel_btn = QPushButton(get_text('hotkey_settings_cancel_capture')); 
-        cancel_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus) # Отключаем фокус по Tab для кнопки
+        cancel_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus); 
         cancel_btn.clicked.connect(capture_dialog.reject); dialog_layout.addWidget(cancel_btn)
-        hotkey_input_field.setFocus() # Явно устанавливаем фокус на поле ввода
-        
-        # Делаем так, чтобы Tab не уводил фокус с hotkey_input_field внутри этого диалога
-        # Это уже должно обрабатываться в HotkeyCaptureLineEdit.keyPressEvent через event.accept() и return
+        hotkey_input_field.setFocus(); 
         
         def on_captured(act_id, key_str_internal): 
             if act_id == action_id: 
                 self.update_hotkey_for_action(act_id, key_str_internal)
-                # capture_dialog.accept() # accept/reject теперь вызывается из HotkeyCaptureLineEdit
         
         def on_canceled_or_rejected():
             if hotkey_input_field and hotkey_input_field.action_id == action_id: 
                 self.cancel_hotkey_capture(action_id)
         
         hotkey_input_field.hotkey_captured.connect(on_captured); 
-        # capture_dialog.rejected не нужен, т.к. hotkey_input_field сам вызовет reject или accept
-        # hotkey_input_field.capture_canceled.connect(capture_dialog.reject) # Тоже не нужно, он сам reject сделает
-
-        # Вместо rejected, используем finished, чтобы обработать и accept и reject от HotkeyCaptureLineEdit
-        capture_dialog.finished.connect(on_canceled_or_rejected) # Если был reject изнутри
+        capture_dialog.finished.connect(on_canceled_or_rejected); 
         capture_dialog.exec()
         
-        # Отсоединяем сигналы после закрытия диалога
         try:
             if hotkey_input_field: hotkey_input_field.hotkey_captured.disconnect(on_captured)
         except RuntimeError: pass 
         try: 
             if capture_dialog: capture_dialog.finished.disconnect(on_canceled_or_rejected)
-        except RuntimeError: pass
+        except RuntimeError: pass 
 
     @Slot(str, str)
     def update_hotkey_for_action(self, action_id: str, new_hotkey_str_internal: str): 
@@ -386,7 +379,7 @@ class HotkeySettingsDialog(QDialog):
             self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys_copy) 
             self.accept()
 
-    def center_on_parent(self): # Код дублируется
+    def center_on_parent(self): 
         if self.parent():
             parent_geometry = self.parent().geometry(); center_point = parent_geometry.center() - self.rect().center()
             screen = self.screen()
@@ -397,6 +390,7 @@ class HotkeySettingsDialog(QDialog):
             self.move(center_point)
     
 def show_about_program_info(parent): dialog = AboutProgramDialog(parent); dialog.exec()
+def show_author_info(parent): dialog = AuthorDialog(parent); dialog.exec() # Новая функция
 def show_hero_rating(parent, app_version): dialog = HeroRatingDialog(parent, app_version); dialog.exec()
 def show_hotkey_display_dialog(parent): dialog = HotkeyDisplayDialog(parent); dialog.exec()
 def show_hotkey_settings_dialog(current_hotkeys, hotkey_actions_config, parent_window):
