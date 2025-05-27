@@ -1,6 +1,6 @@
 # File: core/utils.py
 import mss
-import mss.tools
+# import mss.tools # mss.tools не используется напрямую
 import numpy as np
 import cv2
 import os
@@ -20,34 +20,58 @@ ORB_NFEATURES = 1000; ORB_MIN_MATCH_COUNT = 10; ORB_LOWE_RATIO = 0.75
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB; AKAZE_MIN_MATCH_COUNT = 3; AKAZE_LOWE_RATIO = 0.75
 
 def _get_root_path():
-    if hasattr(sys, '_MEIPASS'): base_path = sys._MEIPASS
-    else: base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    # Проверка hasattr(sys, '_MEIPASS') - это стандартный способ
+    # Определяем, запущено ли приложение как обычный скрипт или как .exe PyInstaller
+    if hasattr(sys, '_MEIPASS'): # Путь для .exe PyInstaller
+        base_path = sys._MEIPASS
+    else: # Путь для обычного запуска скрипта
+        # Идем на один уровень вверх от текущего файла (utils.py в core/) до корня проекта
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     return base_path
 
 def resource_path(relative_path):
     base_path = _get_root_path()
+    # Корректируем слеши для кроссплатформенности
     relative_path_corrected = relative_path.replace('/', os.sep).replace('\\', os.sep)
     final_path = os.path.join(base_path, relative_path_corrected)
     return final_path
 
 def get_settings_path() -> Path:
+    app_data_dir_str = "" # Инициализация
     if sys.platform == "win32":
-        app_data_dir = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
-    else:
-        app_data_dir = Path.home() / ".config"
+        app_data_dir_str = os.getenv("APPDATA")
+        # Если APPDATA не определена, используем стандартный путь
+        if not app_data_dir_str:
+            app_data_dir_str = str(Path.home() / "AppData" / "Roaming")
+    else: # Для Linux, macOS и других
+        app_data_dir_str = str(Path.home() / ".config")
+    
+    app_data_dir = Path(app_data_dir_str)
     app_name_dir = app_data_dir / "RivalsCounterPeaks"
-    app_name_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Замена try-except на if-else для создания директории
+    if not app_name_dir.exists():
+        try: # Оставляем try-except для mkdir, т.к. могут быть проблемы с правами
+            app_name_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logging.error(f"Не удалось создать директорию настроек {app_name_dir}: {e}")
+            # В случае ошибки, можно попробовать использовать временную директорию или текущую
+            # но для настроек это не лучший вариант. Пока просто логируем.
+            # Можно вернуть Path к файлу в текущей директории как fallback:
+            # return Path.cwd() / "hotkeys.json" 
+    
     return app_name_dir / "hotkeys.json"
+
 
 def validate_heroes():
     logging.info("[VALIDATION] Запуск проверки имен героев (новая структура)...")
     invalid_entries = []
-    heroes_set = set(heroes) # Множество всех известных героев из heroes_bd.heroes
+    heroes_set = set(heroes) 
 
     for hero_being_countered, counters_data in heroes_counters.items():
         if hero_being_countered not in heroes_set:
             invalid_entries.append(f"Неизвестный герой '{hero_being_countered}' как ключ в heroes_counters.")
-            continue # Пропускаем дальнейшую проверку для этого ключа
+            continue 
 
         if not isinstance(counters_data, dict):
             invalid_entries.append(f"Неверный формат данных для '{hero_being_countered}': ожидался словарь, получен {type(counters_data)}.")
@@ -55,8 +79,6 @@ def validate_heroes():
 
         for counter_type in ["hard", "soft"]:
             if counter_type not in counters_data:
-                # Это нормально, если нет hard или soft контр, но если есть, то должен быть список
-                # invalid_entries.append(f"Отсутствует ключ '{counter_type}' для героя '{hero_being_countered}'.")
                 continue 
             
             counter_list = counters_data[counter_type]
@@ -68,7 +90,6 @@ def validate_heroes():
                 if not isinstance(counter_hero_name, str):
                     invalid_entries.append(f"В списке '{counter_type}' для '{hero_being_countered}' найден нестроковый элемент: '{counter_hero_name}' ({type(counter_hero_name)}).")
                 elif counter_hero_name not in heroes_set:
-                    # Это основная ошибка, которую ты видел: "hard" или "soft" вместо имени
                     invalid_entries.append(f"Неизвестный герой '{counter_hero_name}' в списке '{counter_type}' для '{hero_being_countered}'.")
     
     unique_invalid = sorted(list(set(invalid_entries)))
@@ -83,31 +104,90 @@ def validate_heroes():
 def check_if_all_elements_in_list(target_list, check_list):
     return set(check_list).issubset(set(target_list))
 
-def capture_screen_area(area: dict): # ... (без изменений) ...
+def capture_screen_area(area: dict):
     logging.debug(f"[CAPTURE] Attempting capture for area definition: {area}")
-    try:
-        with mss.mss() as sct:
-            monitors = sct.monitors
-            if not monitors: logging.error("[ERROR][CAPTURE] No monitors found."); return None
-            target_monitor_index = area.get('monitor', 1)
-            if target_monitor_index >= len(monitors):
-                 corrected_index = 1 if len(monitors) > 1 else 0
-                 logging.warning(f"[WARN][CAPTURE] Invalid monitor index {target_monitor_index}. Available: {len(monitors)}. Using monitor {corrected_index} instead.")
-                 target_monitor_index = corrected_index
-                 if target_monitor_index >= len(monitors): logging.error("[ERROR][CAPTURE] Corrected monitor index still invalid."); return None
-            try: monitor_geometry = monitors[target_monitor_index]
-            except IndexError: logging.error(f"[ERROR][CAPTURE] IndexError accessing monitor {target_monitor_index}. Monitors: {monitors}"); return None
-            mon_width = monitor_geometry["width"]; mon_height = monitor_geometry["height"]; mon_left = monitor_geometry["left"]; mon_top = monitor_geometry["top"]; use_pct = False
-            if all(k in area for k in ['left_pct', 'top_pct', 'width_pct', 'height_pct']):
-                use_pct = True; logging.debug(f"[CAPTURE] Using percentage values."); left_px = int(mon_width * area['left_pct'] / 100); top_px = int(mon_height * area['top_pct'] / 100); width_px = int(mon_width * area['width_pct'] / 100); height_px = int(mon_height * area['height_pct'] / 100); logging.debug(f"[CAPTURE] Calculated px: L={left_px}, T={top_px}, W={width_px}, H={height_px}")
-            else: logging.debug(f"[CAPTURE] Using absolute pixel values."); left_px = area.get('left', 0); top_px = area.get('top', 0); width_px = area.get('width', 100); height_px = area.get('height', 100)
-            bbox = {"left": mon_left + left_px, "top": mon_top + top_px, "width": max(1, width_px), "height": max(1, height_px), "mon": target_monitor_index}
-            if bbox['width'] <= 0 or bbox['height'] <= 0: logging.error(f"[ERROR][CAPTURE] Invalid calculated capture dimensions: {bbox}"); return None
-            logging.debug(f"[CAPTURE] Grabbing BBox: {bbox} on Monitor: {target_monitor_index}"); sct_img = sct.grab(bbox); img_np = np.array(sct_img)
-            if img_np.size == 0: logging.error("[ERROR][CAPTURE] Grabbed empty image."); return None
-            if img_np.shape[2] == 4: img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
-            elif img_np.shape[2] == 3: img_bgr = img_np
-            else: logging.error(f"[ERROR][CAPTURE] Unexpected image format (channels: {img_np.shape[2]})."); return None
-            logging.info(f"[CAPTURE] Area captured successfully. Shape: {img_bgr.shape}"); return img_bgr
-    except mss.ScreenShotError as e: logging.error(f"[ERROR][CAPTURE] mss error: {e}"); return None
-    except Exception as e: logging.error(f"[ERROR][CAPTURE] Unexpected error during capture: {e}", exc_info=True); return None
+    img_bgr = None # Инициализация
+    # Замена try-except mss.ScreenShotError на проверку sct.grab()
+    with mss.mss() as sct:
+        monitors = sct.monitors
+        if not monitors: 
+            logging.error("[ERROR][CAPTURE] No monitors found.")
+            return None
+        
+        target_monitor_index = area.get('monitor', 1)
+        # Проверка индекса монитора
+        if not (0 <= target_monitor_index < len(monitors)):
+            corrected_index = 1 if len(monitors) > 1 else 0 # Индекс 1, если есть хотя бы 2 монитора, иначе 0
+            # Убедимся, что corrected_index все еще в допустимых границах
+            if not (0 <= corrected_index < len(monitors)):
+                 logging.error(f"[ERROR][CAPTURE] Corrected monitor index {corrected_index} is still invalid for {len(monitors)} monitors.")
+                 return None
+            logging.warning(f"[WARN][CAPTURE] Invalid monitor index {target_monitor_index}. Available: {len(monitors)}. Using monitor {corrected_index} instead.")
+            target_monitor_index = corrected_index
+        
+        monitor_geometry = monitors[target_monitor_index] # Теперь индекс должен быть безопасным
+        
+        mon_width = monitor_geometry["width"]; mon_height = monitor_geometry["height"]
+        mon_left = monitor_geometry["left"]; mon_top = monitor_geometry["top"]
+        
+        use_pct = False
+        if all(k in area for k in ['left_pct', 'top_pct', 'width_pct', 'height_pct']):
+            use_pct = True
+            logging.debug(f"[CAPTURE] Using percentage values.")
+            left_px = int(mon_width * area['left_pct'] / 100)
+            top_px = int(mon_height * area['top_pct'] / 100)
+            width_px = int(mon_width * area['width_pct'] / 100)
+            height_px = int(mon_height * area['height_pct'] / 100)
+            logging.debug(f"[CAPTURE] Calculated px: L={left_px}, T={top_px}, W={width_px}, H={height_px}")
+        else: 
+            logging.debug(f"[CAPTURE] Using absolute pixel values.")
+            left_px = area.get('left', 0); top_px = area.get('top', 0)
+            width_px = area.get('width', 100); height_px = area.get('height', 100)
+            
+        bbox = {
+            "left": mon_left + left_px, "top": mon_top + top_px,
+            "width": max(1, width_px), "height": max(1, height_px), # Ширина/высота не могут быть <= 0
+            "mon": target_monitor_index
+        }
+
+        if bbox['width'] <= 0 or bbox['height'] <= 0:
+            logging.error(f"[ERROR][CAPTURE] Invalid calculated capture dimensions: {bbox}")
+            return None
+            
+        logging.debug(f"[CAPTURE] Grabbing BBox: {bbox} on Monitor: {target_monitor_index}")
+        
+        sct_img = None
+        try: # Оставляем try-except для sct.grab, т.к. это внешний вызов
+            sct_img = sct.grab(bbox)
+        except mss.exception.ScreenShotError as e_mss: # Используем mss.exception.ScreenShotError
+             logging.error(f"[ERROR][CAPTURE] mss.ScreenShotError: {e_mss}")
+             return None
+        except Exception as e_grab: # Другие возможные ошибки при grab
+             logging.error(f"[ERROR][CAPTURE] Unexpected error during sct.grab: {e_grab}", exc_info=True)
+             return None
+
+
+        if sct_img:
+            img_np = np.array(sct_img)
+            if img_np.size == 0: 
+                logging.error("[ERROR][CAPTURE] Grabbed empty image.")
+                return None
+            
+            # Проверка количества каналов
+            if len(img_np.shape) < 3: # Если изображение 1-канальное или 2-канальное (неожиданно)
+                logging.error(f"[ERROR][CAPTURE] Unexpected image format (shape: {img_np.shape}). Expected 3 or 4 channels.")
+                return None
+
+            if img_np.shape[2] == 4: 
+                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
+            elif img_np.shape[2] == 3: 
+                img_bgr = img_np # Уже BGR (или RGB, mss обычно дает BGRA или BGR)
+            else: 
+                logging.error(f"[ERROR][CAPTURE] Unexpected image format (channels: {img_np.shape[2]}).")
+                return None
+            
+            logging.info(f"[CAPTURE] Area captured successfully. Shape: {img_bgr.shape if img_bgr is not None else 'None'}")
+            return img_bgr
+        else: # sct.grab() вернул None или что-то пошло не так без исключения
+            logging.error("[ERROR][CAPTURE] sct.grab() did not return a valid image.")
+            return None

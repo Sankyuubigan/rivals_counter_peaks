@@ -22,14 +22,17 @@ main_script = os.path.join(core_dir, "main.py")
 hooks_dir = script_dir
 # --- ---
 
-# --- Версия (только для имени файла сборки) ---
+# --- Версия (для информации, если имя файла будет фиксированным) ---
 now = datetime.datetime.now()
-version_for_filename = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
-output_name = f"rivals_counter_{version_for_filename}"
+version_for_info = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
+
+# ИМЯ ПРОЦЕССА = КОРЕНЬ ПРОЕКТА (согласно запросу пользователя)
+output_name = "rivals_counter_peaks"
 spec_file_path = os.path.join(project_root, f"{output_name}.spec") # .spec файл будет в корне проекта
 
-logging.info(f"Имя выходного файла будет: {output_name}.exe (на основе версии {version_for_filename})")
+logging.info(f"Имя выходного файла (и процесса) будет: {output_name}.exe. Версия для сборки (информационно): {version_for_info}")
 # --- ---
+
 
 # <<< --- Принудительная очистка перед сборкой (КРОМЕ ПАПКИ DIST) --- >>>
 logging.info("Принудительная очистка перед сборкой (кроме папки dist)...")
@@ -102,8 +105,8 @@ command = " ".join(command_full_list)
 
 # --- Вывод информации и запуск сборки ---
 print("-" * 60)
-logging.info(f"Версия для имени файла: {version_for_filename}")
-logging.info(f"Имя выходного файла: {output_name}.exe")
+logging.info(f"Версия для информации: {version_for_info}")
+logging.info(f"Имя выходного файла (и процесса): {output_name}.exe")
 logging.info(f"Папка для результатов сборки: {dist_dir}")
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)

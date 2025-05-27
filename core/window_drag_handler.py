@@ -1,49 +1,49 @@
 # File: core/window_drag_handler.py
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QMouseEvent
-from PySide6.QtWidgets import QWidget # Для type hinting
+from PySide6.QtWidgets import QWidget, QPushButton, QSlider 
+import logging
 
 class WindowDragHandler:
     def __init__(self, window: QWidget, top_frame_provider: callable):
-        """
-        Инициализатор.
-        window: ссылка на главное окно (или виджет, который нужно перетаскивать).
-        top_frame_provider: функция, которая возвращает top_frame (или None).
-        """
         self.window = window
-        self.top_frame_provider = top_frame_provider # Функция для получения top_frame
+        self.top_frame_provider = top_frame_provider 
         self._mouse_pressed = False
         self._old_pos: QPoint | None = None
 
-    def mousePressEvent(self, event: QMouseEvent):
-        # Проверяем, что это MainWindow и у него есть атрибут 'mode'
+    def mousePressEvent(self, event: QMouseEvent) -> bool:
         is_min_mode = hasattr(self.window, 'mode') and self.window.mode == "min"
         top_frame = self.top_frame_provider()
+        logging.debug(f"[DragHandler.press] Event pos (rel to window): {event.pos()}, Global: {event.globalPosition().toPoint()}, MinMode: {is_min_mode}")
+        if top_frame:
+            logging.debug(f"[DragHandler.press] TopFrame geom (rel to parent): {top_frame.geometry()}, Mapped global click to top_frame local: {top_frame.mapFromGlobal(event.globalPosition().toPoint())}")
 
-        if is_min_mode and top_frame and top_frame.underMouse():
+        if is_min_mode and top_frame and top_frame.geometry().contains(top_frame.mapFromGlobal(event.globalPosition().toPoint())):
+            logging.debug("[DragHandler.press] Click is within top_frame geometry in min_mode.")
             if event.button() == Qt.MouseButton.LeftButton:
-                 # Проверяем, не кликнули ли по кнопке закрытия (если она есть на top_frame)
-                close_button = getattr(self.window, 'close_button', None) # Предполагаем, что close_button - атрибут window
-                if close_button and close_button.isVisible() and \
-                   close_button.geometry().contains(top_frame.mapFromGlobal(event.globalPosition().toPoint())):
-                    return False # Не обрабатываем, передаем дальше
+                top_frame_local_pos = top_frame.mapFromGlobal(event.globalPosition().toPoint())
+                child_widget_at_click = top_frame.childAt(top_frame_local_pos)
+                logging.debug(f"[DragHandler.press] Click at top_frame local coords: {top_frame_local_pos}. Child at click: {type(child_widget_at_click).__name__ if child_widget_at_click else 'None'}")
+
+                if child_widget_at_click and child_widget_at_click.parentWidget() == top_frame:
+                    if child_widget_at_click.isEnabled() and child_widget_at_click.isVisible():
+                        if isinstance(child_widget_at_click, (QPushButton, QSlider)):
+                           logging.debug(f"[DragHandler.press] Click on interactive child '{child_widget_at_click.objectName() if hasattr(child_widget_at_click, 'objectName') else type(child_widget_at_click).__name__}'. Not starting drag.")
+                           self._mouse_pressed = False 
+                           return False 
 
                 self._mouse_pressed = True
                 self._old_pos = event.globalPosition().toPoint()
+                logging.debug(f"[DragHandler.press] Drag started. Old pos: {self._old_pos}")
                 event.accept()
-                return True # Событие обработано
+                return True
         self._mouse_pressed = False
-        return False # Событие не обработано
+        logging.debug("[DragHandler.press] Conditions not met for drag start or event not accepted by drag logic.")
+        return False
 
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def mouseMoveEvent(self, event: QMouseEvent) -> bool:
         is_min_mode = hasattr(self.window, 'mode') and self.window.mode == "min"
         if is_min_mode and self._mouse_pressed and self._old_pos is not None:
-            top_frame = self.top_frame_provider()
-            close_button = getattr(self.window, 'close_button', None)
-            if top_frame and close_button and close_button.isVisible() and \
-               close_button.geometry().contains(top_frame.mapFromGlobal(event.globalPosition().toPoint())):
-                 return False # Не перетаскиваем, если мышь над кнопкой
-
             delta = event.globalPosition().toPoint() - self._old_pos
             self.window.move(self.window.pos() + delta)
             self._old_pos = event.globalPosition().toPoint()
@@ -51,18 +51,13 @@ class WindowDragHandler:
             return True
         return False
 
-    def mouseReleaseEvent(self, event: QMouseEvent):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> bool:
         is_min_mode = hasattr(self.window, 'mode') and self.window.mode == "min"
-        if is_min_mode and event.button() == Qt.MouseButton.LeftButton:
+        if is_min_mode and self._mouse_pressed and event.button() == Qt.MouseButton.LeftButton:
             self._mouse_pressed = False
             self._old_pos = None
-            
-            top_frame = self.top_frame_provider()
-            close_button = getattr(self.window, 'close_button', None)
-            if top_frame and close_button and close_button.isVisible() and \
-               close_button.geometry().contains(top_frame.mapFromGlobal(event.globalPosition().toPoint())):
-                return False # Передаем дальше для клика по кнопке
-
+            logging.debug("[DragHandler.release] Dragging stopped.")
             event.accept()
             return True
+        logging.debug("[DragHandler.release] Conditions not met for drag release handling or event not accepted by drag logic.")
         return False

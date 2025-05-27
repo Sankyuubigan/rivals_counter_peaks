@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from core.lang.translations import get_text, SUPPORTED_LANGUAGES
 from dialogs import show_about_program_info, show_hero_rating 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING # Добавлено для TYPE_CHECKING
 import logging
 
 if TYPE_CHECKING:
@@ -25,8 +25,9 @@ class TopPanel:
         self.max_button: QPushButton | None = None
         self.tray_mode_button: QPushButton | None = None
         self.menu_button: QPushButton | None = None
-        self.rating_button_widget: QPushButton | None = None 
-        self.about_program_button_widget: QPushButton | None = None
+        # Удаляем отдельные кнопки, они будут в меню
+        # self.rating_button_widget: QPushButton | None = None 
+        # self.about_program_button_widget: QPushButton | None = None
         self.version_label: QLabel | None = None; self.close_button: QPushButton | None = None
         self._setup_ui()
 
@@ -44,9 +45,10 @@ class TopPanel:
         layout.addWidget(self.menu_button)
         layout.addStretch(1)
         
-        self.rating_button_widget = self._create_info_button('hero_rating', lambda: show_hero_rating(self.parent, self.app_version))
-        self.about_program_button_widget = self._create_info_button('about_program', lambda: show_about_program_info(self.parent))
-        layout.addWidget(self.rating_button_widget); layout.addWidget(self.about_program_button_widget)
+        # Удалены кнопки about и rating из основной панели
+        # self.rating_button_widget = self._create_info_button('hero_rating', lambda: show_hero_rating(self.parent, self.app_version))
+        # self.about_program_button_widget = self._create_info_button('about_program', lambda: show_about_program_info(self.parent))
+        # layout.addWidget(self.rating_button_widget); layout.addWidget(self.about_program_button_widget)
 
         version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
         self.version_label = QLabel(version_text); self.version_label.setObjectName("version_label")
@@ -69,22 +71,27 @@ class TopPanel:
         button = QPushButton(); button.setObjectName("tray_mode_button"); button.setProperty("trayModeActive", False); button.clicked.connect(self.parent.toggle_tray_mode); return button
     
     def _update_tray_mode_button_text_and_property(self): 
-        if not self.tray_mode_button or not self.parent: logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Button or parent not found."); return
-        try:
-            is_tray_active = self.parent._is_win_topmost; 
-            button_text_key = 'tray_mode_on' if is_tray_active else 'tray_mode_off'; button_text = get_text(button_text_key, language=self.logic.DEFAULT_LANGUAGE); self.tray_mode_button.setText(button_text); 
-            current_prop = self.tray_mode_button.property("trayModeActive")
-            if current_prop != is_tray_active:
-                self.tray_mode_button.setProperty("trayModeActive", is_tray_active); 
-                if self.tray_mode_button.style(): 
-                    self.tray_mode_button.style().unpolish(self.tray_mode_button); self.tray_mode_button.style().polish(self.tray_mode_button); 
-                self.tray_mode_button.update(); 
-        except Exception as e: logging.error(f"[TopPanel._update_tray_mode_button_text_and_property] Error: {e}", exc_info=True)
+        if not self.tray_mode_button or not self.parent: 
+            logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Button or parent not found.")
+            return
+        
+        # Используем безопасный доступ к _is_win_topmost
+        is_tray_active = getattr(self.parent, '_is_win_topmost', False)
+        
+        button_text_key = 'tray_mode_on' if is_tray_active else 'tray_mode_off'
+        button_text = get_text(button_text_key, language=self.logic.DEFAULT_LANGUAGE)
+        self.tray_mode_button.setText(button_text)
+        
+        current_prop = self.tray_mode_button.property("trayModeActive")
+        if current_prop != is_tray_active:
+            self.tray_mode_button.setProperty("trayModeActive", is_tray_active)
+            style = self.tray_mode_button.style()
+            if style: 
+                style.unpolish(self.tray_mode_button)
+                style.polish(self.tray_mode_button)
+            self.tray_mode_button.update()
 
-    def _create_info_button(self, text_key: str, callback) -> QPushButton: 
-        button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE)); button.setObjectName(f"{text_key}_button"); 
-        button.clicked.connect(callback); 
-        return button
+    # _create_info_button больше не нужен, т.к. кнопки переехали в меню
     
     def _create_close_button(self) -> QPushButton: 
         button = QPushButton("✕"); button.setObjectName("close_button"); button.setFixedSize(24, 24); 
@@ -97,8 +104,16 @@ class TopPanel:
         current_lang = self.logic.DEFAULT_LANGUAGE
 
         lang_menu = QMenu(get_text('language', language=current_lang), menu)
-        for lang_code, lang_name_map in SUPPORTED_LANGUAGES.items():
-            lang_display_name = lang_name_map if isinstance(lang_name_map, str) else lang_name_map.get(current_lang, lang_code)
+        for lang_code, lang_name_map_or_str in SUPPORTED_LANGUAGES.items():
+            # lang_name_map_or_str может быть строкой или словарем
+            lang_display_name = ""
+            if isinstance(lang_name_map_or_str, str):
+                lang_display_name = lang_name_map_or_str # Для 'en_US': 'English'
+            elif isinstance(lang_name_map_or_str, dict): # Для 'ru_RU': {'ru_RU': 'Русский', 'en_US': 'Russian'}
+                lang_display_name = lang_name_map_or_str.get(current_lang, lang_code)
+            else: # Fallback
+                lang_display_name = lang_code
+
             action = lang_menu.addAction(lang_display_name)
             action.setCheckable(True)
             action.setChecked(current_lang == lang_code)
@@ -126,7 +141,6 @@ class TopPanel:
         menu.addMenu(theme_menu)
         menu.addSeparator()
 
-        # Используем ключ 'hero_rating' (который теперь "Универсальные герои")
         rating_action = menu.addAction(get_text('hero_rating', language=current_lang))
         rating_action.triggered.connect(lambda: show_hero_rating(self.parent, self.app_version))
         
@@ -140,15 +154,6 @@ class TopPanel:
         else:
             hotkey_settings_action.setEnabled(False)
             logging.warning("Method show_hotkey_settings_window not found in parent.")
-
-        # Удаляем пункт "Горячие клавиши (Инфо)"
-        # hotkeys_info_action = menu.addAction(get_text('hotkeys_menu_item', language=current_lang)) 
-        # if hasattr(self.parent, '_show_hotkey_info_dialog'):
-        #     hotkeys_info_action.triggered.connect(self.parent._show_hotkey_info_dialog)
-        # else: 
-        #     hotkeys_info_action.setEnabled(False)
-        #     logging.warning("Method _show_hotkey_info_dialog not found in parent for hotkeys info.")
-
 
         logs_action = menu.addAction(get_text('logs_menu_item', language=current_lang))
         if hasattr(self.parent, 'show_log_window'):
@@ -165,8 +170,7 @@ class TopPanel:
         if self.max_button: self.max_button.setText(get_text('mode_max', language=current_lang))
         if self.menu_button: self.menu_button.setText(get_text('menu', language=current_lang))
         self._update_tray_mode_button_text_and_property()
-        if self.rating_button_widget: self.rating_button_widget.setText(get_text('hero_rating', language=current_lang))
-        if self.about_program_button_widget: self.about_program_button_widget.setText(get_text('about_program', language=current_lang))
+        # rating_button_widget и about_program_button_widget удалены из панели, их текст обновлять не нужно
         if self.version_label:
              version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
              self.version_label.setText(version_text); self.version_label.setToolTip(f"Application version: {self.app_version}")
