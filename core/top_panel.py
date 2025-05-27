@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 from core.lang.translations import get_text, SUPPORTED_LANGUAGES
-from dialogs import show_about_program_info, show_hero_rating, show_author_info # Добавлен импорт show_author_info
+from dialogs import show_about_program_info, show_hero_rating, show_author_info 
 from typing import TYPE_CHECKING 
 import logging
 
@@ -16,7 +16,7 @@ class TopPanel:
     def __init__(self, parent: 'MainWindow', switch_mode_callback, logic, app_version):
         self.parent = parent; self.switch_mode_callback = switch_mode_callback
         self.logic = logic; self.app_version = app_version
-        logging.debug(f"[TopPanel] Initialized with app_version: {self.app_version}")
+        # logging.debug(f"[TopPanel] Initialized with app_version: {self.app_version}") # Убрано для уменьшения логов
         self.top_frame = QFrame(parent); self.top_frame.setObjectName("top_frame")
         self.top_frame.setFixedHeight(36) 
         self.transparency_slider: QSlider | None = None;
@@ -45,7 +45,7 @@ class TopPanel:
         version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
         self.version_label = QLabel(version_text); self.version_label.setObjectName("version_label")
         self.version_label.setToolTip(f"Application version: {self.app_version}")
-        logging.debug(f"[TopPanel._setup_ui] Creating version_label with text: '{version_text}' (raw version: {self.app_version})")
+        # logging.debug(f"[TopPanel._setup_ui] Creating version_label with text: '{version_text}' (raw version: {self.app_version})") # Убрано
         layout.addWidget(self.version_label)
         self.close_button = self._create_close_button(); layout.addWidget(self.close_button)
         if self.tray_mode_button:
@@ -134,8 +134,7 @@ class TopPanel:
         about_program_action = menu.addAction(get_text('about_program', language=current_lang))
         about_program_action.triggered.connect(lambda: show_about_program_info(self.parent))
 
-        # Новый пункт "Об авторе"
-        author_info_action = menu.addAction(get_text('author_info_title', language=current_lang)) # Используем существующий ключ для заголовка
+        author_info_action = menu.addAction(get_text('author_menu_item_text', language=current_lang)) # Используем новый ключ
         author_info_action.triggered.connect(lambda: show_author_info(self.parent))
         
         menu.addSeparator()
@@ -145,8 +144,8 @@ class TopPanel:
             hotkey_settings_action.triggered.connect(self.parent.show_hotkey_settings_window)
         else:
             hotkey_settings_action.setEnabled(False)
-            logging.warning("Method show_hotkey_settings_window not found in parent.")
-
+            # logging.warning("Method show_hotkey_settings_window not found in parent.") # Убрано
+        
         logs_action = menu.addAction(get_text('logs_menu_item', language=current_lang))
         if hasattr(self.parent, 'show_log_window'):
              logs_action.triggered.connect(self.parent.show_log_window)

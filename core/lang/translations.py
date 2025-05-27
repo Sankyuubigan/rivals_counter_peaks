@@ -1,7 +1,6 @@
 # File: core/lang/translations.py
-import logging # <<< ДОБАВЛЕН ИМПОРТ LOGGING >>>
+import logging 
 
-# Определяем язык по умолчанию, с фолбэком на ru_RU
 DEFAULT_LANGUAGE = 'ru_RU'
 SUPPORTED_LANGUAGES = {'ru_RU': 'Русский', 'en_US': 'English'} 
 
@@ -13,20 +12,21 @@ TRANSLATIONS = {
         'selected': 'Выбрано', 
         'selected_none': 'Выбрано (0/{max_team_size})', 
         'selected_some': 'Выбрано', 
-        'selected_heroes_label_format': '{selected_text} ({count}/{max_team_size}): {heroes_list}', # Изменены имена плейсхолдеров
+        'selected_heroes_label_format': '{selected_text} ({count}/{max_team_size}): {heroes_list}', 
         'none_selected_placeholder': 'нет выбранных', 
         'copy_rating': 'Копировать состав',
         'clear_all': 'Очистить всё',
         'about_program': 'О программе',
-        'author_info': 'Автор: Nilden\nВерсия: {version}', 
+        'author_info_title': 'Об авторе', # Изменено для заголовка окна
+        'author_menu_item_text': 'Об авторе', # Новый ключ для пункта меню
         'language': 'Язык',
         'strong_player': 'сильный игрок',
         'version': 'Версия: {version}',
         'counterpick_rating': 'Рейтинг контрпиков для вражеской команды:',
         'points': 'балл(ов)',
-        'hero_rating': 'Универсальные герои', # ИЗМЕНЕНО
-        'hero_rating_title': 'Рейтинг универсальных героев', # ИЗМЕНЕНО
-        'donate_info_title': 'Купить мне кофе (помощь и благодарность за софт):',
+        'hero_rating': 'Универсальные герои', 
+        'hero_rating_title': 'Рейтинг универсальных героев', 
+        'donate_info_title': 'Купить мне кофе (помощь и благодарность за софт):', # Этот ключ используется внутри author.md
         'donate_tinkoff_label': 'Тинькофф:',
         'donate_tinkoff_card': '2200 7007 5813 1881',
         'donate_donationalerts_label': 'Ссылка для донатов из-за рубежа:',
@@ -126,14 +126,15 @@ TRANSLATIONS = {
         'copy_rating': 'Copy Team',
         'clear_all': 'Clear All',
         'about_program': 'About Program',
-        'author_info': 'Author: Nilden\nVersion: {version}',
+        'author_info_title': 'About Author', # Изменено для заголовка окна
+        'author_menu_item_text': 'About Author', # Новый ключ для пункта меню
         'language': 'Language',
         'strong_player': 'strong player',
         'version': 'Version: {version}',
         'counterpick_rating': 'Counterpick rating for the enemy team:',
         'points': 'points',
-        'hero_rating': 'Universal Heroes', # ИЗМЕНЕНО
-        'hero_rating_title': 'Universal Heroes Rating', # ИЗМЕНЕНО
+        'hero_rating': 'Universal Heroes', 
+        'hero_rating_title': 'Universal Heroes Rating', 
         'donate_info_title': 'Buy me a coffee (support and thanks for the software):',
         'donate_tinkoff_label': 'Tinkoff:',
         'donate_tinkoff_card': '2200 7007 5813 1881',
@@ -224,7 +225,6 @@ TRANSLATIONS = {
     }
 }
 
-# Кэш для форматированных строк
 formatted_text_cache = {}
 _current_lang_internal = DEFAULT_LANGUAGE
 
@@ -241,7 +241,10 @@ def _validate_key(key, translations_for_lang, default_text, language_code_for_fa
             base_text = en_translations.get(key)
         
         if base_text is None: 
-             base_text = default_text if default_text is not None else f"_{key}_" 
+             # Логируем отсутствие ключа, если default_text тоже не предоставлен
+             if default_text is None:
+                 logging.warning(f"[Translations] Key '{key}' not found in translations for '{language_code_for_fallback_search}' or 'en_US', and no default_text provided.")
+             base_text = default_text if default_text is not None else f"_{key}_" # Возвращаем ключ, если нет перевода
     return base_text
 
 
@@ -259,14 +262,14 @@ def get_text(key, default_text=None, language=None, **kwargs):
     translations_for_lang = _get_translation_table(resolved_language)
     base_text = _validate_key(key, translations_for_lang, default_text, resolved_language)
 
-    try:
-        result_text = base_text.format(**kwargs) if kwargs else base_text
-    except KeyError as e:
-        logging.warning(f"[Translations] Missing key '{e}' for formatting text_id '{key}' in lang '{resolved_language}'. Base text: '{base_text}'") # Используем logging
-        result_text = base_text 
-    except ValueError as e:
-        logging.warning(f"[Translations] Formatting error for text_id '{key}' in lang '{resolved_language}': {e}. Base text: '{base_text}'") # Используем logging
-        result_text = base_text
+    result_text = base_text 
+    if kwargs: # Только если есть kwargs, пытаемся форматировать
+        try:
+            result_text = base_text.format(**kwargs)
+        except KeyError as e:
+            logging.warning(f"[Translations] Missing key '{e}' for formatting text_id '{key}' in lang '{resolved_language}'. Base text: '{base_text}'") 
+        except ValueError as e: # Например, если в строке {count} а передали {version}
+            logging.warning(f"[Translations] Formatting ValueError for text_id '{key}' in lang '{resolved_language}': {e}. Base text: '{base_text}'")
 
     cache_to_use_key = cache_key_formatted if kwargs else cache_key_base
     formatted_text_cache[cache_to_use_key] = result_text
