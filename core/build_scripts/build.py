@@ -24,11 +24,9 @@ hooks_dir = script_dir
 
 # --- Версия для имени файла сборки ---
 now = datetime.datetime.now()
-# ИЗМЕНЕНО: Формат версии на ГГ.ММ.ДД (год из двух цифр)
 version_for_filename = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
-# Имя выходного файла будет "rivals_counter_peaks_ГГ.ММ.ДД"
 output_name = f"rivals_counter_peaks_{version_for_filename}"
-spec_file_path = os.path.join(project_root, f"{output_name}.spec") # .spec файл будет в корне проекта
+spec_file_path = os.path.join(project_root, f"{output_name}.spec") 
 
 logging.info(f"Имя выходного файла будет: {output_name}.exe (на основе версии {version_for_filename})")
 # --- ---
@@ -71,9 +69,10 @@ logging.info(f"Используется Python интерпретатор: {pyth
 # --- ---
 
 # --- Формируем команду PyInstaller ---
+# ИЗМЕНЕНО: --log-level=DEBUG для PyInstaller
 command_parts_pyinstaller_options = [
-    '--noconfirm', '--onefile', '--windowed', '--log-level=INFO',
-    f'--name "{output_name}"', # Используем output_name, который содержит версию
+    '--noconfirm', '--onefile', '--windowed', '--log-level=DEBUG',
+    f'--name "{output_name}"', 
     f'--distpath "{dist_dir}"', 
     f'--workpath "{build_cache_dir}"',
     f'--specpath "{project_root}"',
@@ -108,7 +107,7 @@ command = " ".join(command_full_list)
 # --- Вывод информации и запуск сборки ---
 print("-" * 60)
 logging.info(f"Версия для имени файла: {version_for_filename}")
-logging.info(f"Имя выходного файла: {output_name}.exe") # output_name содержит версию
+logging.info(f"Имя выходного файла: {output_name}.exe") 
 logging.info(f"Папка для результатов сборки: {dist_dir}")
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)
@@ -128,7 +127,7 @@ try:
     print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
-         exe_path = os.path.join(dist_dir, output_name + '.exe') # output_name содержит версию
+         exe_path = os.path.join(dist_dir, output_name + '.exe') 
          logging.info(f"Исполняемый файл должен быть создан в: {exe_path}")
          if not os.path.exists(exe_path):
              logging.error(f"ОШИБКА: EXE файл не найден по пути {exe_path} после успешной сборки!")
@@ -143,7 +142,7 @@ except Exception as e:
 # --- Очистка временных файлов (КРОМЕ ПАПКИ DIST) ---
 if rc == 0:
     logging.info("Очистка временных файлов после успешной сборки (кроме папки dist)...")
-    if os.path.exists(spec_file_path): # spec_file_path также будет с версией в имени
+    if os.path.exists(spec_file_path): 
         try:
             os.remove(spec_file_path)
             logging.info(f"Удален файл spec: {spec_file_path}")
