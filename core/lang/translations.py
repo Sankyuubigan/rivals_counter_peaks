@@ -71,6 +71,11 @@ TRANSLATIONS = {
         'log_copy_no_logs': 'Нет логов для копирования.',
         'log_copy_success': 'Логи скопированы в буфер обмена.',
         'log_copy_error': 'Ошибка копирования логов',
+        'save_logs_to_file_button': "Сохранить логи в файл", # Новая строка
+        'log_save_no_logs': "Нет логов для сохранения.", # Новая строка
+        'log_save_dialog_title': "Сохранить логи как...", # Новая строка
+        'log_save_success': "Логи успешно сохранены в:\n{filepath}", # Новая строка
+        'log_save_error_detailed': "Не удалось сохранить логи в файл:\n{filepath}\n\nОшибка: {error_message}", # Новая строка
         'hotkeys_window_title': 'Горячие клавиши', 
         'hotkey_settings_window_title': 'Настройка горячих клавиш', 
         'hotkeys_section_main': 'Основные действия:', 
@@ -180,6 +185,11 @@ TRANSLATIONS = {
         'log_copy_no_logs': 'No logs to copy.',
         'log_copy_success': 'Logs copied to clipboard.',
         'log_copy_error': 'Error copying logs',
+        'save_logs_to_file_button': "Save Logs to File", # Новая строка
+        'log_save_no_logs': "No logs to save.", # Новая строка
+        'log_save_dialog_title': "Save Logs As...", # Новая строка
+        'log_save_success': "Logs successfully saved to:\n{filepath}", # Новая строка
+        'log_save_error_detailed': "Could not save logs to file:\n{filepath}\n\nError: {error_message}", # Новая строка
         'hotkeys_window_title': 'Hotkeys',
         'hotkey_settings_window_title': 'Hotkey Configuration',
         'hotkeys_section_main': 'Main Actions:',

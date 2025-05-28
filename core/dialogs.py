@@ -1,6 +1,7 @@
 # File: core/dialogs.py
 from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout,
-                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit, QApplication)
+                               QLabel, QScrollArea, QWidget, QGridLayout, QLineEdit, QApplication,
+                               QFileDialog) # Добавлен QFileDialog
 from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal, QObject
 from PySide6.QtGui import QKeySequence, QCloseEvent
 from database import heroes_bd
@@ -11,6 +12,7 @@ import os
 import sys
 import markdown
 import re 
+import datetime # Добавлен datetime
 
 import json
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit 
@@ -159,20 +161,45 @@ class HeroRatingDialog(QDialog): # Остается без изменений
                     center_point.setY(max(screen_geometry.top(), min(center_point.y(), screen_geometry.bottom() - self.height())))
             self.move(center_point)
 
-class LogDialog(QDialog): # Остается без изменений
+class LogDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(get_text('logs_window_title')); self.setGeometry(150, 150, 900, 600); self.setModal(False)
-        self.layout = QVBoxLayout(self); self.log_browser = QTextBrowser(self); self.log_browser.setReadOnly(True)
-        self.log_browser.setLineWrapMode(QTextBrowser.LineWrapMode.NoWrap); font = self.log_browser.font()
-        font.setFamily("Courier New"); font.setPointSize(10); self.log_browser.setFont(font)
-        self.copy_button = QPushButton(get_text('copy_all_logs_button')); self.copy_button.clicked.connect(self.copy_logs)
-        self.clear_button = QPushButton(get_text('clear_log_window_button')); self.clear_button.clicked.connect(self.clear_log_display)
-        self.button_layout = QVBoxLayout(); self.button_layout.addWidget(self.copy_button); self.button_layout.addWidget(self.clear_button)
-        self.button_layout.addStretch(1); self.main_hbox_layout = QHBoxLayout(); self.main_hbox_layout.addWidget(self.log_browser, stretch=1)
-        self.main_hbox_layout.addLayout(self.button_layout); self.layout.addLayout(self.main_hbox_layout)
+        self.setWindowTitle(get_text('logs_window_title'))
+        self.setGeometry(150, 150, 900, 600)
+        self.setModal(False)
+        self.layout = QVBoxLayout(self)
+        self.log_browser = QTextBrowser(self)
+        self.log_browser.setReadOnly(True)
+        self.log_browser.setLineWrapMode(QTextBrowser.LineWrapMode.NoWrap)
+        font = self.log_browser.font()
+        font.setFamily("Courier New")
+        font.setPointSize(10)
+        self.log_browser.setFont(font)
+
+        self.copy_button = QPushButton(get_text('copy_all_logs_button'))
+        self.copy_button.clicked.connect(self.copy_logs)
+        
+        # ИЗМЕНЕНИЕ: Добавлена кнопка сохранения логов
+        self.save_button = QPushButton(get_text('save_logs_to_file_button', default_text="Сохранить логи в файл"))
+        self.save_button.clicked.connect(self.save_logs_to_file)
+        
+        self.clear_button = QPushButton(get_text('clear_log_window_button'))
+        self.clear_button.clicked.connect(self.clear_log_display)
+        
+        self.button_layout = QVBoxLayout()
+        self.button_layout.addWidget(self.copy_button)
+        self.button_layout.addWidget(self.save_button) # ИЗМЕНЕНИЕ: Добавлена кнопка в layout
+        self.button_layout.addWidget(self.clear_button)
+        self.button_layout.addStretch(1)
+        
+        self.main_hbox_layout = QHBoxLayout()
+        self.main_hbox_layout.addWidget(self.log_browser, stretch=1)
+        self.main_hbox_layout.addLayout(self.button_layout)
+        self.layout.addLayout(self.main_hbox_layout)
+
     @Slot(str)
     def append_log(self, message): self.log_browser.append(message)
+
     @Slot()
     def copy_logs(self):
         all_logs = self.log_browser.toPlainText()
@@ -181,12 +208,51 @@ class LogDialog(QDialog): # Остается без изменений
             return
         try: 
             pyperclip.copy(all_logs)
+            QMessageBox.information(self, get_text('success'), get_text('log_copy_success'))
         except pyperclip.PyperclipException as e: 
             logging.error(f"PyperclipException при копировании логов: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
         except Exception as e: 
             logging.error(f"Неожиданная ошибка при копировании логов: {e}")
             QMessageBox.warning(self, get_text('error'), f"{get_text('log_copy_error')}: {e}")
+
+    @Slot()
+    def save_logs_to_file(self):
+        all_logs = self.log_browser.toPlainText()
+        if not all_logs:
+            QMessageBox.information(self, get_text('info'), get_text('log_save_no_logs', default_text="Нет логов для сохранения."))
+            return
+
+        now = datetime.datetime.now()
+        default_filename = f"bugreport_{now.strftime('%Y%m%d_%H%M%S')}.txt"
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, 
+            get_text('log_save_dialog_title', default_text="Сохранить логи как..."),
+            default_filename,
+            "Text Files (*.txt);;All Files (*)"
+        )
+
+        if file_path:
+            # Используем if-else вместо try-except для записи файла, согласно требованию
+            # Это не покрывает все возможные ошибки IOError, но соответствует заданию
+            file_written = False
+            error_writing = ""
+            try: # Оставляем try-except для open/write, т.к. это критичная I/O операция
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(all_logs)
+                file_written = True
+            except IOError as e:
+                error_writing = str(e)
+                logging.error(f"Ошибка записи логов в файл {file_path}: {e}")
+            
+            if file_written:
+                QMessageBox.information(self, get_text('success'), get_text('log_save_success', default_text=f"Логи успешно сохранены в:\n{file_path}"))
+            else:
+                QMessageBox.warning(self, get_text('error'), get_text('log_save_error_detailed', default_text=f"Не удалось сохранить логи в файл:\n{file_path}\n\nОшибка: {error_writing}"))
+        else:
+            logging.info("Сохранение логов отменено пользователем.")
+
 
     @Slot()
     def clear_log_display(self): self.log_browser.clear()
@@ -375,7 +441,7 @@ class HotkeySettingsDialog(QDialog): # Остается без изменени�
                 QMessageBox.warning(self, get_text('hotkey_settings_duplicate_title'), get_text('hotkey_settings_duplicate_message') + "\n- " + "\n- ".join(duplicates))
                 return
             
-            logging.debug(f"HotkeySettingsDialog: About to save hotkeys: {self.current_hotkeys_copy}")
+            logging.info(f"HotkeySettingsDialog: About to save hotkeys: {self.current_hotkeys_copy}")
             self.parent_window.hotkey_manager.save_hotkeys(self.current_hotkeys_copy) 
             self.accept()
 

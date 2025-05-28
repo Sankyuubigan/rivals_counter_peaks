@@ -21,7 +21,8 @@ class ActionController:
 
     @Slot(str)
     def handle_move_cursor(self, direction):
-        logging.info(f"ActionController: handle_move_cursor received direction: {direction}") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug(f"ActionController: handle_move_cursor received direction: {direction}")
         list_widget = self.mw.right_list_widget
         if not list_widget or not list_widget.isVisible() or self.mw.mode == 'min':
             logging.debug(f"Move cursor ignored (list widget: {list_widget is not None}, visible: {list_widget.isVisible() if list_widget else 'N/A'}, mode: {self.mw.mode})")
@@ -88,7 +89,8 @@ class ActionController:
 
     @Slot()
     def handle_toggle_selection(self):
-        logging.info("ActionController: handle_toggle_selection triggered") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug("ActionController: handle_toggle_selection triggered")
         list_widget = self.mw.right_list_widget
         if not list_widget or not list_widget.isVisible() or self.mw.mode == 'min' or \
            self.mw.hotkey_cursor_index < 0 or not self.mw.right_panel_instance:
@@ -101,7 +103,7 @@ class ActionController:
                 try:
                     is_selected = item.isSelected(); new_state = not is_selected
                     hero_name_data = item.data(HERO_NAME_ROLE) 
-                    logging.info(f"Toggling selection for item {self.mw.hotkey_cursor_index} ('{hero_name_data}'). State: {is_selected} -> {new_state}")
+                    logging.debug(f"Toggling selection for item {self.mw.hotkey_cursor_index} ('{hero_name_data}'). State: {is_selected} -> {new_state}")
                     item.setSelected(new_state)
                 except RuntimeError:
                     logging.warning(f"RuntimeError accessing item during toggle selection (index {self.mw.hotkey_cursor_index}). Might be deleting.")
@@ -114,7 +116,8 @@ class ActionController:
 
     @Slot()
     def handle_toggle_mode(self):
-        logging.info("ActionController: handle_toggle_mode triggered") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug("ActionController: handle_toggle_mode triggered")
         debounce_time = 0.3
         current_time = time.time()
         
@@ -146,7 +149,8 @@ class ActionController:
 
     @Slot()
     def handle_clear_all(self):
-        logging.info("ActionController: handle_clear_all triggered") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug("ActionController: handle_clear_all triggered")
         if hasattr(self.mw, 'logic'):
             self.mw.logic.clear_all()
             if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
@@ -159,7 +163,8 @@ class ActionController:
 
     @Slot()
     def handle_debug_capture(self):
-        logging.info("ActionController: handle_debug_capture triggered. Capturing screen area...") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug("ActionController: handle_debug_capture triggered. Capturing screen area...")
         try: 
             screenshot = utils.capture_screen_area(utils.RECOGNITION_AREA)
             if screenshot is not None:
@@ -168,7 +173,7 @@ class ActionController:
                 filepath = os.path.join(base_dir, filename)
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 cv2.imwrite(filepath, screenshot)
-                logging.info(f"Debug Capture saved to: {filepath}")
+                logging.info(f"Debug Capture saved to: {filepath}") # Оставляем INFO, т.к. это действие пользователя
                 if self.mw: QMessageBox.information(self.mw, "Debug Screenshot", f"Тестовый скриншот сохранен как:\n{filepath}")
             else:
                 logging.warning("Failed to capture screenshot (capture_screen_area returned None).")
@@ -179,7 +184,8 @@ class ActionController:
 
     @Slot()
     def handle_copy_team(self):
-        logging.info("ActionController: handle_copy_team triggered.") # ИЗМЕНЕНО: Логирование
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug("ActionController: handle_copy_team triggered.")
         if hasattr(self.mw, 'logic'):
             utils_gui.copy_to_clipboard(self.mw.logic)
         else:

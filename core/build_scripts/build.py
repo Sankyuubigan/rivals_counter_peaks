@@ -24,8 +24,9 @@ hooks_dir = script_dir
 
 # --- Версия для имени файла сборки ---
 now = datetime.datetime.now()
-version_for_filename = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
-# Имя выходного файла будет "rivals_counter_peaks_ДД.ММ.ГГ"
+# ИЗМЕНЕНО: Формат версии на ГГ.ММ.ДД (год из двух цифр)
+version_for_filename = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
+# Имя выходного файла будет "rivals_counter_peaks_ГГ.ММ.ДД"
 output_name = f"rivals_counter_peaks_{version_for_filename}"
 spec_file_path = os.path.join(project_root, f"{output_name}.spec") # .spec файл будет в корне проекта
 

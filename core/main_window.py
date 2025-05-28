@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, logic_instance: CounterpickLogic, hero_templates_dict: dict, app_version: str):
         super().__init__()
-        logging.info(">>> MainWindow.__init__ START")
+        logging.debug(">>> MainWindow.__init__ START") # ИЗМЕНЕНО: DEBUG
         self.logic = logic_instance
         self.hero_templates = hero_templates_dict
         self.app_version = app_version
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         self.hotkey_manager.load_hotkeys() 
 
         self.mode = self.mode_manager.current_mode
-        logging.info(f"Initial mode from ModeManager: {self.mode}")
+        logging.info(f"Initial mode from ModeManager: {self.mode}") # Оставляем INFO
 
         self._init_ui_attributes()
         self.flags_manager = WindowFlagsManager(self) 
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
         
         self._initial_ui_update_done = False
         
-        logging.info(f"<<< MainWindow.__init__ FINISHED. Initial self.windowFlags(): {self.windowFlags():#x}")
+        logging.info(f"<<< MainWindow.__init__ FINISHED. Initial self.windowFlags(): {self.windowFlags():#x}") # Оставляем INFO
 
     def _set_application_icon(self):
         """Устанавливает иконку для приложения и главного окна."""
@@ -113,13 +113,13 @@ class MainWindow(QMainWindow):
             loaded_icon = QIcon(icon_path_logo)
             if not loaded_icon.isNull():
                 app_icon = loaded_icon
-                logging.info(f"Application icon loaded successfully from: {icon_path_logo}")
+                logging.debug(f"Application icon loaded successfully from: {icon_path_logo}") # ИЗМЕНЕНО: DEBUG
             else:
                 logging.error(f"Failed to load icon from {icon_path_logo}, QIcon isNull. Using fallback.")
                 pixmap = QPixmap(icon_path_logo)
                 if not pixmap.isNull():
                     app_icon = QIcon(pixmap)
-                    logging.info(f"Application icon created from QPixmap: {icon_path_logo}")
+                    logging.debug(f"Application icon created from QPixmap: {icon_path_logo}") # ИЗМЕНЕНО: DEBUG
                 else:
                     logging.error(f"Failed to load QPixmap for icon from {icon_path_logo}. Using default placeholder.")
                     app_icon = QIcon(load_default_pixmap((32,32))) 
@@ -140,21 +140,19 @@ class MainWindow(QMainWindow):
         formatter = logging.Formatter(log_format, datefmt='%H:%M:%S')
         self.log_handler.setFormatter(formatter)
         
-        # Устанавливаем уровень для GUI обработчика, чтобы не все DEBUG логи туда попадали
-        self.log_handler.setLevel(logging.INFO) # Логи уровня INFO и выше будут в GUI
+        self.log_handler.setLevel(logging.INFO) 
         logging.getLogger().addHandler(self.log_handler)
         
-        # Устанавливаем общий уровень для корневого логгера (влияет на все обработчики, включая консольный)
-        if logging.getLogger().level == logging.NOTSET: # Если не установлен явно ранее
-             logging.getLogger().setLevel(logging.INFO) # По умолчанию INFO
+        if logging.getLogger().level == logging.NOTSET: 
+             logging.getLogger().setLevel(logging.INFO) 
         
-        logging.info("GUI Log Handler initialized and added to root logger.")
+        logging.info("GUI Log Handler initialized and added to root logger.") # Оставляем INFO
         self.hotkey_display_dialog = None 
 
 
     @Slot() 
     def _do_toggle_mode_slot(self):
-        # logging.debug("MainWindow: _do_toggle_mode_slot executing in main thread.") # Убрано
+        logging.debug("MainWindow: _do_toggle_mode_slot executing in main thread.")
         debounce_time = 0.3 
         current_time = time.time()
         
@@ -162,7 +160,7 @@ class MainWindow(QMainWindow):
              self._last_mode_toggle_time = 0 
 
         if current_time - self._last_mode_toggle_time < debounce_time:
-            logging.warning(f"Mode toggle (from slot) ignored due to debounce ({current_time - self._last_mode_toggle_time:.2f}s < {debounce_time}s)")
+            logging.debug(f"Mode toggle (from slot) ignored due to debounce ({current_time - self._last_mode_toggle_time:.2f}s < {debounce_time}s)") # ИЗМЕНЕНО: DEBUG
             return
         
         self._last_mode_toggle_time = current_time
@@ -179,11 +177,11 @@ class MainWindow(QMainWindow):
             self.appearance_manager.update_main_window_language_texts()
 
     def switch_theme(self, theme_name: str):
-        # logging.debug(f"--> switch_theme called for: {theme_name}") # Убрано
+        logging.debug(f"--> switch_theme called for: {theme_name}")
         if self.appearance_manager:
             self.appearance_manager.switch_theme(theme_name) 
             self.current_theme = self.appearance_manager.current_theme
-        # logging.debug(f"<-- switch_theme finished for: {theme_name}") # Убрано
+        logging.debug(f"<-- switch_theme finished for: {theme_name}")
 
 
     def apply_theme(self, theme_name: str, on_startup=False): 
@@ -238,7 +236,7 @@ class MainWindow(QMainWindow):
 
 
     def _setup_window_properties(self):
-        # logging.debug(f"    [WindowProps] START. Current flags before setup: {self.windowFlags():#x}") # Убрано
+        logging.debug(f"    [WindowProps] START. Current flags before setup: {self.windowFlags():#x}")
         self.setWindowTitle(f"{get_text('title')} v{self.app_version}")
         
         current_icon = self.windowIcon()
@@ -251,7 +249,7 @@ class MainWindow(QMainWindow):
         
         self.setMinimumSize(300, 70) 
         
-        # logging.debug(f"    [WindowProps] END. Initial self.flags_manager._last_applied_flags set to: {self.flags_manager._last_applied_flags:#x}") # Убрано
+        logging.debug(f"    [WindowProps] END. Initial self.flags_manager._last_applied_flags set to: {self.flags_manager._last_applied_flags:#x}")
 
         app_instance = QApplication.instance()
         if app_instance:
@@ -261,7 +259,7 @@ class MainWindow(QMainWindow):
 
 
     def _create_main_ui_layout(self):
-        # logging.info("    MainWindow: _create_main_ui_layout START") # Можно убрать, если не критично
+        logging.debug("    MainWindow: _create_main_ui_layout START")
         central_widget = QWidget(self); self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget); self.main_layout.setObjectName("main_layout")
         self.main_layout.setContentsMargins(0, 0, 0, 0); self.main_layout.setSpacing(0)
@@ -283,11 +281,11 @@ class MainWindow(QMainWindow):
         self.inner_layout = QHBoxLayout(self.main_widget)
         self.inner_layout.setContentsMargins(0,0,0,0); self.inner_layout.setSpacing(0)
         self.main_layout.addWidget(self.main_widget, stretch=1)
-        # logging.info("    MainWindow: _create_main_ui_layout END") # Можно убрать
+        logging.debug("    MainWindow: _create_main_ui_layout END")
 
 
     def _create_icons_scroll_area_structure(self): 
-        # logging.debug("    MainWindow: _create_icons_scroll_area_structure START") # Убрано
+        logging.debug("    MainWindow: _create_icons_scroll_area_structure START")
         self.icons_scroll_area = QScrollArea(); self.icons_scroll_area.setObjectName("icons_scroll_area")
         self.icons_scroll_area.setWidgetResizable(True)
         self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -315,11 +313,11 @@ class MainWindow(QMainWindow):
             self.horizontal_info_label.setParent(None)
             
         self.icons_scroll_area.setWidget(self.icons_scroll_content)
-        # logging.debug("    MainWindow: _create_icons_scroll_area_structure END") # Убрано
+        logging.debug("    MainWindow: _create_icons_scroll_area_structure END")
 
 
     def _connect_signals(self):
-        # logging.info("    Connecting signals...") # Можно убрать
+        logging.debug("    Connecting signals...")
         if hasattr(self, 'action_controller') and self.action_controller:
             self.action_move_cursor_up.connect(lambda: self.action_controller.handle_move_cursor('up'))
             self.action_move_cursor_down.connect(lambda: self.action_controller.handle_move_cursor('down'))
@@ -334,7 +332,7 @@ class MainWindow(QMainWindow):
             self.action_toggle_tray_mode.connect(self.toggle_tray_mode) 
             self.action_toggle_mouse_ignore_independent.connect(self._handle_toggle_mouse_invisible_mode_independent)
             self.action_copy_team.connect(self.action_controller.handle_copy_team)
-            # logging.info("    ActionController signals connected.") # Можно убрать
+            logging.debug("    ActionController signals connected.")
         else:
             logging.error("    ActionController not initialized, cannot connect signals.")
 
@@ -343,27 +341,28 @@ class MainWindow(QMainWindow):
                 self.rec_manager.recognition_complete_signal.connect(self._on_recognition_complete)
             if hasattr(self.rec_manager, 'error'):
                 self.rec_manager.error.connect(self._on_recognition_error)
-            # logging.info("    RecognitionManager signals connected.") # Можно убрать
+            logging.debug("    RecognitionManager signals connected.")
 
         if self.tray_mode_button and hasattr(self, 'update_tray_button_property_signal'):
              self.update_tray_button_property_signal.connect(self._update_tray_button_property)
         if self.win_api_manager and hasattr(self.win_api_manager, 'topmost_state_changed'):
             self.win_api_manager.topmost_state_changed.connect(self._handle_topmost_state_change)
-        # logging.info("    MainWindow general signals connected.") # Можно убрать
+        logging.debug("    MainWindow general signals connected.")
 
 
     def showEvent(self, event: QShowEvent):
         is_applying_flags = self.flags_manager._is_applying_flags_operation if hasattr(self, 'flags_manager') else False
-        logging.info(f">>> showEvent START. Visible: {self.isVisible()}, Active: {self.isActiveWindow()}, isApplyingFlags: {is_applying_flags}, initialDone: {self._initial_ui_update_done}, Spontaneous: {event.spontaneous()}")
+        # ИЗМЕНЕНО: Логирование на DEBUG
+        logging.debug(f">>> showEvent START. Visible: {self.isVisible()}, Active: {self.isActiveWindow()}, isApplyingFlags: {is_applying_flags}, initialDone: {self._initial_ui_update_done}, Spontaneous: {event.spontaneous()}")
         super().showEvent(event)
         
         if is_applying_flags and not event.spontaneous(): 
-            # logging.debug(f"    showEvent: Called during _is_applying_flags_operation (non-spontaneous). Current geom: {self.geometry()}") # Убрано
-            logging.info("<<< showEvent END (during flag operation, non-spontaneous)")
+            logging.debug(f"    showEvent: Called during _is_applying_flags_operation (non-spontaneous). Current geom: {self.geometry()}")
+            logging.debug("<<< showEvent END (during flag operation, non-spontaneous)") # ИЗМЕНЕНО: DEBUG
             return
 
         if not self._initial_ui_update_done:
-            logging.info("    showEvent: Performing initial setup (_initial_ui_update_done is False).")
+            logging.info("    showEvent: Performing initial setup (_initial_ui_update_done is False).") # Оставляем INFO
             t_initial_setup_start = time.perf_counter()
             
             if hasattr(self, 'ui_updater') and self.ui_updater:
@@ -376,9 +375,9 @@ class MainWindow(QMainWindow):
                  if hasattr(self, 'hotkey_manager'): 
                      QTimer.singleShot(200, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None) 
             self._initial_ui_update_done = True
-            logging.info(f"    showEvent: Initial setup done. Time: {(time.perf_counter() - t_initial_setup_start)*1000:.2f} ms")
+            logging.info(f"    showEvent: Initial setup done. Time: {(time.perf_counter() - t_initial_setup_start)*1000:.2f} ms") # Оставляем INFO
         else:
-            # logging.debug(f"    showEvent: Repeated show or spontaneous event. Current flags: {self.windowFlags():#x}") # Убрано
+            logging.debug(f"    showEvent: Repeated show or spontaneous event. Current flags: {self.windowFlags():#x}")
             if self.isVisible():
                 current_icon = QApplication.instance().windowIcon()
                 if not current_icon.isNull():
@@ -387,12 +386,12 @@ class MainWindow(QMainWindow):
                     self._set_application_icon()
 
 
-        logging.info("<<< showEvent END")
+        logging.debug("<<< showEvent END") # ИЗМЕНЕНО: DEBUG
 
 
     def hideEvent(self, event: QHideEvent):
         is_applying_flags = self.flags_manager._is_applying_flags_operation if hasattr(self, 'flags_manager') else False
-        logging.info(f"MainWindow hideEvent triggered. isApplyingFlags: {is_applying_flags}, Spontaneous: {event.spontaneous()}")
+        logging.debug(f"MainWindow hideEvent triggered. isApplyingFlags: {is_applying_flags}, Spontaneous: {event.spontaneous()}") # ИЗМЕНЕНО: DEBUG
         super().hideEvent(event)
 
     @Slot(bool)
@@ -410,45 +409,45 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def _handle_topmost_state_change(self, is_topmost: bool):
-        # logging.debug(f"--> _handle_topmost_state_change: is_topmost={is_topmost}, current mouse_invisible_mode_enabled={self.mouse_invisible_mode_enabled}") # Убрано
+        logging.debug(f"--> _handle_topmost_state_change: is_topmost={is_topmost}, current mouse_invisible_mode_enabled={self.mouse_invisible_mode_enabled}")
         if hasattr(self, 'update_tray_button_property_signal'):
             self.update_tray_button_property_signal.emit(is_topmost)
         
         self.mouse_invisible_mode_enabled = is_topmost 
         if hasattr(self, 'flags_manager'):
             self.flags_manager.apply_mouse_invisible_mode("_handle_topmost_state_change")
-        # logging.debug(f"<-- _handle_topmost_state_change finished") # Убрано
+        logging.debug(f"<-- _handle_topmost_state_change finished")
 
 
     @Slot()
     def _handle_toggle_mouse_invisible_mode_independent(self):
-        # logging.debug("--> _handle_toggle_mouse_invisible_mode_independent triggered.") # Убрано
+        logging.debug("--> _handle_toggle_mouse_invisible_mode_independent triggered.")
         if hasattr(self, 'mouse_invisible_mode_enabled'):
             self.mouse_invisible_mode_enabled = not self.mouse_invisible_mode_enabled
             if hasattr(self, 'flags_manager'):
                 self.flags_manager.apply_mouse_invisible_mode("_handle_toggle_mouse_invisible_mode_independent")
-            logging.info(f"    Mouse invisible mode (independent) toggled to: {self.mouse_invisible_mode_enabled}")
-        # logging.debug("<-- _handle_toggle_mouse_invisible_mode_independent finished.") # Убрано
+            logging.info(f"    Mouse invisible mode (independent) toggled to: {self.mouse_invisible_mode_enabled}") # Оставляем INFO
+        logging.debug("<-- _handle_toggle_mouse_invisible_mode_independent finished.")
 
     @Slot()
     def toggle_tray_mode(self):
-        logging.info("MainWindow: toggle_tray_mode slot triggered.")
+        logging.info("MainWindow: toggle_tray_mode slot triggered.") # Оставляем INFO
         if hasattr(self, 'win_api_manager'):
             target_topmost_state = not self._is_win_topmost 
             self.win_api_manager.set_topmost_winapi(target_topmost_state) 
-            logging.info(f"Tray mode toggle initiated. Target topmost: {target_topmost_state}")
+            logging.info(f"Tray mode toggle initiated. Target topmost: {target_topmost_state}") # Оставляем INFO
         else:
             logging.error("MainWindow: win_api_manager not found in toggle_tray_mode.")
 
 
     def change_mode(self, mode_name: str):
         t_change_mode_start = time.perf_counter()
-        logging.info(f"--> MainWindow: change_mode to: {mode_name} (Current: {self.mode})")
+        logging.info(f"--> MainWindow: change_mode to: {mode_name} (Current: {self.mode})") # Оставляем INFO
         if self.mode == mode_name: 
-            logging.info(f"    Mode is already {mode_name}. No change.")
-            if hasattr(self, 'flags_manager'): # Попытка обновить иконку, даже если режим не меняется
+            logging.info(f"    Mode is already {mode_name}. No change.") # Оставляем INFO
+            if hasattr(self, 'flags_manager'): 
                 QTimer.singleShot(10, lambda: self.flags_manager.force_taskbar_update_internal(f"already_in_mode_{mode_name}_refresh"))
-            logging.info(f"<-- MainWindow: change_mode finished (no change). Time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
+            logging.info(f"<-- MainWindow: change_mode finished (no change). Time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms") # Оставляем INFO
             return
             
         old_mode = self.mode
@@ -464,7 +463,7 @@ class MainWindow(QMainWindow):
         t_ui_update_start = time.perf_counter()
         if hasattr(self, 'ui_updater') and self.ui_updater:
             self.ui_updater.update_interface_for_mode(new_mode=self.mode) 
-        logging.info(f"    change_mode: ui_updater.update_interface_for_mode took {(time.perf_counter() - t_ui_update_start)*1000:.2f} ms")
+        logging.info(f"    change_mode: ui_updater.update_interface_for_mode took {(time.perf_counter() - t_ui_update_start)*1000:.2f} ms") # Оставляем INFO
         
         target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible():
@@ -474,7 +473,6 @@ class MainWindow(QMainWindow):
         
         self._reset_hotkey_cursor_after_mode_change()
         
-        # Устанавливаем иконку здесь, после всех изменений UI и перед force_taskbar_update
         if self.isVisible():
             current_icon = QApplication.instance().windowIcon()
             if not current_icon.isNull(): self.setWindowIcon(current_icon)
@@ -482,7 +480,7 @@ class MainWindow(QMainWindow):
 
         if hasattr(self, 'flags_manager'):
             QTimer.singleShot(50, lambda: self.flags_manager.force_taskbar_update_internal(f"after_mode_{mode_name}_change"))
-        logging.info(f"<-- MainWindow: change_mode to {mode_name} FINISHED. Total time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
+        logging.info(f"<-- MainWindow: change_mode to {mode_name} FINISHED. Total time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms") # Оставляем INFO
 
     def _move_window_safely(self, target_pos: QPoint):
         if self.isVisible(): self.move(target_pos)
@@ -493,14 +491,14 @@ class MainWindow(QMainWindow):
 
     @Slot(list)
     def _on_recognition_complete(self, recognized_heroes):
-        logging.info(f"MainWindow: Recognition complete. Heroes: {recognized_heroes}")
+        logging.info(f"MainWindow: Recognition complete. Heroes: {recognized_heroes}") # Оставляем INFO
         if recognized_heroes and hasattr(self, 'logic'):
             self.logic.set_selection(set(recognized_heroes))
             if hasattr(self, 'ui_updater') and self.ui_updater:
                 self.ui_updater.update_ui_after_logic_change()
             self._reset_hotkey_cursor_after_clear()
         elif not recognized_heroes: 
-            logging.info("No heroes recognized or list is empty.")
+            logging.info("No heroes recognized or list is empty.") # Оставляем INFO
 
 
     @Slot(str)
@@ -575,9 +573,9 @@ class MainWindow(QMainWindow):
             if show_hotkey_settings_dialog(self.hotkey_manager.get_current_hotkeys(),
                                            self.hotkey_manager.get_actions_config(),
                                            self):
-                logging.info("Hotkey settings dialog saved. HotkeyManager should have updated hotkeys and restarted listener.")
+                logging.info("Hotkey settings dialog saved. HotkeyManager should have updated hotkeys and restarted listener.") # Оставляем INFO
             else:
-                logging.info("Hotkey settings dialog was cancelled or closed without saving.")
+                logging.info("Hotkey settings dialog was cancelled or closed without saving.") # Оставляем INFO
         else: 
             logging.error("HotkeyManager not found in MainWindow.")
 
@@ -623,15 +621,15 @@ class MainWindow(QMainWindow):
                 focus_widget = QApplication.focusWidget()
                 
                 if isinstance(focus_widget, HotkeyCaptureLineEdit) and focus_widget.objectName() == "HotkeyCaptureLineEdit":
-                    # logging.debug(f"Application.eventFilter: Tab for HotkeyCaptureLineEdit. Watched: {type(watched)}. Forwarding to widget.") # Убрано
+                    logging.debug(f"Application.eventFilter: Tab for HotkeyCaptureLineEdit. Watched: {type(watched)}. Forwarding to widget.")
                     return False 
 
                 active_window = QApplication.activeWindow()
                 if active_window and active_window.windowTitle() == get_text('hotkey_settings_window_title'):
-                    # logging.debug(f"Application.eventFilter: Tab inside HotkeySettingsDialog (not on HotkeyCaptureLineEdit). Standard processing. Focus: {type(focus_widget)}") # Убрано
+                    logging.debug(f"Application.eventFilter: Tab inside HotkeySettingsDialog (not on HotkeyCaptureLineEdit). Standard processing. Focus: {type(focus_widget)}")
                     return False 
                 
-                # logging.debug(f"Application.eventFilter: Tab key press consumed by global filter to prevent focus switching. Focus: {type(focus_widget) if focus_widget else 'None'}") # Убрано
+                logging.debug(f"Application.eventFilter: Tab key press consumed by global filter to prevent focus switching. Focus: {type(focus_widget) if focus_widget else 'None'}")
                 return True 
 
         if self.mode == "min" and hasattr(self, 'drag_handler') and self.drag_handler:
@@ -649,7 +647,7 @@ class MainWindow(QMainWindow):
 
 
     def closeEvent(self, event: QCloseEvent): 
-        logging.info("MainWindow closeEvent triggered.")
+        logging.info("MainWindow closeEvent triggered.") # Оставляем INFO
         
         if hasattr(self, 'log_dialog') and self.log_dialog and self.log_dialog.isVisible() : 
             self.log_dialog.close() 
@@ -662,19 +660,19 @@ class MainWindow(QMainWindow):
             if isinstance(widget, QDialog) and widget.isModal() and widget.parent() == self:
                 if widget.windowTitle() == get_text('hotkey_settings_window_title') or \
                    widget.windowTitle() == get_text('hotkey_settings_capture_title'): 
-                    logging.info(f"Closing active modal dialog '{widget.windowTitle()}' before main window close.")
+                    logging.info(f"Closing active modal dialog '{widget.windowTitle()}' before main window close.") # Оставляем INFO
                     widget.reject() 
         
         if hasattr(self, 'hotkey_manager'): self.hotkey_manager.stop_listening()
         if hasattr(self, 'rec_manager') and self.rec_manager: self.rec_manager.stop_recognition()
         
-        logging.info("Calling super().closeEvent(event)")
+        logging.info("Calling super().closeEvent(event)") # Оставляем INFO
         super().closeEvent(event) 
         if event.isAccepted():
-            logging.info(f"closeEvent finished. Event accepted: True")
+            logging.info(f"closeEvent finished. Event accepted: True") # Оставляем INFO
             app_instance = QApplication.instance()
             if app_instance and not app_instance.quitOnLastWindowClosed():
-                logging.info("quitOnLastWindowClosed is False, calling QApplication.quit() from MainWindow.closeEvent")
+                logging.info("quitOnLastWindowClosed is False, calling QApplication.quit() from MainWindow.closeEvent") # Оставляем INFO
                 QTimer.singleShot(0, QApplication.quit) 
         else:
-            logging.info(f"closeEvent finished. Event accepted: False (ignored by super class or other handler)")
+            logging.info(f"closeEvent finished. Event accepted: False (ignored by super class or other handler)") # Оставляем INFO

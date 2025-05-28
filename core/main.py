@@ -5,7 +5,8 @@ import logging
 import datetime
 import time 
 
-logging.basicConfig(level=logging.DEBUG, 
+# ИЗМЕНЕНО: Уровень логирования по умолчанию INFO
+logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', 
                     datefmt='%H:%M:%S')
 
@@ -16,7 +17,8 @@ if core_dir not in sys.path: sys.path.insert(0, core_dir)
 
 try:
     now = datetime.datetime.now()
-    app_version_display = f"{now.day:02d}.{now.month:02d}.{str(now.year)[2:]}"
+    # ИЗМЕНЕНО: Формат версии на ГГ.ММ.ДД (год из двух цифр)
+    app_version_display = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
     logging.info(f"[Main] Application display version set to: {app_version_display} (generated from date)")
 except Exception as e_ver:
     logging.error(f"[Main] Error generating display version: {e_ver}. Using 'dev'.")
@@ -40,7 +42,6 @@ if __name__ == "__main__":
         logging.info("Использование существующего QApplication...")
         app_created_now = False 
 
-    # <<< ИЗМЕНЕНИЕ: Устанавливаем False для теста >>>
     app.setQuitOnLastWindowClosed(False) 
     logging.info(f"QApplication.quitOnLastWindowClosed set to {app.quitOnLastWindowClosed()}")
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     logging.info("Создание MainWindow...")
-    window = None # Объявим заранее
+    window = None 
     try:
         window = MainWindow(logic_instance, hero_templates if hero_templates else {}, app_version=app_version_display)
         logging.info("MainWindow instance created. Calling show()...")
@@ -105,10 +106,6 @@ if __name__ == "__main__":
                 logging.error("Window ID is 0, окно не было создано корректно на уровне ОС!")
         else:
             logging.error("Окно НЕ стало видимым после вызова show()!")
-            # window.activateWindow()
-            # window.raise_()
-            # if not window.isVisible():
-            #      logging.critical("Окно все еще не видимо! Проблема с отображением.")
 
     except Exception as e:
         logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
@@ -132,7 +129,4 @@ if __name__ == "__main__":
         exit_code = 1 
     finally:
         logging.info(f"--- Приложение завершено с кодом: {exit_code} (quitOnLastWindowClosed={app.quitOnLastWindowClosed()}) ---")
-        # Если quitOnLastWindowClosed(False), то sys.exit() может быть не нужен здесь,
-        # если только мы не хотим явно завершить процесс.
-        # Но для чистоты эксперимента оставим.
         sys.exit(exit_code)
