@@ -6,68 +6,50 @@ import shutil
 import subprocess
 import platform
 import logging
-import site 
 
 # --- Настройка логирования для скрипта сборки ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s', datefmt='%H:%M:%S')
 
 # --- Определяем пути ---
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-core_dir = os.path.join(project_root, "core")
-db_dir = os.path.join(project_root, "database")
-resources_dir_abs = os.path.join(project_root, "resources")
-nn_models_dir_abs = os.path.join(project_root, "nn_models")
+script_dir = os.path.dirname(os.path.abspath(__file__)) # Папка core/build_scripts
+project_root = os.path.abspath(os.path.join(script_dir, '..', '..')) # Корень проекта rivals_counter_peaks
 dist_dir = os.path.join(project_root, 'dist') 
-build_cache_dir = os.path.join(project_root, "build_cache") 
-main_script = os.path.join(core_dir, "main.py")
-hooks_dir = script_dir 
-# --- ---
+build_cache_dir = os.path.join(project_root, "build_cache") # PyInstaller создаст папку build здесь
 
-# --- Имя приложения и .spec файла ---
-app_name = "rivals_counter_peaks" 
-now = datetime.datetime.now()
-version_for_exe_filename = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
-output_exe_name = f"{app_name}_{version_for_exe_filename}"
-spec_file_path = os.path.join(project_root, f"{app_name}.spec") 
+# Имя .spec файла (теперь он в script_dir)
+# ВАЖНО: Убедитесь, что имя файла 'rivals_counter_peaks.spec' совпадает с тем, что вы создали.
+# Если вы использовали имя с версией, например 'rivals_counter_peaks_25.05.28.spec', укажите его.
+spec_file_name = "rivals_counter_peaks.spec" 
+spec_file_path_abs = os.path.join(script_dir, spec_file_name) 
 
-logging.info(f"Имя выходного EXE файла будет: {output_exe_name}.exe (на основе версии {version_for_exe_filename})")
-logging.info(f"Имя .spec файла: {app_name}.spec")
-# --- ---
+logging.info(f"Используется .spec файл: {spec_file_path_abs}")
 
-
-# <<< --- Принудительная очистка перед сборкой (КРОМЕ ПАПКИ DIST) --- >>>
+# --- Принудительная очистка перед сборкой ---
 logging.info("Принудительная очистка перед сборкой (кроме папки dist)...")
-if os.path.exists(spec_file_path):
-    # Не используем try-except для os.remove, если файл точно существует, 
-    # но оставим для shutil.rmtree, т.к. там могут быть проблемы с правами доступа к файлам внутри папки.
-    os.remove(spec_file_path)
-    logging.info(f"Удален старый spec файл: {spec_file_path}")
-else:
-    logging.info(f"Старый spec файл {spec_file_path} не найден, удаление не требуется.")
+# .spec файл больше не нужно удалять, так как мы его редактируем вручную и используем.
+# Если вы хотите, чтобы build.py всегда генерировал новый .spec из параметров,
+# то нужно вернуть старую логику, но тогда ручные правки в .spec будут теряться.
+# Сейчас предполагается, что .spec файл уже настроен.
 
 if os.path.exists(build_cache_dir):
-    try: # Оставляем try-except для rmtree, так как удаление папки может вызвать ошибки прав доступа или занятых файлов
+    try:
         shutil.rmtree(build_cache_dir)
-        logging.info(f"Удалена папка кэша: {build_cache_dir}")
+        logging.info(f"Удалена папка кэша PyInstaller: {build_cache_dir}")
     except Exception as e:
         logging.warning(f"Не удалось удалить папку кэша {build_cache_dir}: {e}")
 else:
     logging.info(f"Папка кэша {build_cache_dir} не найдена, удаление не требуется.")
-# <<< --- КОНЕЦ ОЧИСТКИ --- >>>
 
-# --- Формируем список данных ---
-data_to_add = [
-    f'--add-data "{resources_dir_abs}{os.pathsep}resources"',
-    f'--add-data "{os.path.join(db_dir, "heroes_bd.py")}{os.pathsep}database"',
-    f'--add-data "{os.path.join(db_dir, "roles_and_groups.py")}{os.pathsep}database"',
-    f'--add-data "{os.path.join(core_dir, "lang", "information_ru.md")}{os.pathsep}core/lang"',
-    f'--add-data "{os.path.join(core_dir, "lang", "information_en.md")}{os.pathsep}core/lang"',
-    f'--add-data "{os.path.join(core_dir, "lang", "author_ru.md")}{os.pathsep}core/lang"',
-    f'--add-data "{os.path.join(core_dir, "lang", "author_en.md")}{os.pathsep}core/lang"',
-    f'--add-data "{nn_models_dir_abs}{os.pathsep}nn_models"',
-]
-# --- ---
+# Очистка папки dist перед новой сборкой (опционально, но рекомендуется)
+if os.path.exists(dist_dir):
+    logging.info(f"Очистка папки dist: {dist_dir}")
+    try:
+        shutil.rmtree(dist_dir)
+        os.makedirs(dist_dir) # Создаем заново пустую
+    except Exception as e:
+        logging.warning(f"Не удалось полностью очистить папку dist: {e}")
+else:
+    os.makedirs(dist_dir) # Создаем, если не было
 
 # --- Определяем путь к python.exe из текущего виртуального окружения ---
 python_exe = sys.executable
@@ -75,59 +57,33 @@ if not python_exe:
     logging.error("Не удалось определить путь к исполняемому файлу Python (sys.executable пуст). Сборка невозможна.")
     sys.exit(1)
 logging.info(f"Используется Python интерпретатор: {python_exe}")
-# --- ---
 
-# --- Формируем команду PyInstaller ---
-command_parts_pyinstaller_options = [
-    '--noconfirm', '--onefile', '--windowed', '--log-level=DEBUG',
-    f'--name "{output_exe_name}"', 
-    f'--distpath "{dist_dir}"', 
-    f'--workpath "{build_cache_dir}"',
-    f'--specpath "{project_root}"', 
-    f'--additional-hooks-dir "{hooks_dir}"', 
-    '--hidden-import pynput', '--hidden-import mss', '--hidden-import cv2',
-    '--hidden-import numpy', '--hidden-import pyperclip', '--hidden-import ctypes',
-    '--hidden-import markdown',
-    # '--hidden-import transformers' # Должно обрабатываться hook-файлом
-    '--hidden-import onnxruntime',
-    '--hidden-import tqdm', # ИЗМЕНЕНО: Возвращаем, чтобы PyInstaller точно знал о tqdm. Хук также будет работать.
-    f'--paths "{core_dir}"',
-    f'--paths "{project_root}"'
+# --- Формируем команду PyInstaller для запуска с .spec файлом ---
+# Опции типа --onefile, --windowed, --name, datas, hiddenimports и т.д.
+# теперь должны быть определены ВНУТРИ .spec файла.
+# build.py просто запускает PyInstaller с этим .spec файлом.
+
+command_parts_pyinstaller = [
+    '--noconfirm', 
+    # '--clean', # Можно добавить для дополнительной очистки PyInstaller'ом
+    f'--distpath "{dist_dir}"', # Куда класть результат
+    f'--workpath "{build_cache_dir}"', # Где PyInstaller будет хранить временные файлы сборки
+    f'"{spec_file_path_abs}"' # Путь к нашему .spec файлу
 ]
-icon_path_ico_logo = os.path.join(project_root, "logo.ico")
 
-if os.path.exists(icon_path_ico_logo):
-    command_parts_pyinstaller_options.append(f'--icon="{icon_path_ico_logo}"')
-    logging.info(f"Using application icon: {icon_path_ico_logo}")
-else:
-    logging.warning(f"Icon file 'logo.ico' not found at project root: {project_root}")
-
-manifest_path = os.path.join(script_dir, "manifest.xml")
-if platform.system() == "Windows":
-    if os.path.exists(manifest_path):
-        command_parts_pyinstaller_options.append(f'--manifest "{manifest_path}"')
-    else:
-        logging.warning(f"Файл манифеста не найден: {manifest_path}.")
-
-
-command_parts_pyinstaller_options.extend(data_to_add)
-command_parts_pyinstaller_options.append(f'"{main_script}"')
-
-command_full_list = [f'"{python_exe}"', '-m', 'PyInstaller'] + command_parts_pyinstaller_options
+command_full_list = [f'"{python_exe}"', '-m', 'PyInstaller'] + command_parts_pyinstaller
 command = " ".join(command_full_list)
-# --- ---
 
 # --- Вывод информации и запуск сборки ---
 print("-" * 60)
-logging.info(f"Версия для имени EXE файла: {version_for_exe_filename}")
-logging.info(f"Имя выходного EXE файла: {output_exe_name}.exe") 
 logging.info(f"Папка для результатов сборки: {dist_dir}")
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)
 logging.info("Запуск PyInstaller...")
-rc = 1 # Инициализируем код возврата как ошибку
-# Оставляем try-except для subprocess.run, так как это внешний вызов и может вызвать непредвиденные ошибки
+rc = 1 
 try:
+    # Запускаем из корня проекта, чтобы пути в .spec (если они относительные) разрешались правильно
+    # Хотя мы используем абсолютный project_root в .spec, это хорошая практика.
     build_process = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=project_root, check=False)
     
     print("--- PyInstaller STDOUT ---")
@@ -141,38 +97,32 @@ try:
     print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
-         exe_path = os.path.join(dist_dir, output_exe_name + '.exe') 
-         logging.info(f"Исполняемый файл должен быть создан в: {exe_path}")
-         if not os.path.exists(exe_path):
-             logging.error(f"ОШИБКА: EXE файл не найден по пути {exe_path} после успешной сборки!")
-             rc = -1 # Устанавливаем код ошибки, если EXE не найден
+         # Имя EXE теперь определяется в .spec файле
+         # Можно попытаться его найти, если нужно
+         # exe_name_in_spec = "rivals_counter_peaks_25.05.28.exe" # Пример
+         # exe_path = os.path.join(dist_dir, exe_name_in_spec)
+         # logging.info(f"Исполняемый файл должен быть создан в папке dist.")
     else:
          logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
 except Exception as e:
     logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
-    rc = -1 # Устанавливаем код ошибки
-# --- ---
+    rc = -1
 
-# --- Очистка временных файлов (КРОМЕ ПАПКИ DIST) ---
+# --- Очистка временных файлов ---
+# .spec файл больше не удаляем.
+# build_cache_dir (workpath) PyInstaller должен удалить сам при успешной сборке,
+# если не используется опция --noupx (которой у нас нет явно) или если не было ошибок.
 if rc == 0:
-    logging.info("Очистка временных файлов после успешной сборки (кроме папки dist)...")
-    if os.path.exists(spec_file_path): 
-        os.remove(spec_file_path)
-        logging.info(f"Удален файл spec: {spec_file_path}")
-    
-    # PyInstaller должен сам удалять workpath (build_cache_dir) при успешной сборке,
-    # но проверим и удалим принудительно, если он остался.
     if os.path.exists(build_cache_dir): 
         logging.info(f"Папка {build_cache_dir} должна была быть удалена PyInstaller. Проверяем...")
-        try: # Оставляем try-except для rmtree
+        try:
             shutil.rmtree(build_cache_dir)
             logging.info(f"Принудительно удалена папка build_cache: {build_cache_dir}")
         except Exception as e:
             logging.warning(f"Не удалось принудительно удалить папку {build_cache_dir} после сборки: {e}")
 else:
-    logging.warning("Сборка завершилась с ошибкой, временные файлы (*.spec, build_cache) не удалены для анализа.")
-    logging.warning(f"Spec файл: {spec_file_path}")
+    logging.warning("Сборка завершилась с ошибкой, папка кэша сборки не удалена для анализа.")
     logging.warning(f"Папка кэша сборки: {build_cache_dir}")
-# --- ---
+
 logging.info("Скрипт сборки завершен.")
 sys.exit(rc)

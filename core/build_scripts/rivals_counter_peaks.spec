@@ -4,12 +4,14 @@ import sys
 import os
 from pathlib import Path
 
+# ВАЖНО: Путь к корню проекта. Убедитесь, что он правильный!
 project_root = r'D:\Projects\rivals_counter_peaks' 
 
 if not os.path.isdir(project_root):
     print(f"CRITICAL ERROR (.spec): Жестко прописанный project_root НЕ СУЩЕСТВУЕТ или не является директорией: {project_root}")
 print(f"INFO (.spec): Корень проекта (жестко задан) определен как: {project_root}")
 
+# --- Определение пути к site-packages ---
 python_exe_path = sys.executable
 venv_root_determined = None
 if ".venv" in python_exe_path.lower() or "virtualenvs" in python_exe_path.lower():
@@ -20,7 +22,7 @@ if ".venv" in python_exe_path.lower() or "virtualenvs" in python_exe_path.lower(
         elif (part.lower() == "scripts" or part.lower() == "bin") and i > 0 : venv_indicator_index = i -1; break
     if venv_indicator_index != -1: venv_root_determined = Path(*path_parts[:venv_indicator_index+1])
     else: 
-        print(f"WARNING (.spec): Не удалось точно определить корень venv из '{python_exe_path}'. Используется '{project_root}\\.venv'.")
+        print(f"WARNING (.spec): Не удалось точно определить корень venv из '{python_exe_path}'. Используется '{os.path.join(project_root, '.venv')}'.")
         venv_root_determined = Path(project_root) / '.venv' 
 else: 
     import site
@@ -29,11 +31,11 @@ else:
         site_packages_path_candidate = Path(site_packages_list[0])
         if site_packages_path_candidate.exists() and site_packages_path_candidate.name == "site-packages": venv_root_determined = site_packages_path_candidate.parent 
         else:
-            print(f"CRITICAL WARNING (.spec): Структура системного Python site-packages ({site_packages_path_candidate}) неожиданная. Используется '{project_root}\\.venv'.")
+            print(f"CRITICAL WARNING (.spec): Структура системного Python site-packages ({site_packages_path_candidate}) неожиданная. Используется '{os.path.join(project_root, '.venv')}'.")
             venv_root_determined = Path(project_root) / '.venv'
         print(f"INFO (.spec): Используется системный Python. venv_root определен как: {venv_root_determined}")
     else:
-        print("CRITICAL WARNING (.spec): Не удалось определить venv_root и системные site-packages. Используется '{project_root}\\.venv'.")
+        print(f"CRITICAL WARNING (.spec): Не удалось определить venv_root и системные site-packages. Используется '{os.path.join(project_root, '.venv')}'.")
         venv_root_determined = Path(project_root) / '.venv'
 
 site_packages_path = venv_root_determined / 'Lib' / 'site-packages'
@@ -104,7 +106,6 @@ if transformers_models_dir_in_site_packages:
     pathex_list.append(transformers_models_dir_in_site_packages)
     print(f"INFO (.spec): Добавлен путь в pathex: {transformers_models_dir_in_site_packages}")
 
-
 a = Analysis(
     [os.path.join(project_root, 'core', 'main.py')], 
     pathex=pathex_list, 
@@ -116,15 +117,9 @@ a = Analysis(
         'PySide6.QtNetwork', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'shiboken6',
         'transformers.models', 
         'transformers.models.__init__',
-        'transformers.models.auto', # Явно добавляем auto, так как он часто используется
-        'transformers.modeling_utils', # Важный базовый модуль для моделей
-        'transformers.configuration_utils', # Важный базовый модуль для конфигураций
-        # Можно попробовать добавить специфичную модель, если вы знаете, какую используете, например:
-        # 'transformers.models.bert',
-        # 'transformers.models.bert.modeling_bert',
-        # 'transformers.models.bert.configuration_bert',
-        # Но это нужно делать, только если известно, какая модель используется вашим onnx
-        # и AutoImageProcessor. DINOv2 может быть 'transformers.models.dinov2'
+        'transformers.models.auto', 
+        'transformers.modeling_utils', 
+        'transformers.configuration_utils',
         'transformers.models.dinov2',
         'transformers.models.dinov2.modeling_dinov2',
         'transformers.models.dinov2.configuration_dinov2',
@@ -136,19 +131,17 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=None) 
 
-# Возвращаемся к одной секции EXE для однофайловой сборки
 exe = EXE(
     pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [], 
     name='rivals_counter_peaks_25.05.28', 
-    debug=True, # Оставляем для отладки
-    console=True, # Оставляем для отладки
-    windowed=False, # Оставляем для отладки
+    debug=False,         # <--- ИЗМЕНЕНО НА False
+    console=False,       # <--- ИЗМЕНЕНО НА False
+    windowed=True,       # <--- ИЗМЕНЕНО НА True (или просто удалить, это по умолчанию для графических)
     bootloader_ignore_signals=False,
-    strip=False, upx=False, upx_exclude=[], runtime_tmpdir=None,
+    strip=False, upx=True, # Можно попробовать включить UPX для уменьшения размера (если нет проблем)
+    upx_exclude=[], runtime_tmpdir=None,
     disable_windowed_traceback=False,
     argv_emulation=False, target_arch=None, codesign_identity=None,
     entitlements_file=None, icon=os.path.join(project_root, 'logo.ico'),
     manifest=os.path.join(project_root, 'core', 'build_scripts', 'manifest.xml')
 )
-
-# Секция COLLECT удалена, так как мы хотим --onefile по умолчанию из этого .spec
