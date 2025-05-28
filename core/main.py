@@ -1,13 +1,77 @@
 # File: core/main.py
 import sys
-import os
-import logging
+import os # os уже должен быть импортирован для project_root ниже
+
+# --- ОТЛАДОЧНЫЙ БЛОК: ПРОВЕРКА ПУТЕЙ ---
+print("--- [DEBUG_PYINSTALLER] Запуск отладки путей ---")
+print(f"--- [DEBUG_PYINSTALLER] sys.executable: {sys.executable}")
+print(f"--- [DEBUG_PYINSTALLER] sys.argv: {sys.argv}")
+print(f"--- [DEBUG_PYINSTALLER] os.getcwd(): {os.getcwd()}")
+
+print("--- [DEBUG_PYINSTALLER] sys.path ---")
+for i, p in enumerate(sys.path):
+    print(f"    [{i}] {p}")
+
+# Проверяем, куда указывает _MEIPASS, если он есть (для однофайловой сборки)
+if hasattr(sys, '_MEIPASS'):
+    print(f"--- [DEBUG_PYINSTALLER] sys._MEIPASS: {sys._MEIPASS}")
+    # Попытаемся вывести содержимое _MEIPASS/transformers/models, если возможно
+    expected_transformers_models_path = os.path.join(sys._MEIPASS, 'transformers', 'models')
+    print(f"--- [DEBUG_PYINSTALLER] Ожидаемый путь к transformers/models в _MEIPASS: {expected_transformers_models_path}")
+    if os.path.isdir(expected_transformers_models_path):
+        print(f"    Содержимое {expected_transformers_models_path} (первые 10 элементов):")
+        try:
+            for entry_idx, entry_name in enumerate(os.listdir(expected_transformers_models_path)):
+                if entry_idx < 10:
+                    print(f"        - {entry_name}")
+                else:
+                    print(f"        ... и еще {len(os.listdir(expected_transformers_models_path)) - 10} элементов.")
+                    break
+        except Exception as e_lsdir:
+            print(f"        Ошибка при листинге директории: {e_lsdir}")
+    else:
+        print(f"    Директория {expected_transformers_models_path} НЕ НАЙДЕНА.")
+else:
+    print("--- [DEBUG_PYINSTALLER] sys._MEIPASS не определен (вероятно, сборка в папку или запуск не из EXE).")
+
+# Попытка посмотреть, что видит importlib.metadata
+try:
+    import importlib.metadata
+    print("--- [DEBUG_PYINSTALLER] importlib.metadata проверки ---")
+    
+    packages_to_check_metadata = ["transformers", "tqdm", "regex", "requests", "packaging", "filelock", "safetensors", "pyyaml"]
+    for pkg_name in packages_to_check_metadata:
+        try:
+            dist = importlib.metadata.distribution(pkg_name)
+            print(f"    Метаданные для '{pkg_name}' НАЙДЕНЫ. Версия: {dist.version}. Расположение: {dist.locate_file('')}")
+            # Попробуем вывести некоторые файлы из метаданных, если они есть
+            # if hasattr(dist, 'files') and dist.files:
+            #     print(f"        Файлы (первые 3): {[str(f)[:100] for f in dist.files[:3]]}")
+        except importlib.metadata.PackageNotFoundError:
+            print(f"    Метаданные для '{pkg_name}' НЕ НАЙДЕНЫ.")
+        except Exception as e_meta:
+            print(f"    Ошибка при получении метаданных для '{pkg_name}': {e_meta}")
+            
+except ImportError:
+    print("--- [DEBUG_PYINSTALLER] importlib.metadata не доступен.")
+except Exception as e_outer_meta:
+    print(f"--- [DEBUG_PYINSTALLER] Ошибка при работе с importlib.metadata: {e_outer_meta}")
+
+print("--- [DEBUG_PYINSTALLER] Завершение отладки путей ---")
+# --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
+
+
+# Ваш остальной код начинается здесь
+import logging # logging лучше импортировать до его первого использования
 import datetime
 import time 
 
+# Конфигурация логирования (перенесена выше, чтобы логи отладки тоже попадали)
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', 
                     datefmt='%H:%M:%S')
+logging.info("[Main] Начало работы main.py (после отладочного блока)")
+
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path: sys.path.insert(0, project_root)
@@ -24,9 +88,9 @@ except Exception as e_ver:
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 import logic
-import images_load # Теперь здесь есть load_hero_templates_cv2
+import images_load 
 import utils
-from main_window import MainWindow
+from main_window import MainWindow # Этот импорт вызовет ошибку, если transformers не найдет свои файлы
 
 if __name__ == "__main__":
     logging.info("[LOG] core/main.py: __main__ block started")
@@ -65,18 +129,13 @@ if __name__ == "__main__":
 
 
     logging.info("Предварительная загрузка ресурсов...")
-    hero_templates = {} # Инициализируем как пустой словарь
+    hero_templates = {} 
     try:
         images_load.load_original_images()
-        # ИЗМЕНЕНО: Вызываем правильную функцию load_hero_templates_cv2
-        # Эта функция теперь возвращает CV2 шаблоны, которые будут переданы в MainWindow,
-        # а затем в AdvancedRecognition.
         hero_templates = images_load.load_hero_templates_cv2() 
         
-        if not hero_templates: # hero_templates может быть None или пустым dict, если загрузка не удалась
+        if not hero_templates: 
              logging.warning("Шаблоны героев (CV2) не найдены или не загружены. Распознавание AKAZE в AdvancedRecognition может быть недоступно или ограничено.")
-             # Не будем показывать QMessageBox здесь, т.к. AdvancedRecognition может работать только с DINO, если AKAZE недоступен
-             # QMessageBox.warning(None, "Внимание", "Шаблоны героев (CV2) не найдены. Функция распознавания может работать некорректно.")
         else: 
             logging.info(f"Шаблоны героев (CV2) загружены ({len(hero_templates)} героев).")
         logging.info("Загрузка ресурсов завершена.")
@@ -98,7 +157,6 @@ if __name__ == "__main__":
     logging.info("Создание MainWindow...")
     window = None 
     try:
-        # Передаем hero_templates (CV2 шаблоны) в MainWindow
         window = MainWindow(logic_instance, hero_templates, app_version=app_version_display)
         logging.info("MainWindow instance created. Calling show()...")
         window.show()
@@ -114,12 +172,15 @@ if __name__ == "__main__":
 
     except Exception as e:
         logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
-        QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать или показать главное окно:\n{e}")
+        # Отладочный вывод перед падением, если ошибка происходит до инициализации логирования в файл
+        print(f"CRITICAL ERROR during MainWindow creation/show: {e}") 
+        # QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать или показать главное окно:\n{e}")
         if app_created_now: app.quit()
         sys.exit(1)
     
     if window is None:
         logging.critical("Экземпляр MainWindow не был создан. Выход.")
+        print("CRITICAL ERROR: MainWindow instance is None. Exiting.")
         sys.exit(1)
 
     logging.info("Запуск главного цикла приложения (app.exec())...")
@@ -131,7 +192,9 @@ if __name__ == "__main__":
         exit_code = e.code if isinstance(e.code, int) else 1
     except Exception as e:
         logging.critical(f"Критическая ошибка во время app.exec(): {e}", exc_info=True)
+        print(f"CRITICAL ERROR during app.exec(): {e}")
         exit_code = 1 
     finally:
         logging.info(f"--- Приложение завершено с кодом: {exit_code} (quitOnLastWindowClosed={app.quitOnLastWindowClosed()}) ---")
+        print(f"--- Application finished with code: {exit_code} ---")
         sys.exit(exit_code)

@@ -39,17 +39,21 @@ logging.info(f"Имя .spec файла: {app_name}.spec")
 # <<< --- Принудительная очистка перед сборкой (КРОМЕ ПАПКИ DIST) --- >>>
 logging.info("Принудительная очистка перед сборкой (кроме папки dist)...")
 if os.path.exists(spec_file_path):
-    try:
-        os.remove(spec_file_path)
-        logging.info(f"Удален старый spec файл: {spec_file_path}")
-    except Exception as e:
-        logging.warning(f"Не удалось удалить старый spec файл {spec_file_path}: {e}")
+    # Не используем try-except для os.remove, если файл точно существует, 
+    # но оставим для shutil.rmtree, т.к. там могут быть проблемы с правами доступа к файлам внутри папки.
+    os.remove(spec_file_path)
+    logging.info(f"Удален старый spec файл: {spec_file_path}")
+else:
+    logging.info(f"Старый spec файл {spec_file_path} не найден, удаление не требуется.")
+
 if os.path.exists(build_cache_dir):
-    try:
+    try: # Оставляем try-except для rmtree, так как удаление папки может вызвать ошибки прав доступа или занятых файлов
         shutil.rmtree(build_cache_dir)
         logging.info(f"Удалена папка кэша: {build_cache_dir}")
     except Exception as e:
         logging.warning(f"Не удалось удалить папку кэша {build_cache_dir}: {e}")
+else:
+    logging.info(f"Папка кэша {build_cache_dir} не найдена, удаление не требуется.")
 # <<< --- КОНЕЦ ОЧИСТКИ --- >>>
 
 # --- Формируем список данных ---
@@ -86,7 +90,7 @@ command_parts_pyinstaller_options = [
     '--hidden-import markdown',
     # '--hidden-import transformers' # Должно обрабатываться hook-файлом
     '--hidden-import onnxruntime',
-    '--hidden-import tqdm', # ИЗМЕНЕНО: Добавляем tqdm
+    '--hidden-import tqdm', # ИЗМЕНЕНО: Возвращаем, чтобы PyInstaller точно знал о tqdm. Хук также будет работать.
     f'--paths "{core_dir}"',
     f'--paths "{project_root}"'
 ]
@@ -99,10 +103,12 @@ else:
     logging.warning(f"Icon file 'logo.ico' not found at project root: {project_root}")
 
 manifest_path = os.path.join(script_dir, "manifest.xml")
-if platform.system() == "Windows" and os.path.exists(manifest_path):
-    command_parts_pyinstaller_options.append(f'--manifest "{manifest_path}"')
-elif platform.system() == "Windows":
-    logging.warning(f"Файл манифеста не найден: {manifest_path}.")
+if platform.system() == "Windows":
+    if os.path.exists(manifest_path):
+        command_parts_pyinstaller_options.append(f'--manifest "{manifest_path}"')
+    else:
+        logging.warning(f"Файл манифеста не найден: {manifest_path}.")
+
 
 command_parts_pyinstaller_options.extend(data_to_add)
 command_parts_pyinstaller_options.append(f'"{main_script}"')
@@ -119,7 +125,8 @@ logging.info(f"Папка для результатов сборки: {dist_dir}
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)
 logging.info("Запуск PyInstaller...")
-rc = 1
+rc = 1 # Инициализируем код возврата как ошибку
+# Оставляем try-except для subprocess.run, так как это внешний вызов и может вызвать непредвиденные ошибки
 try:
     build_process = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=project_root, check=False)
     
@@ -138,31 +145,30 @@ try:
          logging.info(f"Исполняемый файл должен быть создан в: {exe_path}")
          if not os.path.exists(exe_path):
              logging.error(f"ОШИБКА: EXE файл не найден по пути {exe_path} после успешной сборки!")
-             rc = -1 
+             rc = -1 # Устанавливаем код ошибки, если EXE не найден
     else:
          logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
 except Exception as e:
     logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
-    rc = -1
+    rc = -1 # Устанавливаем код ошибки
 # --- ---
 
 # --- Очистка временных файлов (КРОМЕ ПАПКИ DIST) ---
 if rc == 0:
     logging.info("Очистка временных файлов после успешной сборки (кроме папки dist)...")
     if os.path.exists(spec_file_path): 
-        try:
-            os.remove(spec_file_path)
-            logging.info(f"Удален файл spec: {spec_file_path}")
-        except Exception as e:
-            logging.warning(f"Не удалось удалить spec файл {spec_file_path} после сборки: {e}")
+        os.remove(spec_file_path)
+        logging.info(f"Удален файл spec: {spec_file_path}")
+    
+    # PyInstaller должен сам удалять workpath (build_cache_dir) при успешной сборке,
+    # но проверим и удалим принудительно, если он остался.
     if os.path.exists(build_cache_dir): 
         logging.info(f"Папка {build_cache_dir} должна была быть удалена PyInstaller. Проверяем...")
-        if os.path.exists(build_cache_dir): 
-            try:
-                shutil.rmtree(build_cache_dir)
-                logging.info(f"Принудительно удалена папка build_cache: {build_cache_dir}")
-            except Exception as e:
-                logging.warning(f"Не удалось принудительно удалить папку {build_cache_dir} после сборки: {e}")
+        try: # Оставляем try-except для rmtree
+            shutil.rmtree(build_cache_dir)
+            logging.info(f"Принудительно удалена папка build_cache: {build_cache_dir}")
+        except Exception as e:
+            logging.warning(f"Не удалось принудительно удалить папку {build_cache_dir} после сборки: {e}")
 else:
     logging.warning("Сборка завершилась с ошибкой, временные файлы (*.spec, build_cache) не удалены для анализа.")
     logging.warning(f"Spec файл: {spec_file_path}")
