@@ -1,3 +1,8 @@
+# Этот файл больше не используется напрямую программой.
+# Его логика была перенесена в core/advanced_recognition_logic.py
+# и вызывается через core/recognition.py.
+# Оставляю его содержимое здесь для истории или если он нужен для автономного тестирования.
+
 # find_objects_dynamic_roi_v5_center_assumption.py
 import os
 import numpy as np
@@ -68,13 +73,14 @@ def pad_image_to_target_size(image_pil, target_height, target_width, padding_col
     if original_width == target_width and original_height == target_height:
         return image_pil
     target_aspect = target_width / target_height
-    original_aspect = original_width / original_height
+    original_aspect = original_width / original_height if original_height != 0 else 0
     if original_aspect > target_aspect:
         new_width = target_width
         new_height = int(new_width / original_aspect) if original_aspect != 0 else 0
     else:
         new_height = target_height
-        new_width = int(new_height * original_aspect) if target_aspect !=0 or original_aspect !=0 else 0
+        new_width = int(new_height * original_aspect) if original_height != 0 else 0 # was target_aspect
+        
     if new_width <= 0 or new_height <= 0 :
         return Image.new(image_pil.mode, (target_width, target_height), padding_color)
     try:
@@ -99,7 +105,6 @@ def get_cls_embeddings_for_batched_pil(pil_images_batch, ort_session, input_name
     batch_cls_embeddings = onnx_outputs[0][:, 0, :]
     return batch_cls_embeddings
 
-# Функция AKAZE для определения предполагаемого ЦЕНТРА колонки героев
 def get_hero_column_center_x_akaze(large_image_cv2, hero_template_images_cv2_dict, min_match_count):
     if large_image_cv2 is None:
         logging.error("[AKAZE CENTER] Входное изображение - None.")
@@ -127,8 +132,8 @@ def get_hero_column_center_x_akaze(large_image_cv2, hero_template_images_cv2_dic
 
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
     all_matched_x_coords_on_screenshot = []
-    akaze_candidates_found = [] # Герои, прошедшие порог AKAZE
-    hero_match_details = [] # Детали для героев, прошедших порог
+    akaze_candidates_found = [] 
+    hero_match_details = [] 
 
     logging.info(f"[AKAZE CENTER] Поиск центра колонки (порог совпадений: {min_match_count}):")
 
@@ -155,7 +160,7 @@ def get_hero_column_center_x_akaze(large_image_cv2, hero_template_images_cv2_dic
                     good_matches.append(m)
                     screenshot_pt_idx = m.trainIdx
                     if screenshot_pt_idx < len(kp_screenshot):
-                         current_match_coords.append(kp_screenshot[screenshot_pt_idx].pt[0]) # Собираем X-координаты совпавших точек
+                         current_match_coords.append(kp_screenshot[screenshot_pt_idx].pt[0]) 
             if len(good_matches) > max_good_matches_for_hero:
                 max_good_matches_for_hero = len(good_matches)
                 best_match_coords_for_hero = current_match_coords
@@ -164,13 +169,11 @@ def get_hero_column_center_x_akaze(large_image_cv2, hero_template_images_cv2_dic
             hero_match_details.append({"name": hero_name, "matches": max_good_matches_for_hero, "x_coords": best_match_coords_for_hero})
             akaze_candidates_found.append(hero_name)
 
-    # Логирование героев, прошедших фильтр
     sorted_hero_match_details = sorted(hero_match_details, key=lambda item: item["matches"], reverse=True)
     for detail in sorted_hero_match_details:
          logging.info(f"[AKAZE CENTER]   {detail['name']}: {detail['matches']} совпадений (ПРОШЕЛ ФИЛЬТР)")
-         all_matched_x_coords_on_screenshot.extend(detail['x_coords']) # Добавляем X-координаты только от надежно найденных героев
+         all_matched_x_coords_on_screenshot.extend(detail['x_coords']) 
     
-    # Логирование героев, не прошедших фильтр
     all_template_heroes = set(hero_template_images_cv2_dict.keys())
     passed_heroes_set = set(d['name'] for d in hero_match_details)
     not_passed_heroes = sorted(list(all_template_heroes - passed_heroes_set))
@@ -179,28 +182,27 @@ def get_hero_column_center_x_akaze(large_image_cv2, hero_template_images_cv2_dic
         if logged_not_passed_count < MAX_NOT_PASSED_AKAZE_TO_LOG:
             logging.info(f"[AKAZE CENTER]   {hero_name}: <{min_match_count} совпадений (НЕ ПРОШЕЛ)")
             logged_not_passed_count += 1
-        elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG: # Вывести сообщение один раз
+        elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG: 
             logging.info(f"[AKAZE CENTER]   ... и еще {len(not_passed_heroes) - MAX_NOT_PASSED_AKAZE_TO_LOG} не прошли фильтр (логирование ограничено).")
-            logged_not_passed_count += 1 # Чтобы больше не выводить это сообщение
+            logged_not_passed_count += 1 
             break 
 
     if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
         logging.warning(f"[AKAZE CENTER] Найдено слишком мало героев ({len(akaze_candidates_found)}), чтобы надежно определить центр колонки. Требуется: {MIN_HEROES_FOR_COLUMN_DETECTION}.")
-        return None, akaze_candidates_found # Возвращаем None для X-центра и список кандидатов (может быть пустым)
+        return None, akaze_candidates_found 
 
     if not all_matched_x_coords_on_screenshot:
         logging.warning("[AKAZE CENTER] Не найдено X-координат совпадений для определения центра колонки.")
         return None, akaze_candidates_found
 
-    # Определяем наиболее вероятную X-координату центра колонки
-    rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot] # Округление для группировки
+    rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot] 
     if not rounded_x_coords:
         logging.warning("[AKAZE CENTER] Нет округленных X-координат.")
         return None, akaze_candidates_found
 
     most_common_x_center = Counter(rounded_x_coords).most_common(1)[0][0]
     
-    return most_common_x_center, akaze_candidates_found
+    return int(most_common_x_center), akaze_candidates_found
 
 def main():
     print("--- Запуск скрипта поиска (v_dynamic_roi_v5_center_assumption) ---")
@@ -240,10 +242,10 @@ def main():
     if not dino_reference_embeddings: logging.error("Не удалось загрузить ни одного DINOv2 эмбеддинга."); return
     logging.info(f"Загружено DINOv2 эмбеддингов: {len(dino_reference_embeddings)}")
 
-    akaze_template_images_cv2 = {} # Словарь для хранения CV2 изображений шаблонов AKAZE
+    akaze_template_images_cv2 = {} 
     logging.info(f"Загрузка шаблонов изображений для AKAZE из '{IMAGES_DIR}'...")
     loaded_akaze_templates_count = 0
-    for ref_name in dino_reference_embeddings.keys(): # Загружаем шаблоны для всех героев с эмбеддингами
+    for ref_name in dino_reference_embeddings.keys(): 
         found_img_path_for_akaze = None
         for ext in ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'):
             temp_path = os.path.join(IMAGES_DIR, ref_name + ext)
@@ -252,7 +254,7 @@ def main():
             try:
                 img_cv2 = cv2.imread(found_img_path_for_akaze)
                 if img_cv2 is not None: 
-                    akaze_template_images_cv2[ref_name] = [img_cv2] # Храним как список для единообразия, если будет несколько шаблонов на героя
+                    akaze_template_images_cv2[ref_name] = [img_cv2] 
                     loaded_akaze_templates_count += 1
                 else: logging.warning(f"  Ошибка cv2.imread для AKAZE шаблона '{found_img_path_for_akaze}'")
             except Exception as e: logging.warning(f"  Исключение при загрузке AKAZE шаблона '{found_img_path_for_akaze}': {e}")
@@ -267,11 +269,10 @@ def main():
     except Exception as e: logging.error(f"Ошибка при открытии скриншота: {e}"); return
 
     akaze_loc_start_time = time.time()
-    # Используем только те AKAZE шаблоны, для которых есть DINO эмбеддинги (обычно это все)
     akaze_templates_to_use = {name: templates for name, templates in akaze_template_images_cv2.items() if name in dino_reference_embeddings}
     
     column_x_center = None 
-    akaze_initial_candidates = [] # Герои, найденные AKAZE на этапе локализации
+    akaze_initial_candidates = [] 
 
     if akaze_templates_to_use:
         column_x_center, akaze_initial_candidates = get_hero_column_center_x_akaze(screenshot_cv2_original, akaze_templates_to_use, AKAZE_MIN_MATCH_COUNT_CONFIG)
@@ -287,11 +288,11 @@ def main():
 
     rois_for_dino = []
     use_fallback_dino = False
-    base_roi_start_x_for_log = "N/A" # Для логирования
+    base_roi_start_x_for_log = "N/A" 
 
     if column_x_center is not None:
         base_roi_start_x = column_x_center - (WINDOW_SIZE_W // 2)
-        base_roi_start_x_for_log = base_roi_start_x # Сохраняем для лога
+        base_roi_start_x_for_log = base_roi_start_x 
         logging.info(f"Генерация ROI для DINOv2. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center}). Шаг Y={ROI_GENERATION_STRIDE_Y}")
         
         for y_base in range(0, s_height - WINDOW_SIZE_H + 1, ROI_GENERATION_STRIDE_Y):
@@ -316,7 +317,7 @@ def main():
     dino_ref_embeddings_to_check = dino_reference_embeddings
     if use_fallback_dino:
         logging.info(f"\nЗапуск FALLBACK DINOv2 для {len(rois_for_dino)} ROI по всему экрану.")
-    else: # Если не fallback, значит column_x_center был найден
+    else: 
         logging.info(f"\nЗапуск DINOv2 для {len(rois_for_dino)} динамических ROI (базовый левый край X={base_roi_start_x_for_log}).")
     
     logging.info(f"Для каждого ROI будут проверены {len(dino_ref_embeddings_to_check)} эталонов DINOv2.")
@@ -329,7 +330,6 @@ def main():
 
     for roi_coord in rois_for_dino:
         x, y = roi_coord['x'], roi_coord['y']
-        # Проверка границ (хотя должна быть уже при генерации)
         if x < 0 or y < 0 or x + WINDOW_SIZE_W > s_width or y + WINDOW_SIZE_H > s_height:
             continue 
         window_pil = screenshot_pil_original.crop((x, y, x + WINDOW_SIZE_W, y + WINDOW_SIZE_H))
@@ -363,7 +363,7 @@ def main():
             pil_batch = []
             coordinates_batch = []
 
-    if pil_batch: # Хвост батча
+    if pil_batch: 
         window_embeddings_batch = get_cls_embeddings_for_batched_pil(
             pil_batch, ort_session_dino, input_name_dino, image_processor_dino,
             target_h_model, target_w_model

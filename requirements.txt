@@ -5,3 +5,6 @@ numpy
 opencv-python
 pyperclip
 markdown
+transformers
+onnxruntime
+tqdm 

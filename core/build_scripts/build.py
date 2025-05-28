@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import platform
 import logging
+import site 
 
 # --- Настройка логирования для скрипта сборки ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s', datefmt='%H:%M:%S')
@@ -16,19 +17,22 @@ project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
 core_dir = os.path.join(project_root, "core")
 db_dir = os.path.join(project_root, "database")
 resources_dir_abs = os.path.join(project_root, "resources")
-dist_dir = os.path.join(project_root, 'dist') # Папка для результатов сборки
-build_cache_dir = os.path.join(project_root, "build_cache") # Рабочая папка PyInstaller
+nn_models_dir_abs = os.path.join(project_root, "nn_models")
+dist_dir = os.path.join(project_root, 'dist') 
+build_cache_dir = os.path.join(project_root, "build_cache") 
 main_script = os.path.join(core_dir, "main.py")
-hooks_dir = script_dir
+hooks_dir = script_dir 
 # --- ---
 
-# --- Версия для имени файла сборки ---
+# --- Имя приложения и .spec файла ---
+app_name = "rivals_counter_peaks" 
 now = datetime.datetime.now()
-version_for_filename = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
-output_name = f"rivals_counter_peaks_{version_for_filename}"
-spec_file_path = os.path.join(project_root, f"{output_name}.spec") 
+version_for_exe_filename = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
+output_exe_name = f"{app_name}_{version_for_exe_filename}"
+spec_file_path = os.path.join(project_root, f"{app_name}.spec") 
 
-logging.info(f"Имя выходного файла будет: {output_name}.exe (на основе версии {version_for_filename})")
+logging.info(f"Имя выходного EXE файла будет: {output_exe_name}.exe (на основе версии {version_for_exe_filename})")
+logging.info(f"Имя .spec файла: {app_name}.spec")
 # --- ---
 
 
@@ -57,6 +61,7 @@ data_to_add = [
     f'--add-data "{os.path.join(core_dir, "lang", "information_en.md")}{os.pathsep}core/lang"',
     f'--add-data "{os.path.join(core_dir, "lang", "author_ru.md")}{os.pathsep}core/lang"',
     f'--add-data "{os.path.join(core_dir, "lang", "author_en.md")}{os.pathsep}core/lang"',
+    f'--add-data "{nn_models_dir_abs}{os.pathsep}nn_models"',
 ]
 # --- ---
 
@@ -69,17 +74,19 @@ logging.info(f"Используется Python интерпретатор: {pyth
 # --- ---
 
 # --- Формируем команду PyInstaller ---
-# ИЗМЕНЕНО: --log-level=DEBUG для PyInstaller
 command_parts_pyinstaller_options = [
     '--noconfirm', '--onefile', '--windowed', '--log-level=DEBUG',
-    f'--name "{output_name}"', 
+    f'--name "{output_exe_name}"', 
     f'--distpath "{dist_dir}"', 
     f'--workpath "{build_cache_dir}"',
-    f'--specpath "{project_root}"',
-    f'--additional-hooks-dir "{hooks_dir}"',
+    f'--specpath "{project_root}"', 
+    f'--additional-hooks-dir "{hooks_dir}"', 
     '--hidden-import pynput', '--hidden-import mss', '--hidden-import cv2',
     '--hidden-import numpy', '--hidden-import pyperclip', '--hidden-import ctypes',
     '--hidden-import markdown',
+    # '--hidden-import transformers' # Должно обрабатываться hook-файлом
+    '--hidden-import onnxruntime',
+    '--hidden-import tqdm', # ИЗМЕНЕНО: Добавляем tqdm
     f'--paths "{core_dir}"',
     f'--paths "{project_root}"'
 ]
@@ -106,8 +113,8 @@ command = " ".join(command_full_list)
 
 # --- Вывод информации и запуск сборки ---
 print("-" * 60)
-logging.info(f"Версия для имени файла: {version_for_filename}")
-logging.info(f"Имя выходного файла: {output_name}.exe") 
+logging.info(f"Версия для имени EXE файла: {version_for_exe_filename}")
+logging.info(f"Имя выходного EXE файла: {output_exe_name}.exe") 
 logging.info(f"Папка для результатов сборки: {dist_dir}")
 logging.info(f"Выполняем команду:\n{command}")
 print("-" * 60)
@@ -127,7 +134,7 @@ try:
     print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
-         exe_path = os.path.join(dist_dir, output_name + '.exe') 
+         exe_path = os.path.join(dist_dir, output_exe_name + '.exe') 
          logging.info(f"Исполняемый файл должен быть создан в: {exe_path}")
          if not os.path.exists(exe_path):
              logging.error(f"ОШИБКА: EXE файл не найден по пути {exe_path} после успешной сборки!")

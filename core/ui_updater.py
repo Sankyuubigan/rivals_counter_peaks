@@ -25,7 +25,7 @@ class UiUpdater:
         if new_mode is None: new_mode = self.mw.mode
         current_mode = new_mode
         t0 = time.perf_counter()
-        logging.debug(f"--> UiUpdater: update_interface_for_mode for mode '{current_mode}' START") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"--> UiUpdater: update_interface_for_mode for mode '{current_mode}' START")
         if not self.mw: 
             logging.error("UiUpdater: MainWindow reference is None!")
             return
@@ -41,12 +41,15 @@ class UiUpdater:
         
         if self.mw.inner_layout:
             for widget in widgets_to_delete:
-                if widget: 
+                if widget and widget.parent() == self.mw.main_widget : # Проверяем родителя перед удалением из layout
                     logging.debug(f"    UiUpdater: Removing and deleting old widget: {widget.objectName() if hasattr(widget, 'objectName') else type(widget)}")
                     self.mw.inner_layout.removeWidget(widget)
-                    widget.setParent(None)
+                    widget.setParent(None) # Отсоединяем от родителя
                     widget.deleteLater()
-        logging.debug(f"    UiUpdater: Deleting old panel widgets took {(time.perf_counter() - t_delete_start)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+                elif widget: # Если родитель другой или None, просто удаляем
+                    widget.deleteLater()
+
+        logging.debug(f"    UiUpdater: Deleting old panel widgets took {(time.perf_counter() - t_delete_start)*1000:.2f} ms")
         
         self.mw.left_panel_widget = None; self.mw.canvas = None; self.mw.result_frame = None
         self.mw.result_label = None; self.mw.update_scrollregion = lambda: None
@@ -63,7 +66,7 @@ class UiUpdater:
             QMessageBox.critical(self.mw, "Ошибка", f"Не удалось загрузить основные изображения для режима {current_mode}.")
             img_load_success = False
             
-        logging.debug(f"    UiUpdater: Image loading for mode '{current_mode}' took {(time.perf_counter() - t_img_load_start)*1000:.2f} ms. Success: {img_load_success}") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"    UiUpdater: Image loading for mode '{current_mode}' took {(time.perf_counter() - t_img_load_start)*1000:.2f} ms. Success: {img_load_success}")
         if not img_load_success: 
             logging.error("<-- UiUpdater: update_interface_for_mode FINISHED (image load error)")
             return
@@ -85,7 +88,7 @@ class UiUpdater:
         else:
             logging.error("    UiUpdater: main_widget is None, cannot create left panel.")
             return
-        logging.debug(f"    UiUpdater: Left panel creation took {(time.perf_counter() - t_left_panel_start)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"    UiUpdater: Left panel creation took {(time.perf_counter() - t_left_panel_start)*1000:.2f} ms")
 
         t_right_panel_start = time.perf_counter()
         if current_mode != "min" and self.mw.main_widget:
@@ -100,13 +103,18 @@ class UiUpdater:
                     delegate_instance = delegate.HotkeyFocusDelegate(self.mw)
                     self.mw.right_list_widget.setItemDelegate(delegate_instance)
                     
-                    try: self.mw.right_list_widget.itemSelectionChanged.disconnect(self.mw.handle_selection_changed)
-                    except RuntimeError: pass 
+                    # Отсоединяем старые сигналы, если они были, перед новым подключением
+                    if hasattr(self.mw.right_list_widget, '_selection_connected') and self.mw.right_list_widget._selection_connected:
+                        try: self.mw.right_list_widget.itemSelectionChanged.disconnect(self.mw.handle_selection_changed)
+                        except RuntimeError: pass # Ошибка, если сигнал уже отсоединен или объект удален
                     self.mw.right_list_widget.itemSelectionChanged.connect(self.mw.handle_selection_changed)
-                    
-                    try: self.mw.right_list_widget.customContextMenuRequested.disconnect(self.mw.show_priority_context_menu)
-                    except RuntimeError: pass
+                    self.mw.right_list_widget._selection_connected = True # Флаг, что сигнал подключен
+
+                    if hasattr(self.mw.right_list_widget, '_context_menu_connected') and self.mw.right_list_widget._context_menu_connected:
+                        try: self.mw.right_list_widget.customContextMenuRequested.disconnect(self.mw.show_priority_context_menu)
+                        except RuntimeError: pass
                     self.mw.right_list_widget.customContextMenuRequested.connect(self.mw.show_priority_context_menu)
+                    self.mw.right_list_widget._context_menu_connected = True
 
 
                 if self.mw.right_panel_widget and self.mw.inner_layout:
@@ -114,7 +122,7 @@ class UiUpdater:
                     self.mw.inner_layout.addWidget(self.mw.right_panel_widget, stretch=1)
                     if self.mw.left_panel_widget: self.mw.inner_layout.setStretchFactor(self.mw.left_panel_widget, 2)
                     self.mw.inner_layout.setStretchFactor(self.mw.right_panel_widget, 1)
-        logging.debug(f"    UiUpdater: Right panel creation took {(time.perf_counter() - t_right_panel_start)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"    UiUpdater: Right panel creation took {(time.perf_counter() - t_right_panel_start)*1000:.2f} ms")
         
         t_height_vis_start = time.perf_counter()
         if self.mw.top_frame and self.mw.main_layout and self.mw.icons_scroll_area :
@@ -176,7 +184,7 @@ class UiUpdater:
             if self.mw.size().width() != final_w or self.mw.size().height() != final_h:
                 logging.debug(f"    UiUpdater: Resizing window for mode {current_mode} to {final_w}x{final_h}")
                 self.mw.resize(final_w, final_h)
-        logging.debug(f"    UiUpdater: Height/Visibility updates took {(time.perf_counter() - t_height_vis_start)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"    UiUpdater: Height/Visibility updates took {(time.perf_counter() - t_height_vis_start)*1000:.2f} ms")
         
         self.update_ui_after_logic_change() 
         if self.mw.right_list_widget: 
@@ -187,9 +195,9 @@ class UiUpdater:
             QTimer.singleShot(0, lambda: self.mw.flags_manager.apply_mouse_invisible_mode(f"ui_update_for_mode_{current_mode}"))
         else:
             logging.error("UiUpdater: flags_manager not found in MainWindow.")
-        logging.debug(f"    UiUpdater: Scheduling apply_mouse_invisible_mode took {(time.perf_counter() - t_apply_flags_start)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"    UiUpdater: Scheduling apply_mouse_invisible_mode took {(time.perf_counter() - t_apply_flags_start)*1000:.2f} ms")
 
-        logging.debug(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {(time.perf_counter() - t0)*1000:.2f} ms") # ИЗМЕНЕНО: DEBUG
+        logging.debug(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {(time.perf_counter() - t0)*1000:.2f} ms")
 
     def update_ui_after_logic_change(self):
         t_start_logic_update = time.perf_counter()

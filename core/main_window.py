@@ -10,11 +10,11 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, Q
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QPoint, QMetaObject, QEvent, QObject, QRect 
 from PySide6.QtGui import QIcon, QMouseEvent, QPixmap, QShowEvent, QHideEvent, QCloseEvent, QKeySequence 
 
-import utils
+import utils # utils теперь содержит normalize_hero_name
 from images_load import load_default_pixmap 
 from logic import CounterpickLogic, TEAM_SIZE 
 from top_panel import TopPanel
-from right_panel import HERO_NAME_ROLE, TARGET_COLUMN_COUNT # Импортируем TARGET_COLUMN_COUNT
+from right_panel import HERO_NAME_ROLE, TARGET_COLUMN_COUNT 
 from log_handler import QLogHandler
 from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
                      show_hero_rating, show_hotkey_settings_dialog, show_author_info) 
@@ -22,7 +22,7 @@ from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE 
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES 
 from win_api import WinApiManager
-from recognition import RecognitionManager
+from recognition import RecognitionManager 
 from ui_updater import UiUpdater
 from action_controller import ActionController
 from window_drag_handler import WindowDragHandler
@@ -62,34 +62,28 @@ class MainWindow(QMainWindow):
         super().__init__()
         logging.debug(">>> MainWindow.__init__ START") 
         self.logic = logic_instance
-        self.hero_templates = hero_templates_dict
+        # self.hero_templates теперь не используется напрямую в MainWindow для старого распознавания,
+        # CV2 шаблоны загружаются в images_load и передаются в AdvancedRecognition через RecognitionManager
         self.app_version = app_version
         if hasattr(self.logic, 'main_window'): 
             self.logic.main_window = self
 
         self._set_application_icon() 
-
         self._setup_logging_and_dialogs() 
-
         self.appearance_manager = AppearanceManager(self)
         self.current_theme = self.appearance_manager.current_theme 
-
         self.hotkey_manager = HotkeyManager(self) 
-        
         self.ui_updater = UiUpdater(self) 
         self.action_controller = ActionController(self)
-
         self.win_api_manager = WinApiManager(self)
         self.mode_manager = ModeManager(self)
+        # RecognitionManager теперь использует AdvancedRecognition, которому нужны CV2 шаблоны
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
         
         self.drag_handler = WindowDragHandler(self, lambda: getattr(self, 'top_frame', None))
-        
         self.hotkey_manager.load_hotkeys() 
-
         self.mode = self.mode_manager.current_mode
         logging.info(f"Initial mode from ModeManager: {self.mode}") 
-
         self._init_ui_attributes()
         self.flags_manager = WindowFlagsManager(self) 
         self._setup_window_properties() 
@@ -99,11 +93,10 @@ class MainWindow(QMainWindow):
             self.appearance_manager._apply_qss_theme(self.appearance_manager.current_theme, on_startup=True)
         
         self._connect_signals()
-        
         self._initial_ui_update_done = False
-        
         logging.info(f"<<< MainWindow.__init__ FINISHED. Initial self.windowFlags(): {self.windowFlags():#x}")
 
+    # ... (остальные методы без изменений до _on_recognition_complete) ...
     def _set_application_icon(self):
         icon_path_logo = utils.resource_path("logo.ico")
         app_icon = QIcon() 
@@ -230,7 +223,6 @@ class MainWindow(QMainWindow):
         
         self.hero_items: dict[str, QListWidgetItem] = {}
         self.hotkey_cursor_index = -1
-        # self._num_columns_cache = 1 # Убрано, т.к. теперь используем TARGET_COLUMN_COUNT
         self.hotkey_display_dialog = None 
 
 
@@ -445,7 +437,7 @@ class MainWindow(QMainWindow):
             logging.info(f"    Mode is already {mode_name}. No change.")
             if hasattr(self, 'flags_manager'): 
                 QTimer.singleShot(10, lambda: self.flags_manager.force_taskbar_update_internal(f"already_in_mode_{mode_name}_refresh"))
-            logging.info(f"<-- MainWindow: change_mode finished (no change). Time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
+            logging.debug(f"<-- MainWindow: change_mode finished (no change). Time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
             return
             
         old_mode = self.mode
@@ -461,7 +453,7 @@ class MainWindow(QMainWindow):
         t_ui_update_start = time.perf_counter()
         if hasattr(self, 'ui_updater') and self.ui_updater:
             self.ui_updater.update_interface_for_mode(new_mode=self.mode) 
-        logging.info(f"    change_mode: ui_updater.update_interface_for_mode took {(time.perf_counter() - t_ui_update_start)*1000:.2f} ms")
+        logging.debug(f"    change_mode: ui_updater.update_interface_for_mode took {(time.perf_counter() - t_ui_update_start)*1000:.2f} ms")
         
         target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible():
@@ -478,7 +470,7 @@ class MainWindow(QMainWindow):
 
         if hasattr(self, 'flags_manager'):
             QTimer.singleShot(50, lambda: self.flags_manager.force_taskbar_update_internal(f"after_mode_{mode_name}_change"))
-        logging.info(f"<-- MainWindow: change_mode to {mode_name} FINISHED. Total time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
+        logging.debug(f"<-- MainWindow: change_mode to {mode_name} FINISHED. Total time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
 
     def _move_window_safely(self, target_pos: QPoint):
         if self.isVisible(): self.move(target_pos)
@@ -488,15 +480,21 @@ class MainWindow(QMainWindow):
         return self.win_api_manager.is_win_topmost if hasattr(self, 'win_api_manager') and self.win_api_manager else False
 
     @Slot(list)
-    def _on_recognition_complete(self, recognized_heroes):
-        logging.info(f"MainWindow: Recognition complete. Heroes: {recognized_heroes}")
-        if recognized_heroes and hasattr(self, 'logic'):
-            self.logic.set_selection(set(recognized_heroes))
+    def _on_recognition_complete(self, recognized_heroes_with_suffixes):
+        # ИЗМЕНЕНО: Нормализация имен перед использованием
+        normalized_heroes = [utils.normalize_hero_name(name) for name in recognized_heroes_with_suffixes]
+        # Удаляем пустые строки, если normalize_hero_name вернула их для нераспознанных суффиксов
+        normalized_heroes = [name for name in normalized_heroes if name] 
+        
+        logging.info(f"MainWindow: Recognition complete. Original: {recognized_heroes_with_suffixes}, Normalized: {normalized_heroes}")
+        
+        if normalized_heroes and hasattr(self, 'logic'):
+            self.logic.set_selection(set(normalized_heroes))
             if hasattr(self, 'ui_updater') and self.ui_updater:
                 self.ui_updater.update_ui_after_logic_change()
             self._reset_hotkey_cursor_after_clear()
-        elif not recognized_heroes: 
-            logging.info("No heroes recognized or list is empty.")
+        elif not normalized_heroes: 
+            logging.info("No heroes recognized or list is empty after normalization.")
 
 
     @Slot(str)
@@ -505,9 +503,6 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, get_text('error'), f"{get_text('recognition_error_prefix')}\n{error_message}")
 
     def _calculate_columns(self) -> int:
-        # ИЗМЕНЕНО: Всегда возвращаем TARGET_COLUMN_COUNT (5) для логики навигации
-        # Визуальное отображение в QListWidget будет пытаться соответствовать этому,
-        # но может отличаться в зависимости от ширины панели.
         return TARGET_COLUMN_COUNT
 
 
@@ -531,7 +526,6 @@ class MainWindow(QMainWindow):
             count = list_widget.count()
             if count > 0:
                 self.hotkey_cursor_index = 0
-                # self._calculate_columns() # Больше не нужно здесь, т.к. возвращает константу
                 if hasattr(self, 'ui_updater') and self.ui_updater:
                     self.ui_updater.update_hotkey_highlight(old_index=None) 
                 first_item = list_widget.item(0)

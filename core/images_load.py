@@ -3,14 +3,14 @@ from PySide6.QtGui import QPixmap, Qt, QColor
 from PySide6.QtCore import QSize
 import os
 import sys
-import cv2
+import cv2 # Оставляем cv2 для load_hero_templates (AKAZE шаблоны)
 from collections import defaultdict
 from database.heroes_bd import heroes as ALL_HERO_NAMES
 import logging
 
 def resource_path(relative_path):
     try: base_path = sys._MEIPASS
-    except AttributeError: base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # Поднимаемся на уровень выше из core
+    except AttributeError: base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
     return os.path.join(base_path, relative_path)
 
 SIZES = {
@@ -22,7 +22,9 @@ SIZES = {
 loaded_images = {mode: {"right": {}, "left": {}, "small": {}, "horizontal": {}} for mode in SIZES}
 original_images = {}
 default_pixmap = None
-loaded_hero_templates = None
+# Глобальная переменная для CV2 шаблонов (используется AdvancedRecognition)
+CV2_HERO_TEMPLATES: dict[str, list[cv2.typing.MatLike]] = {}
+
 
 def is_invalid_pixmap(pixmap: QPixmap | None) -> bool:
     return pixmap is None or pixmap.isNull() or pixmap.size() == QSize(1, 1)
@@ -33,8 +35,8 @@ def load_original_images():
     logging.info("Loading original hero images...")
     loaded_count = 0; missing_heroes = []; invalid_load_heroes = []
     temp_original_images = {}
-    resources_folder = resource_path("resources") # resource_path теперь корректно указывает на папку resources в корне
-    logging.info(f"Searching for images in: {resources_folder}")
+    resources_folder = resource_path("resources") 
+    logging.debug(f"Searching for images in: {resources_folder}") # ИЗМЕНЕНО: DEBUG
     if not os.path.isdir(resources_folder): 
         logging.error(f"Resources folder not found: {resources_folder}")
         return
@@ -82,7 +84,7 @@ def get_images_for_mode(mode='middle'):
     if cached_data:
         keys_needed = {'right': right_size, 'left': left_size, 'small': small_size, 'horizontal': horizontal_size}
         cache_complete = True
-        for key, size_tuple in keys_needed.items(): # Изменено имя переменной
+        for key, size_tuple in keys_needed.items(): 
             if (size_tuple[0] > 0 and size_tuple[1] > 0) and (key not in cached_data or not cached_data[key]):
                 cache_complete = False
                 logging.debug(f"Cache incomplete for mode '{mode}', missing key '{key}' or empty.")
@@ -91,7 +93,7 @@ def get_images_for_mode(mode='middle'):
             logging.debug(f"Returning cached images for mode '{mode}'.")
             return cached_data['right'], cached_data['left'], cached_data['small'], cached_data['horizontal']
 
-    logging.info(f"Generating images for mode: {mode}")
+    logging.debug(f"Generating images for mode: {mode}") # ИЗМЕНЕНО: DEBUG
     right_images = {}; left_images = {}; small_images = {}; horizontal_images = {}
     transform_mode = Qt.TransformationMode.SmoothTransformation
 
@@ -111,7 +113,7 @@ def get_images_for_mode(mode='middle'):
                      logging.error(f"Failed to scale image for '{hero}' to {target_size} for panel '{panel_name}'. Original size: {img.size()}")
                      return load_default_pixmap(target_size)
                 return scaled_pixmap
-            return None # Возвращаем None, если размер 0
+            return None 
 
         scaled_right = scale_image(right_size, 'right'); 
         if scaled_right is not None: right_images[hero] = scaled_right
@@ -128,7 +130,7 @@ def get_images_for_mode(mode='middle'):
 
     loaded_images[mode]['right'] = right_images; loaded_images[mode]['left'] = left_images
     loaded_images[mode]['small'] = small_images; loaded_images[mode]['horizontal'] = horizontal_images
-    logging.info(f"Images generated and cached for mode: {mode}")
+    logging.info(f"Images generated and cached for mode: {mode}") # Оставляем INFO
     return right_images, left_images, small_images, horizontal_images
 
 def load_right_panel_images():
@@ -149,33 +151,34 @@ def load_default_pixmap(size=(1, 1)):
          dp = QPixmap(1,1); dp.fill(QColor(128, 128, 128)); default_pixmap = dp
          logging.debug("Created base default 1x1 pixmap.")
     
-    if size == (1,1): # Если запрашивается базовый 1x1, возвращаем его
+    if size == (1,1): 
         return default_pixmap
 
-    # Масштабируем базовый, если нужен другой размер
     scaled_dp = default_pixmap.scaled(QSize(*size), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.FastTransformation)
     if scaled_dp.isNull(): 
         logging.error(f"Failed to scale default pixmap to size {size}")
-        # В случае ошибки масштабирования, возвращаем базовый 1x1, а не None
         return default_pixmap 
     return scaled_dp
 
 
-def load_hero_templates():
-    global loaded_hero_templates
-    if loaded_hero_templates is not None: 
-        logging.debug("Returning cached hero templates.")
-        return loaded_hero_templates
+def load_hero_templates_cv2() -> dict[str, list[cv2.typing.MatLike]]:
+    """
+    Загружает шаблоны героев в формате CV2. Используется для AKAZE в AdvancedRecognition.
+    """
+    global CV2_HERO_TEMPLATES
+    if CV2_HERO_TEMPLATES: 
+        logging.debug("Returning cached CV2 hero templates.")
+        return CV2_HERO_TEMPLATES
         
     templates_dir = resource_path("resources/templates")
-    hero_templates = defaultdict(list)
+    hero_templates_cv2_local = defaultdict(list)
     valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp')
-    logging.info(f"Loading hero templates from: {templates_dir}")
+    logging.info(f"Loading CV2 hero templates from: {templates_dir}")
     
     if not os.path.isdir(templates_dir): 
-        logging.error(f"Templates directory not found: {templates_dir}.")
-        loaded_hero_templates = {} # Устанавливаем пустой словарь, чтобы не пытаться загрузить снова
-        return {} # Возвращаем пустой словарь
+        logging.error(f"CV2 Templates directory not found: {templates_dir}.")
+        CV2_HERO_TEMPLATES = {} 
+        return {} 
         
     files_found, templates_loaded, skipped_unknown_hero, skipped_bad_name, skipped_load_error = 0, 0, 0, 0, 0
     all_hero_names_lower = {name.lower(): name for name in ALL_HERO_NAMES}
@@ -190,9 +193,8 @@ def load_hero_templates():
                 matched_hero_name = all_hero_names_lower.get(hero_name_parsed_lower)
                 if matched_hero_name:
                     template_path = os.path.join(templates_dir, filename)
-                    template_img = cv2.imread(template_path, cv2.IMREAD_UNCHANGED) # Замена try-except
+                    template_img = cv2.imread(template_path, cv2.IMREAD_UNCHANGED) 
                     if template_img is not None:
-                        # Проверка и конвертация формата
                         if len(template_img.shape) == 3 and template_img.shape[2] == 4: 
                             template_img_converted = cv2.cvtColor(template_img, cv2.COLOR_BGRA2BGR)
                             if template_img_converted is None:
@@ -201,13 +203,13 @@ def load_hero_templates():
                                 continue
                             template_img = template_img_converted
                         elif len(template_img.shape) == 2: 
-                            pass # Already grayscale
+                            pass 
                         elif len(template_img.shape) != 3 or template_img.shape[2] != 3: 
                             logging.warning(f"Template {filename} has unexpected shape {template_img.shape}. Skipping conversion.")
                             skipped_load_error += 1
-                            continue # Пропускаем этот шаблон
+                            continue 
                         
-                        hero_templates[matched_hero_name].append(template_img)
+                        hero_templates_cv2_local[matched_hero_name].append(template_img)
                         templates_loaded += 1
                     else: 
                         logging.warning(f"Failed to load template with OpenCV: {template_path}")
@@ -217,16 +219,29 @@ def load_hero_templates():
             else: 
                 skipped_bad_name += 1
                 
-    logging.info(f"Template files processed: {files_found}")
-    logging.info(f"Templates loaded successfully: {templates_loaded} for {len(hero_templates)} heroes.")
-    if skipped_unknown_hero > 0: logging.warning(f"Skipped templates due to unknown hero name: {skipped_unknown_hero}")
-    if skipped_bad_name > 0: logging.warning(f"Skipped templates due to invalid name format: {skipped_bad_name}")
-    if skipped_load_error > 0: logging.warning(f"Skipped templates due to loading/processing error: {skipped_load_error}")
+    logging.info(f"CV2 Template files processed: {files_found}")
+    logging.info(f"CV2 Templates loaded successfully: {templates_loaded} for {len(hero_templates_cv2_local)} heroes.")
+    if skipped_unknown_hero > 0: logging.warning(f"Skipped CV2 templates due to unknown hero name: {skipped_unknown_hero}")
+    if skipped_bad_name > 0: logging.warning(f"Skipped CV2 templates due to invalid name format: {skipped_bad_name}")
+    if skipped_load_error > 0: logging.warning(f"Skipped CV2 templates due to loading/processing error: {skipped_load_error}")
     
-    if not templates_loaded and files_found > 0 : # Если были файлы, но ничего не загружено
-        logging.error("No hero templates were loaded successfully, although files were found!")
-    elif not files_found: # Если вообще не было файлов
-         logging.warning("No template files found in the templates directory.")
+    if not templates_loaded and files_found > 0 : 
+        logging.error("No CV2 hero templates were loaded successfully, although files were found!")
+    elif not files_found: 
+         logging.warning("No CV2 template files found in the templates directory.")
 
-    loaded_hero_templates = dict(hero_templates)
-    return loaded_hero_templates
+    CV2_HERO_TEMPLATES = dict(hero_templates_cv2_local)
+    return CV2_HERO_TEMPLATES
+
+# Заменяем старый вызов load_hero_templates на новый для CV2
+# Старый load_hero_templates удален, т.к. он был идентичен новому _cv2.
+# Убедимся, что при старте приложения вызывается load_hero_templates_cv2()
+# для заполнения CV2_HERO_TEMPLATES, если это требуется где-то еще кроме AdvancedRecognition.
+# Если AdvancedRecognition - единственное место, где нужны CV2 шаблоны,
+# то этот глобальный CV2_HERO_TEMPLATES и функция его загрузки могут быть инкапсулированы
+# внутри AdvancedRecognition или передаваться ему при инициализации.
+# Для текущего запроса я оставлю load_hero_templates_cv2 как глобальную функцию загрузки,
+# а RecognitionManager будет ее использовать для передачи шаблонов в AdvancedRecognition.
+
+# Вызов для предварительной загрузки при импорте модуля (если это нужно)
+# load_hero_templates_cv2()

@@ -3,10 +3,11 @@ from collections import deque
 from database.heroes_bd import heroes, heroes_counters, heroes_compositions 
 from database.roles_and_groups import hero_roles
 from core.lang.translations import get_text, DEFAULT_LANGUAGE as global_default_language
-from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
-                       AKAZE_DESCRIPTOR_TYPE)
+# Убраны неиспользуемые константы AKAZE
+# from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
+#                        AKAZE_DESCRIPTOR_TYPE)
 
-import cv2
+# import cv2 # cv2 больше не используется напрямую в этом файле
 import logging
 
 MIN_TANKS = 1; MAX_TANKS = 3; MIN_SUPPORTS = 2; MAX_SUPPORTS = 3; TEAM_SIZE = 6
@@ -43,8 +44,13 @@ class CounterpickLogic:
                 new_deque.append(hero)
         
         for hero_to_add in added_heroes:
-            if hero_to_add not in new_deque:
-                 new_deque.append(hero_to_add) 
+            if hero_to_add not in new_deque: # Убедимся, что не добавляем дубликаты, если maxlen был достигнут
+                 if len(new_deque) < TEAM_SIZE:
+                    new_deque.append(hero_to_add)
+                 else: # Если очередь полная, удаляем самый старый и добавляем новый
+                    new_deque.popleft()
+                    new_deque.append(hero_to_add)
+
 
         self.selected_heroes = new_deque
         self.priority_heroes.intersection_update(set(self.selected_heroes)) 
@@ -186,89 +192,4 @@ class CounterpickLogic:
         self.effective_team = list(effective_team)
         return self.effective_team
 
-
-    def recognize_heroes_from_image(self, image_cv2, hero_templates, threshold=None):
-        if image_cv2 is None: 
-            logging.error("[ERROR][recognize_akaze] Input image is None.")
-            return []
-        if not hero_templates: 
-            logging.error("[ERROR][recognize_akaze] Template dictionary is empty.")
-            return []
-        
-        image_gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
-        if image_gray is None:
-            logging.error("[ERROR][recognize_akaze] Failed to convert screenshot to grayscale")
-            return []
-            
-        logging.info(f"[RECOGNIZE AKAZE] Starting AKAZE recognition. Screenshot shape: {image_gray.shape}, Templates: {len(hero_templates)}, Min Matches: {AKAZE_MIN_MATCH_COUNT}")
-        
-        akaze = cv2.AKAZE_create(descriptor_type=AKAZE_DESCRIPTOR_TYPE)
-        kp_screenshot, des_screenshot = akaze.detectAndCompute(image_gray, None)
-        
-        if des_screenshot is None or len(kp_screenshot) == 0: 
-            logging.warning("[WARN][recognize_akaze] No descriptors found in screenshot.")
-            return []
-            
-        logging.debug(f"[RECOGNIZE AKAZE] Found {len(kp_screenshot)} keypoints in screenshot.")
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        
-        recognized_heroes_scores = {}
-        for hero_name, templates in hero_templates.items():
-            max_good_matches_for_hero = 0
-            for i, template_cv2_single in enumerate(templates): # Изменено имя переменной
-                if template_cv2_single is None: 
-                    logging.warning(f"[WARN][recognize_akaze] Template {i} for hero '{hero_name}' is None.")
-                    continue
-                
-                template_gray = None
-                if len(template_cv2_single.shape) == 3: 
-                    template_gray = cv2.cvtColor(template_cv2_single, cv2.COLOR_BGR2GRAY)
-                else: # Уже серое
-                    template_gray = template_cv2_single 
-                
-                if template_gray is None: 
-                    logging.warning(f"[WARN][recognize_akaze] Failed to convert template {i} for '{hero_name}' to grayscale.")
-                    continue
-                    
-                kp_template, des_template = akaze.detectAndCompute(template_gray, None)
-                if des_template is None or len(kp_template) == 0: 
-                    logging.warning(f"[WARN][recognize_akaze] No descriptors found for template {i} of hero '{hero_name}'.")
-                    continue
-                
-                # Проверка на None перед knnMatch (хотя уже должны были выйти)
-                if des_template is None or des_screenshot is None:
-                    logging.warning(f"[WARN][recognize_akaze] Descriptors are None for template or screenshot before knnMatch. Hero: {hero_name}")
-                    continue
-
-                matches = bf.knnMatch(des_template, des_screenshot, k=2)
-                good_matches = []
-                # Убедимся, что есть 2 совпадения для каждого m в matches
-                valid_matches = [m_pair for m_pair in matches if m_pair is not None and len(m_pair) == 2] 
-                for m, n in valid_matches:
-                    if m.distance < AKAZE_LOWE_RATIO * n.distance: 
-                        good_matches.append(m)
-                
-                num_good_matches = len(good_matches)
-                logging.debug(f"[RECOGNIZE AKAZE] Hero: '{hero_name}', Template: {i}, Good Matches: {num_good_matches}")
-                if num_good_matches > max_good_matches_for_hero: 
-                    max_good_matches_for_hero = num_good_matches
-            
-            recognized_heroes_scores[hero_name] = max_good_matches_for_hero
-            if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT: 
-                logging.info(f"[RECOGNIZE AKAZE] ----- РАСПОЗНАН: {hero_name} (Matches: {max_good_matches_for_hero} >= {AKAZE_MIN_MATCH_COUNT}) -----")
-            elif max_good_matches_for_hero > 0 : 
-                logging.info(f"[RECOGNIZE AKAZE] Герой НЕ распознан: {hero_name} (Matches: {max_good_matches_for_hero} < {AKAZE_MIN_MATCH_COUNT})")
-        
-        final_heroes = [hero for hero, score in recognized_heroes_scores.items() if score >= AKAZE_MIN_MATCH_COUNT]
-        final_heroes_sorted = sorted(final_heroes, key=lambda h: recognized_heroes_scores.get(h, 0), reverse=True)
-        logging.info(f"[RECOGNIZE AKAZE] Распознавание завершено. Итог ({len(final_heroes_sorted)}/{TEAM_SIZE}): {final_heroes_sorted}")
-        
-        if recognized_heroes_scores:
-            sorted_best_scores = sorted(recognized_heroes_scores.items(), key=lambda item: item[1], reverse=True)
-            top_n = 15
-            logging.info(f"[RECOGNIZE AKAZE] Top-{top_n} best match counts found:")
-            for i, (hero, score) in enumerate(sorted_best_scores[:top_n]):
-                status = "PASSED" if score >= AKAZE_MIN_MATCH_COUNT else "FAILED"
-                logging.info(f"[RECOGNIZE AKAZE]   {i+1}. {hero}: {score} ({status})")
-            logging.info("-" * 30)
-        return final_heroes_sorted[:TEAM_SIZE]
+    # Метод recognize_heroes_from_image удален, т.к. логика перенесена в AdvancedRecognition

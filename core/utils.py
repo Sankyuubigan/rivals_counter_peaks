@@ -1,13 +1,13 @@
 # File: core/utils.py
 import mss
-# import mss.tools # mss.tools не используется напрямую
 import numpy as np
 import cv2
 import os
 import sys
-from database.heroes_bd import heroes_counters, heroes # heroes_counters теперь новой структуры
+from database.heroes_bd import heroes_counters, heroes 
 import logging
 from pathlib import Path
+import re # Добавлен re для нормализации имен
 
 RECOGNITION_AREA = {
     'monitor': 1, 'left_pct': 50, 'top_pct': 20, 'width_pct': 40, 'height_pct': 50
@@ -20,47 +20,84 @@ ORB_NFEATURES = 1000; ORB_MIN_MATCH_COUNT = 10; ORB_LOWE_RATIO = 0.75
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB; AKAZE_MIN_MATCH_COUNT = 3; AKAZE_LOWE_RATIO = 0.75
 
 def _get_root_path():
-    # Проверка hasattr(sys, '_MEIPASS') - это стандартный способ
-    # Определяем, запущено ли приложение как обычный скрипт или как .exe PyInstaller
-    if hasattr(sys, '_MEIPASS'): # Путь для .exe PyInstaller
+    if hasattr(sys, '_MEIPASS'): 
         base_path = sys._MEIPASS
-    else: # Путь для обычного запуска скрипта
-        # Идем на один уровень вверх от текущего файла (utils.py в core/) до корня проекта
+    else: 
         base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     return base_path
 
 def resource_path(relative_path):
     base_path = _get_root_path()
-    # Корректируем слеши для кроссплатформенности
     relative_path_corrected = relative_path.replace('/', os.sep).replace('\\', os.sep)
     final_path = os.path.join(base_path, relative_path_corrected)
     return final_path
 
 def get_settings_path() -> Path:
-    app_data_dir_str = "" # Инициализация
+    app_data_dir_str = "" 
     if sys.platform == "win32":
         app_data_dir_str = os.getenv("APPDATA")
-        # Если APPDATA не определена, используем стандартный путь
         if not app_data_dir_str:
             app_data_dir_str = str(Path.home() / "AppData" / "Roaming")
-    else: # Для Linux, macOS и других
+    else: 
         app_data_dir_str = str(Path.home() / ".config")
     
     app_data_dir = Path(app_data_dir_str)
     app_name_dir = app_data_dir / "RivalsCounterPeaks"
     
-    # Замена try-except на if-else для создания директории
     if not app_name_dir.exists():
-        try: # Оставляем try-except для mkdir, т.к. могут быть проблемы с правами
+        try: 
             app_name_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
             logging.error(f"Не удалось создать директорию настроек {app_name_dir}: {e}")
-            # В случае ошибки, можно попробовать использовать временную директорию или текущую
-            # но для настроек это не лучший вариант. Пока просто логируем.
-            # Можно вернуть Path к файлу в текущей директории как fallback:
-            # return Path.cwd() / "hotkeys.json" 
     
     return app_name_dir / "hotkeys.json"
+
+def normalize_hero_name(name: str) -> str:
+    """
+    Нормализует имя героя, удаляя общие суффиксы, такие как _1, _icon, _template.
+    Также приводит к нижнему регистру и заменяет пробелы на подчеркивания
+    для консистентности с именами файлов, а затем пытается найти
+    каноническое имя из списка `heroes_bd.heroes`.
+    """
+    if not name:
+        return ""
+    
+    # Сначала приводим к общему виду (как в именах файлов)
+    normalized = name.lower()
+    # Удаляем распространенные суффиксы, которые могут добавляться при распознавании или именовании файлов
+    suffixes_to_remove = ["_1", "_2", "_icon", "_template", "_small", "_left", "_right", "_horizontal"]
+    for suffix in suffixes_to_remove:
+        if normalized.endswith(suffix):
+            normalized = normalized[:-len(suffix)]
+            break # Предполагаем, что суффикс один
+    
+    # Заменяем пробелы на подчеркивания и наоборот для поиска совпадения
+    name_with_underscores = normalized.replace(' ', '_')
+    name_with_spaces = normalized.replace('_', ' ')
+
+    # Проверяем точное совпадение с каноническими именами (с учетом регистра)
+    for hero_canonical_name in heroes: # heroes из heroes_bd
+        # Сравниваем нормализованные версии
+        if hero_canonical_name.lower() == name_with_spaces:
+            return hero_canonical_name
+        if hero_canonical_name.lower().replace(' ', '_') == name_with_underscores:
+            return hero_canonical_name
+            
+    # Если точное совпадение не найдено, возвращаем наиболее "чистый" вариант
+    # после удаления суффиксов и попытки привести к наиболее вероятному виду
+    # (например, с пробелами и заглавными буквами)
+    # Это может быть не идеально, но лучше, чем имя с суффиксом.
+    # Попробуем капитализировать слова
+    parts = name_with_spaces.split(' ')
+    capitalized_name = " ".join(p.capitalize() for p in parts)
+    
+    # Проверим еще раз с капитализированным именем
+    for hero_canonical_name in heroes:
+        if hero_canonical_name == capitalized_name:
+            return hero_canonical_name
+            
+    logging.warning(f"Не удалось точно сопоставить нормализованное имя '{normalized}' (исходное: '{name}') с каноническим. Возвращаем '{capitalized_name}'.")
+    return capitalized_name # или name_with_spaces, если капитализация не нужна
 
 
 def validate_heroes():
@@ -106,8 +143,7 @@ def check_if_all_elements_in_list(target_list, check_list):
 
 def capture_screen_area(area: dict):
     logging.debug(f"[CAPTURE] Attempting capture for area definition: {area}")
-    img_bgr = None # Инициализация
-    # Замена try-except mss.ScreenShotError на проверку sct.grab()
+    img_bgr = None 
     with mss.mss() as sct:
         monitors = sct.monitors
         if not monitors: 
@@ -115,17 +151,15 @@ def capture_screen_area(area: dict):
             return None
         
         target_monitor_index = area.get('monitor', 1)
-        # Проверка индекса монитора
         if not (0 <= target_monitor_index < len(monitors)):
-            corrected_index = 1 if len(monitors) > 1 else 0 # Индекс 1, если есть хотя бы 2 монитора, иначе 0
-            # Убедимся, что corrected_index все еще в допустимых границах
+            corrected_index = 1 if len(monitors) > 1 else 0 
             if not (0 <= corrected_index < len(monitors)):
                  logging.error(f"[ERROR][CAPTURE] Corrected monitor index {corrected_index} is still invalid for {len(monitors)} monitors.")
                  return None
             logging.warning(f"[WARN][CAPTURE] Invalid monitor index {target_monitor_index}. Available: {len(monitors)}. Using monitor {corrected_index} instead.")
             target_monitor_index = corrected_index
         
-        monitor_geometry = monitors[target_monitor_index] # Теперь индекс должен быть безопасным
+        monitor_geometry = monitors[target_monitor_index] 
         
         mon_width = monitor_geometry["width"]; mon_height = monitor_geometry["height"]
         mon_left = monitor_geometry["left"]; mon_top = monitor_geometry["top"]
@@ -146,7 +180,7 @@ def capture_screen_area(area: dict):
             
         bbox = {
             "left": mon_left + left_px, "top": mon_top + top_px,
-            "width": max(1, width_px), "height": max(1, height_px), # Ширина/высота не могут быть <= 0
+            "width": max(1, width_px), "height": max(1, height_px), 
             "mon": target_monitor_index
         }
 
@@ -157,12 +191,12 @@ def capture_screen_area(area: dict):
         logging.debug(f"[CAPTURE] Grabbing BBox: {bbox} on Monitor: {target_monitor_index}")
         
         sct_img = None
-        try: # Оставляем try-except для sct.grab, т.к. это внешний вызов
+        try: 
             sct_img = sct.grab(bbox)
-        except mss.exception.ScreenShotError as e_mss: # Используем mss.exception.ScreenShotError
+        except mss.exception.ScreenShotError as e_mss: 
              logging.error(f"[ERROR][CAPTURE] mss.ScreenShotError: {e_mss}")
              return None
-        except Exception as e_grab: # Другие возможные ошибки при grab
+        except Exception as e_grab: 
              logging.error(f"[ERROR][CAPTURE] Unexpected error during sct.grab: {e_grab}", exc_info=True)
              return None
 
@@ -173,21 +207,20 @@ def capture_screen_area(area: dict):
                 logging.error("[ERROR][CAPTURE] Grabbed empty image.")
                 return None
             
-            # Проверка количества каналов
-            if len(img_np.shape) < 3: # Если изображение 1-канальное или 2-канальное (неожиданно)
+            if len(img_np.shape) < 3: 
                 logging.error(f"[ERROR][CAPTURE] Unexpected image format (shape: {img_np.shape}). Expected 3 or 4 channels.")
                 return None
 
             if img_np.shape[2] == 4: 
                 img_bgr = cv2.cvtColor(img_np, cv2.COLOR_BGRA2BGR)
             elif img_np.shape[2] == 3: 
-                img_bgr = img_np # Уже BGR (или RGB, mss обычно дает BGRA или BGR)
+                img_bgr = img_np 
             else: 
                 logging.error(f"[ERROR][CAPTURE] Unexpected image format (channels: {img_np.shape[2]}).")
                 return None
             
             logging.info(f"[CAPTURE] Area captured successfully. Shape: {img_bgr.shape if img_bgr is not None else 'None'}")
             return img_bgr
-        else: # sct.grab() вернул None или что-то пошло не так без исключения
+        else: 
             logging.error("[ERROR][CAPTURE] sct.grab() did not return a valid image.")
             return None

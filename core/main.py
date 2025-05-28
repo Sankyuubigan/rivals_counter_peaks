@@ -5,7 +5,6 @@ import logging
 import datetime
 import time 
 
-# ИЗМЕНЕНО: Уровень логирования по умолчанию INFO
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', 
                     datefmt='%H:%M:%S')
@@ -17,7 +16,6 @@ if core_dir not in sys.path: sys.path.insert(0, core_dir)
 
 try:
     now = datetime.datetime.now()
-    # ИЗМЕНЕНО: Формат версии на ГГ.ММ.ДД (год из двух цифр)
     app_version_display = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
     logging.info(f"[Main] Application display version set to: {app_version_display} (generated from date)")
 except Exception as e_ver:
@@ -26,7 +24,7 @@ except Exception as e_ver:
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 import logic
-import images_load
+import images_load # Теперь здесь есть load_hero_templates_cv2
 import utils
 from main_window import MainWindow
 
@@ -67,14 +65,20 @@ if __name__ == "__main__":
 
 
     logging.info("Предварительная загрузка ресурсов...")
+    hero_templates = {} # Инициализируем как пустой словарь
     try:
         images_load.load_original_images()
-        hero_templates = images_load.load_hero_templates()
-        if hero_templates is None: raise RuntimeError("Словарь шаблонов не был загружен (None).")
-        elif not hero_templates:
-             logging.warning("Шаблоны героев не найдены или не загружены, распознавание будет недоступно.")
-             QMessageBox.warning(None, "Внимание", "Шаблоны героев не найдены. Функция распознавания будет недоступна.")
-        else: logging.info(f"Шаблоны героев загружены ({len(hero_templates)} героев).")
+        # ИЗМЕНЕНО: Вызываем правильную функцию load_hero_templates_cv2
+        # Эта функция теперь возвращает CV2 шаблоны, которые будут переданы в MainWindow,
+        # а затем в AdvancedRecognition.
+        hero_templates = images_load.load_hero_templates_cv2() 
+        
+        if not hero_templates: # hero_templates может быть None или пустым dict, если загрузка не удалась
+             logging.warning("Шаблоны героев (CV2) не найдены или не загружены. Распознавание AKAZE в AdvancedRecognition может быть недоступно или ограничено.")
+             # Не будем показывать QMessageBox здесь, т.к. AdvancedRecognition может работать только с DINO, если AKAZE недоступен
+             # QMessageBox.warning(None, "Внимание", "Шаблоны героев (CV2) не найдены. Функция распознавания может работать некорректно.")
+        else: 
+            logging.info(f"Шаблоны героев (CV2) загружены ({len(hero_templates)} героев).")
         logging.info("Загрузка ресурсов завершена.")
     except Exception as e:
         logging.critical(f"Критическая ошибка при загрузке ресурсов: {e}", exc_info=True)
@@ -94,7 +98,8 @@ if __name__ == "__main__":
     logging.info("Создание MainWindow...")
     window = None 
     try:
-        window = MainWindow(logic_instance, hero_templates if hero_templates else {}, app_version=app_version_display)
+        # Передаем hero_templates (CV2 шаблоны) в MainWindow
+        window = MainWindow(logic_instance, hero_templates, app_version=app_version_display)
         logging.info("MainWindow instance created. Calling show()...")
         window.show()
         logging.info("MainWindow.show() called.")
