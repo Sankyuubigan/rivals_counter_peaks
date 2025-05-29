@@ -40,16 +40,16 @@ if os.path.exists(build_cache_dir):
 else:
     logging.info(f"Папка кэша {build_cache_dir} не найдена, удаление не требуется.")
 
-# Очистка папки dist перед новой сборкой (опционально, но рекомендуется)
-if os.path.exists(dist_dir):
-    logging.info(f"Очистка папки dist: {dist_dir}")
-    try:
-        shutil.rmtree(dist_dir)
-        os.makedirs(dist_dir) # Создаем заново пустую
-    except Exception as e:
-        logging.warning(f"Не удалось полностью очистить папку dist: {e}")
-else:
-    os.makedirs(dist_dir) # Создаем, если не было
+# # Очистка папки dist перед новой сборкой (опционально, но рекомендуется)
+# if os.path.exists(dist_dir):
+#     logging.info(f"Очистка папки dist: {dist_dir}")
+#     try:
+#         shutil.rmtree(dist_dir)
+#         os.makedirs(dist_dir) # Создаем заново пустую
+#     except Exception as e:
+#         logging.warning(f"Не удалось полностью очистить папку dist: {e}")
+# else:
+#     os.makedirs(dist_dir) # Создаем, если не было
 
 # --- Определяем путь к python.exe из текущего виртуального окружения ---
 python_exe = sys.executable
