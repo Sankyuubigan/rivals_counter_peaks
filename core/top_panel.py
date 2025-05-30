@@ -10,6 +10,7 @@ import logging
 
 if TYPE_CHECKING:
     from main_window import MainWindow 
+    from core.settings_window import SettingsWindow # Для проверки типа
 
 class TopPanel:
     """Класс для создания и управления верхней панелью."""
@@ -17,54 +18,94 @@ class TopPanel:
         self.parent = parent; self.switch_mode_callback = switch_mode_callback
         self.logic = logic; self.app_version = app_version
         logging.debug(f"[TopPanel] Initialized with app_version: {self.app_version}")
+        
         self.top_frame = QFrame(parent); self.top_frame.setObjectName("top_frame")
         self.top_frame.setFixedHeight(36) 
+        
         self.transparency_slider: QSlider | None = None;
         self.mode_label: QLabel | None = None
-        self.min_button: QPushButton | None = None; self.middle_button: QPushButton | None = None
+        self.min_button: QPushButton | None = None 
+        self.middle_button: QPushButton | None = None
         self.max_button: QPushButton | None = None
         self.tray_mode_button: QPushButton | None = None
-        self.menu_button: QPushButton | None = None
-        self.version_label: QLabel | None = None; self.close_button: QPushButton | None = None
+        self.menu_button: QPushButton | None = None # Кнопка основного меню
+        self.version_label: QLabel | None = None
+        self.close_button_min_mode: QPushButton | None = None # Отдельная кнопка закрытия для компактного режима
+
         self._setup_ui()
 
     def _setup_ui(self):
-        layout = QHBoxLayout(self.top_frame); layout.setContentsMargins(5, 2, 5, 2); layout.setSpacing(5)
-        self.transparency_slider = self._create_slider(); layout.addWidget(self.transparency_slider)
-        self.mode_label = QLabel(get_text('mode', language=self.logic.DEFAULT_LANGUAGE)); self.mode_label.setObjectName("mode_label"); 
-        self.min_button = self._create_mode_button('mode_min', "min"); self.middle_button = self._create_mode_button('mode_middle', "middle"); self.max_button = self._create_mode_button('mode_max', "max")
-        layout.addWidget(self.mode_label); layout.addWidget(self.min_button); layout.addWidget(self.middle_button); layout.addWidget(self.max_button)
-        self.tray_mode_button = self._create_tray_mode_button(); layout.addWidget(self.tray_mode_button)
+        layout = QHBoxLayout(self.top_frame)
+        layout.setContentsMargins(5, 2, 5, 2)
+        layout.setSpacing(5)
 
+        self.transparency_slider = self._create_slider()
+        layout.addWidget(self.transparency_slider)
+
+        self.mode_label = QLabel(get_text('mode', language=self.logic.DEFAULT_LANGUAGE))
+        self.mode_label.setObjectName("mode_label")
+        self.min_button = self._create_mode_button('mode_min', "min")
+        self.middle_button = self._create_mode_button('mode_middle', "middle")
+        self.max_button = self._create_mode_button('mode_max', "max")
+        
+        layout.addWidget(self.mode_label)
+        layout.addWidget(self.min_button)
+        layout.addWidget(self.middle_button)
+        layout.addWidget(self.max_button)
+
+        self.tray_mode_button = self._create_tray_mode_button()
+        layout.addWidget(self.tray_mode_button)
+
+        # Основная кнопка меню
         self.menu_button = QPushButton(get_text('menu', language=self.logic.DEFAULT_LANGUAGE))
         self.menu_button.setObjectName("menu_button")
         self.menu_button.clicked.connect(self._show_main_menu)
         layout.addWidget(self.menu_button)
-        layout.addStretch(1)
+
+        layout.addStretch(1) # Растягиваем пространство
         
         version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
-        self.version_label = QLabel(version_text); self.version_label.setObjectName("version_label")
-        self.version_label.setToolTip(f"Application version: {self.app_version}")
-        logging.debug(f"[TopPanel._setup_ui] Creating version_label with text: '{version_text}' (raw version: {self.app_version})")
+        self.version_label = QLabel(version_text)
+        self.version_label.setObjectName("version_label")
+        self.version_label.setToolTip(f"{get_text('version_tooltip_prefix', default_text='Версия приложения')}: {self.app_version}")
         layout.addWidget(self.version_label)
-        self.close_button = self._create_close_button(); layout.addWidget(self.close_button)
+
+        # Кнопка закрытия для компактного режима (по умолчанию скрыта)
+        self.close_button_min_mode = self._create_close_button_min_mode()
+        layout.addWidget(self.close_button_min_mode)
+        self.close_button_min_mode.hide() # Скрываем по умолчанию
+
+        # Обновляем состояние кнопки "Трей" при инициализации
         if self.tray_mode_button:
              QTimer.singleShot(0, lambda: self._update_tray_mode_button_text_and_property())
 
+
     def _create_slider(self) -> QSlider: 
-        slider = QSlider(Qt.Orientation.Horizontal); slider.setObjectName("transparency_slider"); slider.setRange(10, 100); slider.setValue(100); slider.setFixedWidth(80) 
-        slider.valueChanged.connect(lambda val: self.parent.setWindowOpacity(val / 100.0)); return slider
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setObjectName("transparency_slider")
+        slider.setRange(10, 100) # От 10% до 100% непрозрачности
+        slider.setValue(100)    # По умолчанию 100%
+        slider.setFixedWidth(80) 
+        slider.valueChanged.connect(self.parent.handle_opacity_change) # Подключаем к слоту в MainWindow
+        return slider
     
     def _create_mode_button(self, text_key: str, mode_name: str) -> QPushButton: 
-        button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE)); button.setObjectName(f"{mode_name}_mode_button"); 
-        button.clicked.connect(lambda: self.switch_mode_callback(mode_name)); return button
+        button = QPushButton(get_text(text_key, language=self.logic.DEFAULT_LANGUAGE))
+        button.setObjectName(f"{mode_name}_mode_button") 
+        button.clicked.connect(lambda: self.switch_mode_callback(mode_name))
+        return button
     
     def _create_tray_mode_button(self) -> QPushButton: 
-        button = QPushButton(); button.setObjectName("tray_mode_button"); button.setProperty("trayModeActive", False); button.clicked.connect(self.parent.toggle_tray_mode); return button
+        button = QPushButton() # Текст установится в _update_tray_mode_button_text_and_property
+        button.setObjectName("tray_mode_button")
+        button.setProperty("trayModeActive", False) # Начальное состояние
+        button.clicked.connect(self.parent.toggle_tray_mode) # Подключаем к методу MainWindow
+        return button
     
     def _update_tray_mode_button_text_and_property(self): 
+        """Обновляет текст и свойство кнопки 'Трей' на основе состояния окна."""
         if not self.tray_mode_button or not self.parent: 
-            logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Button or parent not found.")
+            logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Кнопка 'Трей' или родительское окно не найдены.")
             return
         
         is_tray_active = getattr(self.parent, '_is_win_topmost', False)
@@ -74,17 +115,22 @@ class TopPanel:
         self.tray_mode_button.setText(button_text)
         
         current_prop = self.tray_mode_button.property("trayModeActive")
-        if current_prop != is_tray_active:
+        if current_prop != is_tray_active: # Обновляем свойство только если оно изменилось
             self.tray_mode_button.setProperty("trayModeActive", is_tray_active)
+            # Переприменяем стиль, чтобы QSS подхватил изменение свойства
             style = self.tray_mode_button.style()
             if style: 
                 style.unpolish(self.tray_mode_button)
                 style.polish(self.tray_mode_button)
-            self.tray_mode_button.update()
+            self.tray_mode_button.update() # Принудительное обновление виджета
     
-    def _create_close_button(self) -> QPushButton: 
-        button = QPushButton("✕"); button.setObjectName("close_button"); button.setFixedSize(24, 24); 
-        button.clicked.connect(self.parent.close); 
+    def _create_close_button_min_mode(self) -> QPushButton: 
+        """Создает кнопку закрытия для компактного режима."""
+        button = QPushButton("✕") # Символ крестика
+        button.setObjectName("close_button") # Используем тот же objectName для QSS
+        button.setFixedSize(24, 24) 
+        button.setToolTip(get_text("close_button_tooltip", default_text="Закрыть приложение"))
+        button.clicked.connect(self.parent.close) # Подключаем к слоту закрытия MainWindow
         return button
 
     def _show_main_menu(self):
@@ -92,22 +138,25 @@ class TopPanel:
         menu = QMenu(self.parent)
         current_lang = self.logic.DEFAULT_LANGUAGE
 
+        # Язык
         lang_menu = QMenu(get_text('language', language=current_lang), menu)
         for lang_code, lang_name_map_or_str in SUPPORTED_LANGUAGES.items():
             lang_display_name = ""
             if isinstance(lang_name_map_or_str, str):
                 lang_display_name = lang_name_map_or_str 
-            elif isinstance(lang_name_map_or_str, dict): 
+            elif isinstance(lang_name_map_or_str, dict): # На случай если будет словарь с переводами имен языков
                 lang_display_name = lang_name_map_or_str.get(current_lang, lang_code)
             else: 
-                lang_display_name = lang_code
+                lang_display_name = lang_code # Fallback
 
             action = lang_menu.addAction(lang_display_name)
             action.setCheckable(True)
             action.setChecked(current_lang == lang_code)
-            action.triggered.connect(lambda checked=False, lc=lang_code: self.parent.switch_language(lc))
+            # Используем lambda для передачи аргумента lang_code
+            action.triggered.connect(lambda checked=False, lc=lang_code: self.parent.switch_language(lc) if checked else None)
         menu.addMenu(lang_menu)
         
+        # Тема
         theme_menu = QMenu(get_text('theme_menu_title', default_text="Тема", language=current_lang), menu)
         light_theme_action = theme_menu.addAction(get_text('light_theme_action', default_text="Светлая", language=current_lang))
         dark_theme_action = theme_menu.addAction(get_text('dark_theme_action', default_text="Темная", language=current_lang))
@@ -117,9 +166,7 @@ class TopPanel:
         current_app_theme = "light" 
         if hasattr(self.parent, 'appearance_manager') and self.parent.appearance_manager:
             current_app_theme = self.parent.appearance_manager.current_theme
-        elif hasattr(self.parent, 'current_theme'): 
-             current_app_theme = self.parent.current_theme
-
+        
         light_theme_action.setChecked(current_app_theme == "light")
         dark_theme_action.setChecked(current_app_theme == "dark")
 
@@ -128,39 +175,53 @@ class TopPanel:
         menu.addMenu(theme_menu)
         menu.addSeparator()
 
+        # Рейтинг героев
         rating_action = menu.addAction(get_text('hero_rating', language=current_lang))
         rating_action.triggered.connect(lambda: show_hero_rating(self.parent, self.app_version))
         
+        # О программе
         about_program_action = menu.addAction(get_text('about_program', language=current_lang))
         about_program_action.triggered.connect(lambda: show_about_program_info(self.parent))
 
-        author_info_action = menu.addAction(get_text('author_menu_item_text', language=current_lang)) # Используем новый ключ
+        # Об авторе
+        author_info_action = menu.addAction(get_text('author_menu_item_text', language=current_lang))
         author_info_action.triggered.connect(lambda: show_author_info(self.parent))
         
         menu.addSeparator()
 
-        hotkey_settings_action = menu.addAction(get_text('hotkey_settings_menu_item', language=current_lang))
-        if hasattr(self.parent, 'show_hotkey_settings_window'):
-            hotkey_settings_action.triggered.connect(self.parent.show_hotkey_settings_window)
+        # Настройки (новый общий диалог)
+        settings_action = menu.addAction(get_text('hotkey_settings_menu_item', language=current_lang)) # Ключ 'hotkey_settings_menu_item' теперь означает "Настройки"
+        if hasattr(self.parent, 'show_settings_window'): # Проверяем наличие нового метода
+            settings_action.triggered.connect(self.parent.show_settings_window)
         else:
-            hotkey_settings_action.setEnabled(False)
-            logging.warning("Method show_hotkey_settings_window not found in parent.")
+            settings_action.setEnabled(False)
+            logging.warning("Метод show_settings_window не найден в родительском окне.")
         
+        # Логи
         logs_action = menu.addAction(get_text('logs_menu_item', language=current_lang))
         if hasattr(self.parent, 'show_log_window'):
              logs_action.triggered.connect(self.parent.show_log_window)
-        else: logs_action.setEnabled(False)
+        else: 
+            logs_action.setEnabled(False)
+            logging.warning("Метод show_log_window не найден в родительском окне.")
 
         menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
 
     def update_language(self):
+        """Обновляет тексты на панели при смене языка."""
         current_lang = self.logic.DEFAULT_LANGUAGE; 
         if self.mode_label: self.mode_label.setText(get_text('mode', language=current_lang))
         if self.min_button: self.min_button.setText(get_text('mode_min', language=current_lang))
         if self.middle_button: self.middle_button.setText(get_text('mode_middle', language=current_lang))
         if self.max_button: self.max_button.setText(get_text('mode_max', language=current_lang))
         if self.menu_button: self.menu_button.setText(get_text('menu', language=current_lang))
-        self._update_tray_mode_button_text_and_property()
+        
+        self._update_tray_mode_button_text_and_property() # Обновит текст кнопки "Трей"
+        
         if self.version_label:
              version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
-             self.version_label.setText(version_text); self.version_label.setToolTip(f"Application version: {self.app_version}")
+             self.version_label.setText(version_text)
+             self.version_label.setToolTip(f"{get_text('version_tooltip_prefix', default_text='Версия приложения')}: {self.app_version}")
+        
+        if self.close_button_min_mode:
+            self.close_button_min_mode.setToolTip(get_text("close_button_tooltip", default_text="Закрыть приложение"))
