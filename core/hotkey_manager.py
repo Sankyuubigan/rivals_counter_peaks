@@ -32,9 +32,15 @@ except ImportError:
 PYNPUT_AVAILABLE = PYNPUT_AVAILABLE_PARSER and PYNPUT_AVAILABLE_LISTENER
 
 # Список ID клавиш, которые мы хотим игнорировать, если они "залипли"
+# или просто не являются частью осмысленных комбинаций для данного приложения.
 GHOST_KEY_IDS_TO_IGNORE = {
-    ('KeyCode_char', '\x16'), # Ctrl+V (SYN)
-    # Можно добавить другие, если будут обнаружены
+    ('KeyCode_char', '\x16'), # Ctrl+V (SYN) - частый артефакт
+    # Можно добавить другие, если будут обнаружены, например, одиночные символы,
+    # если они точно не используются в хоткеях.
+    # Однако, ID 'KeyCode_char' с конкретным символом (',', 'с', 'о', 'т')
+    # лучше не добавлять сюда глобально, так как они могут быть частью легитимного ввода
+    # в других контекстах или если хоткеи изменятся.
+    # Вместо этого, логика on_press будет фильтровать логирование.
 }
 
 
@@ -123,30 +129,42 @@ class HotkeyManager(QObject):
         key_id_pressed = get_key_object_id(normalized_key_obj)
         
         with self._lock:
-            if key_id_pressed not in GHOST_KEY_IDS_TO_IGNORE: # Не добавляем "мусорные" клавиши
+            is_meaningful_key_for_app = True # Флаг, что клавиша потенциально интересна для хоткеев
+            if key_id_pressed[0] == 'KeyCode_char' and len(self._pressed_keys) == 0:
+                # Если это первая нажатая клавиша и это обычный символ,
+                # то, скорее всего, это не начало хоткея для данного приложения.
+                # Однако, если в будущем появятся хоткеи типа "g", это условие нужно будет изменить.
+                # Пока что все хоткеи начинаются с модификатора (Tab, Ctrl, etc.)
+                is_meaningful_key_for_app = False
+
+            if key_id_pressed not in GHOST_KEY_IDS_TO_IGNORE:
                 self._pressed_keys.add(key_id_pressed)
             
             current_pressed_ids_repr = sorted([str(k_id) for k_id in self._pressed_keys])
             
-            if current_pressed_ids_repr:
-                is_special_key_press = isinstance(normalized_key_obj, keyboard.Key)
-                if len(current_pressed_ids_repr) > 1 or is_special_key_press:
-                    logging.debug(f"HM: KeyPress Check. Raw='{key}', NormObj='{normalized_key_obj}', ID='{key_id_pressed}'. Active_IDs: {current_pressed_ids_repr}")
+            # --- ИЗМЕНЕНИЕ ЛОГИРОВАНИЯ ---
+            # Логируем KeyPress Check, только если:
+            # 1. Нажата "специальная" клавиша (не просто символ)
+            # 2. ИЛИ если уже нажато более одной клавиши (т.е. формируется комбинация)
+            is_special_key_press = isinstance(normalized_key_obj, keyboard.Key)
+            should_log_press = is_special_key_press or len(self._pressed_keys) > 1
 
-            # Создаем копию _pressed_keys без "мусорных" клавиш для сравнения
+            if should_log_press and is_meaningful_key_for_app:
+                logging.debug(f"HM: KeyPress Check. Raw='{key}', NormObj='{normalized_key_obj}', ID='{key_id_pressed}'. Active_IDs: {current_pressed_ids_repr}")
+            # --- КОНЕЦ ИЗМЕНЕНИЯ ЛОГИРОВАНИЯ ---
+
             active_keys_for_check = self._pressed_keys - GHOST_KEY_IDS_TO_IGNORE
 
             for action_id, parsed_combo in self._parsed_hotkeys.items():
-                required_keys = parsed_combo['keys_ids']
-                # ИЗМЕНЕНИЕ: Проверяем, что все НЕОБХОДИМЫЕ клавиши для хоткея НАЖАТЫ
-                # и что количество активных (не мусорных) клавиш СОВПАДАЕТ с количеством клавиш в хоткее.
-                # Это предотвратит срабатывание Tab+A, если нажато Tab+A+B, но позволит сработать,
-                # если нажато Tab+A + "мусорная" клавиша.
-                if required_keys.issubset(active_keys_for_check) and \
-                   len(active_keys_for_check) == len(required_keys):
+                required_keys_for_combo = parsed_combo['keys_ids']
+                
+                # Проверка: все ли необходимые клавиши для данного хоткея сейчас нажаты,
+                # И нет ли ЛИШНИХ нажатых клавиш (кроме тех, что в GHOST_KEY_IDS_TO_IGNORE).
+                if required_keys_for_combo.issubset(active_keys_for_check) and \
+                   len(active_keys_for_check) == len(required_keys_for_combo):
                     
                     original_hotkey_str = self._current_hotkeys.get(action_id, "N/A")
-                    logging.info(f"HM: Хоткей СРАБОТАЛ: '{original_hotkey_str}' для действия '{action_id}'. Активные для проверки: {sorted(list(str(k) for k in active_keys_for_check))}, Все нажатые: {current_pressed_ids_repr}")
+                    logging.info(f"HM: Хоткей СРАБОТАЛ: '{original_hotkey_str}' для действия '{action_id}'. Активные для проверки: {sorted(list(str(k) for k in active_keys_for_check))}")
                     
                     if hasattr(self.main_window, '_emit_action_signal_slot'): 
                         QMetaObject.invokeMethod(self.main_window, "_emit_action_signal_slot",
@@ -158,6 +176,9 @@ class HotkeyManager(QObject):
                              getattr(self.main_window, signal_config['signal_name']).emit()
                         else:
                              logging.error(f"HM: Не найден слот или сигнал для действия {action_id} в main_window.")
+                    # Если хоткей сработал, можно вернуть False, если он должен подавляться
+                    # suppress_flag = parsed_combo.get('suppress_flag_from_config', False)
+                    # if suppress_flag: return False # Пока не используем suppress из конфига pynput
         return True 
 
 
@@ -168,16 +189,30 @@ class HotkeyManager(QObject):
         key_id_released = get_key_object_id(normalized_key_obj)
 
         with self._lock:
+            key_was_pressed = False
             if key_id_released in self._pressed_keys:
                 self._pressed_keys.remove(key_id_released)
-                is_special_key_release = isinstance(normalized_key_obj, keyboard.Key)
-                if len(self._pressed_keys) >=1 or is_special_key_release: 
-                    logging.debug(f"HM: KeyRelease Check. Raw='{key}', NormObj='{normalized_key_obj}', ID='{key_id_released}'. Remaining_IDs: {sorted([str(k_id) for k_id in self._pressed_keys])}")
+                key_was_pressed = True
             elif key_id_released in GHOST_KEY_IDS_TO_IGNORE:
                 # Если отпущена "мусорная" клавиша, которую мы не добавляли, просто логируем
                 logging.debug(f"HM: Ignored ghost key release: {key_id_released}")
+                key_was_pressed = True # Считаем, что она была "нажата" для целей логирования
             else:
                 logging.debug(f"HM: Released key ID '{key_id_released}' not found in _pressed_keys.")
+            
+            # --- ИЗМЕНЕНИЕ ЛОГИРОВАНИЯ ---
+            # Логируем KeyRelease Check, только если:
+            # 1. Отпущена "специальная" клавиша
+            # 2. ИЛИ если после отпускания еще остались нажатые клавиши (т.е. была часть комбинации)
+            # 3. ИЛИ если отпущенная клавиша была ранее осмысленно нажата (is_meaningful_key_for_app в on_press)
+            #    Это условие сложнее отследить здесь, поэтому пока опираемся на первые два.
+            is_special_key_release = isinstance(normalized_key_obj, keyboard.Key)
+            should_log_release = is_special_key_release or len(self._pressed_keys) >= 1
+            
+            if should_log_release and key_was_pressed:
+                 logging.debug(f"HM: KeyRelease Check. Raw='{key}', NormObj='{normalized_key_obj}', ID='{key_id_released}'. Remaining_IDs: {sorted([str(k_id) for k_id in self._pressed_keys])}")
+            # --- КОНЕЦ ИЗМЕНЕНИЯ ЛОГИРОВАНИЯ ---
+
         return True
 
     @Slot()
@@ -207,7 +242,7 @@ class HotkeyManager(QObject):
             return
 
         if self._pynput_listener is not None:
-            if self._pynput_listener.is_alive():
+            if hasattr(self._pynput_listener, 'is_alive') and self._pynput_listener.is_alive():
                 logging.info("HM: Слушатель pynput уже активен. Перезапуск не требуется.")
                 return
             else: 
@@ -221,17 +256,22 @@ class HotkeyManager(QObject):
         if not self._parsed_hotkeys:
             logging.warning("HM: Нет распарсенных хоткеев. Слушатель запустится, но не будет реагировать.")
 
+        # Оставляем try-except для критической операции запуска pynput.Listener
         try:
             logging.info("HM: Создание нового экземпляра pynput.Listener...")
             self._pynput_listener = keyboard.Listener( 
                 on_press=self.on_press,
                 on_release=self.on_release,
-                suppress=False 
+                suppress=False # Пока не используем suppress из конфига pynput, здесь глобально False
             )
-            self._pynput_listener.daemon = True 
+            # daemon=True важно, чтобы поток слушателя завершался вместе с основным потоком
+            if hasattr(self._pynput_listener, 'daemon'):
+                self._pynput_listener.daemon = True 
+            
             self._pynput_listener.start()
             logging.info("HM: pynput.Listener.start() вызван.")
             
+            # Проверка статуса через короткое время
             QTimer.singleShot(200, self._check_listener_status) 
 
         except Exception as e:
@@ -241,7 +281,7 @@ class HotkeyManager(QObject):
     def _check_listener_status(self):
         """Проверяет и логирует статус слушателя pynput."""
         if self._pynput_listener is not None:
-            if self._pynput_listener.is_alive():
+            if hasattr(self._pynput_listener, 'is_alive') and self._pynput_listener.is_alive():
                 logging.info("HM: Слушатель pynput УСПЕШНО ЗАПУЩЕН и активен (проверка через 200мс).")
             else: 
                 logging.error("HM: Слушатель pynput НЕ АКТИВЕН через 200мс после вызова start(). Возможна проблема инициализации.")
@@ -262,11 +302,13 @@ class HotkeyManager(QObject):
             
             if is_alive_before_stop: 
                 logging.debug(f"HM: Вызов stop() для слушателя: {listener_instance}")
+                # Оставляем try-except для listener_instance.stop() и .join()
                 try:
                     listener_instance.stop() 
+                    # Даем потоку время завершиться
                     if hasattr(listener_instance, 'join') and callable(listener_instance.join):
                          logging.debug("HM: Вызов join() для потока слушателя...")
-                         listener_instance.join(timeout=1.0) 
+                         listener_instance.join(timeout=1.0) # Ждем не более 1 секунды
                          if listener_instance.is_alive():
                              logging.warning("HM: Поток слушателя pynput не завершился после stop() и join(1.0s).")
                          else:

@@ -7,9 +7,13 @@ from transformers import AutoImageProcessor
 import time
 import cv2
 import logging
-from collections import Counter
-from typing import Dict, List, Any, Tuple, Optional
+from collections import Counter, defaultdict # Добавил defaultdict
+from typing import Dict, List, Any, Tuple, Optional, Set # Добавил Set
 from utils import normalize_hero_name as normalize_hero_name_util
+
+# --- Добавляем импорт функции предобработки ---
+from core.image_processing_utils import preprocess_image_for_dino
+# ---------------------------------------------
 
 
 # --- Конфигурация ---
@@ -45,7 +49,6 @@ Y_OVERLAP_THRESHOLD_RATIO = 0.5
 
 class AdvancedRecognition:
     def __init__(self, akaze_hero_template_images_cv2_dict: Dict[str, List[np.ndarray]], project_root_path: str):
-        # ... (без изменений) ...
         self.project_root_path = project_root_path 
         self.ort_session_dino: Optional[onnxruntime.InferenceSession] = None
         self.input_name_dino: Optional[str] = None
@@ -60,13 +63,11 @@ class AdvancedRecognition:
         self._load_models_and_embeddings()
 
     def _get_abs_path(self, relative_to_project_root: str) -> str:
-        # ... (без изменений) ...
         parts = relative_to_project_root.split('/')
         return os.path.join(self.project_root_path, *parts)
 
 
     def _ensure_dir_exists(self, dir_path_abs: str) -> bool:
-        # ... (без изменений) ...
         if not os.path.exists(dir_path_abs) or not os.path.isdir(dir_path_abs):
             logging.error(f"[AdvRec] Директория не найдена или не является директорией: {dir_path_abs}")
             return False
@@ -74,7 +75,6 @@ class AdvancedRecognition:
         return True
 
     def _load_models_and_embeddings(self):
-        # ... (без изменений) ...
         logging.info("[AdvRec] Загрузка моделей и эмбеддингов для расширенного распознавания...")
         
         nn_models_dir_abs = self._get_abs_path(NN_MODELS_DIR_REL_TO_PROJECT_ROOT)
@@ -99,6 +99,7 @@ class AdvancedRecognition:
         
         try:
             session_options = onnxruntime.SessionOptions()
+            # session_options.log_severity_level = 3 # 0:Verbose, 1:Info, 2:Warning, 3:Error, 4:Fatal
             self.ort_session_dino = onnxruntime.InferenceSession(onnx_model_path, sess_options=session_options, providers=ONNX_PROVIDERS)
             self.input_name_dino = self.ort_session_dino.get_inputs()[0].name
             self.image_processor_dino = AutoImageProcessor.from_pretrained(IMAGE_PROCESSOR_ID, use_fast=False)
@@ -134,12 +135,11 @@ class AdvancedRecognition:
         logging.info("[AdvRec] Модели и эмбеддинги успешно загружены.")
 
     def is_ready(self) -> bool:
-        # ... (код без изменений) ...
         return self._models_loaded and bool(self.ort_session_dino) and \
                bool(self.image_processor_dino) and bool(self.dino_reference_embeddings)
 
     def _cosine_similarity_single(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
-        # ... (код без изменений) ...
+        if vec_a is None or vec_b is None: return 0.0
         dot_product = np.dot(vec_a, vec_b)
         norm_a = np.linalg.norm(vec_a)
         norm_b = np.linalg.norm(vec_b)
@@ -147,7 +147,8 @@ class AdvancedRecognition:
         return float(dot_product / (norm_a * norm_b))
 
     def _pad_image_to_target_size_pil(self, image_pil: Image.Image, target_height: int, target_width: int, padding_color: Tuple[int,int,int]) -> Image.Image:
-        # ... (код без изменений) ...
+        if image_pil is None:
+             return Image.new("RGB", (target_width, target_height), padding_color)
         original_width, original_height = image_pil.size
         if original_width == target_width and original_height == target_height:
             return image_pil
@@ -163,35 +164,38 @@ class AdvancedRecognition:
             new_width = int(new_height * original_aspect)
 
         if new_width <= 0 or new_height <= 0: 
-            return Image.new(image_pil.mode, (target_width, target_height), padding_color)
+            return Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
         
         try:
             resized_image = image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
         except ValueError: 
-            return Image.new(image_pil.mode, (target_width, target_height), padding_color)
+            return Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
 
-        padded_image = Image.new(image_pil.mode, (target_width, target_height), padding_color)
+        padded_image = Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
         paste_x = (target_width - new_width) // 2
         paste_y = (target_height - new_height) // 2
         padded_image.paste(resized_image, (paste_x, paste_y))
         return padded_image
 
     def _get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
-        # ... (код без изменений) ...
         if not pil_images_batch or not self.image_processor_dino or not self.ort_session_dino or not self.input_name_dino:
             return np.array([])
         
+        # Паддинг происходит ПОСЛЕ предобработки (если она есть)
         padded_batch_for_processor = [
             self._pad_image_to_target_size_pil(img, self.target_h_model_dino, self.target_w_model_dino, PADDING_COLOR_WINDOW_DINO)
-            for img in pil_images_batch
+            for img in pil_images_batch if img is not None # Пропускаем None изображения
         ]
+
+        if not padded_batch_for_processor: # Если все изображения в батче были None
+            return np.array([])
+            
         inputs = self.image_processor_dino(images=padded_batch_for_processor, return_tensors="np")
         onnx_outputs = self.ort_session_dino.run(None, {self.input_name_dino: inputs.pixel_values})
         batch_cls_embeddings = onnx_outputs[0][:, 0, :]
         return batch_cls_embeddings
 
     def _get_hero_column_center_x_akaze(self, large_image_cv2: np.ndarray) -> Tuple[Optional[int], List[str]]:
-        # ... (код без изменений) ...
         if large_image_cv2 is None:
             logging.error("[AdvRec][AKAZE CENTER] Входное изображение - None.")
             return None, []
@@ -272,7 +276,7 @@ class AdvancedRecognition:
                 logged_not_passed_count += 1
             elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG:
                 logging.info(f"[AdvRec][AKAZE CENTER]   ... и еще {len(not_passed_heroes) - MAX_NOT_PASSED_AKAZE_TO_LOG} не прошли фильтр (логирование ограничено).")
-                logged_not_passed_count += 1
+                # logged_not_passed_count += 1 # Убрал, чтобы не было бесконечного цикла, если MAX_NOT_PASSED_AKAZE_TO_LOG = 0
                 break 
 
         if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
@@ -284,8 +288,8 @@ class AdvancedRecognition:
             return None, akaze_candidates_found
 
         rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot]
-        if not rounded_x_coords:
-            logging.warning("[AdvRec][AKAZE CENTER] Нет округленных X-координат.")
+        if not rounded_x_coords: # Добавил проверку на пустой список
+            logging.warning("[AdvRec][AKAZE CENTER] Нет округленных X-координат для определения центра.")
             return None, akaze_candidates_found
 
         most_common_x_center = Counter(rounded_x_coords).most_common(1)[0][0]
@@ -293,7 +297,6 @@ class AdvancedRecognition:
 
 
     def recognize_heroes_on_screenshot(self, screenshot_cv2: np.ndarray) -> List[str]:
-        # ... (начало метода без изменений) ...
         if not self.is_ready(): 
             logging.error("[AdvRec] Модели не загружены. Распознавание невозможно.")
             return []
@@ -304,6 +307,7 @@ class AdvancedRecognition:
         script_start_time = time.time()
         
         try: 
+            # Убедимся, что скриншот конвертируется в RGB для PIL
             screenshot_pil_original = Image.fromarray(cv2.cvtColor(screenshot_cv2, cv2.COLOR_BGR2RGB))
             s_width, s_height = screenshot_pil_original.size
         except Exception as e:
@@ -316,23 +320,25 @@ class AdvancedRecognition:
         logging.info(f"[AdvRec] Время AKAZE локализации: {akaze_loc_end_time - akaze_loc_start_time:.2f} сек. Найдено AKAZE: {akaze_identified_canonical_names}")
 
         rois_for_dino: List[Dict[str, int]] = []
-        # ... (код генерации ROI остается) ...
         if column_x_center is not None:
             base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
             logging.info(f"[AdvRec] Генерация ROI для DINO. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center}). Шаг Y={ROI_GENERATION_STRIDE_Y_DINO}")
             for y_base in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
                 for x_offset in ROI_X_JITTER_VALUES_DINO: 
                     current_roi_start_x = base_roi_start_x + x_offset
+                    # Проверка выхода за пределы изображения
                     if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
                          rois_for_dino.append({'x': current_roi_start_x, 'y': y_base})
         else:
-            logging.warning("[AdvRec] Не удалось определить X-координату центра колонки. Включается fallback DINO.")
+            logging.warning("[AdvRec] Не удалось определить X-координату центра колонки. Включается fallback DINO (полное сканирование).")
             for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
                 for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
                     rois_for_dino.append({'x': x_val, 'y': y})
         
         logging.info(f"[AdvRec] Сгенерировано {len(rois_for_dino)} ROI для DINO.")
-        if not rois_for_dino: return []
+        if not rois_for_dino: 
+            logging.warning("[AdvRec] Не сгенерировано ни одного ROI для DINO.")
+            return []
         
         all_dino_detections_from_roi: List[Dict[str, Any]] = [] 
         pil_batch: List[Image.Image] = []
@@ -340,52 +346,66 @@ class AdvancedRecognition:
         processed_windows_count = 0
         dino_processing_start_time = time.time()
 
-        for roi_coord in rois_for_dino: # ... (наполнение all_dino_detections_from_roi) ...
+        for roi_coord in rois_for_dino:
             x, y = roi_coord['x'], roi_coord['y']
-            window_pil = screenshot_pil_original.crop((x, y, x + WINDOW_SIZE_W_DINO, y + WINDOW_SIZE_H_DINO))
-            pil_batch.append(window_pil)
+            window_pil_original = screenshot_pil_original.crop((x, y, x + WINDOW_SIZE_W_DINO, y + WINDOW_SIZE_H_DINO))
+            
+            # --- Применяем предобработку к ROI ---
+            window_pil_preprocessed = preprocess_image_for_dino(window_pil_original)
+            if window_pil_preprocessed is None:
+                logging.warning(f"Предобработка для ROI ({x},{y}) вернула None. Пропуск этого ROI.")
+                continue # Пропускаем этот ROI, если предобработка не удалась
+            # ------------------------------------
+            
+            pil_batch.append(window_pil_preprocessed) # Добавляем обработанное изображение в батч
             coordinates_batch.append({'x': x, 'y': y})
 
             if len(pil_batch) >= BATCH_SIZE_SLIDING_WINDOW_DINO:
                 window_embeddings_batch = self._get_cls_embeddings_for_batched_pil(pil_batch)
+                if window_embeddings_batch.size == 0 and pil_batch: # Проверка, если батч не пуст, а эмбеддинги пусты
+                    logging.warning(f"[AdvRec] Получен пустой батч эмбеддингов, хотя в pil_batch было {len(pil_batch)} элементов.")
+                else:
+                    for i in range(len(window_embeddings_batch)):
+                        window_embedding = window_embeddings_batch[i]
+                        coord = coordinates_batch[i]
+                        best_sim_for_window = -1.0
+                        best_ref_name_for_window = None 
+                        for ref_name, ref_embedding in self.dino_reference_embeddings.items():
+                            similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
+                            if similarity > best_sim_for_window:
+                                best_sim_for_window = similarity
+                                best_ref_name_for_window = ref_name
+                        if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
+                            all_dino_detections_from_roi.append({
+                                "name": best_ref_name_for_window, 
+                                "similarity": best_sim_for_window,
+                                "x": coord['x'], "y": coord['y']
+                            })
+                processed_windows_count += len(pil_batch)
+                pil_batch = []
+                coordinates_batch = []
+        
+        if pil_batch: # Обработка оставшегося батча
+            window_embeddings_batch = self._get_cls_embeddings_for_batched_pil(pil_batch)
+            if window_embeddings_batch.size == 0 and pil_batch:
+                 logging.warning(f"[AdvRec] Получен пустой батч эмбеддингов для остатка, pil_batch: {len(pil_batch)}.")
+            else:
                 for i in range(len(window_embeddings_batch)):
                     window_embedding = window_embeddings_batch[i]
                     coord = coordinates_batch[i]
                     best_sim_for_window = -1.0
-                    best_ref_name_for_window = None 
+                    best_ref_name_for_window = None
                     for ref_name, ref_embedding in self.dino_reference_embeddings.items():
                         similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
                         if similarity > best_sim_for_window:
                             best_sim_for_window = similarity
                             best_ref_name_for_window = ref_name
-                    if best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD: # Используем LOGGING_THRESHOLD
+                    if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
                         all_dino_detections_from_roi.append({
                             "name": best_ref_name_for_window, 
                             "similarity": best_sim_for_window,
                             "x": coord['x'], "y": coord['y']
                         })
-                processed_windows_count += len(pil_batch)
-                pil_batch = []
-                coordinates_batch = []
-        
-        if pil_batch: 
-            window_embeddings_batch = self._get_cls_embeddings_for_batched_pil(pil_batch)
-            for i in range(len(window_embeddings_batch)):
-                window_embedding = window_embeddings_batch[i]
-                coord = coordinates_batch[i]
-                best_sim_for_window = -1.0
-                best_ref_name_for_window = None
-                for ref_name, ref_embedding in self.dino_reference_embeddings.items():
-                    similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
-                    if similarity > best_sim_for_window:
-                        best_sim_for_window = similarity
-                        best_ref_name_for_window = ref_name
-                if best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD: # Используем LOGGING_THRESHOLD
-                    all_dino_detections_from_roi.append({
-                        "name": best_ref_name_for_window, 
-                        "similarity": best_sim_for_window,
-                        "x": coord['x'], "y": coord['y']
-                    })
             processed_windows_count += len(pil_batch)
 
         dino_processing_end_time = time.time()
@@ -394,12 +414,10 @@ class AdvancedRecognition:
         
         all_dino_detections_sorted = sorted(all_dino_detections_from_roi, key=lambda x: x["similarity"], reverse=True)
 
-        # --- ИЗМЕНЕНИЕ: Логируем ВСЕХ кандидатов DINO (прошедших DINOV2_LOGGING_SIMILARITY_THRESHOLD) ---
         logging.info(f"[AdvRec] --- Все кандидаты DINO (прошедшие порог логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%) ---")
         for i, res in enumerate(all_dino_detections_sorted):
             percentage = res["similarity"] * 100
             logging.info(f"[AdvRec]   Raw DINO {i+1}. '{res['name']}' ({normalize_hero_name_util(res['name'])}) - Сходство: {percentage:.2f}% (ROI: x={res['x']}, y={res['y']})")
-        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
         final_team_raw_names: List[str] = []
         final_team_normalized_names_set: Set[str] = set()
@@ -407,16 +425,19 @@ class AdvancedRecognition:
 
         akaze_hero_norm_names_unique = sorted(list(set(akaze_identified_canonical_names)))
         
+        # Шаг 1: Добавляем героев, найденных AKAZE и подтвержденных DINO
         for akaze_norm_name in akaze_hero_norm_names_unique:
-            # ... (логика Шага 1 без изменений) ...
             if len(final_team_raw_names) >= TEAM_SIZE: break
             if akaze_norm_name in final_team_normalized_names_set: continue
 
             best_dino_match_for_akaze_hero: Optional[Dict[str, Any]] = None
             highest_similarity = -1.0
-            for dino_cand_data in all_dino_detections_sorted: # Ищем в полном списке
+            # Ищем в полном списке DINO-кандидатов (all_dino_detections_sorted)
+            for dino_cand_data in all_dino_detections_sorted: 
                 if normalize_hero_name_util(dino_cand_data["name"]) == akaze_norm_name:
-                    if dino_cand_data["similarity"] > highest_similarity and dino_cand_data["similarity"] >= DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE:
+                    # DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE - порог для подтверждения
+                    if dino_cand_data["similarity"] > highest_similarity and \
+                       dino_cand_data["similarity"] >= DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE:
                         highest_similarity = dino_cand_data["similarity"]
                         best_dino_match_for_akaze_hero = dino_cand_data
             
@@ -432,25 +453,22 @@ class AdvancedRecognition:
             else:
                 logging.warning(f"[AdvRec] Гибрид (AKAZE): AKAZE нашел '{akaze_norm_name}', но DINO не подтвердил его с достаточной уверенностью (>{DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE*100:.0f}%).")
 
+        # Шаг 2: Добавляем оставшихся героев только по DINO
         # Фильтруем кандидатов для Шага 2 по DINOV2_FINAL_DECISION_THRESHOLD
         dino_candidates_for_final_decision = [
-            cand for cand in all_dino_detections_sorted # Используем отсортированный список всех DINO детекций
+            cand for cand in all_dino_detections_sorted 
             if cand["similarity"] >= DINOV2_FINAL_DECISION_THRESHOLD
         ]
         
         logging.info(f"[AdvRec] --- Кандидаты DINOv2 для финального решения (прошедшие порог {DINOV2_FINAL_DECISION_THRESHOLD*100:.0f}%, {len(dino_candidates_for_final_decision)} шт.) ---")
-        # Этот лог теперь будет дублировать часть предыдущего, но с явным указанием порога. Можно оставить или убрать, если предыдущий лог достаточен.
-        # for i, res in enumerate(dino_candidates_for_final_decision):
-        #     logging.info(f"[AdvRec]   DINO-Final {i+1}. '{res['name']}' ({normalize_hero_name_util(res['name'])}) - Сходство: {res['similarity']*100:.2f}% (ROI: x={res['x']}, y={res['y']})")
 
-        for dino_cand_data in dino_candidates_for_final_decision: # Итерируемся по уже отфильтрованным кандидатам
-            # ... (логика Шага 2 без изменений) ...
+        for dino_cand_data in dino_candidates_for_final_decision: 
             if len(final_team_raw_names) >= TEAM_SIZE: break
 
             dino_raw_name = dino_cand_data["name"]
             dino_norm_name = normalize_hero_name_util(dino_raw_name)
 
-            if dino_norm_name in final_team_normalized_names_set: continue
+            if dino_norm_name in final_team_normalized_names_set: continue # Уже добавлен
 
             dino_roi_y_start = dino_cand_data["y"]
             dino_roi_y_end = dino_roi_y_start + WINDOW_SIZE_H_DINO
@@ -463,16 +481,22 @@ class AdvancedRecognition:
                 
                 if overlap_height > (WINDOW_SIZE_H_DINO * Y_OVERLAP_THRESHOLD_RATIO):
                     if dino_norm_name == occ_hero_name:
-                        logging.debug(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}) совпадает с уже добавленным AKAZE-героем '{occ_hero_name}'. Не считаем за конфликтное пересечение.")
+                        # Кандидат от DINO совпадает с уже добавленным AKAZE-героем.
+                        # Это нормально, просто не добавляем его снова.
+                        logging.debug(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}) совпадает с уже добавленным AKAZE-героем '{occ_hero_name}'. Пропуск добавления.")
                     else:
-                        is_overlapping = True
+                        # Пересечение с другим героем, уже добавленным AKAZE
                         logging.info(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}, ROI Y:{dino_roi_y_start}-{dino_roi_y_end}) пересекается с '{occ_hero_name}' от AKAZE (слот Y:{occ_y_start}-{occ_y_end}). Пропуск.")
-                        break 
+                    is_overlapping = True
+                    break 
             
             if not is_overlapping:
                 final_team_raw_names.append(dino_raw_name)
                 final_team_normalized_names_set.add(dino_norm_name)
                 logging.info(f"[AdvRec] Гибрид (DINO): Добавлен '{dino_raw_name}' ({dino_norm_name}) с DINO sim: {dino_cand_data['similarity']*100:.1f}%.")
+                # Добавляем Y-слот этого DINO-героя, чтобы избежать наложений с другими DINO-героями
+                occupied_y_slots_by_akaze.append((dino_roi_y_start, dino_roi_y_end, dino_norm_name))
+
 
         logging.info(f"[AdvRec] --- Финальный гибридный результат (сырые имена, {len(final_team_raw_names)} героев) ---")
         for i, name in enumerate(final_team_raw_names):

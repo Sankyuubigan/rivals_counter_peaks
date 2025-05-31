@@ -30,19 +30,36 @@ def _get_app_data_dir() -> Path:
     app_data_dir = Path(app_data_dir_str)
     app_specific_dir = app_data_dir / "RivalsCounterPeaks" 
     
+    # Замена try-except на if-else для os.makedirs, с сохранением try-except для OSError
     if not app_specific_dir.exists():
+        logging.info(f"Директория настроек {app_specific_dir} не существует. Попытка создать...")
         try:
             app_specific_dir.mkdir(parents=True, exist_ok=True)
             logging.info(f"Создана директория настроек: {app_specific_dir}")
-        except OSError as e:
+        except OSError as e: # OSError обрабатывается, так как mkdir может отказать по разным причинам
             logging.error(f"Не удалось создать директорию настроек {app_specific_dir}: {e}")
+            fallback_dir_candidate = None
             if hasattr(sys, 'executable') and sys.executable:
-                 fallback_dir = Path(sys.executable).parent
-                 logging.warning(f"Используется fallback директория для настроек: {fallback_dir}")
-                 return fallback_dir
-            fallback_dir_cwd = Path.cwd()
-            logging.warning(f"Используется fallback директория (CWD) для настроек: {fallback_dir_cwd}")
-            return fallback_dir_cwd 
+                 fallback_dir_candidate = Path(sys.executable).parent
+                 logging.warning(f"Используется fallback директория для настроек: {fallback_dir_candidate}")
+            
+            if fallback_dir_candidate is None or not fallback_dir_candidate.is_dir(): # Дополнительная проверка
+                fallback_dir_candidate = Path.cwd()
+                logging.warning(f"Используется fallback директория (CWD) для настроек: {fallback_dir_candidate}")
+            return fallback_dir_candidate # Возвращаем здесь, если основная директория не создана
+            
+    elif not app_specific_dir.is_dir():
+        logging.error(f"Путь для настроек {app_specific_dir} существует, но не является директорией. Попытка использовать fallback.")
+        fallback_dir_candidate = None
+        if hasattr(sys, 'executable') and sys.executable:
+             fallback_dir_candidate = Path(sys.executable).parent
+             logging.warning(f"Используется fallback директория для настроек: {fallback_dir_candidate}")
+        
+        if fallback_dir_candidate is None or not fallback_dir_candidate.is_dir():
+            fallback_dir_candidate = Path.cwd()
+            logging.warning(f"Используется fallback директория (CWD) для настроек: {fallback_dir_candidate}")
+        return fallback_dir_candidate
+
     return app_specific_dir
 
 SETTINGS_FILE_PATH = _get_app_data_dir() / "app_settings.json"
@@ -53,20 +70,24 @@ class AppSettingsManager:
         self._ensure_all_defaults_present()
 
     def _load_settings_from_file(self) -> Dict[str, Any]:
+        loaded_data = {}
         if SETTINGS_FILE_PATH.exists():
-            try:
-                with open(SETTINGS_FILE_PATH, 'r', encoding='utf-8') as f:
-                    loaded_data = json.load(f)
-                if isinstance(loaded_data, dict):
-                    logging.info(f"Настройки успешно загружены из {SETTINGS_FILE_PATH}")
-                    return loaded_data
-                else:
-                    logging.warning(f"Файл настроек {SETTINGS_FILE_PATH} имеет неверный формат (не словарь). Используются настройки по умолчанию.")
-            except (json.JSONDecodeError, IOError) as e:
-                logging.error(f"Ошибка загрузки настроек из {SETTINGS_FILE_PATH}: {e}. Используются настройки по умолчанию.")
+            if SETTINGS_FILE_PATH.is_file(): # Проверяем, что это файл
+                try: # Оставляем try-except для json.load и файловых операций
+                    with open(SETTINGS_FILE_PATH, 'r', encoding='utf-8') as f:
+                        loaded_data_json = json.load(f)
+                    if isinstance(loaded_data_json, dict):
+                        logging.info(f"Настройки успешно загружены из {SETTINGS_FILE_PATH}")
+                        loaded_data = loaded_data_json
+                    else:
+                        logging.warning(f"Файл настроек {SETTINGS_FILE_PATH} имеет неверный формат (не словарь). Используются настройки по умолчанию.")
+                except (json.JSONDecodeError, IOError) as e:
+                    logging.error(f"Ошибка загрузки настроек из {SETTINGS_FILE_PATH}: {e}. Используются настройки по умолчанию.")
+            else:
+                logging.warning(f"Путь к настройкам {SETTINGS_FILE_PATH} существует, но не является файлом. Используются настройки по умолчанию.")
         else:
             logging.info(f"Файл настроек {SETTINGS_FILE_PATH} не найден. Будут использованы и сохранены настройки по умолчанию.")
-        return {} 
+        return loaded_data
 
     def _ensure_all_defaults_present(self):
         changes_made = False
@@ -77,11 +98,12 @@ class AppSettingsManager:
             self.settings[LANGUAGE_KEY] = DEFAULT_LANG_VALUE
             changes_made = True
         
-        if HOTKEYS_KEY not in self.settings or not isinstance(self.settings.get(HOTKEYS_KEY), dict):
+        # Обработка хоткеев
+        current_config_hotkeys = self.settings.get(HOTKEYS_KEY)
+        if not isinstance(current_config_hotkeys, dict): # Если ключ отсутствует или не словарь
             self.settings[HOTKEYS_KEY] = DEFAULT_HOTKEYS_VALUES.copy()
             changes_made = True
-        else:
-            current_config_hotkeys = self.settings[HOTKEYS_KEY]
+        else: # Ключ есть и это словарь, проверяем его содержимое
             default_actions = set(DEFAULT_HOTKEYS_VALUES.keys())
             loaded_actions = set(current_config_hotkeys.keys())
 
@@ -92,10 +114,11 @@ class AppSettingsManager:
                 changes_made = True
             
             extra_in_config = loaded_actions - default_actions
-            for action_id in list(extra_in_config): # Используем list для возможности удаления во время итерации
-                del current_config_hotkeys[action_id]
-                logging.info(f"Удален устаревший/неизвестный хоткей из настроек: {action_id}")
-                changes_made = True
+            if extra_in_config: # Удаляем только если есть лишние
+                for action_id in list(extra_in_config): # Используем list для возможности удаления во время итерации
+                    del current_config_hotkeys[action_id]
+                    logging.info(f"Удален устаревший/неизвестный хоткей из настроек: {action_id}")
+                    changes_made = True
 
         if SAVE_SCREENSHOT_LESS_THAN_6_KEY not in self.settings:
             self.settings[SAVE_SCREENSHOT_LESS_THAN_6_KEY] = DEFAULT_SAVE_SCREENSHOT_VALUE
@@ -109,8 +132,15 @@ class AppSettingsManager:
             self.save_settings_to_file()
 
     def save_settings_to_file(self):
+        # Оставляем try-except для критических файловых операций
         try:
-            SETTINGS_FILE_PATH.parent.mkdir(parents=True, exist_ok=True) 
+            # Убедимся, что директория существует перед записью
+            if not SETTINGS_FILE_PATH.parent.exists():
+                SETTINGS_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            elif not SETTINGS_FILE_PATH.parent.is_dir():
+                logging.error(f"Не удалось сохранить настройки: путь {SETTINGS_FILE_PATH.parent} не является директорией.")
+                return
+
             with open(SETTINGS_FILE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=4, ensure_ascii=False)
             logging.info(f"Настройки сохранены в {SETTINGS_FILE_PATH}")
@@ -121,8 +151,19 @@ class AppSettingsManager:
 
 
     def get_setting(self, key: str, default_value: Any = None) -> Any:
+        # Для хоткеев возвращаем копию, чтобы избежать случайного изменения оригинала
         if key == HOTKEYS_KEY:
-            return self.settings.get(key, default_value if default_value is not None else {}).copy()
+            # Если default_value это DEFAULT_HOTKEYS_VALUES, то .copy() уже будет применено ниже
+            # Здесь важно, чтобы self.settings.get(key, ...) возвращал словарь для .copy()
+            hotkeys_data = self.settings.get(key, default_value if default_value is not None else {})
+            if isinstance(hotkeys_data, dict):
+                return hotkeys_data.copy()
+            # Если hotkeys_data не словарь (например, None или что-то еще),
+            # возвращаем копию default_value, если он словарь, или сам default_value
+            if isinstance(default_value, dict):
+                return default_value.copy()
+            return default_value
+
         return self.settings.get(key, default_value)
 
     def set_setting(self, key: str, value: Any, auto_save: bool = True):
@@ -131,19 +172,34 @@ class AppSettingsManager:
             self.save_settings_to_file()
 
     def get_theme(self) -> str:
-        return str(self.get_setting(THEME_KEY, DEFAULT_THEME_VALUE))
+        # Гарантируем, что возвращается строка
+        theme_val = self.get_setting(THEME_KEY, DEFAULT_THEME_VALUE)
+        return str(theme_val) if theme_val is not None else DEFAULT_THEME_VALUE
+
 
     def get_language(self) -> str:
-        return str(self.get_setting(LANGUAGE_KEY, DEFAULT_LANG_VALUE))
+        lang_val = self.get_setting(LANGUAGE_KEY, DEFAULT_LANG_VALUE)
+        return str(lang_val) if lang_val is not None else DEFAULT_LANG_VALUE
+
 
     def get_hotkeys(self) -> Dict[str, str]:
-        return dict(self.get_setting(HOTKEYS_KEY, DEFAULT_HOTKEYS_VALUES.copy()))
+        # get_setting для HOTKEYS_KEY уже возвращает копию словаря или копию DEFAULT_HOTKEYS_VALUES
+        hotkeys_data = self.get_setting(HOTKEYS_KEY, DEFAULT_HOTKEYS_VALUES)
+        # Дополнительная проверка, что это действительно словарь строк
+        if isinstance(hotkeys_data, dict):
+            return {str(k): str(v) for k, v in hotkeys_data.items()}
+        return DEFAULT_HOTKEYS_VALUES.copy() # Fallback
+
 
     def get_save_screenshot_flag(self) -> bool:
-        return bool(self.get_setting(SAVE_SCREENSHOT_LESS_THAN_6_KEY, DEFAULT_SAVE_SCREENSHOT_VALUE))
+        flag_val = self.get_setting(SAVE_SCREENSHOT_LESS_THAN_6_KEY, DEFAULT_SAVE_SCREENSHOT_VALUE)
+        return bool(flag_val)
+
 
     def get_screenshot_save_path(self) -> str:
-        return str(self.get_setting(SCREENSHOT_SAVE_PATH_KEY, DEFAULT_SCREENSHOT_PATH_VALUE))
+        path_val = self.get_setting(SCREENSHOT_SAVE_PATH_KEY, DEFAULT_SCREENSHOT_PATH_VALUE)
+        return str(path_val) if path_val is not None else DEFAULT_SCREENSHOT_PATH_VALUE
+
 
     def set_theme(self, theme: str, auto_save: bool = True):
         self.set_setting(THEME_KEY, theme, auto_save)
@@ -152,10 +208,16 @@ class AppSettingsManager:
         self.set_setting(LANGUAGE_KEY, language, auto_save)
 
     def set_hotkeys(self, hotkeys: Dict[str, str], auto_save: bool = True):
-        self.set_setting(HOTKEYS_KEY, hotkeys, auto_save)
+        # Убедимся, что сохраняем словарь строк
+        if isinstance(hotkeys, dict):
+            self.set_setting(HOTKEYS_KEY, {str(k): str(v) for k, v in hotkeys.items()}, auto_save)
+        else:
+            logging.warning(f"Попытка установить некорректный тип для хоткеев: {type(hotkeys)}. Используются значения по умолчанию.")
+            self.set_setting(HOTKEYS_KEY, DEFAULT_HOTKEYS_VALUES.copy(), auto_save)
+
 
     def set_save_screenshot_flag(self, flag: bool, auto_save: bool = True):
-        self.set_setting(SAVE_SCREENSHOT_LESS_THAN_6_KEY, flag, auto_save)
+        self.set_setting(SAVE_SCREENSHOT_LESS_THAN_6_KEY, bool(flag), auto_save)
 
     def set_screenshot_save_path(self, path: str, auto_save: bool = True):
-        self.set_setting(SCREENSHOT_SAVE_PATH_KEY, path, auto_save)
+        self.set_setting(SCREENSHOT_SAVE_PATH_KEY, str(path), auto_save)
