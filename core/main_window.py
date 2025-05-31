@@ -5,6 +5,8 @@ import logging
 import os
 import datetime 
 from pathlib import Path 
+import tempfile 
+import shutil 
 
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
                                QLabel, QPushButton, QListWidget, QListWidgetItem, QAbstractItemView, 
@@ -12,7 +14,7 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, Q
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QPoint, QMetaObject, QEvent, QRect, QObject 
 from PySide6.QtGui import QIcon, QMouseEvent, QPixmap, QShowEvent, QHideEvent, QCloseEvent, QKeySequence, QKeyEvent 
 
-import utils 
+import utils # Импортируем весь модуль utils, чтобы получить доступ к RECOGNITION_AREA
 from images_load import load_default_pixmap, get_images_for_mode, SIZES 
 from logic import CounterpickLogic, TEAM_SIZE 
 from top_panel import TopPanel
@@ -22,7 +24,7 @@ from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
                      show_hero_rating, show_author_info) 
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit 
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG 
-from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE
+from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE 
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES 
 from win_api import WinApiManager
 from recognition import RecognitionManager 
@@ -36,6 +38,7 @@ from core.settings_window import SettingsWindow
 
 from core.lang.translations import get_text
 import cv2 
+import re 
 
 
 IS_ADMIN = False
@@ -57,13 +60,14 @@ class MainWindow(QMainWindow):
     action_recognize_heroes = Signal()
     action_debug_capture = Signal()
     action_toggle_tray_mode = Signal()
-    # action_toggle_mouse_ignore_independent = Signal() # УДАЛЕНО
     action_copy_team = Signal()
     action_decrease_opacity = Signal() 
     action_increase_opacity = Signal() 
 
     recognition_complete_signal = Signal(list) 
     update_tray_button_property_signal = Signal(bool) 
+    
+    clear_hotkey_state_signal = Signal()
 
     def __init__(self, logic_instance: CounterpickLogic, app_version: str):
         super().__init__()
@@ -82,6 +86,7 @@ class MainWindow(QMainWindow):
         self.current_theme = self.appearance_manager.current_theme 
         
         self.hotkey_manager = HotkeyManager(self, self.app_settings_manager) 
+        self.clear_hotkey_state_signal.connect(self.hotkey_manager.clear_pressed_keys_state)
         
         self.ui_updater = UiUpdater(self) 
         self.action_controller = ActionController(self)
@@ -322,7 +327,6 @@ class MainWindow(QMainWindow):
         
         self.action_debug_capture.connect(lambda: self._save_debug_screenshot_internal("manual_hotkey")) 
         self.action_toggle_tray_mode.connect(self.toggle_tray_mode) 
-        # self.action_toggle_mouse_ignore_independent.connect(self._handle_toggle_mouse_invisible_mode_independent) # УДАЛЕНО
         
         self.action_decrease_opacity.connect(self.decrease_window_opacity)
         self.action_increase_opacity.connect(self.increase_window_opacity)
@@ -377,7 +381,6 @@ class MainWindow(QMainWindow):
 
             if PYNPUT_AVAILABLE: 
                  if hasattr(self, 'hotkey_manager'): 
-                     # ИЗМЕНЕНИЕ: Увеличим задержку для запуска слушателя
                      QTimer.singleShot(1000, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None)
                      logging.info("    showEvent: Запланирован запуск слушателя хоткеев (с увеличенной задержкой 1000мс).")
                  else:
@@ -431,9 +434,6 @@ class MainWindow(QMainWindow):
             self.flags_manager.apply_mouse_invisible_mode("_handle_topmost_state_change")
         logging.debug(f"<-- _handle_topmost_state_change finished")
 
-    # @Slot() # УДАЛЕНО
-    # def _handle_toggle_mouse_invisible_mode_independent(self):
-    #     pass
 
     @Slot()
     def toggle_tray_mode(self):
@@ -510,82 +510,167 @@ class MainWindow(QMainWindow):
     def _is_win_topmost(self):
         return self.win_api_manager.is_win_topmost if hasattr(self, 'win_api_manager') and self.win_api_manager else False
 
-    @Slot(list)
-    def _on_recognition_complete(self, recognized_heroes_with_suffixes):
-        normalized_heroes = [utils.normalize_hero_name(name) for name in recognized_heroes_with_suffixes]
-        normalized_heroes = [name for name in normalized_heroes if name] 
-        
-        logging.info(f"MainWindow: Распознавание завершено. Оригинал: {recognized_heroes_with_suffixes}, Нормализовано: {normalized_heroes}")
+    @Slot(list) 
+    def _on_recognition_complete(self, recognized_heroes_original_names: list):
+        recognized_heroes_normalized_names = [utils.normalize_hero_name(name) for name in recognized_heroes_original_names]
+        recognized_heroes_normalized_names = [name for name in recognized_heroes_normalized_names if name] 
+
+        logging.info(f"MainWindow: Распознавание завершено. Оригинал: {recognized_heroes_original_names}, Нормализовано для логики: {recognized_heroes_normalized_names}")
         
         if hasattr(self, 'app_settings_manager'):
             should_save = self.app_settings_manager.get_save_screenshot_flag()
-            num_recognized = len(normalized_heroes)
-            if should_save and num_recognized < 6 and num_recognized > 0 : 
-                self._save_debug_screenshot_internal(reason=f"auto_recognized_{num_recognized}_heroes")
+            num_recognized = len(recognized_heroes_normalized_names) 
+            if should_save and num_recognized < 6: 
+                self._save_debug_screenshot_internal(
+                    reason="auto", 
+                    recognized_heroes_for_filename=recognized_heroes_original_names 
+                )
 
-
-        if normalized_heroes and hasattr(self, 'logic'):
-            self.logic.set_selection(set(normalized_heroes))
+        if recognized_heroes_normalized_names and hasattr(self, 'logic'):
+            self.logic.set_selection(set(recognized_heroes_normalized_names))
             if hasattr(self, 'ui_updater') and self.ui_updater:
                 self.ui_updater.update_ui_after_logic_change()
             self._reset_hotkey_cursor_after_clear()
-        elif not normalized_heroes: 
+        elif not recognized_heroes_normalized_names: 
             logging.info("Герои не распознаны или список пуст после нормализации.")
 
-    def _save_debug_screenshot_internal(self, reason="manual"):
+    def _save_debug_screenshot_internal(self, reason="manual", recognized_heroes_for_filename: list | None = None):
+        logging.info(f"Запрос на сохранение скриншота. Причина: {reason}")
         try: 
-            full_screen_area = {'monitor': 1, 'left_pct': 0, 'top_pct': 0, 'width_pct': 100, 'height_pct': 100}
-            screenshot_cv2 = utils.capture_screen_area(full_screen_area)
+            # ИЗМЕНЕНИЕ: Используем RECOGNITION_AREA для тестовых скриншотов, если причина не "manual_hotkey" (полный экран)
+            # Однако, если это авто-сохранение, мы хотим сохранить то, что было передано на распознавание.
+            # Но RecognitionWorker уже сам захватывает RECOGNITION_AREA.
+            # Поэтому, если reason="auto", то скриншот уже сделан и не нужно его делать снова.
+            # Если reason="manual_hotkey", то делаем скриншот RECOGNITION_AREA.
+
+            area_to_capture = utils.RECOGNITION_AREA # По умолчанию берем область распознавания
+            if reason == "manual_hotkey_fullscreen_debug_only": # Специальный флаг для полного скрина (если понадобится)
+                 area_to_capture = {'monitor': 1, 'left_pct': 0, 'top_pct': 0, 'width_pct': 100, 'height_pct': 100}
+            
+            # Если это автоматическое сохранение, скриншот уже должен быть сделан и передан
+            # в _on_recognition_complete. Здесь мы его не делаем повторно.
+            # Эта функция теперь больше для ручного сохранения по хоткею.
+            # Однако, чтобы унифицировать, будем всегда делать скриншот здесь.
+            # Если вы хотите сохранять именно тот кадр, который пошел на распознавание,
+            # его нужно передавать из RecognitionWorker.
+
+            logging.debug(f"Область для захвата скриншота (_save_debug_screenshot_internal): {area_to_capture}")
+            screenshot_cv2 = utils.capture_screen_area(area_to_capture)
+
 
             if screenshot_cv2 is not None:
+                logging.debug("Скриншот успешно захвачен.")
                 save_path_str = self.app_settings_manager.get_screenshot_save_path()
+                logging.debug(f"Путь из настроек: '{save_path_str}'")
                 
                 save_dir: Path
-                if save_path_str:
+                if save_path_str and Path(save_path_str).is_dir(): 
                     save_dir = Path(save_path_str)
+                    logging.debug(f"Используется указанный путь: {save_dir}")
                 else: 
+                    if save_path_str: 
+                        logging.warning(f"Указанный путь для сохранения скриншотов '{save_path_str}' не является директорией. Используется путь по умолчанию.")
                     if hasattr(sys, 'executable') and sys.executable:
                         save_dir = Path(sys.executable).parent
                     else:
                         save_dir = Path.cwd()
+                    logging.debug(f"Используется путь по умолчанию: {save_dir}")
                 
                 if not save_dir.exists():
                     try:
                         save_dir.mkdir(parents=True, exist_ok=True)
+                        logging.info(f"Создана директория для скриншотов: {save_dir}")
                     except OSError as e:
                         logging.error(f"Не удалось создать директорию для скриншотов {save_dir}: {e}")
-                        if reason.startswith("manual"): 
+                        if reason == "manual_hotkey":  # Проверяем именно эту причину для сообщения пользователю
                             QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=str(e)))
                         return
-                
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3] 
-                filename = f"rcp_screenshot_{reason}_{timestamp}.png"
-                filepath = save_dir / filename
-                
-                write_ok = False
-                error_msg = ""
-                try:
-                    write_ok = cv2.imwrite(str(filepath), screenshot_cv2)
-                except Exception as e:
-                    error_msg = str(e)
-                    logging.error(f"Ошибка cv2.imwrite при сохранении скриншота {filepath}: {e}")
+                elif not save_dir.is_dir(): 
+                     logging.error(f"Путь для сохранения скриншотов {save_dir} существует, но не является директорией. Скриншот не сохранен.")
+                     if reason == "manual_hotkey":
+                         QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=f"{save_dir} не директория"))
+                     return
 
-                if write_ok:
-                    logging.info(f"Скриншот сохранен: {filepath}")
-                    if reason.startswith("manual"): 
-                         QMessageBox.information(self, get_text('success'), get_text('screenshot_saved', filepath=str(filepath)))
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                
+                filename_base_part = ""
+                # Используем recognized_heroes_for_filename, если он предоставлен (для авто-сохранения)
+                heroes_source_for_name = recognized_heroes_for_filename if recognized_heroes_for_filename is not None else []
+
+                if reason == "auto" and heroes_source_for_name:
+                    clean_names_for_file = []
+                    for name in heroes_source_for_name:
+                        name_no_digit_suffix = re.sub(r'_\d+$', '', name) 
+                        name_no_common_suffixes = re.sub(r'(_icon|_template|_small|_left|_right|_horizontal|_adv)$', '', name_no_digit_suffix, flags=re.IGNORECASE)
+                        
+                        safe_name = re.sub(r'[^\w\s-]', '', name_no_common_suffixes).strip() 
+                        safe_name = re.sub(r'[-\s]+', '_', safe_name) 
+                        if safe_name: 
+                             clean_names_for_file.append(safe_name)
+                    
+                    unique_clean_names = sorted(list(set(clean_names_for_file)))
+
+                    if unique_clean_names:
+                        filename_base_part = ",".join(unique_clean_names)
+                        max_name_len = 100 
+                        if len(filename_base_part) > max_name_len:
+                            filename_base_part = filename_base_part[:max_name_len] + "..."
+                    else: 
+                        filename_base_part = f"recognized_{len(heroes_source_for_name)}_unknown_names"
+                else: # manual_hotkey или другой reason
+                    filename_base_part = reason
+
+                base_filename = f"rcp_{filename_base_part}_{timestamp}.png"
+                
+                final_filepath = save_dir / base_filename
+                temp_file_path = ""
+                temp_file_handle, temp_file_path = tempfile.mkstemp(suffix=".png", prefix="rcp_temp_")
+                os.close(temp_file_handle) 
+                logging.debug(f"Временный ASCII файл для сохранения: {temp_file_path}")
+
+                write_ok_temp = False
+                error_msg_cv2 = ""
+                try:
+                    write_ok_temp = cv2.imwrite(temp_file_path, screenshot_cv2)
+                    if not write_ok_temp:
+                        error_msg_cv2 = "cv2.imwrite (temp) вернул False."
+                except cv2.error as e_cv2:
+                    error_msg_cv2 = f"OpenCV ошибка (temp): {e_cv2}"
+                    logging.error(f"Ошибка cv2.imwrite (temp) при сохранении в {temp_file_path}: {e_cv2}")
+                except Exception as e:
+                    error_msg_cv2 = f"Общее исключение (temp): {e}"
+                    logging.error(f"Общее исключение при cv2.imwrite (temp) для {temp_file_path}: {e}", exc_info=True)
+
+                if write_ok_temp:
+                    logging.info(f"Скриншот успешно сохранен во временный файл: {temp_file_path}")
+                    try:
+                        logging.debug(f"Перемещение из '{temp_file_path}' в '{final_filepath}'")
+                        shutil.move(temp_file_path, final_filepath)
+                        logging.info(f"Скриншот успешно перемещен в: {final_filepath}")
+                        if reason == "manual_hotkey": 
+                             QMessageBox.information(self, get_text('success'), get_text('screenshot_saved', filepath=str(final_filepath)))
+                    except Exception as e_move:
+                        logging.error(f"Ошибка перемещения файла из {temp_file_path} в {final_filepath}: {e_move}")
+                        if reason == "manual_hotkey":
+                             QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=f"Ошибка перемещения: {e_move}"))
+                        if os.path.exists(temp_file_path):
+                            try: os.remove(temp_file_path)
+                            except: pass
                 else:
-                    final_error = error_msg if error_msg else "cv2.imwrite вернул False"
-                    logging.warning(f"Не удалось сохранить скриншот в {filepath}. Ошибка: {final_error}")
-                    if reason.startswith("manual"):
+                    final_error = error_msg_cv2 if error_msg_cv2 else "Неизвестная ошибка записи во временный файл."
+                    logging.warning(f"Не удалось сохранить скриншот во временный файл {temp_file_path}. Ошибка: {final_error}")
+                    if reason == "manual_hotkey":
                          QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=final_error))
+                    if os.path.exists(temp_file_path): 
+                        try: os.remove(temp_file_path)
+                        except: pass
             else:
                 logging.warning("Не удалось сделать скриншот (capture_screen_area вернул None).")
-                if reason.startswith("manual"):
+                if reason == "manual_hotkey":
                      QMessageBox.warning(self, get_text('error'), get_text('recognition_no_screenshot'))
         except Exception as e:
-            logging.error(f"Ошибка при сохранении скриншота: {e}", exc_info=True)
-            if reason.startswith("manual"):
+            logging.error(f"Ошибка при сохранении скриншота (внешний try-except): {e}", exc_info=True)
+            if reason == "manual_hotkey":
                  QMessageBox.critical(self, get_text('error'), get_text('screenshot_save_failed', error=str(e)))
 
 
@@ -641,12 +726,24 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def show_settings_window(self):
+        logging.info("[MainWindow] show_settings_window called.")
         if not self.settings_window_instance:
+            logging.debug("  Creating new SettingsWindow instance.")
             self.settings_window_instance = SettingsWindow(self.app_settings_manager, self)
             self.settings_window_instance.settings_applied_signal.connect(self.on_settings_applied)
+            self.settings_window_instance.finished.connect(self._on_modal_dialog_closed)
+        else:
+            logging.debug("  Using existing SettingsWindow instance.")
         
-        self.settings_window_instance._load_settings_into_dialog() 
         self.settings_window_instance.exec()
+        logging.info("[MainWindow] SettingsWindow closed.")
+
+    @Slot(int)
+    def _on_modal_dialog_closed(self, result: int):
+        logging.info(f"Модальное окно (вероятно, SettingsWindow) закрыто с результатом: {result}. Очистка состояния хоткеев.")
+        if hasattr(self, 'clear_hotkey_state_signal'):
+            self.clear_hotkey_state_signal.emit()
+
 
     @Slot()
     def on_settings_applied(self):
@@ -765,6 +862,9 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent): 
         logging.info("MainWindow closeEvent triggered.")
         
+        if hasattr(self, 'clear_hotkey_state_signal'):
+            self.clear_hotkey_state_signal.emit()
+
         if self.log_dialog and self.log_dialog.isVisible() : 
             self.log_dialog.close() 
         
@@ -772,7 +872,7 @@ class MainWindow(QMainWindow):
              self.hotkey_display_dialog.reject() 
         
         if self.settings_window_instance and self.settings_window_instance.isVisible():
-            self.settings_window_instance.reject()
+            self.settings_window_instance.reject() 
 
         if hasattr(self, 'hotkey_manager'): 
             logging.info("Остановка слушателя хоткеев перед закрытием...")

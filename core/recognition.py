@@ -2,47 +2,58 @@
 import logging
 import os 
 import sys 
+import numpy as np 
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import QMessageBox
 
-from utils import RECOGNITION_AREA, capture_screen_area
+# ВОЗВРАЩАЕМ RECOGNITION_AREA
+from utils import RECOGNITION_AREA, capture_screen_area 
 from core.lang.translations import get_text
 from core.advanced_recognition_logic import AdvancedRecognition 
 from core.images_load import load_hero_templates_cv2 
 
 class RecognitionWorker(QObject):
     """Воркер для распознавания героев в отдельном потоке."""
-    finished = Signal(list)
+    finished = Signal(list) 
     error = Signal(str)
 
-    def __init__(self, advanced_recognizer: AdvancedRecognition, recognition_area, parent=None):
+    # ВОЗВРАЩАЕМ recognition_area в конструктор
+    def __init__(self, advanced_recognizer: AdvancedRecognition, recognition_area_dict: dict, parent=None):
         super().__init__(parent)
         self.advanced_recognizer = advanced_recognizer
-        self.recognition_area = recognition_area
+        self.recognition_area_to_capture = recognition_area_dict # Используем переданный словарь
         self._is_running = True
-        self.current_language = "ru_RU" # Язык по умолчанию для воркера
-        logging.debug(f"[RecognitionWorker] Initialized.")
+        self.current_language = "ru_RU" 
+        logging.debug(f"[RecognitionWorker] Initialized with recognition_area: {self.recognition_area_to_capture}")
 
     @Slot()
     def run(self):
         """Основная функция воркера."""
         logging.info("[THREAD][RecognitionWorker] Worker started execution.")
-        recognized_heroes = []
+        recognized_heroes_original_names = []
         if not self._is_running:
             logging.warning("[THREAD][RecognitionWorker] Worker stopped before starting.")
-            if hasattr(self, 'error') and self.error is not None : self.error.emit("Recognition cancelled before start.") # Проверка на None
+            if hasattr(self, 'error') and self.error is not None : self.error.emit("Recognition cancelled before start.") 
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished early (stopped).")
             return
 
-        screenshot_cv2 = capture_screen_area(self.recognition_area)
-        if screenshot_cv2 is None:
-            logging.error("[THREAD][RecognitionWorker] Failed to capture screenshot.")
+        # --- ИЗМЕНЕНИЕ: Захват только RECOGNITION_AREA ---
+        # Используем self.recognition_area_to_capture, который был передан при создании воркера
+        screenshot_to_recognize_cv2 = capture_screen_area(self.recognition_area_to_capture)
+        # --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
+        if screenshot_to_recognize_cv2 is None:
+            logging.error(f"[THREAD][RecognitionWorker] Failed to capture RECOGNITION_AREA: {self.recognition_area_to_capture}")
             if self._is_running and hasattr(self, 'error') and self.error is not None : self.error.emit(get_text('recognition_no_screenshot', language=self.current_language))
-            logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (screenshot error).")
+            logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (RECOGNITION_AREA screenshot error).")
             return
+        
+        logging.info(f"[THREAD][RecognitionWorker] RECOGNITION_AREA captured, shape: {screenshot_to_recognize_cv2.shape}")
+
+        # Ручная обрезка до правой половины БОЛЬШЕ НЕ НУЖНА, так как мы уже захватили нужную область
 
         if not self._is_running:
-            logging.info("[THREAD][RecognitionWorker] Worker stopped after screenshot.")
+            logging.info("[THREAD][RecognitionWorker] Worker stopped after screenshot processing.")
             return
         
         if not self.advanced_recognizer.is_ready():
@@ -52,13 +63,16 @@ class RecognitionWorker(QObject):
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (models not ready).")
             return
 
-        recognized_heroes = self.advanced_recognizer.recognize_heroes_on_screenshot(screenshot_cv2)
-
+        # Передаем захваченную (и потенциально уже обрезанную через RECOGNITION_AREA) область в распознаватель
+        recognized_heroes_original_names = self.advanced_recognizer.recognize_heroes_on_screenshot(screenshot_to_recognize_cv2)
+        
         if not self._is_running:
             logging.info("[THREAD][RecognitionWorker] Worker stopped after recognition.")
             return
-        if hasattr(self, 'finished') and self.finished is not None: self.finished.emit(recognized_heroes)
-        logging.info(f"[THREAD][RecognitionWorker] Worker finished signal emitted with: {recognized_heroes}")
+        
+        if hasattr(self, 'finished') and self.finished is not None: 
+            self.finished.emit(recognized_heroes_original_names) 
+        logging.info(f"[THREAD][RecognitionWorker] Worker finished signal emitted with original names: {recognized_heroes_original_names}")
         logging.info(f"[THREAD][RecognitionWorker] Worker run method finished.")
 
     def stop(self):
@@ -68,7 +82,7 @@ class RecognitionWorker(QObject):
 
 class RecognitionManager(QObject):
     """Управляет процессом распознавания."""
-    recognition_complete_signal = Signal(list)
+    recognition_complete_signal = Signal(list) 
     error = Signal(str)
     recognize_heroes_signal = Signal()
 
@@ -85,9 +99,7 @@ class RecognitionManager(QObject):
             project_root_for_adv_rec = sys._MEIPASS
             logging.info(f"[RecognitionManager] Приложение 'заморожено', project_root_for_adv_rec установлен в sys._MEIPASS: {project_root_for_adv_rec}")
         else:
-            # __file__ это core/recognition.py -> dirname это core/
-            # '..' -> корень проекта, где лежат core, database, nn_models, resources
-            project_root_for_adv_rec = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) # <--- ИЗМЕНЕНО: один '..'
+            project_root_for_adv_rec = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
             logging.info(f"[RecognitionManager] Приложение не 'заморожено', project_root_for_adv_rec установлен в: {project_root_for_adv_rec}")
 
         akaze_cv2_templates = load_hero_templates_cv2() 
@@ -114,17 +126,18 @@ class RecognitionManager(QObject):
 
         if not self.advanced_recognizer.is_ready():
             error_msg = get_text('recognition_error_prefix', language=self.logic_for_lang.DEFAULT_LANGUAGE) + " " + \
-                        get_text('recognition_no_templates', language=self.logic_for_lang.DEFAULT_LANGUAGE) # Более общая ошибка
+                        get_text('recognition_no_templates', language=self.logic_for_lang.DEFAULT_LANGUAGE) 
             logging.error(f"[ERROR][RecognitionManager] {error_msg}")
             if hasattr(self, 'error') and self.error is not None: self.error.emit(error_msg)
             return
-
+        
+        # ИЗМЕНЕНИЕ: Передаем RECOGNITION_AREA в конструктор RecognitionWorker
         self._recognition_worker = RecognitionWorker(self.advanced_recognizer, RECOGNITION_AREA)
-        if self._recognition_worker : # Проверка что worker создан
-             self._recognition_worker.current_language = self.logic_for_lang.DEFAULT_LANGUAGE # Передаем язык
+        if self._recognition_worker : 
+             self._recognition_worker.current_language = self.logic_for_lang.DEFAULT_LANGUAGE 
         
         self._recognition_thread = QThread(self.main_window)
-        if self._recognition_worker and self._recognition_thread: # Доп. проверки
+        if self._recognition_worker and self._recognition_thread: 
             self._recognition_worker.moveToThread(self._recognition_thread)
             self._recognition_thread.started.connect(self._recognition_worker.run)
             if hasattr(self._recognition_worker, 'finished') and self._recognition_worker.finished is not None:

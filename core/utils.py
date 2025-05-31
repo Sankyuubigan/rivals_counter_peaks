@@ -9,6 +9,9 @@ import logging
 from pathlib import Path
 import re # Добавлен re для нормализации имен
 
+# RECOGNITION_AREA теперь не используется RecognitionManager напрямую для захвата,
+# но может использоваться другими частями или для справки.
+# Если он больше нигде не нужен, его можно удалить.
 RECOGNITION_AREA = {
     'monitor': 1, 'left_pct': 50, 'top_pct': 20, 'width_pct': 40, 'height_pct': 50
 }
@@ -62,42 +65,34 @@ def normalize_hero_name(name: str) -> str:
     if not name:
         return ""
     
-    # Сначала приводим к общему виду (как в именах файлов)
     normalized = name.lower()
-    # Удаляем распространенные суффиксы, которые могут добавляться при распознавании или именовании файлов
-    suffixes_to_remove = ["_1", "_2", "_icon", "_template", "_small", "_left", "_right", "_horizontal"]
+    suffixes_to_remove = ["_1", "_2", "_icon", "_template", "_small", "_left", "_right", "_horizontal", "_adv"] # Добавлен _adv на всякий случай
     for suffix in suffixes_to_remove:
         if normalized.endswith(suffix):
             normalized = normalized[:-len(suffix)]
-            break # Предполагаем, что суффикс один
+            # Не делаем break, чтобы удалить несколько суффиксов, если они есть (маловероятно, но безопасно)
     
-    # Заменяем пробелы на подчеркивания и наоборот для поиска совпадения
-    name_with_underscores = normalized.replace(' ', '_')
-    name_with_spaces = normalized.replace('_', ' ')
+    # Заменяем тире и несколько подчеркиваний/пробелов на один пробел, затем убираем лишние пробелы
+    normalized = re.sub(r'[-_]+', ' ', normalized)
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
 
-    # Проверяем точное совпадение с каноническими именами (с учетом регистра)
+    name_with_spaces = normalized # Уже с пробелами
+
+    # Проверяем точное совпадение с каноническими именами (с учетом регистра после приведения канонического к lower)
     for hero_canonical_name in heroes: # heroes из heroes_bd
-        # Сравниваем нормализованные версии
         if hero_canonical_name.lower() == name_with_spaces:
             return hero_canonical_name
-        if hero_canonical_name.lower().replace(' ', '_') == name_with_underscores:
-            return hero_canonical_name
             
-    # Если точное совпадение не найдено, возвращаем наиболее "чистый" вариант
-    # после удаления суффиксов и попытки привести к наиболее вероятному виду
-    # (например, с пробелами и заглавными буквами)
-    # Это может быть не идеально, но лучше, чем имя с суффиксом.
-    # Попробуем капитализировать слова
+    # Если точное совпадение не найдено, пробуем капитализировать слова
     parts = name_with_spaces.split(' ')
     capitalized_name = " ".join(p.capitalize() for p in parts)
     
-    # Проверим еще раз с капитализированным именем
     for hero_canonical_name in heroes:
-        if hero_canonical_name == capitalized_name:
+        if hero_canonical_name == capitalized_name: # Сравнение с уже капитализированным каноническим
             return hero_canonical_name
             
     logging.warning(f"Не удалось точно сопоставить нормализованное имя '{normalized}' (исходное: '{name}') с каноническим. Возвращаем '{capitalized_name}'.")
-    return capitalized_name # или name_with_spaces, если капитализация не нужна
+    return capitalized_name
 
 
 def validate_heroes():

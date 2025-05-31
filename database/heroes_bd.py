@@ -169,6 +169,13 @@ heroes_counters = {
         "hard":[],
         "soft":["Black Panther", "Magneto", "Doctor Strange", "Hela", "Widow",
                      "Bucky", "Squirrel Girl", "Storm"]},
+    "Ultron": {
+        "hard":["Doctor Strange", "Fister", "Namor","Punisher",  "Widow", "Hela", "Hawkeye","SpiderMan",],
+        "soft":[
+         "StarLord",
+        "Psylocke",  "Adam Warlock", "Mantis", "Luna Snow",
+        "Hulk", "Witch", "Bucky"
+    ]},
 }
 
 # Основной список всех героев
@@ -179,7 +186,7 @@ heroes = [
     "Black Panther", "Squirrel Girl", "SpiderMan", "StarLord", "Wolverine", "Hawkeye", "Magik", "Widow",
     "Witch", "Namor", "Fister", "Human Torch",
     "Loki", "Cloak and Dagger", "Jeff", "Mantis", "Luna Snow",
-    "Rocket Racoon", "Invisible Woman", "Adam Warlock",
+    "Rocket Racoon", "Invisible Woman", "Adam Warlock", "Ultron"
 ]
 
 # Герои, которые пока не реализованы (для информации)
