@@ -9,11 +9,6 @@ transformers==4.38.2
 onnxruntime
 tqdm 
 PyYAML
-# Добавьте сюда другие явные зависимости вашего проекта, если они есть,
-# например, huggingface-hub, tokenizers, safetensors, filelock, requests, packaging, regex,
-# если вы их устанавливали отдельно, а не как транзитивные зависимости transformers.
-# Но обычно pip сам разбирается с транзитивными зависимостями при установке transformers==4.38.2.
-# Для PyInstaller лучше иметь их явно перечисленными, если они критичны.
 huggingface-hub
 tokenizers
 safetensors
@@ -21,3 +16,4 @@ filelock
 requests
 packaging
 regex
+keyboard

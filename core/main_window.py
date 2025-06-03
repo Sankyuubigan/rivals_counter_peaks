@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, Q
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QPoint, QMetaObject, QEvent, QRect, QObject 
 from PySide6.QtGui import QIcon, QMouseEvent, QPixmap, QShowEvent, QHideEvent, QCloseEvent, QKeySequence, QKeyEvent 
 
-import utils # Импортируем весь модуль utils, чтобы получить доступ к RECOGNITION_AREA
+import utils
 from images_load import load_default_pixmap, get_images_for_mode, SIZES 
 from logic import CounterpickLogic, TEAM_SIZE 
 from top_panel import TopPanel
@@ -24,7 +24,8 @@ from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
                      show_hero_rating, show_author_info) 
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit 
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG 
-from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE 
+# from hotkey_manager import HotkeyManager, PYNPUT_AVAILABLE # Старый менеджер
+from core.keyboard_hotkey_adapter import KeyboardHotkeyAdapter, KEYBOARD_AVAILABLE # Новый адаптер
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES 
 from win_api import WinApiManager
 from recognition import RecognitionManager 
@@ -50,6 +51,7 @@ if sys.platform == 'win32':
 
 
 class MainWindow(QMainWindow):
+    # Сигналы для действий остаются теми же
     action_move_cursor_up = Signal()
     action_move_cursor_down = Signal()
     action_move_cursor_left = Signal()
@@ -67,7 +69,7 @@ class MainWindow(QMainWindow):
     recognition_complete_signal = Signal(list) 
     update_tray_button_property_signal = Signal(bool) 
     
-    clear_hotkey_state_signal = Signal()
+    clear_hotkey_state_signal = Signal() # Сигнал для адаптера хоткеев
 
     def __init__(self, logic_instance: CounterpickLogic, app_version: str):
         super().__init__()
@@ -85,8 +87,9 @@ class MainWindow(QMainWindow):
         self.appearance_manager = AppearanceManager(self, self.app_settings_manager)
         self.current_theme = self.appearance_manager.current_theme 
         
-        self.hotkey_manager = HotkeyManager(self, self.app_settings_manager) 
-        self.clear_hotkey_state_signal.connect(self.hotkey_manager.clear_pressed_keys_state)
+        # Заменяем HotkeyManager на KeyboardHotkeyAdapter
+        self.hotkey_adapter = KeyboardHotkeyAdapter(self) 
+        self.clear_hotkey_state_signal.connect(self.hotkey_adapter.clear_pressed_keys_state)
         
         self.ui_updater = UiUpdater(self) 
         self.action_controller = ActionController(self)
@@ -110,10 +113,13 @@ class MainWindow(QMainWindow):
         self._connect_signals() 
         self._initial_ui_update_done = False 
 
-        self.setWindowOpacity(1.0)
-
+        self.setWindowOpacity(1.0) # Начальная непрозрачность
 
         logging.info(f"<<< MainWindow.__init__ FINISHED. Начальные флаги окна: {self.windowFlags():#x}")
+
+    # ... (методы _set_application_icon, _setup_logging_and_dialogs, _do_toggle_mode_slot, 
+    # switch_language, update_language, switch_theme, apply_theme_qss, _init_ui_attributes,
+    # _setup_window_properties, _create_main_ui_layout, _create_icons_scroll_area_structure без изменений) ...
 
     def _set_application_icon(self):
         icon_path_logo = utils.resource_path("logo.ico")
@@ -311,6 +317,7 @@ class MainWindow(QMainWindow):
             logging.error("    ActionController не инициализирован, подключение сигналов невозможно.")
             return
 
+        # Сигналы действий подключаются к ActionController как и раньше
         self.action_move_cursor_up.connect(lambda: self.action_controller.handle_move_cursor('up'))
         self.action_move_cursor_down.connect(lambda: self.action_controller.handle_move_cursor('down'))
         self.action_move_cursor_left.connect(lambda: self.action_controller.handle_move_cursor('left'))
@@ -345,7 +352,6 @@ class MainWindow(QMainWindow):
         logging.debug(f">>> showEvent START. Visible: {self.isVisible()}, Active: {self.isActiveWindow()}, isApplyingFlags: {is_applying_flags}, initialDone: {self._initial_ui_update_done}, Spontaneous: {event.spontaneous()}")
         
         current_pos_before_super = self.pos() 
-
         super().showEvent(event) 
         
         if is_applying_flags and not event.spontaneous(): 
@@ -379,15 +385,17 @@ class MainWindow(QMainWindow):
                 if hasattr(self, 'flags_manager'):
                     self.flags_manager.apply_mouse_invisible_mode("initial_show_no_ui_updater")
 
-            if PYNPUT_AVAILABLE: 
-                 if hasattr(self, 'hotkey_manager'): 
-                     QTimer.singleShot(1000, lambda: self.hotkey_manager.start_listening() if self.hotkey_manager else None)
-                     logging.info("    showEvent: Запланирован запуск слушателя хоткеев (с увеличенной задержкой 1000мс).")
-                 else:
-                     logging.warning("    showEvent: HotkeyManager не найден, слушатель не будет запущен.")
+            # Измененный блок запуска хоткеев
+            if KEYBOARD_AVAILABLE: 
+                if hasattr(self, 'hotkey_adapter'): 
+                    # Загружаем хоткеи из настроек и регистрируем их
+                    loaded_hotkeys_from_settings = self.app_settings_manager.get_hotkeys()
+                    QTimer.singleShot(1000, lambda: self.hotkey_adapter.load_and_register_hotkeys(loaded_hotkeys_from_settings) if self.hotkey_adapter else None)
+                    logging.info("    showEvent: Запланирована загрузка и регистрация хоткеев через KeyboardHotkeyAdapter (с задержкой 1000мс).")
+                else:
+                    logging.warning("    showEvent: HotkeyAdapter (keyboard) не найден, хоткеи не будут загружены/зарегистрированы.")
             else:
-                 logging.warning("    showEvent: PYNPUT_AVAILABLE is False, слушатель хоткеев не будет запущен.")
-
+                 logging.warning("    showEvent: KEYBOARD_AVAILABLE is False, хоткеи не будут активны.")
             
             self._initial_ui_update_done = True
             logging.info(f"    showEvent: Первоначальная настройка UI завершена. Время: {(time.perf_counter() - t_initial_setup_start)*1000:.2f} ms")
@@ -537,26 +545,12 @@ class MainWindow(QMainWindow):
     def _save_debug_screenshot_internal(self, reason="manual", recognized_heroes_for_filename: list | None = None):
         logging.info(f"Запрос на сохранение скриншота. Причина: {reason}")
         try: 
-            # ИЗМЕНЕНИЕ: Используем RECOGNITION_AREA для тестовых скриншотов, если причина не "manual_hotkey" (полный экран)
-            # Однако, если это авто-сохранение, мы хотим сохранить то, что было передано на распознавание.
-            # Но RecognitionWorker уже сам захватывает RECOGNITION_AREA.
-            # Поэтому, если reason="auto", то скриншот уже сделан и не нужно его делать снова.
-            # Если reason="manual_hotkey", то делаем скриншот RECOGNITION_AREA.
-
-            area_to_capture = utils.RECOGNITION_AREA # По умолчанию берем область распознавания
-            if reason == "manual_hotkey_fullscreen_debug_only": # Специальный флаг для полного скрина (если понадобится)
+            area_to_capture = utils.RECOGNITION_AREA 
+            if reason == "manual_hotkey_fullscreen_debug_only": 
                  area_to_capture = {'monitor': 1, 'left_pct': 0, 'top_pct': 0, 'width_pct': 100, 'height_pct': 100}
             
-            # Если это автоматическое сохранение, скриншот уже должен быть сделан и передан
-            # в _on_recognition_complete. Здесь мы его не делаем повторно.
-            # Эта функция теперь больше для ручного сохранения по хоткею.
-            # Однако, чтобы унифицировать, будем всегда делать скриншот здесь.
-            # Если вы хотите сохранять именно тот кадр, который пошел на распознавание,
-            # его нужно передавать из RecognitionWorker.
-
             logging.debug(f"Область для захвата скриншота (_save_debug_screenshot_internal): {area_to_capture}")
             screenshot_cv2 = utils.capture_screen_area(area_to_capture)
-
 
             if screenshot_cv2 is not None:
                 logging.debug("Скриншот успешно захвачен.")
@@ -582,7 +576,7 @@ class MainWindow(QMainWindow):
                         logging.info(f"Создана директория для скриншотов: {save_dir}")
                     except OSError as e:
                         logging.error(f"Не удалось создать директорию для скриншотов {save_dir}: {e}")
-                        if reason == "manual_hotkey":  # Проверяем именно эту причину для сообщения пользователю
+                        if reason == "manual_hotkey":
                             QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=str(e)))
                         return
                 elif not save_dir.is_dir(): 
@@ -592,9 +586,7 @@ class MainWindow(QMainWindow):
                      return
 
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                
                 filename_base_part = ""
-                # Используем recognized_heroes_for_filename, если он предоставлен (для авто-сохранения)
                 heroes_source_for_name = recognized_heroes_for_filename if recognized_heroes_for_filename is not None else []
 
                 if reason == "auto" and heroes_source_for_name:
@@ -602,14 +594,11 @@ class MainWindow(QMainWindow):
                     for name in heroes_source_for_name:
                         name_no_digit_suffix = re.sub(r'_\d+$', '', name) 
                         name_no_common_suffixes = re.sub(r'(_icon|_template|_small|_left|_right|_horizontal|_adv)$', '', name_no_digit_suffix, flags=re.IGNORECASE)
-                        
                         safe_name = re.sub(r'[^\w\s-]', '', name_no_common_suffixes).strip() 
                         safe_name = re.sub(r'[-\s]+', '_', safe_name) 
-                        if safe_name: 
-                             clean_names_for_file.append(safe_name)
+                        if safe_name: clean_names_for_file.append(safe_name)
                     
                     unique_clean_names = sorted(list(set(clean_names_for_file)))
-
                     if unique_clean_names:
                         filename_base_part = ",".join(unique_clean_names)
                         max_name_len = 100 
@@ -617,23 +606,32 @@ class MainWindow(QMainWindow):
                             filename_base_part = filename_base_part[:max_name_len] + "..."
                     else: 
                         filename_base_part = f"recognized_{len(heroes_source_for_name)}_unknown_names"
-                else: # manual_hotkey или другой reason
+                else: 
                     filename_base_part = reason
-
                 base_filename = f"rcp_{filename_base_part}_{timestamp}.png"
                 
                 final_filepath = save_dir / base_filename
                 temp_file_path = ""
-                temp_file_handle, temp_file_path = tempfile.mkstemp(suffix=".png", prefix="rcp_temp_")
-                os.close(temp_file_handle) 
-                logging.debug(f"Временный ASCII файл для сохранения: {temp_file_path}")
-
-                write_ok_temp = False
-                error_msg_cv2 = ""
+                # Используем try-except для временного файла
+                temp_file_created = False
                 try:
-                    write_ok_temp = cv2.imwrite(temp_file_path, screenshot_cv2)
-                    if not write_ok_temp:
-                        error_msg_cv2 = "cv2.imwrite (temp) вернул False."
+                    temp_file_handle, temp_file_path_str = tempfile.mkstemp(suffix=".png", prefix="rcp_temp_")
+                    os.close(temp_file_handle)
+                    temp_file_path = Path(temp_file_path_str) # Конвертируем в Path
+                    temp_file_created = True
+                    logging.debug(f"Временный файл для сохранения: {temp_file_path}")
+                except Exception as e_temp:
+                    logging.error(f"Ошибка создания временного файла: {e_temp}")
+                    if reason == "manual_hotkey":
+                        QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=f"Temp file error: {e_temp}"))
+                    return
+                
+                if not temp_file_created: return # Выход если временный файл не создан
+
+                write_ok_temp = False; error_msg_cv2 = ""
+                try:
+                    write_ok_temp = cv2.imwrite(str(temp_file_path), screenshot_cv2) # cv2.imwrite ожидает строку
+                    if not write_ok_temp: error_msg_cv2 = "cv2.imwrite (temp) вернул False."
                 except cv2.error as e_cv2:
                     error_msg_cv2 = f"OpenCV ошибка (temp): {e_cv2}"
                     logging.error(f"Ошибка cv2.imwrite (temp) при сохранении в {temp_file_path}: {e_cv2}")
@@ -645,7 +643,7 @@ class MainWindow(QMainWindow):
                     logging.info(f"Скриншот успешно сохранен во временный файл: {temp_file_path}")
                     try:
                         logging.debug(f"Перемещение из '{temp_file_path}' в '{final_filepath}'")
-                        shutil.move(temp_file_path, final_filepath)
+                        shutil.move(str(temp_file_path), str(final_filepath)) # shutil.move также ожидает строки
                         logging.info(f"Скриншот успешно перемещен в: {final_filepath}")
                         if reason == "manual_hotkey": 
                              QMessageBox.information(self, get_text('success'), get_text('screenshot_saved', filepath=str(final_filepath)))
@@ -653,16 +651,16 @@ class MainWindow(QMainWindow):
                         logging.error(f"Ошибка перемещения файла из {temp_file_path} в {final_filepath}: {e_move}")
                         if reason == "manual_hotkey":
                              QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=f"Ошибка перемещения: {e_move}"))
-                        if os.path.exists(temp_file_path):
-                            try: os.remove(temp_file_path)
+                        if temp_file_path.exists(): # Проверяем существование перед удалением
+                            try: temp_file_path.unlink()
                             except: pass
                 else:
                     final_error = error_msg_cv2 if error_msg_cv2 else "Неизвестная ошибка записи во временный файл."
                     logging.warning(f"Не удалось сохранить скриншот во временный файл {temp_file_path}. Ошибка: {final_error}")
                     if reason == "manual_hotkey":
                          QMessageBox.warning(self, get_text('error'), get_text('screenshot_save_failed', error=final_error))
-                    if os.path.exists(temp_file_path): 
-                        try: os.remove(temp_file_path)
+                    if temp_file_path.exists(): 
+                        try: temp_file_path.unlink()
                         except: pass
             else:
                 logging.warning("Не удалось сделать скриншот (capture_screen_area вернул None).")
@@ -717,10 +715,26 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _show_hotkey_info_dialog(self):
-        if self.hotkey_display_dialog: 
-            self.hotkey_display_dialog.update_html_content()
+        # Используем KeyboardHotkeyAdapter для получения актуальных хоткеев
+        current_hotkeys_internal_format = {}
+        if hasattr(self, 'hotkey_adapter'):
+            current_hotkeys_internal_format = self.hotkey_adapter.get_current_hotkeys_config_for_settings()
         else:
-            self.hotkey_display_dialog = HotkeyDisplayDialog(self)
+            logging.warning("HotkeyAdapter не найден, информационное окно хоткеев может быть неактуальным.")
+
+        # Создаем диалог каждый раз, чтобы он подхватывал актуальные хоткеи и тему
+        # HotkeyDisplayDialog должен быть адаптирован для работы с KeyboardHotkeyAdapter или принимать конфиг
+        # Пока оставим как есть, предполагая, что HotkeyDisplayDialog будет адаптирован
+        # или будет использовать глобальный доступ к менеджеру хоткеев (менее предпочтительно).
+        # ПРАВИЛЬНЕЕ: передавать ему актуальный конфиг хоткеев.
+        # TODO: Адаптировать HotkeyDisplayDialog для получения конфига.
+        # Временное решение: он все еще может пытаться получить конфиг из self.parent_window.hotkey_manager
+        # что теперь будет self.parent_window.hotkey_adapter.
+        
+        if self.hotkey_display_dialog: 
+            self.hotkey_display_dialog.update_html_content() # Этот метод должен уметь работать с новым адаптером
+        else:
+            self.hotkey_display_dialog = HotkeyDisplayDialog(self) # Передаем MainWindow как родителя
         self.hotkey_display_dialog.exec()
 
 
@@ -729,28 +743,45 @@ class MainWindow(QMainWindow):
         logging.info("[MainWindow] show_settings_window called.")
         if not self.settings_window_instance:
             logging.debug("  Creating new SettingsWindow instance.")
+            # Передаем AppSettingsManager и ссылку на MainWindow (parent)
             self.settings_window_instance = SettingsWindow(self.app_settings_manager, self)
+            # Сигнал settings_applied_signal уже есть в SettingsWindow
             self.settings_window_instance.settings_applied_signal.connect(self.on_settings_applied)
             self.settings_window_instance.finished.connect(self._on_modal_dialog_closed)
         else:
             logging.debug("  Using existing SettingsWindow instance.")
         
+        # SettingsWindow сам загрузит настройки через AppSettingsManager при открытии (в open/exec)
         self.settings_window_instance.exec()
         logging.info("[MainWindow] SettingsWindow closed.")
 
     @Slot(int)
     def _on_modal_dialog_closed(self, result: int):
-        logging.info(f"Модальное окно (вероятно, SettingsWindow) закрыто с результатом: {result}. Очистка состояния хоткеев.")
-        if hasattr(self, 'clear_hotkey_state_signal'):
-            self.clear_hotkey_state_signal.emit()
+        # Этот слот вызывается, когда любое модальное окно, использующее finished.connect, закрывается.
+        # Например, HotkeyCaptureLineEdit диалог или SettingsWindow.
+        logging.info(f"Модальное окно закрыто с результатом: {result}. Очистка состояния хоткеев (если это был диалог ввода).")
+        
+        # Мы не можем точно знать, какой диалог закрылся, только по этому сигналу.
+        # HotkeyCaptureLineEdit уже сам обрабатывает сброс своего состояния.
+        # KeyboardHotkeyAdapter не хранит глобальное состояние нажатых клавиш, которое нужно сбрасывать.
+        # Поэтому дополнительная очистка здесь может быть не нужна.
+        
+        # Если это было окно настроек, то on_settings_applied уже должно было сработать, если нажали OK/Apply.
+        # Если нажали Cancel, то _on_modal_dialog_closed сработает с QDialog.Rejected.
+        
+        # if hasattr(self, 'clear_hotkey_state_signal'):
+        # self.clear_hotkey_state_signal.emit() # Это может быть избыточным или даже вредным
+        pass
 
 
     @Slot()
     def on_settings_applied(self):
         logging.info("MainWindow: Настройки были применены из SettingsWindow.")
-        if self.hotkey_manager:
-            self.hotkey_manager.load_hotkeys_from_settings() 
-            self.hotkey_manager.reregister_all_hotkeys_listener() 
+        if self.hotkey_adapter:
+            # KeyboardHotkeyAdapter сам загрузит актуальные настройки из AppSettingsManager
+            # при вызове load_and_register_hotkeys
+            new_hotkeys_from_settings = self.app_settings_manager.get_hotkeys()
+            self.hotkey_adapter.load_and_register_hotkeys(new_hotkeys_from_settings) 
         
         new_lang = self.app_settings_manager.get_language()
         if self.appearance_manager and self.appearance_manager.current_language != new_lang:
@@ -794,6 +825,9 @@ class MainWindow(QMainWindow):
                     self.ui_updater.update_ui_after_logic_change()
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        # Логика eventFilter для Tab и перетаскивания остается почти такой же.
+        # Важно, чтобы Tab не перехватывался KeyboardHotkeyAdapter, если он не зарегистрирован как хоткей.
+        # Библиотека 'keyboard' обычно не перехватывает Tab по умолчанию, если он не часть хоткея.
         if event.type() == QEvent.Type.KeyPress:
             key_event: QKeyEvent = event # type: ignore 
             
@@ -801,29 +835,42 @@ class MainWindow(QMainWindow):
                 focus_widget = QApplication.focusWidget()
                 logging.debug(f"MainWindow.eventFilter: Tab pressed. FocusWidget: {type(focus_widget).__name__ if focus_widget else 'None'}, ObjectName: {focus_widget.objectName() if focus_widget and hasattr(focus_widget, 'objectName') else 'N/A'}")
 
+                # Если фокус на поле ввода хоткея, передаем Tab ему
                 if isinstance(focus_widget, HotkeyCaptureLineEdit) and focus_widget.objectName() == "HotkeyCaptureLineEdit":
                     logging.debug("    Tab for HotkeyCaptureLineEdit. Forwarding to widget.")
-                    return False 
+                    return False # Стандартная обработка QLineEdit для Tab (если он ее делает)
 
+                # Если открыто окно настроек и фокус внутри него (но не на поле ввода хоткея)
                 if self.settings_window_instance and self.settings_window_instance.isVisible() and self.settings_window_instance.isActiveWindow():
                     is_hcl_in_settings = False
-                    parent = focus_widget
-                    while parent is not None:
-                        if parent == self.settings_window_instance:
+                    parent_widget_iter = focus_widget
+                    while parent_widget_iter is not None:
+                        if parent_widget_iter == self.settings_window_instance:
                             if isinstance(focus_widget, HotkeyCaptureLineEdit):
                                 is_hcl_in_settings = True
                             break
-                        parent = parent.parentWidget()
+                        parent_widget_iter = parent_widget_iter.parentWidget()
                     
                     if is_hcl_in_settings:
                          logging.debug("    Tab for HotkeyCaptureLineEdit inside SettingsWindow. Forwarding.")
-                         return False
-                    logging.debug("    Tab inside active SettingsWindow (not on capture field). Standard processing.")
-                    return False
+                         return False 
+                    logging.debug("    Tab inside active SettingsWindow (not on capture field). Standard Qt focus processing.")
+                    return False # Позволяем Qt обрабатывать Tab для навигации по виджетам в диалоге
 
-                logging.debug("    Global Tab press consumed to prevent focus switching.")
-                return True 
+                # В остальных случаях (например, Tab нажат, когда фокус на основном окне)
+                # мы хотим предотвратить стандартное переключение фокуса Qt,
+                # так как Tab может быть частью глобального хоткея.
+                # Библиотека 'keyboard' сама обработает Tab, если он часть хоткея.
+                # Если он не часть хоткея, то это событие просто "съестся" здесь,
+                # чтобы избежать нежелательного переключения фокуса.
+                logging.debug("    Global Tab press (not for capture field, not in settings dialog). Consuming to prevent focus switch if Tab is not a hotkey.")
+                # Если Tab *является* глобальным хоткеем, зарегистрированным через 'keyboard',
+                # то 'keyboard' его перехватит и подавит, если suppress=True.
+                # Если Tab *не является* глобальным хоткеем, то мы его "съедаем" здесь,
+                # чтобы он не вызвал стандартное переключение фокуса Qt.
+                return True # Перехватываем Tab
 
+        # Логика перетаскивания
         if self.mode == "min" and hasattr(self, 'drag_handler') and self.drag_handler:
             if event.type() == QEvent.Type.MouseButtonPress:
                 mouse_event: QMouseEvent = event # type: ignore
@@ -862,7 +909,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent): 
         logging.info("MainWindow closeEvent triggered.")
         
-        if hasattr(self, 'clear_hotkey_state_signal'):
+        if hasattr(self, 'clear_hotkey_state_signal'): # Сигнал для KeyboardHotkeyAdapter
             self.clear_hotkey_state_signal.emit()
 
         if self.log_dialog and self.log_dialog.isVisible() : 
@@ -874,9 +921,9 @@ class MainWindow(QMainWindow):
         if self.settings_window_instance and self.settings_window_instance.isVisible():
             self.settings_window_instance.reject() 
 
-        if hasattr(self, 'hotkey_manager'): 
-            logging.info("Остановка слушателя хоткеев перед закрытием...")
-            self.hotkey_manager.stop_listening()
+        if hasattr(self, 'hotkey_adapter'): # Используем новый адаптер
+            logging.info("Остановка KeyboardHotkeyAdapter перед закрытием...")
+            self.hotkey_adapter.stop_listening()
         if hasattr(self, 'rec_manager') and self.rec_manager: 
             logging.info("Остановка процессов распознавания перед закрытием...")
             self.rec_manager.stop_recognition()
@@ -892,3 +939,26 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(0, QApplication.quit) 
         else:
             logging.info(f"closeEvent завершен. Event accepted: False (проигнорировано)")
+
+
+    @Slot(str) # Слот для вызова из KeyboardHotkeyAdapter
+    def _emit_action_signal_slot(self, action_id: str):
+        """
+        Этот слот вызывается из HotkeyAdapter для выполнения действия в основном потоке.
+        Он эмитирует соответствующий сигнал действия.
+        """
+        logging.debug(f"MainWindow: _emit_action_signal_slot для action_id: '{action_id}'")
+        action_config = HOTKEY_ACTIONS_CONFIG.get(action_id)
+        if action_config:
+            signal_name = action_config.get('signal_name')
+            if signal_name and hasattr(self, signal_name):
+                signal_instance = getattr(self, signal_name)
+                if isinstance(signal_instance, Signal): # Проверка, что это действительно сигнал
+                    logging.info(f"MainWindow: Эмитирование сигнала '{signal_name}' для действия '{action_id}'.")
+                    signal_instance.emit()
+                else:
+                    logging.error(f"MainWindow: Атрибут '{signal_name}' не является сигналом Qt для действия '{action_id}'.")
+            else:
+                logging.error(f"MainWindow: Сигнал для действия '{action_id}' (имя: {signal_name}) не найден.")
+        else:
+            logging.error(f"MainWindow: Конфигурация для действия '{action_id}' не найдена.")
