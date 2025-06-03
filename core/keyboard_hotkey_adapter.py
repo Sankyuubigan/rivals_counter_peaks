@@ -1,7 +1,7 @@
 # File: core/keyboard_hotkey_adapter.py
 import logging
 import threading
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, Tuple
 
 from PySide6.QtCore import QObject, Signal, Slot, QMetaObject, Q_ARG, Qt
 
@@ -9,252 +9,226 @@ from core.hotkey_config import HOTKEY_ACTIONS_CONFIG
 from core.lang.translations import get_text
 
 try:
-    import keyboard # Новая библиотека
+    import keyboard
     KEYBOARD_AVAILABLE = True
     logging.info("Библиотека 'keyboard' успешно импортирована.")
 except ImportError:
     KEYBOARD_AVAILABLE = False
     keyboard = None
     logging.error("Библиотека 'keyboard' НЕ найдена. Глобальные горячие клавиши будут НЕ доступны.")
-except Exception as e_imp: # Перехват других возможных ошибок импорта
+except Exception as e_imp:
     KEYBOARD_AVAILABLE = False
     keyboard = None
     logging.error(f"Ошибка при импорте библиотеки 'keyboard': {e_imp}")
 
-
 class KeyboardHotkeyAdapter(QObject):
-    hotkeys_updated_signal = Signal() 
+    hotkeys_updated_signal = Signal()
+    _hook_installed_globally = False
 
     def __init__(self, main_window: QObject):
         super().__init__()
         self.main_window = main_window
-        self._current_hotkeys_config: Dict[str, str] = {} 
-        self._registered_keyboard_lib_hotkeys: Dict[str, str] = {} 
+        self._current_hotkeys_config: Dict[str, str] = {}
         self._lock = threading.Lock()
-        self._is_active = False 
+        self._is_active = False
+        self._tab_is_pressed = False
+        self._tab_combo_map: Dict[Tuple[str, bool], str] = {}
 
-        if not KEYBOARD_AVAILABLE:
-            logging.warning("KeyboardHotkeyAdapter: Библиотека 'keyboard' недоступна. Функциональность будет ограничена.")
+        if KEYBOARD_AVAILABLE and not KeyboardHotkeyAdapter._hook_installed_globally:
+            if hasattr(keyboard, 'hook'):
+                try:
+                    keyboard.hook(self._global_key_event_handler)
+                    KeyboardHotkeyAdapter._hook_installed_globally = True
+                    logging.info("[KHA Init] Глобальный хук keyboard.hook УСТАНОВЛЕН.")
+                except Exception as e:
+                    logging.error(f"[KHA Init] Ошибка при установке глобального keyboard.hook: {e}")
+            else:
+                logging.error("[KHA Init] Функция 'hook' отсутствует в модуле 'keyboard'.")
+        elif not KEYBOARD_AVAILABLE:
+            logging.warning("KeyboardHotkeyAdapter: Библиотека 'keyboard' недоступна.")
 
-    def _normalize_hotkey_string_for_keyboard_lib(self, internal_hotkey_str: str) -> str:
-        if not internal_hotkey_str:
-            return ""
-        s = internal_hotkey_str.lower().strip()
-        
-        replacements = {
-            "num_0": "num 0", "num_1": "num 1", "num_2": "num 2", "num_3": "num 3", "num_4": "num 4",
-            "num_5": "num 5", "num_6": "num 6", "num_7": "num 7", "num_8": "num 8", "num_9": "num 9",
-            
-            "num_decimal": "decimal",    # Numpad . (оставляем как есть, так как "tab+decimal" регистрировался успешно)
-            "num_divide": "/",          # ИЗМЕНЕНИЕ: Numpad / -> "/"
-            "num_multiply": "*",        # ИЗМЕНЕНИЕ: Numpad * -> "*"
-            "num_subtract": "subtract",  
-            "num_add": "add",           
+    def _global_key_event_handler(self, event: keyboard.KeyboardEvent):
+        if self._is_active:
+            self._on_key_event(event)
 
-            "win": "windows", "esc": "escape", "del": "delete", "ins": "insert",
-            "pgup": "page up", "pgdn": "page down", "printscreen": "print screen",
-            "scrolllock": "scroll lock", "pausebreak": "pause",
+    def _get_key_tuple_for_map(self, internal_key_part: str) -> Tuple[str, bool, bool]:
+        """
+        Преобразует внутреннее имя клавиши (из hotkey_config) в кортеж
+        (имя_клавиши_от_keyboard, ожидаемый_флаг_is_keypad) для использования в качестве ключа карты.
+        Возвращает (keyboard_name, is_keypad_expected, success_flag).
+        """
+        key_part_lower = internal_key_part.lower()
+
+        # Numpad цифры (NumLock ON) - keyboard.name вернет просто цифру, is_keypad=True
+        if key_part_lower.startswith("num_") and len(key_part_lower) == 5 and key_part_lower[4].isdigit():
+            return (key_part_lower[4], True, True)  # e.g., ('0', True), ('1', True)
+
+        # Numpad операторы
+        # keyboard.name для них - это сам символ, is_keypad=True
+        numpad_ops_map = {
+            "num_divide": ("/", True),
+            "num_multiply": ("*", True),
+            "num_subtract": ("-", True), # keyboard.name для Numpad Minus это '-' (с is_keypad=True)
+            "num_add": ("+", True),      # keyboard.name для Numpad Plus это '+' (с is_keypad=True)
+            "num_decimal": (".", True),   # keyboard.name для Numpad Decimal это '.' (с is_keypad=True)
         }
-        for i in range(1, 13): replacements[f"f{i}"] = f"f{i}"
+        if key_part_lower in numpad_ops_map:
+            kb_name, is_kp = numpad_ops_map[key_part_lower]
+            return (kb_name, is_kp, True)
 
-        known_keys_direct_mapping = [
-            "ctrl", "alt", "shift", "windows", "escape", "delete", "insert", 
-            "space", "enter", "tab", "up", "down", "left", "right", "home", "end", 
-            "page up", "page down", "print screen", "scroll lock", "pause",
-            "decimal", "subtract", "add",
-            "/", "*" # Добавляем сами символы как известные, если они не были заменены
-        ]
-        
-        parts = s.split('+')
-        normalized_parts = []
-        for part_orig in parts:
-            part = part_orig.strip()
-            if not part: continue
+        # Клавиши стрелок (не Numpad) - is_keypad=False
+        arrow_map = {
+            "up": ("up", False), "down": ("down", False),
+            "left": ("left", False), "right": ("right", False)
+        }
+        if key_part_lower in arrow_map:
+            kb_name, is_kp = arrow_map[key_part_lower]
+            return (kb_name, is_kp, True)
 
-            if part in replacements:
-                normalized_parts.append(replacements[part])
-                continue
-            
-            if part.startswith("num ") and len(part) > 4 and part[4:].isdigit():
-                 normalized_parts.append(part) 
-                 continue
+        # Другие стандартные клавиши - is_keypad обычно False
+        standard_keys_map = {
+             "tab": ("tab", False), # Tab сам по себе
+             "esc": ("escape", False), "del": ("delete", False), "ins": ("insert", False),
+             "pgup": ("page up", False), "pgdn": ("page down", False),
+             "printscreen": ("print screen", False), "scrolllock": ("scroll lock", False),
+             "pausebreak": ("pause", False), "enter": ("enter", False), "space": ("space", False),
+             "backspace": ("backspace", False)
+             # F-клавиши
+        }
+        for i in range(1, 13):
+            standard_keys_map[f"f{i}"] = (f"f{i}", False)
 
-            if part in known_keys_direct_mapping:
-                 normalized_parts.append(part)
-                 continue
-            
-            normalized_parts.append(part.lower())
-        
-        final_str = "+".join(normalized_parts)
-        logging.debug(f"KHA_NORM: Input='{internal_hotkey_str}', Normalized_for_keyboard_lib='{final_str}'")
-        return final_str
+        if key_part_lower in standard_keys_map:
+            kb_name, is_kp = standard_keys_map[key_part_lower]
+            return (kb_name, is_kp, True)
 
-    def load_and_register_hotkeys(self, hotkey_config_map: Dict[str, str]):
-        logging.info(f"KHA_LRH_ENTRY: Вход в load_and_register_hotkeys. KEYBOARD_AVAILABLE: {KEYBOARD_AVAILABLE}") 
-        if not KEYBOARD_AVAILABLE:
-            logging.warning("KHA_LRH: 'keyboard' недоступна, выход из регистрации.")
-            self._current_hotkeys_config = hotkey_config_map.copy()
-            self.hotkeys_updated_signal.emit()
+        # Если это одна буква или цифра (не Numpad, не F-клавиша)
+        if len(key_part_lower) == 1 and key_part_lower.isalnum():
+            return (key_part_lower, False, True) # is_keypad=False для основных букв/цифр
+
+        logging.warning(f"[KHA _get_key_tuple] Не удалось определить кортеж для карты для ключа '{internal_key_part}'")
+        return (key_part_lower, False, False) # Возвращаем как есть, is_keypad=False по умолчанию, неуспех
+
+    def _build_tab_combo_map(self):
+        self._tab_combo_map.clear()
+        logging.debug("[KHA] Building Tab Combo Map...")
+        for action_id, hotkey_str_internal in self._current_hotkeys_config.items():
+            hotkey_str_lower = hotkey_str_internal.lower().strip()
+            if hotkey_str_lower.startswith("tab+"):
+                parts = hotkey_str_lower.split('+', 1)
+                if len(parts) == 2:
+                    internal_key_part = parts[1].strip()
+                    # Получаем (keyboard_event_name, expected_is_keypad, success)
+                    kb_name_for_map, is_keypad_expected, success = self._get_key_tuple_for_map(internal_key_part)
+
+                    if success:
+                        combo_key_tuple = (kb_name_for_map, is_keypad_expected)
+                        if combo_key_tuple == ("tab", False): # Предотвращаем Tab+Tab
+                             logging.warning(f"  [TabMap] Конфликт: Попытка зарегистрировать Tab+Tab для '{action_id}'. Пропуск.")
+                             continue
+                        self._tab_combo_map[combo_key_tuple] = action_id
+                        logging.info(f"  [TabMap] Mapped ComboKey {combo_key_tuple} to action '{action_id}' (Original internal key part: '{internal_key_part}').")
+                    else:
+                        logging.warning(f"  [TabMap] Не удалось получить корректный кортеж для ключа '{internal_key_part}' (для Tab-комбинации действия '{action_id}').")
+        logging.debug(f"[KHA] Tab Combo Map built with {len(self._tab_combo_map)} entries: {self._tab_combo_map}")
+
+
+    def _on_key_event(self, event: keyboard.KeyboardEvent):
+        event_type = event.event_type
+        # Приводим имя клавиши к нижнему регистру для консистентности, если оно есть
+        key_name = event.name.lower() if event.name else ""
+        is_keypad = event.is_keypad
+        scan_code = event.scan_code
+
+        logging.debug(f"[KHA Event] Active: {self._is_active}. Type: {event_type}, Name: '{key_name}', IsKeypad: {is_keypad}, ScanCode: {scan_code}, TabPressed: {self._tab_is_pressed}")
+
+        if key_name == "tab": # Сравниваем с нижним регистром
+            self._tab_is_pressed = (event_type == keyboard.KEY_DOWN)
+            logging.debug(f"  Tab state updated to: {'PRESSED' if self._tab_is_pressed else 'RELEASED'}")
             return
 
-        logging.debug(f"KHA_LRH: Перед self._lock. KEYBOARD_AVAILABLE: {KEYBOARD_AVAILABLE}") 
+        if event_type == keyboard.KEY_DOWN and self._tab_is_pressed:
+            current_key_tuple = (key_name, is_keypad)
+            logging.debug(f"  Checking Tab combo map for: {current_key_tuple}")
+
+            if current_key_tuple in self._tab_combo_map:
+                action_id = self._tab_combo_map[current_key_tuple]
+                logging.info(f">>> KHA MANUAL HOTKEY: Tab + ('{key_name}', isKP={is_keypad}) -> Action: '{action_id}'")
+                self._execute_action_thread_safe(action_id)
+            else:
+                logging.debug(f"  Combo {current_key_tuple} not found in Tab combo map.")
+
+
+    def load_and_register_hotkeys(self, hotkey_config_map: Dict[str, str]):
+        logging.info(f"KHA: Загрузка и подготовка хоткеев.")
         with self._lock:
-            logging.info(f"KHA_LRH: === ВНУТРИ LOCK: ЗАПУСК load_and_register_hotkeys ({len(hotkey_config_map)} хоткеев) ===") 
-            
-            logging.info("KHA_LRH_DEBUG: Вызов _unregister_all_keyboard_lib_hotkeys АКТИВЕН.")
-            self._unregister_all_keyboard_lib_hotkeys()
-
             self._current_hotkeys_config = hotkey_config_map.copy()
-            successfully_registered = 0; failed_to_register = 0
-            registration_errors = [] 
-
-            for action_id, internal_hotkey_str in self._current_hotkeys_config.items():
-                logging.debug(f"KHA_LRH_LOOP: Обработка action_id='{action_id}', internal_str='{internal_hotkey_str}'")
-                if not internal_hotkey_str or \
-                   internal_hotkey_str.lower() == 'none' or \
-                   internal_hotkey_str.lower() == get_text('hotkey_not_set').lower() or \
-                   internal_hotkey_str.lower() == get_text('hotkey_none').lower():
-                    logging.debug(f"KHA_LRH_LOOP: Хоткей для '{action_id}' не назначен, пропуск.")
-                    continue
-
-                keyboard_lib_format_str = self._normalize_hotkey_string_for_keyboard_lib(internal_hotkey_str)
-                if not keyboard_lib_format_str:
-                    logging.warning(f"KHA_LRH_LOOP: Не удалось нормализовать '{internal_hotkey_str}' для '{action_id}'.")
-                    failed_to_register += 1
-                    registration_errors.append(f"'{action_id}': Нормализация '{internal_hotkey_str}' -> Пусто")
-                    continue
-                
-                action_config = HOTKEY_ACTIONS_CONFIG.get(action_id)
-                if not action_config:
-                    logging.warning(f"KHA_LRH_LOOP: Конфигурация для '{action_id}' не найдена.")
-                    failed_to_register += 1
-                    registration_errors.append(f"'{action_id}': Нет конфигурации в HOTKEY_ACTIONS_CONFIG")
-                    continue
-                
-                suppress_original_event = True 
-                callback_func = lambda bound_action_id=action_id: self._execute_action_thread_safe(bound_action_id)
-                
-                logging.debug(f"KHA_LRH_REG: Попытка регистрации: keyboard.add_hotkey('{keyboard_lib_format_str}', ..., suppress={suppress_original_event}) для '{action_id}'")
-                try:
-                    # Исправляем возможную проблему с передачей callback_func.
-                    # Иногда lambda может захватывать последнее значение action_id из цикла.
-                    # Создадим функцию-обертку для надежного захвата.
-                    def create_callback(act_id):
-                        return lambda: self._execute_action_thread_safe(act_id)
-
-                    final_callback = create_callback(action_id)
-                    keyboard.add_hotkey(keyboard_lib_format_str, final_callback, suppress=suppress_original_event)
-                    
-                    self._registered_keyboard_lib_hotkeys[keyboard_lib_format_str] = action_id
-                    logging.info(f"KHA_LRH_REG: УСПЕХ: '{keyboard_lib_format_str}' для '{action_id}'.")
-                    successfully_registered += 1
-                except Exception as e:
-                    logging.error(f"KHA_LRH_REG: ОШИБКА РЕГИСТРАЦИИ '{keyboard_lib_format_str}' для '{action_id}': {e}", exc_info=False) 
-                    failed_to_register += 1
-                    registration_errors.append(f"'{action_id}': '{keyboard_lib_format_str}' -> {type(e).__name__}: {str(e)[:100]}")
-
-            logging.info(f"KHA_LRH: === ВНУТРИ LOCK: ЗАВЕРШЕНИЕ load_and_register_hotkeys. Успешно: {successfully_registered}, Ошибок: {failed_to_register} ===")
-            if failed_to_register > 0:
-                logging.warning(f"KHA_LRH: Ошибки при регистрации хоткеев:")
-                for err_entry in registration_errors:
-                    logging.warning(f"    - {err_entry}")
-        logging.info("KHA_LRH_EXIT: Выход из load_and_register_hotkeys.") 
+            self._build_tab_combo_map()
         self.hotkeys_updated_signal.emit()
 
     def _execute_action_thread_safe(self, action_id: str):
-        logging.info(f"KHA_EXEC: Хоткей сработал! Действие: '{action_id}' (Вызвано из потока 'keyboard')")
-        if not self.main_window: 
+        if not self.main_window:
             logging.warning(f"KHA_EXEC: main_window был удален, действие '{action_id}' не может быть выполнено.")
             return
         try:
-            QMetaObject.invokeMethod(
-                self.main_window, "_emit_action_signal_slot",
-                Qt.ConnectionType.QueuedConnection, Q_ARG(str, action_id)
-            )
+            if hasattr(self.main_window, '_emit_action_signal_slot') and callable(getattr(self.main_window, '_emit_action_signal_slot')):
+                QMetaObject.invokeMethod(
+                    self.main_window, "_emit_action_signal_slot",
+                    Qt.ConnectionType.QueuedConnection, Q_ARG(str, action_id)
+                )
+            else:
+                logging.error(f"KHA_EXEC: Слот '_emit_action_signal_slot' не найден или не является вызываемым в main_window для '{action_id}'.")
         except RuntimeError as e: logging.error(f"KHA_EXEC: RuntimeError при вызове _emit_action_signal_slot для '{action_id}': {e}")
         except Exception as e_invoke: logging.error(f"KHA_EXEC: Неожиданная ошибка при QMetaObject.invokeMethod для '{action_id}': {e_invoke}", exc_info=True)
 
-    def _unregister_all_keyboard_lib_hotkeys(self):
-        logging.info("KHA_UNREG_ENTRY: Вход в _unregister_all_keyboard_lib_hotkeys.")
-        if not KEYBOARD_AVAILABLE: 
-            logging.debug("KHA_UNREG: 'keyboard' недоступна, выход.")
-            return
-        
-        logging.debug(f"KHA_UNREG: Перед проверкой _registered_keyboard_lib_hotkeys (len: {len(self._registered_keyboard_lib_hotkeys)})")
-        if not self._registered_keyboard_lib_hotkeys:
-            logging.info("KHA_UNREG: Нет зарегистрированных хоткеев для удаления. Пропуск операций с библиотекой 'keyboard'.")
-            self._registered_keyboard_lib_hotkeys.clear() 
-            logging.info("KHA_UNREG_EXIT: Выход из _unregister_all_keyboard_lib_hotkeys (нечего было удалять).")
-            return 
-            
-        logging.info(f"KHA_UNREG: Начало удаления {len(self._registered_keyboard_lib_hotkeys)} хоткеев...")
-        keys_to_unhook = list(self._registered_keyboard_lib_hotkeys.keys())
-        unhooked_count = 0; failed_unhook_count = 0
-            
-        for i, hotkey_str in enumerate(keys_to_unhook):
-            logging.debug(f"KHA_UNREG_LOOP: {i+1}/{len(keys_to_unhook)} Попытка удаления '{hotkey_str}'...")
-            try:
-                keyboard.remove_hotkey(hotkey_str) 
-                logging.debug(f"KHA_UNREG_LOOP: УСПЕХ удаления '{hotkey_str}'.")
-                unhooked_count +=1
-            except Exception as e_rem: 
-                if isinstance(e_rem, (ValueError, KeyError)) and "is not registered" in str(e_rem).lower():
-                    logging.warning(f"KHA_UNREG_LOOP: Попытка удалить хоткей '{hotkey_str}', который не был зарегистрирован: {e_rem}")
-                else:
-                    logging.error(f"KHA_UNREG_LOOP: ОШИБКА при удалении '{hotkey_str}': {e_rem}", exc_info=True)
-                failed_unhook_count += 1
-            
-        self._registered_keyboard_lib_hotkeys.clear()
-        logging.info(f"KHA_UNREG: Завершено. Удалено: {unhooked_count}, Ошибок/Пропущено: {failed_unhook_count}.")
-        logging.info("KHA_UNREG_EXIT: Выход из _unregister_all_keyboard_lib_hotkeys (после удаления).")
-
-
     def start_listening(self):
-        logging.info("KHA_START_LISTEN_ENTRY: Вход в start_listening.")
-        if not KEYBOARD_AVAILABLE:
-            logging.warning("KHA_START_LISTEN: 'keyboard' недоступна.")
-            return
+        logging.info("KHA: Активация обработчика хоткеев.")
         with self._lock:
-            logging.debug("KHA_START_LISTEN: Внутри lock.")
             if self._is_active:
-                logging.info("KHA_START_LISTEN: Адаптер уже активен.")
+                logging.info("KHA: Обработчик уже активен.")
                 return
-            if not self._current_hotkeys_config:
-                logging.warning("KHA_START_LISTEN: Конфигурация хоткеев не загружена.")
-                return
-            if not self._registered_keyboard_lib_hotkeys and self._current_hotkeys_config:
-                logging.info("KHA_START_LISTEN: Конфигурация есть, но хоткеи не зарегистрированы. Попытка регистрации...")
-                self.load_and_register_hotkeys(dict(self._current_hotkeys_config)) 
-            self._is_active = True
-            logging.info("KHA_START_LISTEN: Адаптер горячих клавиш ('keyboard') активирован.")
-        logging.info("KHA_START_LISTEN_EXIT: Выход из start_listening.")
+            if KeyboardHotkeyAdapter._hook_installed_globally:
+                self._is_active = True
+                logging.info("KHA: Обработчик хоткеев отмечен как АКТИВНЫЙ.")
+            elif KEYBOARD_AVAILABLE and hasattr(keyboard, 'hook'):
+                try:
+                    keyboard.hook(self._global_key_event_handler)
+                    KeyboardHotkeyAdapter._hook_installed_globally = True
+                    self._is_active = True
+                    logging.info("[KHA StartListen] Глобальный хук keyboard.hook УСТАНОВЛЕН и обработчик АКТИВИРОВАН.")
+                except Exception as e:
+                    logging.error(f"[KHA StartListen] Ошибка при установке глобального keyboard.hook: {e}")
+            else:
+                logging.warning("KHA: Глобальный хук не установлен и не может быть установлен. Обработчик не будет активен.")
 
     def stop_listening(self, is_internal_restart=False):
-        logging.info(f"KHA_STOP_LISTEN_ENTRY: Вход в stop_listening (internal_restart={is_internal_restart}).")
-        if not KEYBOARD_AVAILABLE:
-            logging.debug("KHA_STOP_LISTEN: 'keyboard' недоступна.")
-            return
+        logging.info(f"KHA: Деактивация обработчика хоткеев (internal_restart={is_internal_restart}).")
         with self._lock:
-            logging.debug(f"KHA_STOP_LISTEN: Внутри lock. _is_active={self._is_active}")
-            if not self._is_active and not is_internal_restart: 
-                logging.info("KHA_STOP_LISTEN: Адаптер уже неактивен.")
+            if not self._is_active and not is_internal_restart:
+                logging.info("KHA: Обработчик уже неактивен.")
                 return
-            logging.info("KHA_STOP_LISTEN: Вызов _unregister_all_keyboard_lib_hotkeys.")
-            self._unregister_all_keyboard_lib_hotkeys()
-            logging.info("KHA_STOP_LISTEN: _unregister_all_keyboard_lib_hotkeys завершен.")
             self._is_active = False
-        log_msg = "остановлен в рамках внутреннего перезапуска" if is_internal_restart else "деактивирован (все хоткеи удалены)"
-        logging.info(f"KHA_STOP_LISTEN: Адаптер горячих клавиш ('keyboard') {log_msg}.")
-        logging.info("KHA_STOP_LISTEN_EXIT: Выход из stop_listening.")
+            self._tab_is_pressed = False
+            logging.info("KHA: Обработчик хоткеев отмечен как НЕАКТИВНЫЙ. Состояние Tab сброшено.")
+
+    def shutdown_hook(self):
+        if KEYBOARD_AVAILABLE and KeyboardHotkeyAdapter._hook_installed_globally:
+            if hasattr(keyboard, 'unhook_all'):
+                try:
+                    keyboard.unhook_all()
+                    logging.info("[KHA Shutdown] Все хуки keyboard.hook удалены через unhook_all().")
+                except Exception as e:
+                    logging.error(f"[KHA Shutdown] Ошибка при вызове keyboard.unhook_all(): {e}")
+            KeyboardHotkeyAdapter._hook_installed_globally = False
 
     def clear_pressed_keys_state(self):
-        if not KEYBOARD_AVAILABLE: return
-        logging.debug("KHA: clear_pressed_keys_state вызван. Для 'keyboard' обычно не требуется.")
+        logging.debug("KHA: clear_pressed_keys_state вызван. Сброс состояния Tab.")
+        self._tab_is_pressed = False
 
     def get_current_hotkeys_config_for_settings(self) -> Dict[str, str]:
         with self._lock:
             return self._current_hotkeys_config.copy()
 
     def get_default_hotkeys_config_for_settings(self) -> Dict[str, str]:
-        from core.hotkey_config import DEFAULT_HOTKEYS 
+        from core.hotkey_config import DEFAULT_HOTKEYS
         return DEFAULT_HOTKEYS.copy()

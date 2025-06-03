@@ -3,140 +3,131 @@ import os
 import numpy as np
 from PIL import Image
 import onnxruntime
-from transformers import AutoImageProcessor 
+# AutoImageProcessor будет загружен в воркере
 import time
 import cv2
 import logging
-from collections import Counter, defaultdict # Добавил defaultdict
-from typing import Dict, List, Any, Tuple, Optional, Set # Добавил Set
+from collections import Counter, defaultdict
+from typing import Dict, List, Any, Tuple, Optional, Set
+from PySide6.QtCore import QObject, Signal, QThread, Slot # <--- ДОБАВЛЕН Slot
+
 from utils import normalize_hero_name as normalize_hero_name_util
-
-# --- Добавляем импорт функции предобработки ---
 from core.image_processing_utils import preprocess_image_for_dino
-# ---------------------------------------------
+from core.model_loader_worker import ModelLoaderWorker # Импортируем новый воркер
 
 
-# --- Конфигурация ---
-NN_MODELS_DIR_REL_TO_PROJECT_ROOT = "nn_models" 
-EMBEDDINGS_DIR_REL_TO_PROJECT_ROOT = "resources/embeddings_padded" 
-ONNX_SUBDIR_IN_NN_MODELS = "onnx" 
-ONNX_MODEL_FILENAME = "model.onnx" 
-
-IMAGE_PROCESSOR_ID = "facebook/dinov2-small"
-ONNX_PROVIDERS = ['CPUExecutionProvider']
-
-WINDOW_SIZE_W_DINO = 93 
+# Константы остаются те же, но некоторые значения по умолчанию могут быть изменены в _on_models_loaded_from_worker
+WINDOW_SIZE_W_DINO = 93
 WINDOW_SIZE_H_DINO = 93
-ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.8) 
-FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.9) 
+ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.8)
+FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.9)
 FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.9)
 BATCH_SIZE_SLIDING_WINDOW_DINO = 32
 PADDING_COLOR_WINDOW_DINO = (0,0,0)
 
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
 AKAZE_LOWE_RATIO = 0.75
-AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 3 
-MIN_HEROES_FOR_COLUMN_DETECTION = 2 
-ROI_X_JITTER_VALUES_DINO = [-3, 0, 3] 
+AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 3
+MIN_HEROES_FOR_COLUMN_DETECTION = 2
+ROI_X_JITTER_VALUES_DINO = [-3, 0, 3]
 MAX_NOT_PASSED_AKAZE_TO_LOG = 15
 
-DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10 
-DINOV2_FINAL_DECISION_THRESHOLD = 0.65 
-DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40 
-TEAM_SIZE = 6 
-Y_OVERLAP_THRESHOLD_RATIO = 0.5 
+DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
+DINOV2_FINAL_DECISION_THRESHOLD = 0.65
+DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
+TEAM_SIZE = 6
+Y_OVERLAP_THRESHOLD_RATIO = 0.5
 
 
-class AdvancedRecognition:
-    def __init__(self, akaze_hero_template_images_cv2_dict: Dict[str, List[np.ndarray]], project_root_path: str):
-        self.project_root_path = project_root_path 
+class AdvancedRecognition(QObject):
+    load_started = Signal()
+    load_finished = Signal(bool)
+
+    def __init__(self, akaze_hero_template_images_cv2_dict: Dict[str, List[np.ndarray]], project_root_path: str, parent: Optional[QObject] = None):
+        super().__init__(parent)
+        self.project_root_path = project_root_path
         self.ort_session_dino: Optional[onnxruntime.InferenceSession] = None
         self.input_name_dino: Optional[str] = None
-        self.image_processor_dino: Optional[AutoImageProcessor] = None
+        self.image_processor_dino: Optional[Any] = None
         self.target_h_model_dino: int = 224
         self.target_w_model_dino: int = 224
         self.dino_reference_embeddings: Dict[str, np.ndarray] = {}
-        
+
         self.akaze_template_images_cv2: Dict[str, List[np.ndarray]] = akaze_hero_template_images_cv2_dict
-        
-        self._models_loaded = False
-        self._load_models_and_embeddings()
 
-    def _get_abs_path(self, relative_to_project_root: str) -> str:
-        parts = relative_to_project_root.split('/')
-        return os.path.join(self.project_root_path, *parts)
+        self._models_ready = False
+        self._is_loading = False
+        self._loader_thread: Optional[QThread] = None
+        self._loader_worker: Optional[ModelLoaderWorker] = None
+        logging.info("[AdvRec] AdvancedRecognition initialized (models not loaded yet).")
 
-
-    def _ensure_dir_exists(self, dir_path_abs: str) -> bool:
-        if not os.path.exists(dir_path_abs) or not os.path.isdir(dir_path_abs):
-            logging.error(f"[AdvRec] Директория не найдена или не является директорией: {dir_path_abs}")
-            return False
-        logging.debug(f"[AdvRec] Директория подтверждена: {dir_path_abs}")
-        return True
-
-    def _load_models_and_embeddings(self):
-        logging.info("[AdvRec] Загрузка моделей и эмбеддингов для расширенного распознавания...")
-        
-        nn_models_dir_abs = self._get_abs_path(NN_MODELS_DIR_REL_TO_PROJECT_ROOT)
-        embeddings_dir_abs = self._get_abs_path(EMBEDDINGS_DIR_REL_TO_PROJECT_ROOT) 
-        onnx_model_dir_abs = os.path.join(nn_models_dir_abs, ONNX_SUBDIR_IN_NN_MODELS)
-
-        logging.info(f"[AdvRec] Путь к папке nn_models: {nn_models_dir_abs}")
-        logging.info(f"[AdvRec] Путь к папке ONNX (внутри nn_models): {onnx_model_dir_abs}")
-        logging.info(f"[AdvRec] Путь к папке эмбеддингов: {embeddings_dir_abs}")
-
-        if not self._ensure_dir_exists(nn_models_dir_abs) or \
-           not self._ensure_dir_exists(embeddings_dir_abs) or \
-           not self._ensure_dir_exists(onnx_model_dir_abs):
-            logging.error("[AdvRec] Не удалось найти одну из ключевых директорий (nn_models, embeddings_padded в resources, или onnx в nn_models).")
+    def start_async_load_models(self):
+        if self._models_ready or self._is_loading:
+            state = "ready" if self._models_ready else "loading"
+            logging.info(f"[AdvRec] Model load requested, but already in state: {state}. Ignoring.")
+            if self._models_ready:
+                self.load_finished.emit(True)
             return
 
-        onnx_model_path = os.path.join(onnx_model_dir_abs, ONNX_MODEL_FILENAME)
-        if not os.path.exists(onnx_model_path) or not os.path.isfile(onnx_model_path):
-            logging.error(f"[AdvRec] Файл модели ONNX DINOv2 не найден: {onnx_model_path}")
-            return
-        logging.info(f"[AdvRec] Файл модели ONNX найден: {onnx_model_path}")
-        
-        try:
-            session_options = onnxruntime.SessionOptions()
-            # session_options.log_severity_level = 3 # 0:Verbose, 1:Info, 2:Warning, 3:Error, 4:Fatal
-            self.ort_session_dino = onnxruntime.InferenceSession(onnx_model_path, sess_options=session_options, providers=ONNX_PROVIDERS)
-            self.input_name_dino = self.ort_session_dino.get_inputs()[0].name
-            self.image_processor_dino = AutoImageProcessor.from_pretrained(IMAGE_PROCESSOR_ID, use_fast=False)
-            
-            if hasattr(self.image_processor_dino, 'size') and \
-               isinstance(self.image_processor_dino.size, dict) and \
-               'height' in self.image_processor_dino.size and 'width' in self.image_processor_dino.size:
-                self.target_h_model_dino = self.image_processor_dino.size['height']
-                self.target_w_model_dino = self.image_processor_dino.size['width']
-            logging.info(f"[AdvRec] DINOv2 ONNX и процессор загружены. Целевой размер для паддинга: {self.target_w_model_dino}x{self.target_h_model_dino}")
-        except Exception as e:
-            logging.error(f"[AdvRec] Ошибка при загрузке DINOv2 (ONNX сессия или процессор): {e}", exc_info=True)
+        logging.info("[AdvRec] Starting asynchronous model load...")
+        self._is_loading = True
+        self.load_started.emit()
+
+        self._loader_worker = ModelLoaderWorker(self.project_root_path)
+        self._loader_thread = QThread(self)
+
+        if self._loader_worker is None or self._loader_thread is None :
+            logging.error("[AdvRec] Не удалось создать воркер или поток для загрузки моделей.")
+            self.load_finished.emit(False)
+            self._is_loading = False
             return
 
-        embedding_files = [f for f in os.listdir(embeddings_dir_abs) if f.lower().endswith(".npy")]
-        if not embedding_files:
-            logging.error(f"[AdvRec] В '{embeddings_dir_abs}' не найдено DINOv2 эмбеддингов (.npy файлов).")
-            return
-        
-        for emb_filename in embedding_files:
-            name = os.path.splitext(emb_filename)[0] 
-            try:
-                self.dino_reference_embeddings[name] = np.load(os.path.join(embeddings_dir_abs, emb_filename))
-            except Exception as e:
-                logging.warning(f"[AdvRec] Ошибка при загрузке DINOv2 эмбеддинга '{emb_filename}': {e}")
-        
-        if not self.dino_reference_embeddings:
-            logging.error("[AdvRec] Не удалось загрузить ни одного DINOv2 эмбеддинга из найденных файлов.")
-            return
+        self._loader_worker.moveToThread(self._loader_thread)
 
-        logging.info(f"[AdvRec] Загружено DINOv2 эмбеддингов: {len(self.dino_reference_embeddings)}")
-        self._models_loaded = True
-        logging.info("[AdvRec] Модели и эмбеддинги успешно загружены.")
+        self._loader_worker.models_loaded_signal.connect(self._on_models_loaded_from_worker)
+        self._loader_thread.started.connect(self._loader_worker.run_load)
+
+        self._loader_thread.finished.connect(self._loader_thread.deleteLater)
+        self._loader_worker.models_loaded_signal.connect(self._handle_worker_cleanup_after_signal)
+
+        self._loader_thread.start()
+
+    @Slot(bool, object, object, dict, int, int)
+    def _on_models_loaded_from_worker(self, success: bool,
+                                     ort_session: Optional[onnxruntime.InferenceSession],
+                                     image_processor: Optional[Any],
+                                     embeddings_dict: Dict[str, np.ndarray],
+                                     target_h: int, target_w: int):
+        logging.info(f"[AdvRec] Received models_loaded_signal from worker. Success: {success}")
+        self._is_loading = False
+        if success and ort_session and image_processor:
+            self.ort_session_dino = ort_session
+            if self.ort_session_dino: # Добавил проверку для mypy
+                 self.input_name_dino = self.ort_session_dino.get_inputs()[0].name
+            self.image_processor_dino = image_processor
+            self.dino_reference_embeddings = embeddings_dict
+            self.target_h_model_dino = target_h
+            self.target_w_model_dino = target_w
+            self._models_ready = True
+            logging.info("[AdvRec] Модели и эмбеддинги успешно установлены из воркера.")
+        else:
+            logging.error("[AdvRec] Ошибка асинхронной загрузки моделей или неполные данные от воркера.")
+            self._models_ready = False
+
+        self.load_finished.emit(self._models_ready)
+
+    @Slot()
+    def _handle_worker_cleanup_after_signal(self):
+        """Слот для безопасного удаления воркера после обработки его сигнала."""
+        if self._loader_worker:
+            self._loader_worker.deleteLater()
+            self._loader_worker = None
+        if self._loader_thread and self._loader_thread.isRunning():
+            self._loader_thread.quit()
 
     def is_ready(self) -> bool:
-        return self._models_loaded and bool(self.ort_session_dino) and \
-               bool(self.image_processor_dino) and bool(self.dino_reference_embeddings)
+        return self._models_ready and bool(self.ort_session_dino) and \
+               bool(self.image_processor_dino)
 
     def _cosine_similarity_single(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
         if vec_a is None or vec_b is None: return 0.0
@@ -152,9 +143,9 @@ class AdvancedRecognition:
         original_width, original_height = image_pil.size
         if original_width == target_width and original_height == target_height:
             return image_pil
-        
+
         target_aspect = target_width / target_height if target_height != 0 else 1.0
-        original_aspect = original_width / original_height if original_height != 0 else 0 
+        original_aspect = original_width / original_height if original_height != 0 else 0
 
         if original_aspect > target_aspect:
             new_width = target_width
@@ -163,12 +154,12 @@ class AdvancedRecognition:
             new_height = target_height
             new_width = int(new_height * original_aspect)
 
-        if new_width <= 0 or new_height <= 0: 
+        if new_width <= 0 or new_height <= 0:
             return Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
-        
+
         try:
             resized_image = image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        except ValueError: 
+        except ValueError:
             return Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
 
         padded_image = Image.new(image_pil.mode if hasattr(image_pil, 'mode') else "RGB", (target_width, target_height), padding_color)
@@ -178,18 +169,18 @@ class AdvancedRecognition:
         return padded_image
 
     def _get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
+        if not self.is_ready(): return np.array([])
         if not pil_images_batch or not self.image_processor_dino or not self.ort_session_dino or not self.input_name_dino:
             return np.array([])
-        
-        # Паддинг происходит ПОСЛЕ предобработки (если она есть)
+
         padded_batch_for_processor = [
             self._pad_image_to_target_size_pil(img, self.target_h_model_dino, self.target_w_model_dino, PADDING_COLOR_WINDOW_DINO)
-            for img in pil_images_batch if img is not None # Пропускаем None изображения
+            for img in pil_images_batch if img is not None
         ]
 
-        if not padded_batch_for_processor: # Если все изображения в батче были None
+        if not padded_batch_for_processor:
             return np.array([])
-            
+
         inputs = self.image_processor_dino(images=padded_batch_for_processor, return_tensors="np")
         onnx_outputs = self.ort_session_dino.run(None, {self.input_name_dino: inputs.pixel_values})
         batch_cls_embeddings = onnx_outputs[0][:, 0, :]
@@ -222,12 +213,12 @@ class AdvancedRecognition:
 
         bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
         all_matched_x_coords_on_screenshot: List[float] = []
-        akaze_candidates_found: List[str] = [] 
+        akaze_candidates_found: List[str] = []
         hero_match_details: List[Dict[str, Any]] = []
 
         logging.info(f"[AdvRec][AKAZE CENTER] Поиск центра колонки (порог совпадений: {AKAZE_MIN_MATCH_COUNT_COLUMN_LOC}):")
 
-        for hero_name, templates_cv2_list in self.akaze_template_images_cv2.items(): 
+        for hero_name, templates_cv2_list in self.akaze_template_images_cv2.items():
             max_good_matches_for_hero = 0
             best_match_coords_for_hero: List[float] = []
             if not templates_cv2_list: continue
@@ -242,7 +233,7 @@ class AdvancedRecognition:
                 if des_template is None or len(kp_template) == 0: continue
                 try: matches = bf.knnMatch(des_template, des_screenshot, k=2)
                 except cv2.error: continue
-                
+
                 good_matches = []
                 current_match_coords_for_template: List[float] = []
                 valid_matches = [m_pair for m_pair in matches if m_pair is not None and len(m_pair) == 2]
@@ -252,20 +243,20 @@ class AdvancedRecognition:
                         screenshot_pt_idx = m.trainIdx
                         if screenshot_pt_idx < len(kp_screenshot):
                              current_match_coords_for_template.append(kp_screenshot[screenshot_pt_idx].pt[0])
-                
+
                 if len(good_matches) > max_good_matches_for_hero:
                     max_good_matches_for_hero = len(good_matches)
                     best_match_coords_for_hero = current_match_coords_for_template
-            
+
             if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT_COLUMN_LOC:
                 hero_match_details.append({"name": hero_name, "matches": max_good_matches_for_hero, "x_coords": best_match_coords_for_hero})
-                akaze_candidates_found.append(hero_name) 
+                akaze_candidates_found.append(hero_name)
 
         sorted_hero_match_details = sorted(hero_match_details, key=lambda item: item["matches"], reverse=True)
         for detail in sorted_hero_match_details:
              logging.info(f"[AdvRec][AKAZE CENTER]   {detail['name']}: {detail['matches']} совпадений (ПРОШЕЛ ФИЛЬТР)")
              all_matched_x_coords_on_screenshot.extend(detail['x_coords'])
-        
+
         all_template_heroes_set = set(self.akaze_template_images_cv2.keys())
         passed_heroes_set = set(d['name'] for d in hero_match_details)
         not_passed_heroes = sorted(list(all_template_heroes_set - passed_heroes_set))
@@ -276,8 +267,7 @@ class AdvancedRecognition:
                 logged_not_passed_count += 1
             elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG:
                 logging.info(f"[AdvRec][AKAZE CENTER]   ... и еще {len(not_passed_heroes) - MAX_NOT_PASSED_AKAZE_TO_LOG} не прошли фильтр (логирование ограничено).")
-                # logged_not_passed_count += 1 # Убрал, чтобы не было бесконечного цикла, если MAX_NOT_PASSED_AKAZE_TO_LOG = 0
-                break 
+                break
 
         if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
             logging.warning(f"[AdvRec][AKAZE CENTER] Найдено слишком мало героев ({len(akaze_candidates_found)}), чтобы надежно определить центр колонки. Требуется: {MIN_HEROES_FOR_COLUMN_DETECTION}.")
@@ -288,7 +278,7 @@ class AdvancedRecognition:
             return None, akaze_candidates_found
 
         rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot]
-        if not rounded_x_coords: # Добавил проверку на пустой список
+        if not rounded_x_coords:
             logging.warning("[AdvRec][AKAZE CENTER] Нет округленных X-координат для определения центра.")
             return None, akaze_candidates_found
 
@@ -297,7 +287,8 @@ class AdvancedRecognition:
 
 
     def recognize_heroes_on_screenshot(self, screenshot_cv2: np.ndarray) -> List[str]:
-        if not self.is_ready(): 
+        logging.info(f"[AdvRec] --->>> recognize_heroes_on_screenshot ВЫЗВАН <<<---. is_ready: {self.is_ready()}") # ДОБАВЛЕНО ЛОГИРОВАНИЕ
+        if not self.is_ready():
             logging.error("[AdvRec] Модели не загружены. Распознавание невозможно.")
             return []
         if screenshot_cv2 is None:
@@ -305,9 +296,8 @@ class AdvancedRecognition:
             return []
 
         script_start_time = time.time()
-        
-        try: 
-            # Убедимся, что скриншот конвертируется в RGB для PIL
+
+        try:
             screenshot_pil_original = Image.fromarray(cv2.cvtColor(screenshot_cv2, cv2.COLOR_BGR2RGB))
             s_width, s_height = screenshot_pil_original.size
         except Exception as e:
@@ -324,9 +314,8 @@ class AdvancedRecognition:
             base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
             logging.info(f"[AdvRec] Генерация ROI для DINO. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center}). Шаг Y={ROI_GENERATION_STRIDE_Y_DINO}")
             for y_base in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
-                for x_offset in ROI_X_JITTER_VALUES_DINO: 
+                for x_offset in ROI_X_JITTER_VALUES_DINO:
                     current_roi_start_x = base_roi_start_x + x_offset
-                    # Проверка выхода за пределы изображения
                     if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
                          rois_for_dino.append({'x': current_roi_start_x, 'y': y_base})
         else:
@@ -334,13 +323,13 @@ class AdvancedRecognition:
             for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
                 for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
                     rois_for_dino.append({'x': x_val, 'y': y})
-        
+
         logging.info(f"[AdvRec] Сгенерировано {len(rois_for_dino)} ROI для DINO.")
-        if not rois_for_dino: 
+        if not rois_for_dino:
             logging.warning("[AdvRec] Не сгенерировано ни одного ROI для DINO.")
             return []
-        
-        all_dino_detections_from_roi: List[Dict[str, Any]] = [] 
+
+        all_dino_detections_from_roi: List[Dict[str, Any]] = []
         pil_batch: List[Image.Image] = []
         coordinates_batch: List[Dict[str, int]] = []
         processed_windows_count = 0
@@ -349,27 +338,25 @@ class AdvancedRecognition:
         for roi_coord in rois_for_dino:
             x, y = roi_coord['x'], roi_coord['y']
             window_pil_original = screenshot_pil_original.crop((x, y, x + WINDOW_SIZE_W_DINO, y + WINDOW_SIZE_H_DINO))
-            
-            # --- Применяем предобработку к ROI ---
+
             window_pil_preprocessed = preprocess_image_for_dino(window_pil_original)
             if window_pil_preprocessed is None:
                 logging.warning(f"Предобработка для ROI ({x},{y}) вернула None. Пропуск этого ROI.")
-                continue # Пропускаем этот ROI, если предобработка не удалась
-            # ------------------------------------
-            
-            pil_batch.append(window_pil_preprocessed) # Добавляем обработанное изображение в батч
+                continue
+
+            pil_batch.append(window_pil_preprocessed)
             coordinates_batch.append({'x': x, 'y': y})
 
             if len(pil_batch) >= BATCH_SIZE_SLIDING_WINDOW_DINO:
                 window_embeddings_batch = self._get_cls_embeddings_for_batched_pil(pil_batch)
-                if window_embeddings_batch.size == 0 and pil_batch: # Проверка, если батч не пуст, а эмбеддинги пусты
+                if window_embeddings_batch.size == 0 and pil_batch:
                     logging.warning(f"[AdvRec] Получен пустой батч эмбеддингов, хотя в pil_batch было {len(pil_batch)} элементов.")
                 else:
                     for i in range(len(window_embeddings_batch)):
                         window_embedding = window_embeddings_batch[i]
                         coord = coordinates_batch[i]
                         best_sim_for_window = -1.0
-                        best_ref_name_for_window = None 
+                        best_ref_name_for_window = None
                         for ref_name, ref_embedding in self.dino_reference_embeddings.items():
                             similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
                             if similarity > best_sim_for_window:
@@ -377,15 +364,15 @@ class AdvancedRecognition:
                                 best_ref_name_for_window = ref_name
                         if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
                             all_dino_detections_from_roi.append({
-                                "name": best_ref_name_for_window, 
+                                "name": best_ref_name_for_window,
                                 "similarity": best_sim_for_window,
                                 "x": coord['x'], "y": coord['y']
                             })
                 processed_windows_count += len(pil_batch)
                 pil_batch = []
                 coordinates_batch = []
-        
-        if pil_batch: # Обработка оставшегося батча
+
+        if pil_batch:
             window_embeddings_batch = self._get_cls_embeddings_for_batched_pil(pil_batch)
             if window_embeddings_batch.size == 0 and pil_batch:
                  logging.warning(f"[AdvRec] Получен пустой батч эмбеддингов для остатка, pil_batch: {len(pil_batch)}.")
@@ -402,7 +389,7 @@ class AdvancedRecognition:
                             best_ref_name_for_window = ref_name
                     if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
                         all_dino_detections_from_roi.append({
-                            "name": best_ref_name_for_window, 
+                            "name": best_ref_name_for_window,
                             "similarity": best_sim_for_window,
                             "x": coord['x'], "y": coord['y']
                         })
@@ -411,7 +398,7 @@ class AdvancedRecognition:
         dino_processing_end_time = time.time()
         logging.info(f"[AdvRec] Обработано окон (DINOv2): {processed_windows_count}, Всего DINO детекций (выше порога логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%): {len(all_dino_detections_from_roi)}")
         logging.info(f"[AdvRec] Время DINOv2 обработки ROI: {dino_processing_end_time - dino_processing_start_time:.2f} сек.")
-        
+
         all_dino_detections_sorted = sorted(all_dino_detections_from_roi, key=lambda x: x["similarity"], reverse=True)
 
         logging.info(f"[AdvRec] --- Все кандидаты DINO (прошедшие порог логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%) ---")
@@ -424,28 +411,25 @@ class AdvancedRecognition:
         occupied_y_slots_by_akaze: List[Tuple[int, int, str]] = []
 
         akaze_hero_norm_names_unique = sorted(list(set(akaze_identified_canonical_names)))
-        
-        # Шаг 1: Добавляем героев, найденных AKAZE и подтвержденных DINO
+
         for akaze_norm_name in akaze_hero_norm_names_unique:
             if len(final_team_raw_names) >= TEAM_SIZE: break
             if akaze_norm_name in final_team_normalized_names_set: continue
 
             best_dino_match_for_akaze_hero: Optional[Dict[str, Any]] = None
             highest_similarity = -1.0
-            # Ищем в полном списке DINO-кандидатов (all_dino_detections_sorted)
-            for dino_cand_data in all_dino_detections_sorted: 
+            for dino_cand_data in all_dino_detections_sorted:
                 if normalize_hero_name_util(dino_cand_data["name"]) == akaze_norm_name:
-                    # DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE - порог для подтверждения
                     if dino_cand_data["similarity"] > highest_similarity and \
                        dino_cand_data["similarity"] >= DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE:
                         highest_similarity = dino_cand_data["similarity"]
                         best_dino_match_for_akaze_hero = dino_cand_data
-            
+
             if best_dino_match_for_akaze_hero:
                 raw_name_to_add = best_dino_match_for_akaze_hero["name"]
                 final_team_raw_names.append(raw_name_to_add)
                 final_team_normalized_names_set.add(akaze_norm_name)
-                
+
                 y_start = best_dino_match_for_akaze_hero["y"]
                 y_end = y_start + WINDOW_SIZE_H_DINO
                 occupied_y_slots_by_akaze.append((y_start, y_end, akaze_norm_name))
@@ -453,22 +437,20 @@ class AdvancedRecognition:
             else:
                 logging.warning(f"[AdvRec] Гибрид (AKAZE): AKAZE нашел '{akaze_norm_name}', но DINO не подтвердил его с достаточной уверенностью (>{DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE*100:.0f}%).")
 
-        # Шаг 2: Добавляем оставшихся героев только по DINO
-        # Фильтруем кандидатов для Шага 2 по DINOV2_FINAL_DECISION_THRESHOLD
         dino_candidates_for_final_decision = [
-            cand for cand in all_dino_detections_sorted 
+            cand for cand in all_dino_detections_sorted
             if cand["similarity"] >= DINOV2_FINAL_DECISION_THRESHOLD
         ]
-        
+
         logging.info(f"[AdvRec] --- Кандидаты DINOv2 для финального решения (прошедшие порог {DINOV2_FINAL_DECISION_THRESHOLD*100:.0f}%, {len(dino_candidates_for_final_decision)} шт.) ---")
 
-        for dino_cand_data in dino_candidates_for_final_decision: 
+        for dino_cand_data in dino_candidates_for_final_decision:
             if len(final_team_raw_names) >= TEAM_SIZE: break
 
             dino_raw_name = dino_cand_data["name"]
             dino_norm_name = normalize_hero_name_util(dino_raw_name)
 
-            if dino_norm_name in final_team_normalized_names_set: continue # Уже добавлен
+            if dino_norm_name in final_team_normalized_names_set: continue
 
             dino_roi_y_start = dino_cand_data["y"]
             dino_roi_y_end = dino_roi_y_start + WINDOW_SIZE_H_DINO
@@ -478,23 +460,19 @@ class AdvancedRecognition:
                 overlap_start = max(dino_roi_y_start, occ_y_start)
                 overlap_end = min(dino_roi_y_end, occ_y_end)
                 overlap_height = overlap_end - overlap_start
-                
+
                 if overlap_height > (WINDOW_SIZE_H_DINO * Y_OVERLAP_THRESHOLD_RATIO):
                     if dino_norm_name == occ_hero_name:
-                        # Кандидат от DINO совпадает с уже добавленным AKAZE-героем.
-                        # Это нормально, просто не добавляем его снова.
                         logging.debug(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}) совпадает с уже добавленным AKAZE-героем '{occ_hero_name}'. Пропуск добавления.")
                     else:
-                        # Пересечение с другим героем, уже добавленным AKAZE
                         logging.info(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}, ROI Y:{dino_roi_y_start}-{dino_roi_y_end}) пересекается с '{occ_hero_name}' от AKAZE (слот Y:{occ_y_start}-{occ_y_end}). Пропуск.")
                     is_overlapping = True
-                    break 
-            
+                    break
+
             if not is_overlapping:
                 final_team_raw_names.append(dino_raw_name)
                 final_team_normalized_names_set.add(dino_norm_name)
                 logging.info(f"[AdvRec] Гибрид (DINO): Добавлен '{dino_raw_name}' ({dino_norm_name}) с DINO sim: {dino_cand_data['similarity']*100:.1f}%.")
-                # Добавляем Y-слот этого DINO-героя, чтобы избежать наложений с другими DINO-героями
                 occupied_y_slots_by_akaze.append((dino_roi_y_start, dino_roi_y_end, dino_norm_name))
 
 
@@ -504,5 +482,6 @@ class AdvancedRecognition:
 
         script_end_time = time.time()
         logging.info(f"[AdvRec] Общее время выполнения распознавания: {script_end_time - script_start_time:.2f} сек.")
-        
+        logging.info(f"[AdvRec] <<<--- recognize_heroes_on_screenshot ЗАВЕРШЕН ---<<<") # ДОБАВЛЕНО ЛОГИРОВАНИЕ
+
         return final_team_raw_names

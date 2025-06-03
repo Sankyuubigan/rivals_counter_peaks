@@ -93,7 +93,6 @@ TRANSLATIONS = {
         'hotkey_desc_clear': 'Очистить выбор врагов',
         'hotkey_desc_copy_team': 'Копировать состав',
         'hotkey_desc_toggle_tray': 'Режим "Трей" (Поверх + Игнор. мыши)',
-        # 'hotkey_desc_toggle_mouse_ignore': 'Игнорирование мыши (отдельно)', # УДАЛЕНО
         'hotkey_desc_debug_screenshot': 'Тестовый скриншот',
         'hotkey_desc_decrease_opacity': 'Уменьшить непрозрачность окна', 
         'hotkey_desc_increase_opacity': 'Увеличить непрозрачность окна', 
@@ -137,9 +136,16 @@ TRANSLATIONS = {
         'sw_settings_applied_msg': "Изменения успешно применены.",
         'sw_for_action_text': "для",
         'sw_and_text': "и",
+        'version_tooltip_prefix': "Версия приложения", 
+        'recognize_button_text': "Распознать", 
+        'recognize_button_tooltip': "Распознать героев", 
+        'recognition_models_loading_tooltip': "Модели распознавания загружаются...", 
+        'recognition_models_not_ready': "Модели распознавания еще не загружены. Пожалуйста, подождите.", 
+        'recognition_models_not_ready_tooltip': "Модели распознавания не готовы.", 
+        'close_button_tooltip': "Закрыть приложение", 
+
     },
     'en_US': {
-        # ... (аналогичные изменения для английского) ...
         'title': 'Counterpick Selection',
         'select_heroes': 'Select heroes to see counterpicks.',
         'no_heroes_selected': 'Select enemy team heroes.',
@@ -227,7 +233,6 @@ TRANSLATIONS = {
         'hotkey_desc_clear': 'Clear enemy selection',
         'hotkey_desc_copy_team': 'Copy team composition',
         'hotkey_desc_toggle_tray': '"Tray" Mode (Always on Top + Mouse Ignore)',
-        # 'hotkey_desc_toggle_mouse_ignore': 'Mouse Click-through (Independent)', # REMOVED
         'hotkey_desc_debug_screenshot': 'Test screenshot',
         'hotkey_desc_decrease_opacity': 'Decrease window opacity', 
         'hotkey_desc_increase_opacity': 'Increase window opacity', 
@@ -271,9 +276,16 @@ TRANSLATIONS = {
         'sw_settings_applied_msg': "Changes have been applied successfully.",
         'sw_for_action_text': "for",
         'sw_and_text': "and",
+        'version_tooltip_prefix': "Application version",
+        'recognize_button_text': "Recognize",
+        'recognize_button_tooltip': "Recognize heroes",
+        'recognition_models_loading_tooltip': "Recognition models are loading...",
+        'recognition_models_not_ready': "Recognition models are not loaded yet. Please wait.",
+        'recognition_models_not_ready_tooltip': "Recognition models are not ready.",
+        'close_button_tooltip': "Close application",
     }
 }
-# ... (остальная часть файла без изменений) ...
+
 formatted_text_cache = {}
 _current_lang_internal = DEFAULT_LANGUAGE
 
@@ -291,49 +303,59 @@ def _validate_key(key, translations_for_lang, default_text, language_code_for_fa
         
         if base_text is None: 
              if default_text is None:
+                 # Только логируем, не выбрасываем исключение
                  logging.warning(f"[Translations] Key '{key}' not found in translations for '{language_code_for_fallback_search}' or 'en_US', and no default_text provided.")
+             # Возвращаем либо default_text, либо специальную строку, указывающую на отсутствующий ключ
              base_text = default_text if default_text is not None else f"_{key}_" 
     return base_text
 
 
 def get_text(key, default_text=None, language=None, **kwargs):
+    # Определяем язык для использования
     resolved_language = language if language else _current_lang_internal
     
+    # Создаем ключ для кэша
     cache_key_base = (resolved_language, key)
+    # Для форматированных строк включаем kwargs в ключ, отсортировав их для консистентности
     cache_key_formatted_tuple = tuple(sorted(kwargs.items())) if kwargs else tuple()
     cache_key_formatted = (resolved_language, key, cache_key_formatted_tuple)
 
-
+    # Проверяем кэш
     if kwargs and cache_key_formatted in formatted_text_cache:
         return formatted_text_cache[cache_key_formatted]
-    if not kwargs and cache_key_base in formatted_text_cache:
+    if not kwargs and cache_key_base in formatted_text_cache: # Если нет kwargs, используем базовый ключ
         return formatted_text_cache[cache_key_base]
 
+    # Получаем таблицу переводов для выбранного языка
     translations_for_lang = _get_translation_table(resolved_language)
+    # Получаем базовый текст, обрабатывая отсутствующие ключи
     base_text = _validate_key(key, translations_for_lang, default_text, resolved_language)
 
-    result_text = base_text 
-    if kwargs: 
+    result_text = base_text # По умолчанию результат - это базовый текст
+    if kwargs: # Если есть аргументы для форматирования
         try:
             result_text = base_text.format(**kwargs)
-        except KeyError as e:
+        except KeyError as e: # Обработка ошибки, если ключ для форматирования отсутствует
             logging.warning(f"[Translations] Missing key '{e}' for formatting text_id '{key}' in lang '{resolved_language}'. Base text: '{base_text}'") 
-        except ValueError as e: 
+            # Можно вернуть base_text как есть или специальную строку ошибки
+        except ValueError as e: # Обработка других ошибок форматирования
             logging.warning(f"[Translations] Formatting ValueError for text_id '{key}' in lang '{resolved_language}': {e}. Base text: '{base_text}'")
 
+    # Кэшируем результат
     cache_to_use_key = cache_key_formatted if kwargs else cache_key_base
     formatted_text_cache[cache_to_use_key] = result_text
     return result_text
 
 
 def set_language(language_code):
-    global _current_lang_internal 
+    global _current_lang_internal # Указываем, что работаем с глобальной переменной
     if language_code in SUPPORTED_LANGUAGES:
-        if _current_lang_internal != language_code: 
+        if _current_lang_internal != language_code: # Обновляем, только если язык действительно изменился
             _current_lang_internal = language_code
-            formatted_text_cache.clear() 
+            formatted_text_cache.clear() # Очищаем кэш при смене языка
             logging.info(f"Global language set to: {language_code}. Translation cache cleared.")
     else:
         logging.warning(f"Warning: Unsupported language '{language_code}'. Keeping '{_current_lang_internal}'.")
 
+# Устанавливаем язык по умолчанию при первом импорте модуля
 set_language(DEFAULT_LANGUAGE)
