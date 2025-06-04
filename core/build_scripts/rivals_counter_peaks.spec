@@ -133,7 +133,7 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 exe = EXE(
     pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [], 
-    name='rivals_counter_peaks_25.05.28', 
+    name='rivals_counter_peaks_25.06.03', 
     debug=False,         # <--- ИЗМЕНЕНО НА False
     console=False,       # <--- ИЗМЕНЕНО НА False
     windowed=True,       # <--- ИЗМЕНЕНО НА True (или просто удалить, это по умолчанию для графических)
