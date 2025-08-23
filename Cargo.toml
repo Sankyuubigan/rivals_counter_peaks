@@ -1,0 +1,29 @@
+[package]
+name = "rust_rivals"
+version = "0.1.0"
+edition = "2021"
+description = "Marvel Rivals team counter-pick assistant"
+[dependencies]
+eframe = { version = "0.27.2", features = ["default", "glow"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11"
+regex = "1"
+image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
+ort = { version = "2.0.0-rc.10" }
+npy = "0.4"
+ndarray = { version = "0.15", features = ["serde"] }
+xcap = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+global-hotkey = "0.4"
+directories = "5.0"
+arboard = "3.3"
+chrono = { version = "0.4", features = ["serde"] }
+imageproc = "0.23.0"
+lazy_static = "1.4.0"
+[build-dependencies]
+embed-resource = "2.4.0"
+[package.metadata.windows]
+icon = "resources/logo.png"

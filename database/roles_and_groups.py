@@ -1,11 +1,10 @@
 
-flunkers={
+flunkers=[
 "Hulk" "Thor" "The Thing" "Venom" "Captain America" "Psylocke" "Mr Fantastic" "Black Panther" "SpiderMan" "Magik" "Witch" "Fister" "Jeff"
-}
+]
 
-range ={
-"Punisher" "Hela" "Bucky" "Hawkeye" "Widow"
-}
+range =["Punisher" "Hela" "Bucky" "Hawkeye" "Widow"]
+
 
 # Информационные списки (не используются в логике напрямую)
 if_teammates_healers_noobs = {
@@ -23,13 +22,13 @@ fliers={
 
 # Распределение героев по ролям (для расчета эффективной команды)
 hero_roles = {
-    "tanks": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
+    "tank": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
               "Magneto","Emma Frost"],
-    "attackers": ["Punisher", "Hela", "Moon Knight", "Iron Man", "Bucky", "Psylocke", "Mr Fantastic", "Storm", # <<< ИЗМЕНЕНО
-                  "Black Panther", "Squirrel Girl", "SpiderMan", "StarLord", "Wolverine", "Hawkeye", "Magik",
-                  "Widow", "Witch", "Namor", "Fister", "Human Torch"],
-    "supports": ["Loki", "Cloak and Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Racoon", "Invisible Woman", # <<< ИЗМЕНЕНО
-                 "Adam Warlock"]
+    "dd": ["The Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mister Fantastic", "Storm",
+                  "Black Panther", "Squirrel Girl", "Spider Man", "Star Lord", "Wolverine", "Hawkeye", "Magik",
+                  "Widow", "Scarlet Witch", "Namor", "Fister", "Human Torch","Phoenix","Blade"],
+    "support": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Raccoon", "Invisible Woman", 
+                 "Adam Warlock", "Ultron"]
 }
 
 hero_style={
@@ -37,3 +36,4 @@ hero_style={
     "dive":["кэп стрендж тор веном паук пени халк пантера псай акула мантис меджик фистер старлорд росомаха"],
     "poke":["белка магнето стрендж муннайт пени жч вдова торч енот псай хокай локи луна намор мантис панишер баки хела адам муннайт старлорд шторм"],
 }
+
