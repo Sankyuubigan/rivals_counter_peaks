@@ -42,6 +42,10 @@ pub struct RivalsApp {
     pub prevent_tab_navigation: bool,
     // Состояние вкладок
     pub active_tab: ActiveTab,
+    // Контроль времени распознавания
+    recognition_start_time: Option<std::time::Instant>,
+    max_recognition_time: std::time::Duration,
+    last_result_check: std::time::Instant,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -77,6 +81,9 @@ impl RivalsApp {
             recognition_manager: None, // Не инициализируем сразу
             prevent_tab_navigation: false, // Изначально не блокируем Tab
             active_tab: ActiveTab::Main, // Основная вкладка по умолчанию
+            recognition_start_time: None,
+            max_recognition_time: std::time::Duration::from_secs(300), // 5 минут максимум
+            last_result_check: std::time::Instant::now(),
             ..Self::default()
         };
         
@@ -166,8 +173,10 @@ impl RivalsApp {
                 }
             }
         }
-        
+
         if let Some(ref mut manager) = self.recognition_manager {
+            // Устанавливаем время начала распознавания
+            self.recognition_start_time = Some(std::time::Instant::now());
             manager.start_recognition();
             info!("Запущено распознавание героев.");
         }
@@ -220,6 +229,9 @@ impl Default for RivalsApp {
             clipboard: arboard::Clipboard::new().unwrap(),
             prevent_tab_navigation: false, // Изначально не блокируем Tab
             active_tab: ActiveTab::Main, // Основная вкладка по умолчанию
+            recognition_start_time: None,
+            max_recognition_time: std::time::Duration::from_secs(300), // 5 минут максимум
+            last_result_check: std::time::Instant::now(),
         }
     }
 }
@@ -259,21 +271,39 @@ impl eframe::App for RivalsApp {
             self.handle_hotkey_action(action);
         }
         
-        // Проверяем результаты распознавания
+        // Проверяем результаты распознавания с контролем времени
         if let Some(ref mut manager) = self.recognition_manager {
-            match manager.try_get_result() {
-                Ok(Some(heroes)) => {
-                    info!("Получен результат распознавания: {:?}", heroes);
-                    self.selected_enemies = heroes.into_iter().collect();
-                    self.update_ratings();
+            let now = std::time::Instant::now();
+
+            // Проверяем таймаут распознавания
+            if let Some(start_time) = self.recognition_start_time {
+                if now.duration_since(start_time) > self.max_recognition_time {
+                    warn!("Превышено максимальное время распознавания ({} сек), отменяем", self.max_recognition_time.as_secs());
+                    self.recognition_manager = None;
+                    self.recognition_start_time = None;
+                    return;
                 }
-                Ok(None) => {
-                    // Нет данных, ничего не делаем
-                }
-                Err(e) => {
-                    let error_msg = format!("Ошибка распознавания: {}", e);
-                    error!("{}", error_msg);
-                    // Не устанавливаем data_load_error, так как это не критическая ошибка
+            }
+
+            // Проверяем результаты не чаще чем раз в 100 мс
+            if now.duration_since(self.last_result_check) > std::time::Duration::from_millis(100) {
+                self.last_result_check = now;
+
+                match manager.try_get_result() {
+                    Ok(Some(heroes)) => {
+                        info!("Получен результат распознавания: {:?}", heroes);
+                        self.selected_enemies = heroes.into_iter().collect();
+                        self.update_ratings();
+                        self.recognition_start_time = None; // Сбрасываем таймер
+                    }
+                    Ok(None) => {
+                        // Нет данных, ничего не делаем
+                    }
+                    Err(e) => {
+                        let error_msg = format!("Ошибка распознавания: {}", e);
+                        error!("{}", error_msg);
+                        // Не устанавливаем data_load_error, так как это не критическая ошибка
+                    }
                 }
             }
         }

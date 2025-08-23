@@ -435,7 +435,7 @@ fn compute_descriptor_distance(desc1: &Descriptor, desc2: &Descriptor) -> f32 {
     }
     
     let distance = (sum / desc1.data.len() as f32).sqrt();
-    debug!("Расстояние между дескрипторами: {:.3}", distance);
+    // debug!("Расстояние между дескрипторами: {:.3}", distance);
     
     distance
 }
