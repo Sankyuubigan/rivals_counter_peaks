@@ -141,16 +141,20 @@ pub fn create_debug_session(
 
 /// Нормализует имя героя (аналог normalize_hero_name из Python)
 pub fn normalize_hero_name(name: &str) -> String {
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
     if name.is_empty() {
         return String::new();
     }
-    
+
     let mut normalized = name.to_lowercase();
-    
+
     // Удаляем числовые суффиксы типа _1, _2, _v2, _v3 и т.д.
     normalized = regex::Regex::new(r"[_ ]*v\d+$").unwrap().replace(&normalized, "").to_string();
     normalized = regex::Regex::new(r"_\d+$").unwrap().replace(&normalized, "").to_string();
-    
+
     // Удаляем другие общие суффиксы
     let suffixes_to_remove = ["_icon", "_template", "_small", "_left", "_right", "_horizontal", "_adv", "_padded"];
     for suffix in suffixes_to_remove {
@@ -158,14 +162,17 @@ pub fn normalize_hero_name(name: &str) -> String {
             normalized = normalized[..normalized.len() - suffix.len()].to_string();
         }
     }
-    
+
+    // Оставляем & как есть для некоторых имен типа "Cloak & Dagger"
+    // normalized = regex::Regex::new(r"[&]").unwrap().replace(&normalized, " and ").to_string();
+
     // Заменяем тире, подчеркивания на пробелы, убираем лишние пробелы
     normalized = regex::Regex::new(r"[-_]+").unwrap().replace(&normalized, " ").to_string();
     normalized = regex::Regex::new(r"\s+").unwrap().replace(&normalized, " ").trim().to_string();
-    
+
     // TODO: Здесь можно добавить поиск канонического имени в базе данных героев
     // Пока просто возвращаем капитализированную версию
-    
+
     // Капитализируем слова
     let parts: Vec<&str> = normalized.split(' ').collect();
     let capitalized: Vec<String> = parts
@@ -179,12 +186,18 @@ pub fn normalize_hero_name(name: &str) -> String {
             }
         })
         .collect();
-    
-    let result = capitalized.join(" ");
-    
-    if result != name {
-        log::debug!("Нормализовано имя: '{}' -> '{}'", name, result);
+
+    let mut result = capitalized.join(" ");
+
+    // Специальная обработка для "Cloak & Dagger"
+    if result.to_lowercase() == "cloak and dagger" {
+        result = "Cloak & Dagger".to_string();
     }
-    
+
+    let duration = start_time.elapsed();
+
+    // Логируем время выполнения нормализации (только для отладки)
+    log::info!("⏱️ Время нормализации имени '{}' ({} мс)", name, duration.as_millis());
+
     result
 }
