@@ -1,0 +1,101 @@
+{
+    "1": [
+        "Emma Frost",
+        "Magik",
+        "Winter Soldier",
+        "Psylocke",
+        "Luna Snow",
+        "Jeff The Land Shark"
+    ],
+    "2": [
+        "Wolverine",
+        "Magik",
+        "Winter Soldier",
+        "Psylocke",
+        "Luna Snow",
+        "Jeff The Land Shark"
+    ],
+    "3": [
+        "Black Widow",
+        "Magik",
+        "Winter Soldier",
+        "Psylocke",
+        "Luna Snow",
+        "Jeff The Land Shark"
+    ],
+    "4": [
+        "Black Widow",
+        "Magik",
+        "Winter Soldier",
+        "Psylocke",
+        "Luna Snow",
+        "Jeff The Land Shark"
+    ],
+    "5": [
+        "Emma Frost",
+        "Magik",
+        "Winter Soldier",
+        "Black Widow",
+        "Luna Snow",
+        "Jeff The Land Shark"
+    ],
+    "6": [
+        "Emma Frost",
+        "Peni Parker",
+        "Scarlet Witch",
+        "Psylocke",
+        "Cloak & Dagger",
+        "Ultron"
+    ],
+    "7": [
+        "Emma Frost",
+        "The Punisher",
+        "Squirrel Girl",
+        "Invisible Woman",
+        "Cloak & Dagger",
+        "Ultron"
+    ],
+    "all_heroes": [
+        "Peni Parker",
+        "Rocket Raccoon",
+        "Magik",
+        "Mantis",
+        "Storm",
+        "Hulk",
+        "Ultron",
+        "Captain America",
+        "Mister Fantastic",
+        "Iron Man",
+        "Thor",
+        "Loki",
+        "Black Panther",
+        "Iron Fist",
+        "Namor",
+        "The Thing",
+        "Emma Frost",
+        "Doctor Strange",
+        "Psylocke",
+        "Wolverine",
+        "Human Torch",
+        "Adam Warlock",
+        "Magneto",
+        "Hela",
+        "Cloak & Dagger",
+        "Venom",
+        "Luna Snow",
+        "Scarlet Witch",
+        "Groot",
+        "Spider Man",
+        "Squirrel Girl",
+        "Star Lord",
+        "Invisible Woman",
+        "Phoenix",
+        "Winter Soldier",
+        "Moon Knight",
+        "Jeff The Land Shark",
+        "Hawkeye",
+        "The Punisher",
+        "Black Widow",
+        "Blade"
+    ]
+}

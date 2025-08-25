@@ -39,7 +39,7 @@ MODEL_CONFIGS = {
         "filename": "model_q4.onnx",
         "target_size": 224,
         "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'],
-        "preprocessing_type": "crop",
+        "preprocessing_type": "resize",  # Изменено на "resize" для DINOv3
         "normalize_embedding": False,
         "embedding_extraction": "cls"
     },
@@ -210,7 +210,7 @@ def enhance_image(image_pil):
     return image_pil
 
 def pad_image_to_target_size(image_pil, target_height, target_width, padding_color=(0,0,0)):
-    """Паддинг изображения до целевого размера"""
+    """Паддинг изображения до целевого размера (для обратной совместимости)"""
     if image_pil is None: 
         return Image.new("RGB", (target_width, target_height), padding_color) 
     
@@ -337,24 +337,94 @@ def clip_preprocess_image(image_pil, target_size=224, image_mean=None, image_std
     
     return img_array.astype(np.float32)
 
-def preprocess_image(image_pil, target_size=224, preprocessing_type="pad", image_mean=None, image_std=None):
-    """Унифицированная предобработка изображения"""
+def dynamic_resize_preprocess(image_pil, target_size=224, image_mean=None, image_std=None):
+    """
+    Динамическая предобработка изображений любого размера для DINOv3
+    Оптимальный подход для максимальной точности
+    """
+    try:
+        # 1. Улучшаем качество изображения
+        img_enhanced = enhance_image(image_pil)
+        
+        # 2. Конвертируем в RGB если нужно
+        if img_enhanced.mode != 'RGB':
+            img_enhanced = img_enhanced.convert('RGB')
+        
+        # 3. Получаем оригинальные размеры для логирования
+        original_width, original_height = img_enhanced.size
+        logging.debug(f"Обработка изображения: {original_width}x{original_height} -> {target_size}x{target_size}")
+        
+        # 4. Динамический выбор стратегии обработки в зависимости от размера изображения
+        max_dimension = max(original_width, original_height)
+        
+        if max_dimension <= target_size:
+            # Для маленьких изображений (как ваши 150x150): upscale + resize
+            # Это улучшает качество по сравнению с прямым масштабированием
+            intermediate_size = int(target_size * 1.5)  # Увеличиваем до 336px для 224 target
+            
+            # Сначала upscale с сохранением пропорций
+            scale = intermediate_size / max_dimension
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
+            
+            img_intermediate = img_enhanced.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Затем финальный resize до целевого размера
+            img_resized = img_intermediate.resize((target_size, target_size), Image.Resampling.LANCZOS)
+            
+        elif max_dimension <= target_size * 2:
+            # Для средних изображений: прямой resize с высококачественной интерполяцией
+            img_resized = img_enhanced.resize((target_size, target_size), Image.Resampling.LANCZOS)
+            
+        else:
+            # Для больших изображений: сначала уменьшаем с сохранением пропорций, затем resize
+            scale = (target_size * 1.5) / max_dimension
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
+            
+            img_intermediate = img_enhanced.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            img_resized = img_intermediate.resize((target_size, target_size), Image.Resampling.LANCZOS)
+        
+        # 5. Конвертируем в numpy array
+        img_array = np.array(img_resized, dtype=np.float32) / 255.0
+        
+        # 6. Нормализация (используем переданные параметры или значения по умолчанию)
+        if image_mean is None:
+            image_mean = [0.485, 0.456, 0.406]
+        if image_std is None:
+            image_std = [0.229, 0.224, 0.225]
+            
+        mean = np.array(image_mean, dtype=np.float32)
+        std = np.array(image_std, dtype=np.float32)
+        img_array = (img_array - mean) / std
+        
+        # 7. Транспонирование HWC -> CHW и добавление batch dimension
+        img_array = np.transpose(img_array, (2, 0, 1))
+        img_array = np.expand_dims(img_array, axis=0)
+        
+        return img_array.astype(np.float32)
+        
+    except Exception as e:
+        logging.error(f"Ошибка в dynamic_resize_preprocess: {e}")
+        # Возвращаем нулевой тензор в случае ошибки
+        return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
+
+def preprocess_image(image_pil, target_size=224, preprocessing_type="resize", image_mean=None, image_std=None):
+    """
+    Унифицированная предобработка изображения с динамической обработкой
+    """
     try:
         if preprocessing_type == "crop":
             return crop_image_to_target_size(image_pil, target_size)
         elif preprocessing_type == "clip":
             return clip_preprocess_image(image_pil, target_size, image_mean, image_std)
-        else:  # pad
-            # Предобработка изображения
+        elif preprocessing_type == "pad":
+            # Для обратной совместимости, но рекомендуется использовать "resize"
             img_pil_preprocessed = enhance_image(image_pil)
-            
-            # Применяем паддинг
             img_padded_pil = pad_image_to_target_size(img_pil_preprocessed, target_size, target_size)
             
-            # Конвертируем в numpy array и нормализуем
             img_array = np.array(img_padded_pil, dtype=np.float32) / 255.0
             
-            # Нормализация
             if image_mean is None:
                 image_mean = [0.485, 0.456, 0.406]
             if image_std is None:
@@ -364,11 +434,12 @@ def preprocess_image(image_pil, target_size=224, preprocessing_type="pad", image
             std = np.array(image_std, dtype=np.float32)
             img_array = (img_array - mean) / std
             
-            # Транспонирование HWC -> CHW и добавление batch dimension
             img_array = np.transpose(img_array, (2, 0, 1))
             img_array = np.expand_dims(img_array, axis=0)
             
             return img_array.astype(np.float32)
+        else:  # resize - новый подход для DINOv3
+            return dynamic_resize_preprocess(image_pil, target_size, image_mean, image_std)
     except Exception as e:
         logging.error(f"Ошибка в preprocess_image: {e}")
         return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
@@ -608,7 +679,8 @@ def create_embeddings():
             
             # Загружаем изображение
             img_pil_original = Image.open(image_path_abs) 
-            logging.debug(f"Оригинальный размер изображения: {img_pil_original.size}")
+            original_width, original_height = img_pil_original.size
+            logging.debug(f"Оригинальный размер изображения: {original_width}x{original_height}")
             
             # Используем правильную предобработку для текущей модели
             inputs = preprocess_image(img_pil_original, TARGET_SIZE, PREPROCESSING_TYPE, IMAGE_MEAN, IMAGE_STD)

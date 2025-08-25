@@ -4,9 +4,9 @@ __pycache__
 model_bnb4.onnx
 /vision_models
 /resources/embeddings_padded
-# /tests/old_code
 /dist
 /.idea
 /resources/heroes_icons_old
 /resources/templates_old
 /tests/debug_logs
+/tests/for_recogn/screenshots
