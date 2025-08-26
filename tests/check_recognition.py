@@ -25,6 +25,7 @@ EMBEDDINGS_DIR = "resources/embeddings_padded"
 HEROES_ICONS_DIR = "resources/heroes_icons"
 SCREENSHOTS_DIR = "tests/for_recogn/screenshots"
 CORRECT_ANSWERS_FILE = "tests/for_recogn/correct_answers.json"
+DEBUG_DIR = "tests/debug"  # Директория для отладочных изображений
 
 # Константы модели
 TARGET_SIZE = 224
@@ -32,8 +33,8 @@ IMAGE_MEAN = [0.485, 0.456, 0.406]
 IMAGE_STD = [0.229, 0.224, 0.225]
 
 # КРИТИЧЕСКИ ВАЖНО: Размер ROI должен соответствовать размеру иконок (150x150)
-WINDOW_SIZE_W_DINO = 150  # Соответствует размеру иконок
-WINDOW_SIZE_H_DINO = 150  # Соответствует размеру иконок
+WINDOW_SIZE_W_DINO = 224  # Соответствует размеру иконок
+WINDOW_SIZE_H_DINO = 224  # Соответствует размеру иконок
 ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.7)
 FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.8)
 FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.8)
@@ -41,7 +42,7 @@ BATCH_SIZE_SLIDING_WINDOW_DINO = 32
 PADDING_COLOR_WINDOW_DINO = (0, 0, 0)
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
 AKAZE_LOWE_RATIO = 0.75
-AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 5  # СНИЖАЕМ ПОРОГ с 3 до 2
+AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 5  # Порог AKAZE
 MIN_HEROES_FOR_COLUMN_DETECTION = 2
 ROI_X_JITTER_VALUES_DINO = [-3, 0, 3]
 MAX_NOT_PASSED_AKAZE_TO_LOG = 15
@@ -58,9 +59,12 @@ RECOGNITION_AREA = {
     'monitor': 1, 
     'left_pct': 50, 
     'top_pct': 20, 
-    'width_pct': 20,  
+    'width_pct': 20,  # Изменено с 40% на 20%
     'height_pct': 50
 }
+
+# Создаем директорию для отладки
+os.makedirs(DEBUG_DIR, exist_ok=True)
 
 class HeroRecognitionSystem:
     """Система распознавания героев Marvel Rivals"""
@@ -69,6 +73,7 @@ class HeroRecognitionSystem:
         self.input_name: Optional[str] = None
         self.hero_embeddings: Dict[str, List[np.ndarray]] = {}
         self.hero_icons: Dict[str, np.ndarray] = {}
+        self.similarity_stats = []  # Статистика similarity scores
         logging.info("Инициализация системы распознавания героев...")
     
     def load_model(self) -> bool:
@@ -79,7 +84,7 @@ class HeroRecognitionSystem:
                 return False
             self.ort_session = onnxruntime.InferenceSession(
                 MODEL_PATH,
-                providers=['CPUExecutionProvider']  # Убираем CUDA, так как его нет
+                providers=['CPUExecutionProvider']
             )
             self.input_name = self.ort_session.get_inputs()[0].name
             logging.info(f"Модель загружена. Вход: {self.input_name}")
@@ -216,6 +221,21 @@ class HeroRecognitionSystem:
             logging.error(f"Ошибка обрезки изображения: {e}")
             return image_pil
     
+    def save_debug_image(self, image_pil: Image.Image, filename: str, subdir: str = ""):
+        """Сохраняет отладочное изображение"""
+        try:
+            if subdir:
+                save_dir = os.path.join(DEBUG_DIR, subdir)
+                os.makedirs(save_dir, exist_ok=True)
+            else:
+                save_dir = DEBUG_DIR
+            
+            filepath = os.path.join(save_dir, filename)
+            image_pil.save(filepath)
+            logging.debug(f"Сохранено отладочное изображение: {filepath}")
+        except Exception as e:
+            logging.error(f"Ошибка сохранения отладочного изображения: {e}")
+    
     # ТОЧНОЕ соответствие функции из файла создания эмбеддингов
     def dynamic_resize_preprocess(self, image_pil: Image.Image, target_size=224, image_mean=None, image_std=None):
         """
@@ -297,17 +317,40 @@ class HeroRecognitionSystem:
             # Возвращаем нулевой тензор в случае ошибки
             return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
     
-    def preprocess_image_for_dino(self, image_pil: Image.Image) -> np.ndarray:
+    def preprocess_image_for_dino(self, image_pil: Image.Image, roi_info: str = "") -> np.ndarray:
         """Предобработка изображения для DINOv3 - точное соответствие созданию эмбеддингов"""
-        return self.dynamic_resize_preprocess(image_pil, TARGET_SIZE, IMAGE_MEAN, IMAGE_STD)
+        logging.debug(f"Предобработка ROI {roi_info}: оригинальный размер {image_pil.size}")
+        
+        # Сохраняем оригинальное ROI для отладки
+        if roi_info:
+            self.save_debug_image(image_pil, f"roi_{roi_info}_original.png")
+        
+        # Применяем предобработку
+        processed_tensor = self.dynamic_resize_preprocess(image_pil, TARGET_SIZE, IMAGE_MEAN, IMAGE_STD)
+        
+        # Сохраняем предобработанное изображение (конвертируем обратно в PIL)
+        try:
+            # Обратное преобразование для сохранения
+            img_array = processed_tensor[0]  # Убираем batch dimension
+            img_array = np.transpose(img_array, (1, 2, 0))  # CHW -> HWC
+            img_array = img_array * np.array(IMAGE_STD) + np.array(IMAGE_MEAN)
+            img_array = np.clip(img_array * 255.0, 0, 255).astype(np.uint8)
+            processed_pil = Image.fromarray(img_array)
+            
+            if roi_info:
+                self.save_debug_image(processed_pil, f"roi_{roi_info}_processed.png")
+        except Exception as e:
+            logging.error(f"Ошибка сохранения предобработанного изображения: {e}")
+        
+        return processed_tensor
     
-    def get_cls_embedding(self, image_pil: Image.Image) -> np.ndarray:
+    def get_cls_embedding(self, image_pil: Image.Image, roi_info: str = "") -> np.ndarray:
         """Получение CLS эмбеддинга для изображения"""
         if not self.is_ready():
             return np.array([])
         try:
             # Используем функцию, которая точно соответствует созданию эмбеддингов
-            inputs = self.preprocess_image_for_dino(image_pil)
+            inputs = self.preprocess_image_for_dino(image_pil, roi_info)
             onnx_outputs = self.ort_session.run(None, {self.input_name: inputs})
             last_hidden_state = onnx_outputs[0]
             cls_embedding = last_hidden_state[0, 0, :]
@@ -327,21 +370,40 @@ class HeroRecognitionSystem:
             return 0.0
         return dot_product / (norm_a * norm_b)
     
-    def get_best_match(self, query_embedding: np.ndarray) -> Tuple[Optional[str], float]:
+    def get_best_match(self, query_embedding: np.ndarray, roi_info: str = "") -> Tuple[Optional[str], float]:
         """Находит лучшее совпадение со всеми эмбеддингами героя"""
         if len(query_embedding) == 0:
             return None, 0.0
         
         best_sim = -1.0
         best_hero = None
+        all_similarities = []
         
         # Сравниваем со всеми эмбеддингами всех героев
         for hero_name, hero_emb_list in self.hero_embeddings.items():
-            for hero_emb in hero_emb_list:
+            for i, hero_emb in enumerate(hero_emb_list):
                 similarity = self.cosine_similarity(query_embedding, hero_emb)
+                all_similarities.append((hero_name, similarity, i))
+                
                 if similarity > best_sim:
                     best_sim = similarity
                     best_hero = hero_name
+        
+        # Логируем топ-5 совпадений для анализа
+        all_similarities.sort(key=lambda x: x[1], reverse=True)
+        top_matches = all_similarities[:5]
+        
+        logging.debug(f"ROI {roi_info}: Топ-5 совпадений:")
+        for hero, sim, emb_idx in top_matches:
+            logging.debug(f"  {hero} (emb_{emb_idx}): {sim:.4f}")
+        
+        # Сохраняем статистику
+        self.similarity_stats.append({
+            'roi_info': roi_info,
+            'best_hero': best_hero,
+            'best_similarity': best_sim,
+            'top_matches': top_matches
+        })
         
         return best_hero, best_sim
     
@@ -516,33 +578,20 @@ class HeroRecognitionSystem:
             return normalized
     
     def generate_rois(self, screenshot_pil: Image.Image, column_x_center: Optional[int]) -> List[Dict[str, Any]]:
-        """Генерирует ROI для анализа"""
+        """Временная версия для тестирования - всегда используем полное сканирование"""
         s_width, s_height = screenshot_pil.size
         rois_for_dino = []
         
-        if column_x_center is not None:
-            base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
-            logging.info(f"Генерация ROI. Базовый левый край X={base_roi_start_x}")
-            for y_base in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
-                for x_offset in ROI_X_JITTER_VALUES_DINO:
-                    current_roi_start_x = base_roi_start_x + x_offset
-                    if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
-                        rois_for_dino.append({
-                            'x': current_roi_start_x, 
-                            'y': y_base,
-                            'width': WINDOW_SIZE_W_DINO,
-                            'height': WINDOW_SIZE_H_DINO
-                        })
-        else:
-            logging.warning("Не удалось определить центр колонки. Используем fallback сканирование.")
-            for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
-                for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
-                    rois_for_dino.append({
-                        'x': x_val, 
-                        'y': y,
-                        'width': WINDOW_SIZE_W_DINO,
-                        'height': WINDOW_SIZE_H_DINO
-                    })
+        logging.warning("Используем полное сканирование для тестирования")
+        
+        for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
+            for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
+                rois_for_dino.append({
+                    'x': x_val, 
+                    'y': y,
+                    'width': WINDOW_SIZE_W_DINO,
+                    'height': WINDOW_SIZE_H_DINO
+                })
         
         return rois_for_dino
     
@@ -578,9 +627,41 @@ class HeroRecognitionSystem:
         
         return filtered_detections
     
-    def recognize_heroes(self, use_screen_capture=True, test_file_index=None, save_debug=False) -> List[str]:
+    def analyze_similarity_distribution(self):
+        """Анализирует распределение similarity scores"""
+        if not self.similarity_stats:
+            logging.warning("Нет данных для анализа similarity scores")
+            return
+        
+        # Разделяем на правильные и неправильные детекции
+        correct_sims = []
+        incorrect_sims = []
+        
+        for stat in self.similarity_stats:
+            if stat['best_similarity'] > 0:
+                # Здесь можно добавить логику для определения правильности детекции
+                # Пока просто разделяем по порогу
+                if stat['best_similarity'] > DINOV2_FINAL_DECISION_THRESHOLD:
+                    correct_sims.append(stat['best_similarity'])
+                else:
+                    incorrect_sims.append(stat['best_similarity'])
+        
+        logging.info(f"\n=== Анализ распределения similarity scores ===")
+        logging.info(f"Всего измерений: {len(self.similarity_stats)}")
+        logging.info(f"Высокие similarity (> {DINOV2_FINAL_DECISION_THRESHOLD}): {len(correct_sims)}")
+        logging.info(f"Низкие similarity (<= {DINOV2_FINAL_DECISION_THRESHOLD}): {len(incorrect_sims)}")
+        
+        if correct_sims:
+            logging.info(f"Средний high similarity: {np.mean(correct_sims):.4f} (min: {np.min(correct_sims):.4f}, max: {np.max(correct_sims):.4f})")
+        
+        if incorrect_sims:
+            logging.info(f"Средний low similarity: {np.mean(incorrect_sims):.4f} (min: {np.min(incorrect_sims):.4f}, max: {np.max(incorrect_sims):.4f})")
+    
+    def recognize_heroes(self, use_screen_capture=True, test_file_index=None, save_debug=False, experiment_roi_size=None) -> List[str]:
         """Основная функция распознавания героев"""
         start_time = time.time()
+        self.similarity_stats = []  # Очищаем статистику для каждого распознавания
+        
         try:
             # 1. Загружаем скриншот
             if use_screen_capture:
@@ -636,19 +717,26 @@ class HeroRecognitionSystem:
             all_dino_detections: List[Dict[str, Any]] = []
             
             for i, roi_coord in enumerate(rois_for_dino):
-                if i % 50 == 0:
+                if i % 10 == 0:
                     logging.info(f"Обработка ROI {i}/{len(rois_for_dino)}")
                 
                 x, y, width, height = roi_coord['x'], roi_coord['y'], roi_coord['width'], roi_coord['height']
                 window_pil = screenshot_pil.crop((x, y, x + width, y + height))
                 
+                # Экспериментируем с размером ROI
+                if experiment_roi_size:
+                    # Изменяем размер ROI для эксперимента
+                    window_pil = window_pil.resize((experiment_roi_size, experiment_roi_size), Image.Resampling.LANCZOS)
+                
+                roi_info = f"{i}_x{x}_y{y}"
+                
                 # Получаем эмбеддинг
-                window_embedding = self.get_cls_embedding(window_pil)
+                window_embedding = self.get_cls_embedding(window_pil, roi_info)
                 if len(window_embedding) == 0:
                     continue
                 
                 # Находим наиболее похожего героя
-                best_hero, best_sim = self.get_best_match(window_embedding)
+                best_hero, best_sim = self.get_best_match(window_embedding, roi_info)
                 
                 if best_hero is not None and best_sim >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
                     all_dino_detections.append({
@@ -665,6 +753,9 @@ class HeroRecognitionSystem:
             
             dino_end_time = time.time()
             logging.info(f"DINO обработка: {dino_end_time - dino_start_time:.2f} сек. Найдено детекций: {len(all_dino_detections)}")
+            
+            # Анализируем распределение similarity scores
+            self.analyze_similarity_distribution()
             
             # 5. Комбинированная логика DINO + AKAZE с адаптивными порогами
             final_team_raw_names: List[str] = []
@@ -811,55 +902,69 @@ def main():
                 
                 # Для первого скриншота сохраняем debug, для остальных - нет
                 save_debug = (i == 1)
-                recognized_heroes = system.recognize_heroes(use_screen_capture=False, test_file_index=i, save_debug=save_debug)
-                expected_heroes = correct_answers.get(str(i), [])
-                logging.info(f"Ожидаемые герои: {expected_heroes}")
-                logging.info(f"Распознанные герои: {recognized_heroes}")
                 
-                # Конвертируем распознанные имена в правильный формат для сравнения
-                normalized_recognized = [system.normalize_hero_name_for_display(hero) for hero in recognized_heroes]
-                recognized_set = set(normalized_recognized)
-                expected_set = set(expected_heroes)
-                logging.info(f"Нормализованные распознанные герои: {normalized_recognized}")
+                # Тестируем с разными размерами ROI
+                roi_sizes = [150, 224]  # Текущий размер и размер модели
                 
-                correct = len(recognized_set & expected_set)
-                false_positive = len(recognized_set - expected_set)
-                false_negative = len(expected_set - recognized_set)
-                
-                logging.info(f"Правильных: {correct}")
-                logging.info(f"Ложных срабатываний: {false_positive}")
-                logging.info(f"Пропущенных: {false_negative}")
-                
-                precision = correct / len(recognized_set) if recognized_set else 0
-                recall = correct / len(expected_set) if expected_set else 0
-                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
-                
-                logging.info(f"Precision: {precision:.3f}")
-                logging.info(f"Recall: {recall:.3f}")
-                logging.info(f"F1-score: {f1:.3f}")
-                
-                # Сохраняем результаты для общего отчета
-                screenshot_result = {
-                    'screenshot': i,
-                    'correct': correct,
-                    'false_positive': false_positive,
-                    'false_negative': false_negative,
-                    'precision': precision,
-                    'recall': recall,
-                    'f1': f1,
-                    'expected_count': len(expected_heroes),
-                    'recognized_count': len(recognized_heroes)
-                }
-                total_stats['screenshot_results'].append(screenshot_result)
-                
-                # Накопительная статистика
-                total_stats['total_screenshots'] += 1
-                total_stats['total_correct'] += correct
-                total_stats['total_false_positive'] += false_positive
-                total_stats['total_false_negative'] += false_negative
-                total_stats['total_precision'] += precision
-                total_stats['total_recall'] += recall
-                total_stats['total_f1'] += f1
+                for roi_size in roi_sizes:
+                    logging.info(f"\n--- Тестирование с размером ROI: {roi_size}x{roi_size} ---")
+                    
+                    recognized_heroes = system.recognize_heroes(
+                        use_screen_capture=False, 
+                        test_file_index=i, 
+                        save_debug=save_debug,
+                        experiment_roi_size=roi_size
+                    )
+                    
+                    expected_heroes = correct_answers.get(str(i), [])
+                    logging.info(f"Ожидаемые герои: {expected_heroes}")
+                    logging.info(f"Распознанные герои: {recognized_heroes}")
+                    
+                    # Конвертируем распознанные имена в правильный формат для сравнения
+                    normalized_recognized = [system.normalize_hero_name_for_display(hero) for hero in recognized_heroes]
+                    recognized_set = set(normalized_recognized)
+                    expected_set = set(expected_heroes)
+                    logging.info(f"Нормализованные распознанные герои: {normalized_recognized}")
+                    
+                    correct = len(recognized_set & expected_set)
+                    false_positive = len(recognized_set - expected_set)
+                    false_negative = len(expected_set - recognized_set)
+                    
+                    logging.info(f"Правильных: {correct}")
+                    logging.info(f"Ложных срабатываний: {false_positive}")
+                    logging.info(f"Пропущенных: {false_negative}")
+                    
+                    precision = correct / len(recognized_set) if recognized_set else 0
+                    recall = correct / len(expected_set) if expected_set else 0
+                    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+                    
+                    logging.info(f"Precision: {precision:.3f}")
+                    logging.info(f"Recall: {recall:.3f}")
+                    logging.info(f"F1-score: {f1:.3f}")
+                    
+                    # Сохраняем результаты для общего отчета
+                    screenshot_result = {
+                        'screenshot': i,
+                        'roi_size': roi_size,
+                        'correct': correct,
+                        'false_positive': false_positive,
+                        'false_negative': false_negative,
+                        'precision': precision,
+                        'recall': recall,
+                        'f1': f1,
+                        'expected_count': len(expected_heroes),
+                        'recognized_count': len(recognized_heroes)
+                    }
+                    total_stats['screenshot_results'].append(screenshot_result)
+                    
+                    # Накопительная статистика
+                    total_stats['total_screenshots'] += 1
+                    total_stats['total_correct'] += correct
+                    total_stats['total_false_positive'] += false_positive
+                    total_stats['total_false_negative'] += false_negative
+                    total_stats['total_precision'] += precision
+                    total_stats['total_recall'] += recall
+                    total_stats['total_f1'] += f1
             else:
                 logging.warning(f"Скриншот {i}.png не найден")
         
@@ -881,13 +986,13 @@ def main():
             
             # Детальная статистика по каждому скриншоту
             logging.info(f"\nПОДРОБНЫЕ РЕЗУЛЬТАТЫ:")
-            logging.info(f"{'-'*80}")
-            logging.info(f"{'Скриншот':<10} {'Верных':<8} {'Ложных':<8} {'Пропущ':<8} {'Precision':<10} {'Recall':<10} {'F1':<10}")
-            logging.info(f"{'-'*80}")
+            logging.info(f"{'-'*100}")
+            logging.info(f"{'Скриншот':<10} {'ROI':<8} {'Верных':<8} {'Ложных':<8} {'Пропущ':<8} {'Precision':<10} {'Recall':<10} {'F1':<10}")
+            logging.info(f"{'-'*100}")
             for result in total_stats['screenshot_results']:
-                logging.info(f"{result['screenshot']:<10} {result['correct']:<8} {result['false_positive']:<8} {result['false_negative']:<8} "
+                logging.info(f"{result['screenshot']:<10} {result['roi_size']:<8} {result['correct']:<8} {result['false_positive']:<8} {result['false_negative']:<8} "
                            f"{result['precision']:<10.3f} {result['recall']:<10.3f} {result['f1']:<10.3f}")
-            logging.info(f"{'-'*80}")
+            logging.info(f"{'-'*100}")
             
             # Общая оценка качества
             if avg_f1 >= 0.8:
