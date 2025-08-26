@@ -1,3 +1,6 @@
+# 150 - размер изображения для эмбеддингов (измени эту цифру для другого размера)
+TARGET_SIZE = 150
+
 import os
 import sys
 import numpy as np
@@ -8,18 +11,16 @@ from PIL import Image, ImageOps, ImageEnhance
 import onnxruntime
 import shutil
 import hashlib
-
 # --- Конфигурация моделей ---
 NN_MODELS_DIR = "vision_models" 
 INPUT_IMAGES_DIR = "resources/heroes_icons" 
 EMBEDDINGS_DIR_OUT = "resources/embeddings_padded" 
-
 # Упрощенные конфигурации моделей
 MODEL_CONFIGS = {
     "dinov2-small": {
         "folder_name": "dinov2-small-ONNX",
         "filename": "onnx/model.onnx",
-        "target_size": 224,
+        "target_size": TARGET_SIZE,  # Используем переменную
         "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'],
         "preprocessing_type": "pad",
         "normalize_embedding": False,
@@ -28,7 +29,7 @@ MODEL_CONFIGS = {
     "dinov2-base": {
         "folder_name": "dinov2-base",
         "filename": "model_q4.onnx",
-        "target_size": 224,
+        "target_size": TARGET_SIZE,  # Используем переменную
         "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'],
         "preprocessing_type": "crop",
         "normalize_embedding": False,
@@ -37,56 +38,49 @@ MODEL_CONFIGS = {
     "dinov3-vitb16-pretrain-lvd1689m": {
         "folder_name": "dinov3-vitb16-pretrain-lvd1689m",
         "filename": "model_q4.onnx",
-        "target_size": 224,
+        "target_size": TARGET_SIZE,  # Используем переменную
         "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'],
-        "preprocessing_type": "resize",  # Изменено на "resize" для DINOv3
+        "preprocessing_type": "resize",
         "normalize_embedding": False,
         "embedding_extraction": "cls"
     },
     "nomic-embed-vision": {
         "folder_name": "nomic-embed-vision-v1.5",
         "filename": "model_q4.onnx",
-        "target_size": 224,
+        "target_size": TARGET_SIZE,  # Используем переменную
         "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'],
         "preprocessing_type": "clip",
         "normalize_embedding": False,
         "embedding_extraction": "nomic"
     }
 }
-
 # Установка параметров по умолчанию для всех моделей
 DEFAULT_PARAMS = {
     "image_mean": [0.485, 0.456, 0.406],
     "image_std": [0.229, 0.224, 0.225]
 }
-
 # Добавляем параметры по умолчанию ко всем моделям
 for model_config in MODEL_CONFIGS.values():
     model_config.update(DEFAULT_PARAMS)
-
 # Специальные параметры для nomic
 MODEL_CONFIGS["nomic-embed-vision"].update({
     "image_mean": [0.48145466, 0.4578275, 0.40821073],
     "image_std": [0.26862954, 0.26130258, 0.27577711]
 })
-
 CURRENT_MODEL = "dinov3-vitb16-pretrain-lvd1689m"
 MODEL_CONFIG = MODEL_CONFIGS[CURRENT_MODEL]
-
 # Извлекаем параметры
 ONNX_MODEL_FILENAME = MODEL_CONFIG["filename"]
 ONNX_MODEL_FOLDER = MODEL_CONFIG["folder_name"]
 ONNX_PROVIDERS = MODEL_CONFIG["providers"]
-TARGET_SIZE = MODEL_CONFIG["target_size"]
+TARGET_SIZE = MODEL_CONFIG["target_size"]  # Используем переменную из конфига
 PREPROCESSING_TYPE = MODEL_CONFIG["preprocessing_type"]
 NORMALIZE_EMBEDDING = MODEL_CONFIG["normalize_embedding"]
 EMBEDDING_EXTRACTION = MODEL_CONFIG["embedding_extraction"]
 IMAGE_MEAN = MODEL_CONFIG["image_mean"]
 IMAGE_STD = MODEL_CONFIG["image_std"]
-
 SUPPORTED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')
 SIMILARITY_CONFLICT_THRESHOLD = 0.70
-
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
 
@@ -189,25 +183,29 @@ def get_local_model_path(target_dir_abs, folder_name, filename):
         logging.error(f"Модель не найдена в ожидаемом месте: {model_path_abs}")
         return None
 
-def enhance_image(image_pil):
-    """Улучшение качества изображения"""
-    # Конвертируем в RGB если нужно
-    if image_pil.mode != 'RGB':
-        image_pil = image_pil.convert('RGB')
-    
-    # Улучшаем контрастность
-    enhancer = ImageEnhance.Contrast(image_pil)
-    image_pil = enhancer.enhance(1.5)
-    
-    # Улучшаем резкость
-    enhancer = ImageEnhance.Sharpness(image_pil)
-    image_pil = enhancer.enhance(1.2)
-    
-    # Небольшая коррекция яркости
-    enhancer = ImageEnhance.Brightness(image_pil)
-    image_pil = enhancer.enhance(1.1)
-    
-    return image_pil
+def enhance_image_for_embedding(image_pil: Image.Image) -> Image.Image:
+    """Улучшение изображения перед созданием эмбеддинга"""
+    try:
+        # Убедимся, что изображение в RGB
+        if image_pil.mode != 'RGB':
+            image_pil = image_pil.convert('RGB')
+        
+        # Улучшаем резкость
+        enhancer = ImageEnhance.Sharpness(image_pil)
+        image_pil = enhancer.enhance(1.5)
+        
+        # Улучшаем контрастность
+        enhancer = ImageEnhance.Contrast(image_pil)
+        image_pil = enhancer.enhance(1.3)
+        
+        # Улучшаем цветность
+        enhancer = ImageEnhance.Color(image_pil)
+        image_pil = enhancer.enhance(1.2)
+        
+        return image_pil
+    except Exception as e:
+        logging.error(f"Ошибка в enhance_image_for_embedding: {e}")
+        return image_pil
 
 def pad_image_to_target_size(image_pil, target_height, target_width, padding_color=(0,0,0)):
     """Паддинг изображения до целевого размера (для обратной совместимости)"""
@@ -249,7 +247,7 @@ def pad_image_to_target_size(image_pil, target_height, target_width, padding_col
 def crop_image_to_target_size(image_pil, target_size=224):
     """Crop изображения до целевого размера"""
     # Предобработка изображения
-    img_pil_preprocessed = enhance_image(image_pil)
+    img_pil_preprocessed = enhance_image_for_embedding(image_pil)
     
     # Resize до кратного размера
     width, height = img_pil_preprocessed.size
@@ -337,14 +335,14 @@ def clip_preprocess_image(image_pil, target_size=224, image_mean=None, image_std
     
     return img_array.astype(np.float32)
 
-def dynamic_resize_preprocess(image_pil, target_size=224, image_mean=None, image_std=None):
+def dynamic_resize_preprocess(image_pil: Image.Image, target_size=224, image_mean=None, image_std=None):
     """
     Динамическая предобработка изображений любого размера для DINOv3
     Оптимальный подход для максимальной точности
     """
     try:
         # 1. Улучшаем качество изображения
-        img_enhanced = enhance_image(image_pil)
+        img_enhanced = enhance_image_for_embedding(image_pil)
         
         # 2. Конвертируем в RGB если нужно
         if img_enhanced.mode != 'RGB':
@@ -358,8 +356,7 @@ def dynamic_resize_preprocess(image_pil, target_size=224, image_mean=None, image
         max_dimension = max(original_width, original_height)
         
         if max_dimension <= target_size:
-            # Для маленьких изображений (как ваши 150x150): upscale + resize
-            # Это улучшает качество по сравнению с прямым масштабированием
+            # Для маленьких изображений: upscale + resize
             intermediate_size = int(target_size * 1.5)  # Увеличиваем до 336px для 224 target
             
             # Сначала upscale с сохранением пропорций
@@ -409,7 +406,7 @@ def dynamic_resize_preprocess(image_pil, target_size=224, image_mean=None, image
         # Возвращаем нулевой тензор в случае ошибки
         return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
 
-def preprocess_image(image_pil, target_size=224, preprocessing_type="resize", image_mean=None, image_std=None):
+def preprocess_image(image_pil: Image.Image, target_size=224, preprocessing_type="resize", image_mean=None, image_std=None):
     """
     Унифицированная предобработка изображения с динамической обработкой
     """
@@ -420,7 +417,7 @@ def preprocess_image(image_pil, target_size=224, preprocessing_type="resize", im
             return clip_preprocess_image(image_pil, target_size, image_mean, image_std)
         elif preprocessing_type == "pad":
             # Для обратной совместимости, но рекомендуется использовать "resize"
-            img_pil_preprocessed = enhance_image(image_pil)
+            img_pil_preprocessed = enhance_image_for_embedding(image_pil)
             img_padded_pil = pad_image_to_target_size(img_pil_preprocessed, target_size, target_size)
             
             img_array = np.array(img_padded_pil, dtype=np.float32) / 255.0
