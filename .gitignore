@@ -3,7 +3,7 @@
 __pycache__
 model_bnb4.onnx
 /vision_models
-/resources/embeddings_padded
+# /resources/embeddings_padded
 /dist
 /.idea
 /resources/heroes_icons_old
