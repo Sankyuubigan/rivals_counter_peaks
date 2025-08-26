@@ -9,4 +9,5 @@ model_bnb4.onnx
 /resources/heroes_icons_old
 /resources/templates_old
 /tests/debug_logs
+/tests/debug
 /tests/for_recogn/screenshots

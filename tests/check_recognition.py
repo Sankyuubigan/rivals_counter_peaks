@@ -24,7 +24,8 @@ logging.basicConfig(
 # =============================================================================
 # ОСНОВНЫЕ НАСТРОЙКИ - ИЗМЕНИТЕ ЭТУ ПЕРЕМЕННУЮ ДЛЯ ДРУГОГО РАЗМЕРА ИЗОБРАЖЕНИЯ
 # =============================================================================
-TARGET_SIZE = 150  # Размер изображения для распознавания (измени эту цифру для другого размера)
+TARGET_SIZE = 95  # Размер изображения для распознавания (измени эту цифру для другого размера)
+LEFT_OFFSET = 45   # Отступ от левого края в пикселях
 # =============================================================================
 
 # Пути к ресурсам
@@ -614,16 +615,33 @@ class HeroRecognitionSystem:
         s_width, s_height = screenshot_pil.size
         rois_for_dino = []
         
-        logging.warning("Используем полное сканирование для тестирования")
-        
-        for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
-            for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
-                rois_for_dino.append({
-                    'x': x_val, 
-                    'y': y,
-                    'width': WINDOW_SIZE_W_DINO,
-                    'height': WINDOW_SIZE_H_DINO
-                })
+        if column_x_center is not None:
+            # Используем центр колонки, определенный AKAZE
+            base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
+            logging.info(f"Генерация ROI для DINO. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center})")
+            
+            for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
+                for x_offset in ROI_X_JITTER_VALUES_DINO:
+                    current_roi_start_x = base_roi_start_x + x_offset
+                    # Проверяем, что ROI не выходит за границы изображения
+                    if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
+                        rois_for_dino.append({
+                            'x': current_roi_start_x, 
+                            'y': y,
+                            'width': WINDOW_SIZE_W_DINO,
+                            'height': WINDOW_SIZE_H_DINO
+                        })
+        else:
+            # Fallback - полное сканирование с отступом от левого края
+            logging.warning("Не удалось определить центр колонки. Включается fallback DINO (полное сканирование с отступом).")
+            for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
+                for x_val in range(LEFT_OFFSET, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
+                    rois_for_dino.append({
+                        'x': x_val, 
+                        'y': y,
+                        'width': WINDOW_SIZE_W_DINO,
+                        'height': WINDOW_SIZE_H_DINO
+                    })
         
         return rois_for_dino
     
@@ -734,6 +752,13 @@ class HeroRecognitionSystem:
                 logging.warning("Не сгенерировано ни одного ROI для анализа.")
                 return []
             
+            # Создаем директорию для сохранения ROI, если включен режим отладки
+            roi_debug_dir = None
+            if save_debug:
+                roi_debug_dir = os.path.join(DEBUG_DIR, f"roi_test_{test_file_index}")
+                os.makedirs(roi_debug_dir, exist_ok=True)
+                logging.info(f"Сохранение ROI в директорию: {roi_debug_dir}")
+            
             # 4. Обрабатываем ROI и получаем эмбеддинги
             all_dino_detections: List[Dict[str, Any]] = []
             
@@ -743,6 +768,12 @@ class HeroRecognitionSystem:
                 
                 x, y, width, height = roi_coord['x'], roi_coord['y'], roi_coord['width'], roi_coord['height']
                 window_pil = screenshot_pil.crop((x, y, x + width, y + height))
+                
+                # Сохраняем вырезанное окно для дебага
+                if save_debug and roi_debug_dir:
+                    roi_filename = f"roi_{i:03d}_x{x}_y{y}_w{width}_h{height}.png"
+                    roi_filepath = os.path.join(roi_debug_dir, roi_filename)
+                    window_pil.save(roi_filepath)
                 
                 if experiment_roi_size:
                     window_pil = window_pil.resize((experiment_roi_size, experiment_roi_size), Image.Resampling.LANCZOS)
@@ -998,7 +1029,7 @@ def main():
                 logging.info(f"\n=== ТЕСТИРОВАНИЕ СКРИНШОТА {i} ===")
                 
                 save_debug = (i == 1)
-                roi_sizes = [150, 224]
+                roi_sizes = [95, 224]
                 
                 for roi_size in roi_sizes:
                     logging.info(f"\n--- Тестирование с размером ROI: {roi_size}x{roi_size} ---")
