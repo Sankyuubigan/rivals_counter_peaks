@@ -75,7 +75,7 @@ ROI_X_JITTER_VALUES_DINO = [-5, 0, 5]
 ROI_Y_JITTER_VALUES_DINO = [-3, 0, 3]
 
 DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
-DINOV2_FINAL_DECISION_THRESHOLD = 0.55
+DINOV2_FINAL_DECISION_THRESHOLD = 0.6
 DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 
 TEAM_SIZE = 6
@@ -114,8 +114,6 @@ class HeroRecognitionSystem:
                 parts = base_name.split('_')
                 hero_name = '_'.join(parts[:-1]) if len(parts) > 1 and parts[-1].isdigit() else base_name
                 embedding = np.load(os.path.join(EMBEDDINGS_DIR, emb_file))
-                norm = np.linalg.norm(embedding)
-                if norm > 0: embedding /= norm
                 hero_embedding_groups[hero_name].append(embedding)
             self.hero_embeddings = dict(hero_embedding_groups)
             for hero_name in self.hero_embeddings:
@@ -161,7 +159,8 @@ class HeroRecognitionSystem:
 
     def preprocess_image_for_dino(self, image_pil: Image.Image) -> Optional[Image.Image]:
         if image_pil.mode != 'RGB': image_pil = image_pil.convert('RGB')
-        return image_pil.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
+        # Убираем фильтры, чтобы соответствовать созданию эмбеддингов
+        return image_pil
 
     def get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
         if not self.is_ready() or not pil_images_batch: return np.array([])
@@ -204,7 +203,6 @@ class HeroRecognitionSystem:
                 kp_tpl, des_tpl = akaze.detectAndCompute(tpl_gray, None)
                 if des_tpl is None: continue
                 matches = bf.knnMatch(des_tpl, des_scr, k=2)
-                # *** ИСПРАВЛЕННАЯ СТРОКА ***
                 good = [m for m, n in matches if len(matches) > 1 and m.distance < AKAZE_LOWE_RATIO * n.distance]
                 if len(good) > max_good:
                     max_good = len(good)
@@ -240,7 +238,6 @@ class HeroRecognitionSystem:
                 kp_tpl, des_tpl = akaze.detectAndCompute(tpl_gray, None)
                 if des_tpl is None: continue
                 matches = bf.knnMatch(des_tpl, des_scr, k=2)
-                # *** ИСПРАВЛЕННАЯ СТРОКА ***
                 good = [m for m, n in matches if len(matches) > 1 and m.distance < AKAZE_LOWE_RATIO * n.distance]
                 if len(good) >= AKAZE_MIN_MATCH_COUNT_HERO_LOC and len(good) > max_good:
                     max_good = len(good)
