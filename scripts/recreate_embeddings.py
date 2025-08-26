@@ -1,5 +1,3 @@
-# 150 - размер изображения для эмбеддингов (измени эту цифру для другого размера)
-TARGET_SIZE = 95
 import os
 import sys
 import numpy as np
@@ -11,44 +9,24 @@ import onnxruntime
 import shutil
 import hashlib
 
+# *** КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: РАБОТАЕМ В НАСТОЯЩЕМ РАЗМЕРЕ МОДЕЛИ ***
+TARGET_SIZE = 224
+
 # --- Конфигурация моделей ---
 NN_MODELS_DIR = "vision_models"
 INPUT_IMAGES_DIR = "resources/heroes_icons"
 EMBEDDINGS_DIR_OUT = "resources/embeddings_padded"
 
-# Упрощенные конфигурации моделей
-MODEL_CONFIGS = {
-    "dinov3-vitb16-pretrain-lvd1689m": {
-        "folder_name": "dinov3-vitb16-pretrain-lvd1689m",
-        "filename": "model_q4.onnx",
-        "target_size": TARGET_SIZE,
-        "providers": ['CPUExecutionProvider'],
-        "preprocessing_type": "resize",
-        "normalize_embedding": True, # Включаем нормализацию для стабильности
-        "embedding_extraction": "cls"
-    }
-}
-
-DEFAULT_PARAMS = {
+MODEL_CONFIG = {
+    "folder_name": "dinov3-vitb16-pretrain-lvd1689m",
+    "filename": "model_q4.onnx",
+    "target_size": TARGET_SIZE,
+    "providers": ['CPUExecutionProvider'],
+    "normalize_embedding": True,
+    "embedding_extraction": "cls",
     "image_mean": [0.485, 0.456, 0.406],
     "image_std": [0.229, 0.224, 0.225]
 }
-
-for model_config in MODEL_CONFIGS.values():
-    model_config.update(DEFAULT_PARAMS)
-
-CURRENT_MODEL = "dinov3-vitb16-pretrain-lvd1689m"
-MODEL_CONFIG = MODEL_CONFIGS[CURRENT_MODEL]
-
-ONNX_MODEL_FILENAME = MODEL_CONFIG["filename"]
-ONNX_MODEL_FOLDER = MODEL_CONFIG["folder_name"]
-ONNX_PROVIDERS = MODEL_CONFIG["providers"]
-TARGET_SIZE = MODEL_CONFIG["target_size"]
-PREPROCESSING_TYPE = MODEL_CONFIG["preprocessing_type"]
-NORMALIZE_EMBEDDING = MODEL_CONFIG["normalize_embedding"]
-EMBEDDING_EXTRACTION = MODEL_CONFIG["embedding_extraction"]
-IMAGE_MEAN = MODEL_CONFIG["image_mean"]
-IMAGE_STD = MODEL_CONFIG["image_std"]
 
 SUPPORTED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')
 SIMILARITY_CONFLICT_THRESHOLD = 0.70
@@ -65,47 +43,62 @@ def ensure_dir_exists(dir_path: str, recreate=False) -> bool:
     os.makedirs(dir_path, exist_ok=True)
     return True
 
-def enhance_image_for_embedding(image_pil: Image.Image) -> Image.Image:
-    # Эта функция больше не используется, но оставлена на случай, если захотите вернуть
+def pad_image_to_target_size(image_pil, target_height, target_width, padding_color=(0,0,0)):
+    """
+    *** ВОЗВРАЩЕНА ВАША ОРИГИНАЛЬНАЯ ЛОГИКА ПАДДИНГА С СОХРАНЕНИЕМ ПРОПОРЦИЙ ***
+    Паддинг изображения до целевого размера.
+    """
+    if image_pil is None: 
+        return Image.new("RGB", (target_width, target_height), padding_color) 
+    
+    original_width, original_height = image_pil.size
+    if original_width == target_width and original_height == target_height:
+        return image_pil
+    
+    target_aspect = target_width / target_height if target_height != 0 else 1.0
+    original_aspect = original_width / original_height if original_height != 0 else 1.0
+    
+    if original_aspect > target_aspect: 
+        new_width = target_width
+        new_height = int(new_width / original_aspect)
+    else: 
+        new_height = target_height
+        new_width = int(new_height * original_aspect)
+        
+    if new_width <= 0 or new_height <= 0:
+        return Image.new("RGB", (target_width, target_height), padding_color)
+        
+    resized_image = image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    
+    padded_image = Image.new("RGB", (target_width, target_height), padding_color)
+    paste_x = (target_width - new_width) // 2
+    paste_y = (target_height - new_height) // 2
+    padded_image.paste(resized_image, (paste_x, paste_y))
+    
+    return padded_image
+
+def preprocess_image(image_pil: Image.Image, target_size, image_mean, image_std):
+    """
+    Предобработка изображения: паддинг и нормализация.
+    """
     if image_pil.mode != 'RGB':
         image_pil = image_pil.convert('RGB')
-    enhancer = ImageEnhance.Sharpness(image_pil)
-    image_pil = enhancer.enhance(1.5)
-    enhancer = ImageEnhance.Contrast(image_pil)
-    image_pil = enhancer.enhance(1.3)
-    enhancer = ImageEnhance.Color(image_pil)
-    image_pil = enhancer.enhance(1.2)
-    return image_pil
 
-def dynamic_resize_preprocess(image_pil: Image.Image, target_size=224, image_mean=None, image_std=None):
-    try:
-        # *** КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: ОТКЛЮЧАЕМ АГРЕССИВНОЕ УЛУЧШЕНИЕ ***
-        # img_enhanced = enhance_image_for_embedding(image_pil) # СТАРАЯ ВЕРСИЯ
-        img_enhanced = image_pil # НОВАЯ ВЕРСИЯ - ИСПОЛЬЗУЕМ ОРИГИНАЛ
+    # *** ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ ПАДДИНГ ***
+    img_padded_pil = pad_image_to_target_size(image_pil, target_size, target_size)
+    
+    img_array = np.array(img_padded_pil, dtype=np.float32) / 255.0
+    
+    mean = np.array(image_mean, dtype=np.float32)
+    std = np.array(image_std, dtype=np.float32)
+    img_array = (img_array - mean) / std
+    
+    img_array = np.transpose(img_array, (2, 0, 1))
+    img_array = np.expand_dims(img_array, axis=0)
+    
+    return img_array.astype(np.float32)
 
-        if img_enhanced.mode != 'RGB':
-            img_enhanced = img_enhanced.convert('RGB')
-        
-        img_resized = img_enhanced.resize((target_size, target_size), Image.Resampling.LANCZOS)
-        
-        img_array = np.array(img_resized, dtype=np.float32) / 255.0
-        
-        if image_mean is None: image_mean = [0.485, 0.456, 0.406]
-        if image_std is None: image_std = [0.229, 0.224, 0.225]
-        mean = np.array(image_mean, dtype=np.float32)
-        std = np.array(image_std, dtype=np.float32)
-        img_array = (img_array - mean) / std
-        
-        img_array = np.transpose(img_array, (2, 0, 1))
-        img_array = np.expand_dims(img_array, axis=0)
-        
-        return img_array.astype(np.float32)
-        
-    except Exception as e:
-        logging.error(f"Ошибка в dynamic_resize_preprocess: {e}")
-        return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
-
-def extract_embedding(last_hidden_state, method="cls"):
+def extract_embedding(last_hidden_state):
     return last_hidden_state[0, 0, :]
 
 def normalize_embedding_func(embedding):
@@ -155,7 +148,7 @@ def compare_embeddings():
     logging.info("--- Анализ завершен ---")
 
 def create_embeddings():
-    logging.info(f"--- Запуск скрипта создания эмбеддингов с моделью {CURRENT_MODEL} ---")
+    logging.info(f"--- Запуск скрипта создания эмбеддингов с моделью {MODEL_CONFIG['folder_name']} ---")
     PROJECT_ROOT = get_project_root()
     nn_models_dir_abs = os.path.join(PROJECT_ROOT, NN_MODELS_DIR)
     input_images_dir_abs = os.path.join(PROJECT_ROOT, INPUT_IMAGES_DIR)
@@ -166,13 +159,13 @@ def create_embeddings():
         logging.error("Одна или несколько ключевых директорий не существуют. Завершение.")
         return
         
-    onnx_model_path_abs = os.path.join(nn_models_dir_abs, ONNX_MODEL_FOLDER, ONNX_MODEL_FILENAME)
+    onnx_model_path_abs = os.path.join(nn_models_dir_abs, MODEL_CONFIG['folder_name'], MODEL_CONFIG['filename'])
     if not os.path.exists(onnx_model_path_abs):
         logging.error(f"Модель не найдена: {onnx_model_path_abs}")
         return
 
     try:
-        ort_session = onnxruntime.InferenceSession(onnx_model_path_abs, providers=ONNX_PROVIDERS)
+        ort_session = onnxruntime.InferenceSession(onnx_model_path_abs, providers=MODEL_CONFIG['providers'])
         input_info = ort_session.get_inputs()[0]
     except Exception as e:
         logging.error(f"Ошибка при загрузке ONNX: {e}", exc_info=True)
@@ -185,12 +178,12 @@ def create_embeddings():
         try:
             logging.info(f"Обработка: {image_filename}")
             img_pil = Image.open(os.path.join(input_images_dir_abs, image_filename))
-            inputs = dynamic_resize_preprocess(img_pil, TARGET_SIZE, IMAGE_MEAN, IMAGE_STD)
+            inputs = preprocess_image(img_pil, MODEL_CONFIG['target_size'], MODEL_CONFIG['image_mean'], MODEL_CONFIG['image_std'])
             
             onnx_outputs = ort_session.run(None, {input_info.name: inputs})
-            embedding = extract_embedding(onnx_outputs[0], EMBEDDING_EXTRACTION)
+            embedding = extract_embedding(onnx_outputs[0])
             
-            if NORMALIZE_EMBEDDING:
+            if MODEL_CONFIG['normalize_embedding']:
                 embedding = normalize_embedding_func(embedding)
             
             embedding_path_abs = os.path.join(embeddings_dir_out_abs, os.path.splitext(image_filename)[0] + ".npy")

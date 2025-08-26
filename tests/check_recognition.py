@@ -51,7 +51,8 @@ logger.addHandler(file_handler)
 # =============================================================================
 # ОСНОВНЫЕ НАСТРОЙКИ
 # =============================================================================
-TARGET_SIZE = 95
+# *** КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: РАБОТАЕМ В НАСТОЯЩЕМ РАЗМЕРЕ МОДЕЛИ ***
+TARGET_SIZE = 224
 LEFT_OFFSET = 45
 
 # =============================================================================
@@ -59,10 +60,10 @@ LEFT_OFFSET = 45
 # =============================================================================
 IMAGE_MEAN = [0.485, 0.456, 0.406]
 IMAGE_STD = [0.229, 0.224, 0.225]
-WINDOW_SIZE_W_DINO = TARGET_SIZE
-WINDOW_SIZE_H_DINO = TARGET_SIZE
+WINDOW_SIZE_W_DINO = 95 # Размер ROI остается прежним, мы его будем паддить
+WINDOW_SIZE_H_DINO = 95
 ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.25)
-BATCH_SIZE_SLIDING_WINDOW_DINO = 32
+BATCH_SIZE_SLIDING_WINDOW_DINO = 16 # Уменьшаем батч, т.к. картинки стали больше
 PADDING_COLOR_WINDOW_DINO = (0, 0, 0)
 
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
@@ -75,7 +76,7 @@ ROI_X_JITTER_VALUES_DINO = [-5, 0, 5]
 ROI_Y_JITTER_VALUES_DINO = [-3, 0, 3]
 
 DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
-DINOV2_FINAL_DECISION_THRESHOLD = 0.6
+DINOV2_FINAL_DECISION_THRESHOLD = 0.64
 DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 
 TEAM_SIZE = 6
@@ -95,6 +96,7 @@ class HeroRecognitionSystem:
         self.last_column_x_center = None
         logging.info("Инициализация системы распознавания героев...")
 
+    # ... (load_model, load_embeddings, load_hero_icons, is_ready, crop_image_to_recognition_area без изменений) ...
     def load_model(self) -> bool:
         try:
             self.ort_session = onnxruntime.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider'])
@@ -152,19 +154,50 @@ class HeroRecognitionSystem:
         l, t, r, b = int(w * area['left_pct']/100), int(h * area['top_pct']/100), int(w * (area['left_pct']+area['width_pct'])/100), int(h * (area['top_pct']+area['height_pct'])/100)
         return image_pil.crop((l, t, r, b))
 
-    def pad_image_to_target_size(self, image_pil: Image.Image) -> Image.Image:
-        padded = Image.new("RGB", (TARGET_SIZE, TARGET_SIZE), PADDING_COLOR_WINDOW_DINO)
-        padded.paste(image_pil, ((TARGET_SIZE - image_pil.width) // 2, (TARGET_SIZE - image_pil.height) // 2))
-        return padded
+
+    def pad_image_to_target_size(self, image_pil, target_height, target_width, padding_color=(0,0,0)):
+        """
+        *** КОПИЯ ФУНКЦИИ ИЗ RECREATE_EMBEDDINGS.PY ДЛЯ ПОЛНОЙ КОНСИСТЕНТНОСТИ ***
+        """
+        if image_pil is None: 
+            return Image.new("RGB", (target_width, target_height), padding_color) 
+        
+        original_width, original_height = image_pil.size
+        if original_width == target_width and original_height == target_height:
+            return image_pil
+        
+        target_aspect = target_width / target_height if target_height != 0 else 1.0
+        original_aspect = original_width / original_height if original_height != 0 else 1.0
+        
+        if original_aspect > target_aspect: 
+            new_width = target_width
+            new_height = int(new_width / original_aspect)
+        else: 
+            new_height = target_height
+            new_width = int(new_height * original_aspect)
+            
+        if new_width <= 0 or new_height <= 0:
+            return Image.new("RGB", (target_width, target_height), padding_color)
+            
+        resized_image = image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        padded_image = Image.new("RGB", (target_width, target_height), padding_color)
+        paste_x = (target_width - new_width) // 2
+        paste_y = (target_height - new_height) // 2
+        padded_image.paste(resized_image, (paste_x, paste_y))
+        
+        return padded_image
 
     def preprocess_image_for_dino(self, image_pil: Image.Image) -> Optional[Image.Image]:
         if image_pil.mode != 'RGB': image_pil = image_pil.convert('RGB')
-        # Убираем фильтры, чтобы соответствовать созданию эмбеддингов
         return image_pil
 
     def get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
         if not self.is_ready() or not pil_images_batch: return np.array([])
-        processed = [self.preprocess_image_for_dino(self.pad_image_to_target_size(img)) for img in pil_images_batch]
+        
+        # *** ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ ПАДДИНГ ДЛЯ ROI ***
+        processed = [self.preprocess_image_for_dino(self.pad_image_to_target_size(img, TARGET_SIZE, TARGET_SIZE)) for img in pil_images_batch]
+        
         valid_imgs = [img for img in processed if img is not None]
         if not valid_imgs: return np.array([])
         
@@ -178,6 +211,7 @@ class HeroRecognitionSystem:
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
         return np.divide(embeddings, norms, out=np.zeros_like(embeddings), where=norms!=0)
 
+    # ... (get_best_match, get_hero_column_center_akaze, find_hero_positions_akaze, normalize_hero_name_for_display без изменений) ...
     def get_best_match(self, query_embedding: np.ndarray, roi_info: str = "") -> Tuple[Tuple[Optional[str], float], List[Tuple[str, float]]]:
         if query_embedding.size == 0: return (None, 0.0), []
         all_sims = sorted([(h, np.dot(query_embedding, emb)) for h, el in self.hero_embeddings.items() for emb in el], key=lambda x: x[1], reverse=True)
@@ -250,7 +284,7 @@ class HeroRecognitionSystem:
 
     def normalize_hero_name_for_display(self, hero_name: str) -> str:
         return hero_name.replace('_', ' ').title().replace('And', '&')
-
+    
     def generate_rois(self, s_width: int, s_height: int, column_x_center: Optional[int], akaze_positions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         rois = []
         if column_x_center is None: return rois
@@ -266,13 +300,22 @@ class HeroRecognitionSystem:
         
         logging.info("Генерация ROI для систематического сканирования колонки...")
         base_x = max(0, min(column_x_center - WINDOW_SIZE_W_DINO // 2, s_width - WINDOW_SIZE_W_DINO))
+        
         for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
-            if not any(max(y, s) < min(y + WINDOW_SIZE_H_DINO, e) for s, e in covered_y):
+            roi_center_y = y + WINDOW_SIZE_H_DINO // 2
+            is_covered_by_center = False
+            for start_y, end_y in covered_y:
+                if start_y <= roi_center_y < end_y:
+                    is_covered_by_center = True
+                    break
+            
+            if not is_covered_by_center:
                 rois.append({'x': base_x, 'y': y, 'width': WINDOW_SIZE_W_DINO, 'height': WINDOW_SIZE_H_DINO, 'source': 'scan'})
         
         logging.info(f"Сгенерировано всего {len(rois)} ROI для анализа.")
         return rois
 
+    # ... (recognize_heroes и остальной код без изменений, он уже использует последнюю рабочую логику) ...
     def recognize_heroes(self, test_file_index: int, save_debug: bool = True) -> List[str]:
         start_time = time.time()
         
@@ -320,7 +363,6 @@ class HeroRecognitionSystem:
 
         final_team, occupied_slots = [], []
         
-        # Этап 1: AKAZE + DINO
         for pos in akaze_pos:
             name_raw, name_norm = pos['name'], self.normalize_hero_name_for_display(pos['name'])
             if name_norm in {self.normalize_hero_name_for_display(h['name']) for h in final_team}: continue
@@ -339,7 +381,6 @@ class HeroRecognitionSystem:
             final_team.append(pos)
             occupied_slots.append(pos)
         
-        # Этап 2: DINO only
         dino_cands = sorted([d for d in all_detections if d['similarity'] >= DINOV2_FINAL_DECISION_THRESHOLD], key=lambda x: x['similarity'], reverse=True)
         for cand in dino_cands:
             if len(final_team) >= TEAM_SIZE: break
