@@ -10,25 +10,11 @@ from collections import Counter, defaultdict
 import cv2
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance, ImageGrab
 import onnxruntime
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO, 
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("recognition_test.log")
-    ]
-)
+import shutil
 
 # =============================================================================
-# ОСНОВНЫЕ НАСТРОЙКИ - ИЗМЕНИТЕ ЭТУ ПЕРЕМЕННУЮ ДЛЯ ДРУГОГО РАЗМЕРА ИЗОБРАЖЕНИЯ
+# ПУТИ К РЕСУРСАМ
 # =============================================================================
-TARGET_SIZE = 95  # Размер изображения для распознавания (измени эту цифру для другого размера)
-LEFT_OFFSET = 45   # Отступ от левого края в пикселях
-# =============================================================================
-
-# Пути к ресурсам
 VISION_MODELS_DIR = "vision_models"
 MODEL_PATH = "vision_models/dinov3-vitb16-pretrain-lvd1689m/model_q4.onnx"
 EMBEDDINGS_DIR = "resources/embeddings_padded"
@@ -37,35 +23,91 @@ SCREENSHOTS_DIR = "tests/for_recogn/screenshots"
 CORRECT_ANSWERS_FILE = "tests/for_recogn/correct_answers.json"
 DEBUG_DIR = "tests/debug"
 
+# Создаем директорию для отладки перед настройкой логирования
+os.makedirs(DEBUG_DIR, exist_ok=True)
+
+# Имя файла лога
+LOG_FILENAME = "recognition_test.log"
+log_file_path = os.path.join(DEBUG_DIR, LOG_FILENAME)
+
+# Очищаем файл лога перед началом работы (РЕШЕНИЕ ПРОБЛЕМЫ 1)
+if os.path.exists(log_file_path):
+    try:
+        with open(log_file_path, 'w', encoding='utf-8') as f:
+            f.write("")  # Очищаем файл
+        logging.info(f"Файл лога очищен: {log_file_path}")
+    except Exception as e:
+        logging.warning(f"Не удалось очистить файл лога: {e}")
+
+# Сначала очищаем директорию DEBUG_DIR (кроме файла лога)
+for item in os.listdir(DEBUG_DIR):
+    item_path = os.path.join(DEBUG_DIR, item)
+    if os.path.isfile(item_path) and item != LOG_FILENAME:
+        try:
+            os.unlink(item_path)
+        except PermissionError:
+            logging.warning(f"Не удалось удалить файл {item_path}, возможно он используется другим процессом")
+    elif os.path.isdir(item_path):
+        try:
+            shutil.rmtree(item_path)
+        except PermissionError:
+            logging.warning(f"Не удалось удалить директорию {item_path}, возможно она используется другим процессом")
+
+# Настройка логирования с правильной кодировкой UTF-8
+# Создаем логгер
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Очищаем существующие обработчики
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Создаем форматтер
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+# Добавляем вывод в консоль
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+# Добавляем вывод в файл с кодировкой UTF-8
+file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# =============================================================================
+# ОСНОВНЫЕ НАСТРОЙКИ - ИЗМЕНИТЕ ЭТУ ПЕРЕМЕННУЮ ДЛЯ ДРУГОГО РАЗМЕРА ИЗОБРАЖЕНИЯ
+# =============================================================================
+TARGET_SIZE = 95  # Размер изображения для распознавания (измени эту цифру для другого размера)
+LEFT_OFFSET = 45   # Отступ от левого края в пикселях
+# =============================================================================
 # Константы модели
 IMAGE_MEAN = [0.485, 0.456, 0.406]
 IMAGE_STD = [0.229, 0.224, 0.225]
-
 # Размеры ROI (используют TARGET_SIZE)
 WINDOW_SIZE_W_DINO = TARGET_SIZE
 WINDOW_SIZE_H_DINO = TARGET_SIZE
-ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.7)
-FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.8)
-FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.8)
+ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.5)  # УМЕНЬШИЛИ ШАГ ДЛЯ БОЛЬШЕГО КОЛИЧЕСТВА ROI
+FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.9)
+FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.9)
 BATCH_SIZE_SLIDING_WINDOW_DINO = 32
 PADDING_COLOR_WINDOW_DINO = (0, 0, 0)
-
 # Параметры AKAZE
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
 AKAZE_LOWE_RATIO = 0.75
-AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 5
+AKAZE_MIN_MATCH_COUNT_COLUMN_LOC = 3  # ПОРОГ ДЛЯ ОПРЕДЕЛЕНИЯ ЦЕНТРА КОЛОНКИ
+AKAZE_MIN_MATCH_COUNT_HERO_LOC = 5      # ПОРОГ ДЛЯ ОПРЕДЕЛЕНИЯ КОНКРЕТНОГО ГЕРОЯ
 MIN_HEROES_FOR_COLUMN_DETECTION = 2
-ROI_X_JITTER_VALUES_DINO = [-3, 0, 3]
+# ИЗМЕНЕННЫЕ ПАРАМЕТРЫ СМЕЩЕНИЯ ROI (РЕШЕНИЕ ПРОБЛЕМЫ 2)
+ROI_X_JITTER_VALUES_DINO = [-5, 0, 5]  # Увеличили диапазон смещения
+ROI_Y_JITTER_VALUES_DINO = [-3, 0, 3]  # Добавили смещение по Y
 MAX_NOT_PASSED_AKAZE_TO_LOG = 15
-
-# УЛУЧШЕННЫЕ ПОРОГИ ДЛЯ DINO - еще более низкие
-DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.05
-DINOV2_FINAL_DECISION_THRESHOLD = 0.30  # СНИЖЕНО до 0.30
-DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.20  # СНИЖЕНО до 0.20
-
+# ВОССТАНОВЛЕНЫ ПОРОГИ ИЗ СТАРОГО КОДА
+DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
+DINOV2_FINAL_DECISION_THRESHOLD = 0.65
+DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 TEAM_SIZE = 6
 Y_OVERLAP_THRESHOLD_RATIO = 0.5
-
 # ОБЛАСТЬ ЗАХВАТА ЭКРАНА
 RECOGNITION_AREA = {
     'monitor': 1, 
@@ -75,11 +117,8 @@ RECOGNITION_AREA = {
     'height_pct': 50
 }
 
-# Создаем директорию для отладки
-os.makedirs(DEBUG_DIR, exist_ok=True)
-
 class HeroRecognitionSystem:
-    """Система распознавания героев Marvel Rivals с кардинально улучшенным DINO"""
+    """Система распознавания героев Marvel Rivals с AKAZE для X и Y координат"""
     def __init__(self):
         self.ort_session: Optional[onnxruntime.InferenceSession] = None
         self.input_name: Optional[str] = None
@@ -88,6 +127,7 @@ class HeroRecognitionSystem:
         self.similarity_stats = []
         self.test_results = []
         self.hero_stats = {}  # Статистика по каждому герою
+        self.last_column_x_center = None  # Сохраняем последний известный центр колонки
         logging.info("Инициализация системы распознавания героев...")
     
     def load_model(self) -> bool:
@@ -129,6 +169,10 @@ class HeroRecognitionSystem:
                 emb_path = os.path.join(EMBEDDINGS_DIR, emb_file)
                 try:
                     embedding = np.load(emb_path)
+                    # Нормализуем эталонные эмбеддинги при загрузке
+                    norm = np.linalg.norm(embedding)
+                    if norm > 0:
+                        embedding = embedding / norm
                     hero_embedding_groups[hero_name].append(embedding)
                 except Exception as e:
                     logging.warning(f"Ошибка загрузки эмбеддинга {emb_file}: {e}")
@@ -170,6 +214,7 @@ class HeroRecognitionSystem:
                 try:
                     img = cv2.imread(icon_path, cv2.IMREAD_UNCHANGED)
                     if img is not None:
+                        # ИСПРАВЛЕНО: Используем cv2.COLOR_BGRA2BGR вместо cv2.BGRA2BGR
                         if len(img.shape) == 3 and img.shape[2] == 4:
                             img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
                         if hero_name not in self.hero_icons:
@@ -254,135 +299,126 @@ class HeroRecognitionSystem:
         except Exception as e:
             logging.error(f"Ошибка сохранения отладочного изображения: {e}")
     
-    def enhance_image_for_dino(self, image_pil: Image.Image) -> Image.Image:
-        """
-        Улучшенное предварительное улучшение изображения для DINO
-        """
+    def pad_image_to_target_size(self, image_pil: Image.Image, target_height: int, target_width: int, padding_color: Tuple[int,int,int]) -> Image.Image:
+        """Паддинг изображения до целевого размера (как в старом коде)"""
+        if image_pil is None:
+            return Image.new("RGB", (target_width, target_height), padding_color)
+        
+        original_width, original_height = image_pil.size
+        if original_width == target_width and original_height == target_height:
+            return image_pil
+        
+        target_aspect = target_width / target_height if target_height != 0 else 1.0
+        original_aspect = original_width / original_height if original_height != 0 else 1.0
+        
+        if original_aspect > target_aspect:
+            new_width = target_width
+            new_height = int(new_width / original_aspect) if original_aspect != 0 else 0
+        else:
+            new_height = target_height
+            new_width = int(new_height * original_aspect)
+        
+        if new_width <= 0 or new_height <= 0:
+            return Image.new("RGB", (target_width, target_height), padding_color)
+        
+        try:
+            resized_image = image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        except ValueError:
+            return Image.new("RGB", (target_width, target_height), padding_color)
+        
+        padded_image = Image.new("RGB", (target_width, target_height), padding_color)
+        paste_x = (target_width - new_width) // 2
+        paste_y = (target_height - new_height) // 2
+        padded_image.paste(resized_image, (paste_x, paste_y))
+        
+        return padded_image
+    
+    def preprocess_image_for_dino(self, image_pil: Image.Image) -> Image.Image:
+        """Предобработка изображения для DINO (упрощенная как в старом коде)"""
+        if image_pil is None:
+            return None
+        
         try:
             # Убедимся, что изображение в RGB
             if image_pil.mode != 'RGB':
                 image_pil = image_pil.convert('RGB')
             
-            # Применяем нерезкое маскирование для улучшения детализации
-            enhancer = ImageEnhance.Sharpness(image_pil)
-            image_pil = enhancer.enhance(2.0)  # Увеличиваем резкость
+            # Применяем простое нерезкое маскирование (как в старом коде)
+            sharpened_image_pil = image_pil.filter(
+                ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3)
+            )
             
-            # Улучшаем контрастность
-            enhancer = ImageEnhance.Contrast(image_pil)
-            image_pil = enhancer.enhance(1.5)
-            
-            # Улучшаем цветность
-            enhancer = ImageEnhance.Color(image_pil)
-            image_pil = enhancer.enhance(1.2)
-            
-            # Небольшая коррекция яркости
-            enhancer = ImageEnhance.Brightness(image_pil)
-            image_pil = enhancer.enhance(1.1)
-            
-            return image_pil
+            return sharpened_image_pil
         except Exception as e:
-            logging.error(f"Ошибка в enhance_image_for_dino: {e}")
-            return image_pil
+            logging.error(f"Ошибка в preprocess_image_for_dino: {e}")
+            return None
     
-    def dynamic_resize_preprocess(self, image_pil: Image.Image, target_size=224, image_mean=None, image_std=None):
-        """
-        Кардинально улучшенная предобработка изображений для DINOv3
-        """
-        try:
-            # 1. Улучшаем качество изображения перед обработкой
-            image_pil = self.enhance_image_for_dino(image_pil)
-            
-            # 2. Получаем оригинальные размеры
-            original_width, original_height = image_pil.size
-            
-            # 3. Стратегия обработки в зависимости от размера изображения
-            max_dimension = max(original_width, original_height)
-            
-            if max_dimension <= target_size:
-                # Для маленьких изображений: многоэтапное увеличение
-                # Сначала увеличиваем в 2 раза с высоким качеством
-                img_2x = image_pil.resize(
-                    (original_width * 2, original_height * 2), 
-                    Image.Resampling.LANCZOS
-                )
-                # Затем применяем нерезкое маскирование
-                img_2x = img_2x.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
-                # Финальное изменение размера
-                img_resized = img_2x.resize((target_size, target_size), Image.Resampling.LANCZOS)
-                
-            elif max_dimension <= target_size * 2:
-                # Для средних изображений: улучшение + изменение размера
-                image_pil = image_pil.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
-                img_resized = image_pil.resize((target_size, target_size), Image.Resampling.LANCZOS)
-                
-            else:
-                # Для больших изображений: уменьшение с сохранением деталей
-                image_pil = image_pil.filter(ImageFilter.UnsharpMask(radius=1, percent=100, threshold=3))
-                img_resized = image_pil.resize((target_size, target_size), Image.Resampling.LANCZOS)
-            
-            # 4. Конвертируем в numpy array
-            img_array = np.array(img_resized, dtype=np.float32) / 255.0
-            
-            # 5. Нормализация
-            if image_mean is None:
-                image_mean = [0.485, 0.456, 0.406]
-            if image_std is None:
-                image_std = [0.229, 0.224, 0.225]
-                
-            mean = np.array(image_mean, dtype=np.float32)
-            std = np.array(image_std, dtype=np.float32)
-            img_array = (img_array - mean) / std
-            
-            # 6. Транспонирование HWC -> CHW и добавление batch dimension
-            img_array = np.transpose(img_array, (2, 0, 1))
-            img_array = np.expand_dims(img_array, axis=0)
-            
-            return img_array.astype(np.float32)
-            
-        except Exception as e:
-            logging.error(f"Ошибка в dynamic_resize_preprocess: {e}")
-            return np.zeros((1, 3, target_size, target_size), dtype=np.float32)
-    
-    def preprocess_image_for_dino(self, image_pil: Image.Image, roi_info: str = "") -> np.ndarray:
-        """Предобработка изображения для DINOv3 с улучшенным качеством"""
-        processed_tensor = self.dynamic_resize_preprocess(image_pil, TARGET_SIZE, IMAGE_MEAN, IMAGE_STD)
-        return processed_tensor
-    
-    def get_cls_embedding(self, image_pil: Image.Image, roi_info: str = "") -> np.ndarray:
-        """Получение CLS эмбеддинга для изображения"""
+    def get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
+        """Получение эмбеддингов для батча изображений (батчевая обработка)"""
         if not self.is_ready():
             return np.array([])
+        
+        if not pil_images_batch or not self.ort_session or not self.input_name:
+            return np.array([])
+        
+        # Применяем паддинг к каждому изображению в батче
+        padded_batch_for_processor = []
+        for img in pil_images_batch:
+            if img is not None:
+                padded_img = self.pad_image_to_target_size(img, TARGET_SIZE, TARGET_SIZE, PADDING_COLOR_WINDOW_DINO)
+                padded_batch_for_processor.append(padded_img)
+        
+        if not padded_batch_for_processor:
+            return np.array([])
+        
+        # Предобрабатываем каждое изображение
+        processed_batch = []
+        for img in padded_batch_for_processor:
+            preprocessed_img = self.preprocess_image_for_dino(img)
+            if preprocessed_img is not None:
+                processed_batch.append(preprocessed_img)
+        
+        if not processed_batch:
+            return np.array([])
+        
+        # Конвертируем в numpy массив и нормализуем
+        batch_arrays = []
+        for img in processed_batch:
+            img_array = np.array(img, dtype=np.float32) / 255.0
+            
+            # Нормализация ImageNet
+            mean = np.array(IMAGE_MEAN, dtype=np.float32)
+            std = np.array(IMAGE_STD, dtype=np.float32)
+            img_array = (img_array - mean) / std
+            
+            # Транспонирование HWC -> CHW
+            img_array = np.transpose(img_array, (2, 0, 1))
+            batch_arrays.append(img_array)
+        
+        # Объединяем в батч
+        batch_tensor = np.stack(batch_arrays, axis=0)
+        
+        # Получаем эмбеддинги через модель
         try:
-            inputs = self.preprocess_image_for_dino(image_pil, roi_info)
-            onnx_outputs = self.ort_session.run(None, {self.input_name: inputs})
+            onnx_outputs = self.ort_session.run(None, {self.input_name: batch_tensor})
             last_hidden_state = onnx_outputs[0]
             
-            # Используем не только CLS токен, но и взвешенное среднее всех токенов
-            cls_embedding = last_hidden_state[0, 0, :]
+            # Извлекаем только CLS токены (как в старом коде)
+            batch_cls_embeddings = last_hidden_state[:, 0, :]
             
-            # Добавляем информацию из других токенов с весами
-            all_tokens = last_hidden_state[0, 1:, :]  # Все токены кроме CLS
-            if all_tokens.shape[0] > 0:
-                # Вычисляем веса для токенов (линейно уменьшающиеся)
-                weights = np.linspace(0.8, 0.2, all_tokens.shape[0])
-                weights = weights / weights.sum()  # Нормализуем веса
-                
-                # Вычисляем взвешенное среднее
-                weighted_mean = np.sum(all_tokens * weights[:, np.newaxis], axis=0)
-                
-                # Комбинируем CLS с взвешенным средним
-                combined_embedding = 0.7 * cls_embedding + 0.3 * weighted_mean
-                
-                # Нормализуем результат
-                norm = np.linalg.norm(combined_embedding)
+            # Нормализуем эмбеддинги
+            normalized_embeddings = []
+            for embedding in batch_cls_embeddings:
+                norm = np.linalg.norm(embedding)
                 if norm > 0:
-                    combined_embedding = combined_embedding / norm
-                
-                return combined_embedding
+                    normalized_embeddings.append(embedding / norm)
+                else:
+                    normalized_embeddings.append(embedding)
             
-            return cls_embedding
+            return np.array(normalized_embeddings)
+            
         except Exception as e:
-            logging.error(f"Ошибка получения эмбеддинга: {e}")
+            logging.error(f"Ошибка получения эмбеддингов: {e}")
             return np.array([])
     
     def cosine_similarity(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
@@ -421,6 +457,12 @@ class HeroRecognitionSystem:
         # Сортируем все сходства и берем топ-5
         all_similarities.sort(key=lambda x: x[1], reverse=True)
         top_matches = all_similarities[:5]
+        
+        # Логируем топ-5 совпадений для DINO
+        if roi_info:
+            logging.info(f"--- ТОП-5 СОВПАДЕНИЙ DINO ДЛЯ {roi_info} ---")
+            for i, (hero, sim) in enumerate(top_matches, 1):
+                logging.info(f"  {i}. {self.normalize_hero_name_for_display(hero)}: {sim:.4f}")
         
         return best_hero, best_sim, top_matches
     
@@ -470,8 +512,17 @@ class HeroRecognitionSystem:
         
         return hero_specific_threshold * threshold_multiplier
     
+    def check_rectangle_overlap(self, rect1: Dict[str, int], rect2: Dict[str, int]) -> bool:
+        """Проверяет пересечение двух прямоугольников"""
+        x1 = max(rect1['x'], rect2['x'])
+        y1 = max(rect1['y'], rect2['y'])
+        x2 = min(rect1['x'] + rect1['width'], rect2['x'] + rect2['width'])
+        y2 = min(rect1['y'] + rect1['height'], rect2['y'] + rect2['height'])
+        
+        return x1 < x2 and y1 < y2
+    
     def get_hero_column_center_akaze(self, large_image_cv2: np.ndarray) -> Tuple[Optional[int], List[str]]:
-        """Определение центра колонки героев с помощью AKAZE"""
+        """Определение центра колонки героев с помощью AKAZE (порог 3) - УЛУЧШЕННАЯ ВЕРСИЯ"""
         if large_image_cv2 is None:
             return None, []
         if not self.hero_icons:
@@ -535,7 +586,7 @@ class HeroRecognitionSystem:
                     max_good_matches_for_hero = len(good_matches)
                     best_match_coords_for_hero = current_match_coords_for_template
             
-            if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT_COLUMN_LOC:
+            if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT_COLUMN_LOC:  # ПОРОГ 3 ДЛЯ ЦЕНТРА КОЛОНКИ
                 hero_match_details.append({
                     "name": hero_name,
                     "matches": max_good_matches_for_hero,
@@ -551,7 +602,7 @@ class HeroRecognitionSystem:
         sorted_hero_match_details = sorted(hero_match_details, key=lambda item: item["matches"], reverse=True)
         
         for detail in sorted_hero_match_details:
-            logging.info(f"  {detail['name']}: {detail['matches']} совпадений (ПРОШЕЛ ФИЛЬТР)")
+            logging.info(f"  {detail['name']}: {detail['matches']} совпадений (кандидат для центра колонки)")
             all_matched_x_coords_on_screenshot.extend(detail['x_coords'])
         
         if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
@@ -560,9 +611,118 @@ class HeroRecognitionSystem:
         if not all_matched_x_coords_on_screenshot:
             return None, akaze_candidates_found
         
-        rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot]
-        most_common_x_center = Counter(rounded_x_coords).most_common(1)[0][0]
+        # УЛУЧШЕНИЕ: Используем медиану вместо среднего для более устойчивой оценки центра
+        rounded_x_coords = [round(x / 5.0) * 5 for x in all_matched_x_coords_on_screenshot]  # Уменьшили шаг округления
+        most_common_x_center = np.median(rounded_x_coords)  # Используем медиану
+        
+        # Сохраняем центр колонки для использования в find_hero_positions_akaze
+        self.last_column_x_center = int(most_common_x_center)
+        
         return int(most_common_x_center), akaze_candidates_found
+    
+    def find_hero_positions_akaze(self, large_image_cv2: np.ndarray, target_heroes: List[str]) -> List[Dict[str, Any]]:
+        """Находит точные позиции героев с помощью AKAZE (порог 5)"""
+        if large_image_cv2 is None or not target_heroes:
+            return []
+        
+        try:
+            image_gray = cv2.cvtColor(large_image_cv2, cv2.COLOR_BGR2GRAY)
+        except cv2.error as e:
+            logging.error(f"Ошибка конвертации в серое: {e}")
+            return []
+        
+        akaze = cv2.AKAZE_create(descriptor_type=AKAZE_DESCRIPTOR_TYPE)
+        try:
+            kp_screenshot, des_screenshot = akaze.detectAndCompute(image_gray, None)
+        except cv2.error as e:
+            logging.error(f"Ошибка detectAndCompute для скриншота: {e}")
+            return []
+        
+        if des_screenshot is None or len(kp_screenshot) == 0:
+            return []
+        
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        hero_positions = []
+        img_height, img_width = large_image_cv2.shape[:2]
+        
+        for hero_name in target_heroes:
+            if hero_name not in self.hero_icons:
+                continue
+            
+            templates_cv2_list = self.hero_icons[hero_name]
+            if not templates_cv2_list:
+                continue
+            
+            best_match_for_hero = None
+            max_good_matches = 0
+            best_location = None
+            
+            for i, template_cv2_single in enumerate(templates_cv2_list):
+                if template_cv2_single is None:
+                    continue
+                
+                try:
+                    template_gray = cv2.cvtColor(template_cv2_single, cv2.COLOR_BGR2GRAY) if len(template_cv2_single.shape) == 3 else template_cv2_single
+                    kp_template, des_template = akaze.detectAndCompute(template_gray, None)
+                except cv2.error as e:
+                    continue
+                
+                if des_template is None or len(kp_template) == 0:
+                    continue
+                
+                try:
+                    matches = bf.knnMatch(des_template, des_screenshot, k=2)
+                except cv2.error:
+                    continue
+                
+                good_matches = []
+                valid_matches = [m_pair for m_pair in matches if m_pair is not None and len(m_pair) == 2]
+                for m, n in valid_matches:
+                    if m.distance < AKAZE_LOWE_RATIO * n.distance:
+                        good_matches.append(m)
+                
+                if len(good_matches) > max_good_matches and len(good_matches) >= AKAZE_MIN_MATCH_COUNT_HERO_LOC:  # ПОРОГ 5 ДЛЯ ГЕРОЕВ
+                    max_good_matches = len(good_matches)
+                    
+                    # Находим локацию героя по совпадающим точкам
+                    if len(good_matches) >= 4:
+                        src_pts = np.float32([kp_template[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                        dst_pts = np.float32([kp_screenshot[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                        
+                        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+                        if M is not None:
+                            h, w = template_gray.shape
+                            pts = np.float32([[0, 0], [0, h-1], [w-1, h-1], [w-1, 0]]).reshape(-1, 1, 2)
+                            dst = cv2.perspectiveTransform(pts, M)
+                            
+                            # Вычисляем центр bounding box
+                            center_x = int(np.mean(dst[:, 0, 0]))
+                            center_y = int(np.mean(dst[:, 0, 1]))
+                            
+                            # ПРОВЕРКА И КОРРЕКЦИЯ КООРДИНАТ
+                            # Убедимся, что координаты в пределах изображения
+                            center_x = max(WINDOW_SIZE_W_DINO // 2, min(center_x, img_width - WINDOW_SIZE_W_DINO // 2))
+                            center_y = max(WINDOW_SIZE_H_DINO // 2, min(center_y, img_height - WINDOW_SIZE_H_DINO // 2))
+                            
+                            # Дополнительная проверка - координата X должна быть близка к центру колонки
+                            if self.last_column_x_center and abs(center_x - self.last_column_x_center) > WINDOW_SIZE_W_DINO * 1.5:
+                                logging.warning(f"Координата X для {hero_name} слишком далеко от центра колонки: {center_x} vs {self.last_column_x_center}")
+                                continue
+                            
+                            best_location = (center_x, center_y)
+                            best_match_for_hero = {
+                                "name": hero_name,
+                                "matches": len(good_matches),
+                                "x": center_x - WINDOW_SIZE_W_DINO // 2,
+                                "y": center_y - WINDOW_SIZE_H_DINO // 2,
+                                "confidence": len(good_matches) / AKAZE_MIN_MATCH_COUNT_HERO_LOC
+                            }
+            
+            if best_match_for_hero and best_location:
+                hero_positions.append(best_match_for_hero)
+                logging.info(f"AKAZE нашел героя {hero_name} в позиции ({best_match_for_hero['x']}, {best_match_for_hero['y']}) с {best_match_for_hero['matches']} совпадениями")
+        
+        return hero_positions
     
     def normalize_hero_name_for_display(self, hero_name: str) -> str:
         """Конвертирует имя героя из формата эмбеддингов в формат отображения"""
@@ -610,20 +770,104 @@ class HeroRecognitionSystem:
         else:
             return normalized
     
-    def generate_rois(self, screenshot_pil: Image.Image, column_x_center: Optional[int]) -> List[Dict[str, Any]]:
-        """Генерация ROI для анализа"""
+    def generate_rois(self, screenshot_pil: Image.Image, column_x_center: Optional[int], akaze_hero_positions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Генерация ROI для анализа с учетом AKAZE позиций героев (УЛУЧШЕННАЯ ВЕРСИЯ)"""
         s_width, s_height = screenshot_pil.size
         rois_for_dino = []
         
-        if column_x_center is not None:
-            # Используем центр колонки, определенный AKAZE
+        # Если AKAZE нашел героев и есть центр колонки
+        if column_x_center is not None and akaze_hero_positions:
+            logging.info(f"Генерация интеллектуальных ROI на основе {len(akaze_hero_positions)} AKAZE позиций")
+            
+            # Сортируем позиции героев по Y-координате
+            akaze_hero_positions_sorted = sorted(akaze_hero_positions, key=lambda pos: pos['y'])
+            
+            # УЛУЧШЕНИЕ: Создаем ROI для подтверждения AKAZE находок (ПЕРВЫЕ)
+            logging.info("Генерация ROI для подтверждения AKAZE находок...")
+            for hero_pos in akaze_hero_positions_sorted:
+                # Создаем несколько ROI с разными смещениями для подтверждения героя
+                for x_offset in ROI_X_JITTER_VALUES_DINO:
+                    for y_offset in ROI_Y_JITTER_VALUES_DINO:
+                        roi_x = hero_pos['x'] + x_offset
+                        roi_y = hero_pos['y'] + y_offset
+                        
+                        # Проверяем, что ROI не выходит за границы
+                        if (0 <= roi_x and roi_x + WINDOW_SIZE_W_DINO <= s_width and
+                            0 <= roi_y and roi_y + WINDOW_SIZE_H_DINO <= s_height):
+                            
+                            rois_for_dino.append({
+                                'x': roi_x,
+                                'y': roi_y,
+                                'width': WINDOW_SIZE_W_DINO,
+                                'height': WINDOW_SIZE_H_DINO,
+                                'hero_name': hero_pos['name'],
+                                'akaze_confidence': hero_pos['confidence']
+                            })
+            
+            # УЛУЧШЕНИЕ: Создаем ROI для пустых слотов (ВТОРЫЕ)
+            if len(akaze_hero_positions_sorted) < TEAM_SIZE:
+                logging.info("Генерация ROI для пустых слотов...")
+                
+                # Проверяем область перед первым героем
+                first_hero = akaze_hero_positions_sorted[0]
+                if first_hero['y'] > WINDOW_SIZE_H_DINO * 1.5:  # Увеличили порог
+                    # УЛУЧШЕНИЕ: Более точный расчет позиции для пустого слота
+                    empty_y = max(WINDOW_SIZE_H_DINO // 2, first_hero['y'] // 3)  # Изменили расчет
+                    rois_for_dino.append({
+                        'x': column_x_center - WINDOW_SIZE_W_DINO // 2,
+                        'y': empty_y - WINDOW_SIZE_H_DINO // 2,
+                        'width': WINDOW_SIZE_W_DINO,
+                        'height': WINDOW_SIZE_H_DINO,
+                        'hero_name': 'unknown',
+                        'akaze_confidence': 0.0
+                    })
+                
+                # Проверяем области между героями
+                for i in range(len(akaze_hero_positions_sorted) - 1):
+                    current_hero = akaze_hero_positions_sorted[i]
+                    next_hero = akaze_hero_positions_sorted[i + 1]
+                    
+                    # Вычисляем расстояние между героями
+                    gap = next_hero['y'] - (current_hero['y'] + WINDOW_SIZE_H_DINO)
+                    
+                    # Если есть достаточно места для еще одного героя
+                    if gap > WINDOW_SIZE_H_DINO * 1.5:  # Увеличили порог
+                        # УЛУЧШЕНИЕ: Более точный расчет позиции для пустого слота
+                        empty_y = current_hero['y'] + WINDOW_SIZE_H_DINO + gap // 2
+                        rois_for_dino.append({
+                            'x': column_x_center - WINDOW_SIZE_W_DINO // 2,
+                            'y': empty_y - WINDOW_SIZE_H_DINO // 2,
+                            'width': WINDOW_SIZE_W_DINO,
+                            'height': WINDOW_SIZE_H_DINO,
+                            'hero_name': 'unknown',
+                            'akaze_confidence': 0.0
+                        })
+                
+                # Проверяем область после последнего героя
+                last_hero = akaze_hero_positions_sorted[-1]
+                if s_height - (last_hero['y'] + WINDOW_SIZE_H_DINO) > WINDOW_SIZE_H_DINO * 1.5:  # Увеличили порог
+                    # УЛУЧШЕНИЕ: Более точный расчет позиции для пустого слота
+                    empty_y = last_hero['y'] + WINDOW_SIZE_H_DINO + (s_height - (last_hero['y'] + WINDOW_SIZE_H_DINO)) // 2
+                    if empty_y + WINDOW_SIZE_H_DINO // 2 <= s_height:
+                        rois_for_dino.append({
+                            'x': column_x_center - WINDOW_SIZE_W_DINO // 2,
+                            'y': empty_y - WINDOW_SIZE_H_DINO // 2,
+                            'width': WINDOW_SIZE_W_DINO,
+                            'height': WINDOW_SIZE_H_DINO,
+                            'hero_name': 'unknown',
+                            'akaze_confidence': 0.0
+                        })
+            
+            logging.info(f"Сгенерировано {len(rois_for_dino)} ROI (подтверждение AKAZE: {len(akaze_hero_positions_sorted) * len(ROI_X_JITTER_VALUES_DINO) * len(ROI_Y_JITTER_VALUES_DINO)}, пустые слоты: {len(rois_for_dino) - len(akaze_hero_positions_sorted) * len(ROI_X_JITTER_VALUES_DINO) * len(ROI_Y_JITTER_VALUES_DINO)})")
+        
+        # Если AKAZE не нашел героев или нет центра колонки
+        elif column_x_center is not None:
+            logging.info("AKAZE не нашел героев, используем стандартную генерацию ROI по центру колонки")
             base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
-            logging.info(f"Генерация ROI для DINO. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center})")
             
             for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
                 for x_offset in ROI_X_JITTER_VALUES_DINO:
                     current_roi_start_x = base_roi_start_x + x_offset
-                    # Проверяем, что ROI не выходит за границы изображения
                     if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
                         rois_for_dino.append({
                             'x': current_roi_start_x, 
@@ -631,8 +875,9 @@ class HeroRecognitionSystem:
                             'width': WINDOW_SIZE_W_DINO,
                             'height': WINDOW_SIZE_H_DINO
                         })
+        
+        # Полный fallback, если не удалось определить центр колонки
         else:
-            # Fallback - полное сканирование с отступом от левого края
             logging.warning("Не удалось определить центр колонки. Включается fallback DINO (полное сканирование с отступом).")
             for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
                 for x_val in range(LEFT_OFFSET, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
@@ -645,37 +890,95 @@ class HeroRecognitionSystem:
         
         return rois_for_dino
     
-    def filter_overlapping_detections(self, detections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Фильтрует детекции с сильным пересечением"""
+    def filter_overlapping_detections(self, detections: List[Dict[str, Any]], akaze_positions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Фильтрует детекции с сильным пересечением, отдавая приоритет AKAZE"""
         if not detections:
             return []
         
+        # Сначала создаем список областей, занятых AKAZE
+        akaze_areas = []
+        for akaze_pos in akaze_positions:
+            akaze_areas.append({
+                'x': akaze_pos['x'],
+                'y': akaze_pos['y'],
+                'width': WINDOW_SIZE_W_DINO,
+                'height': WINDOW_SIZE_H_DINO,
+                'hero_name': akaze_pos['name']
+            })
+        
+        # Сортируем детекции по схожести (от высокой к низкой)
         sorted_detections = sorted(detections, key=lambda x: x["similarity"], reverse=True)
         filtered_detections = []
         
         for detection in sorted_detections:
             is_overlapping = False
+            detection_rect = {
+                'x': detection["x"],
+                'y': detection["y"],
+                'width': detection["width"],
+                'height': detection["height"]
+            }
             
-            for existing in filtered_detections:
-                x1 = max(detection["x"], existing["x"])
-                y1 = max(detection["y"], existing["y"])
-                x2 = min(detection["x"] + detection["width"], existing["x"] + existing["width"])
-                y2 = min(detection["y"] + detection["height"], existing["y"] + existing["height"])
-                
-                intersection_area = max(0, x2 - x1) * max(0, y2 - y1)
-                det_area = detection["width"] * detection["height"]
-                existing_area = existing["width"] * existing["height"]
-                
-                iou = intersection_area / min(det_area, existing_area)
-                
-                if iou > 0.5:
+            # Проверяем пересечение с AKAZE областями
+            for akaze_area in akaze_areas:
+                if self.check_rectangle_overlap(detection_rect, akaze_area):
+                    # Если детекция пересекается с AKAZE областью
+                    if detection.get('hero_name') == akaze_area['hero_name']:
+                        # Если это тот же герой, оставляем с более высоким порогом
+                        if detection["similarity"] >= DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE:
+                            logging.info(f"DINO подтверждает героя {akaze_area['hero_name']} со схожестью {detection['similarity']:.3f}")
+                            filtered_detections.append(detection)
+                    else:
+                        # Если это разные герои, пропускаем DINO детекцию
+                        logging.info(f"DINO детекция {detection.get('hero_name', 'unknown')} пересекается с AKAZE {akaze_area['hero_name']}, пропускаем")
                     is_overlapping = True
                     break
             
+            # Если нет пересечения с AKAZE, проверяем пересечение с другими DINO детекциями
             if not is_overlapping:
-                filtered_detections.append(detection)
+                for existing in filtered_detections:
+                    existing_rect = {
+                        'x': existing["x"],
+                        'y': existing["y"],
+                        'width': existing["width"],
+                        'height': existing["height"]
+                    }
+                    
+                    if self.check_rectangle_overlap(detection_rect, existing_rect):
+                        iou = self.calculate_iou(detection_rect, existing_rect)
+                        y_overlap_ratio = self.calculate_y_overlap_ratio(detection_rect, existing_rect)
+                        
+                        if iou > 0.5 or y_overlap_ratio > Y_OVERLAP_THRESHOLD_RATIO:
+                            is_overlapping = True
+                            break
+                
+                if not is_overlapping:
+                    filtered_detections.append(detection)
         
         return filtered_detections
+    
+    def calculate_iou(self, rect1: Dict[str, int], rect2: Dict[str, int]) -> float:
+        """Вычисляет IoU (Intersection over Union) двух прямоугольников"""
+        x1 = max(rect1['x'], rect2['x'])
+        y1 = max(rect1['y'], rect2['y'])
+        x2 = min(rect1['x'] + rect1['width'], rect2['x'] + rect2['width'])
+        y2 = min(rect1['y'] + rect1['height'], rect2['y'] + rect2['height'])
+        
+        intersection_area = max(0, x2 - x1) * max(0, y2 - y1)
+        
+        area1 = rect1['width'] * rect1['height']
+        area2 = rect2['width'] * rect2['height']
+        union_area = area1 + area2 - intersection_area
+        
+        return intersection_area / union_area if union_area > 0 else 0.0
+    
+    def calculate_y_overlap_ratio(self, rect1: Dict[str, int], rect2: Dict[str, int]) -> float:
+        """Вычисляет отношение пересечения по оси Y"""
+        y_overlap_start = max(rect1['y'], rect2['y'])
+        y_overlap_end = min(rect1['y'] + rect1['height'], rect2['y'] + rect2['height'])
+        y_overlap_height = y_overlap_end - y_overlap_start
+        
+        return y_overlap_height / rect1['height'] if rect1['height'] > 0 else 0.0
     
     def analyze_similarity_distribution(self):
         """Анализирует распределение similarity scores"""
@@ -704,7 +1007,7 @@ class HeroRecognitionSystem:
             logging.info(f"Средний low similarity: {np.mean(incorrect_sims):.4f} (min: {np.min(incorrect_sims):.4f}, max: {np.max(incorrect_sims):.4f})")
     
     def recognize_heroes(self, use_screen_capture=True, test_file_index=None, save_debug=False, experiment_roi_size=None) -> List[str]:
-        """Основная функция распознавания героев с кардинально улучшенным DINO"""
+        """Основная функция распознавания героев с AKAZE для X и Y координат (УЛУЧШЕННАЯ ВЕРСИЯ)"""
         start_time = time.time()
         self.similarity_stats = []
         
@@ -738,15 +1041,18 @@ class HeroRecognitionSystem:
             s_width, s_height = screenshot_pil.size
             logging.info(f"Размер скриншота: {s_width}x{s_height}")
             
-            # 2. Определяем центр колонки героев с помощью AKAZE
+            # 2. Определяем центр колонки героев с помощью AKAZE (порог 3)
             akaze_start_time = time.time()
             column_x_center, akaze_identified_names = self.get_hero_column_center_akaze(screenshot_cv2)
-            akaze_end_time = time.time()
-            logging.info(f"AKAZE локализация: {akaze_end_time - akaze_start_time:.2f} сек. Найдено: {akaze_identified_names}")
             
-            # 3. Генерируем ROI для анализа
+            # 3. Находим точные позиции героев с помощью AKAZE (порог 5)
+            akaze_hero_positions = self.find_hero_positions_akaze(screenshot_cv2, akaze_identified_names)
+            akaze_end_time = time.time()
+            logging.info(f"AKAZE локализация: {akaze_end_time - akaze_start_time:.2f} сек. Найдено героев: {len(akaze_hero_positions)}")
+            
+            # 4. Генерируем ROI для анализа (ИНТЕЛЛЕКТУАЛЬНАЯ ГЕНЕРАЦИЯ)
             dino_start_time = time.time()
-            rois_for_dino = self.generate_rois(screenshot_pil, column_x_center)
+            rois_for_dino = self.generate_rois(screenshot_pil, column_x_center, akaze_hero_positions)
             logging.info(f"Сгенерировано ROI для анализа: {len(rois_for_dino)}")
             if not rois_for_dino:
                 logging.warning("Не сгенерировано ни одного ROI для анализа.")
@@ -759,8 +1065,11 @@ class HeroRecognitionSystem:
                 os.makedirs(roi_debug_dir, exist_ok=True)
                 logging.info(f"Сохранение ROI в директорию: {roi_debug_dir}")
             
-            # 4. Обрабатываем ROI и получаем эмбеддинги
+            # 5. Обрабатываем ROI с БАТЧЕВОЙ обработкой
             all_dino_detections: List[Dict[str, Any]] = []
+            pil_batch: List[Image.Image] = []
+            coordinates_batch: List[Dict[str, int]] = []
+            processed_windows_count = 0
             
             for i, roi_coord in enumerate(rois_for_dino):
                 if i % 10 == 0:
@@ -775,72 +1084,141 @@ class HeroRecognitionSystem:
                     roi_filepath = os.path.join(roi_debug_dir, roi_filename)
                     window_pil.save(roi_filepath)
                 
-                if experiment_roi_size:
-                    window_pil = window_pil.resize((experiment_roi_size, experiment_roi_size), Image.Resampling.LANCZOS)
-                
-                roi_info = f"{i}_x{x}_y{y}"
-                
-                window_embedding = self.get_cls_embedding(window_pil, roi_info)
-                if len(window_embedding) == 0:
+                # Предобрабатываем изображение
+                preprocessed_window = self.preprocess_image_for_dino(window_pil)
+                if preprocessed_window is None:
                     continue
                 
-                best_hero, best_sim, top_matches = self.get_best_match(window_embedding, roi_info)
+                pil_batch.append(preprocessed_window)
+                coordinates_batch.append({'x': x, 'y': y})
                 
-                if best_hero is not None and best_sim >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
-                    all_dino_detections.append({
-                        "name": best_hero,
-                        "similarity": best_sim,
-                        "x": x,
-                        "y": y,
-                        "width": width,
-                        "height": height,
-                        "top_matches": top_matches
-                    })
+                # Обрабатываем батч, когда он наполнился
+                if len(pil_batch) >= BATCH_SIZE_SLIDING_WINDOW_DINO:
+                    window_embeddings_batch = self.get_cls_embeddings_for_batched_pil(pil_batch)
+                    
+                    if window_embeddings_batch.size == 0 and pil_batch:
+                        logging.warning(f"Получен пустой батч эмбеддингов, хотя в pil_batch было {len(pil_batch)} элементов.")
+                    else:
+                        for j in range(len(window_embeddings_batch)):
+                            window_embedding = window_embeddings_batch[j]
+                            coord = coordinates_batch[j]
+                            
+                            # Используем get_best_match с логированием топ-5
+                            roi_info = f"ROI_{i}_{j}"
+                            best_hero_name, best_sim, top_matches = self.get_best_match(window_embedding, roi_info)
+                            
+                            if best_hero_name is not None and best_sim >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
+                                detection = {
+                                    "name": best_hero_name,
+                                    "similarity": best_sim,
+                                    "x": coord['x'], 
+                                    "y": coord['y'],
+                                    "width": width,
+                                    "height": height
+                                }
+                                
+                                # Добавляем информацию из AKAZE если есть
+                                if 'hero_name' in roi_coord:
+                                    detection['hero_name'] = roi_coord['hero_name']
+                                    detection['akaze_confidence'] = roi_coord.get('akaze_confidence', 0.0)
+                                
+                                all_dino_detections.append(detection)
+                    
+                    processed_windows_count += len(pil_batch)
+                    pil_batch = []
+                    coordinates_batch = []
             
-            # Фильтруем пересекающиеся детекции
-            all_dino_detections = self.filter_overlapping_detections(all_dino_detections)
+            # Обрабатываем оставшиеся изображения в батче
+            if pil_batch:
+                window_embeddings_batch = self.get_cls_embeddings_for_batched_pil(pil_batch)
+                
+                if window_embeddings_batch.size == 0 and pil_batch:
+                    logging.warning(f"Получен пустой батч эмбеддингов для остатка, pil_batch: {len(pil_batch)}.")
+                else:
+                    for j in range(len(window_embeddings_batch)):
+                        window_embedding = window_embeddings_batch[j]
+                        coord = coordinates_batch[j]
+                        
+                        # Используем get_best_match с логированием топ-5
+                        roi_info = f"ROI_final_{j}"
+                        best_hero_name, best_sim, top_matches = self.get_best_match(window_embedding, roi_info)
+                        
+                        if best_hero_name is not None and best_sim >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
+                            detection = {
+                                "name": best_hero_name,
+                                "similarity": best_sim,
+                                "x": coord['x'], 
+                                "y": coord['y'],
+                                "width": width,
+                                "height": height
+                            }
+                            
+                            # Добавляем информацию из AKAZE если есть
+                            if 'hero_name' in roi_coord:
+                                detection['hero_name'] = roi_coord['hero_name']
+                                detection['akaze_confidence'] = roi_coord.get('akaze_confidence', 0.0)
+                            
+                            all_dino_detections.append(detection)
+                
+                processed_windows_count += len(pil_batch)
             
             dino_end_time = time.time()
-            logging.info(f"DINO обработка: {dino_end_time - dino_start_time:.2f} сек. Найдено детекций: {len(all_dino_detections)}")
+            logging.info(f"Обработано окон (DINOv2): {processed_windows_count}, Всего DINO детекций (выше порога логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%): {len(all_dino_detections)}")
+            logging.info(f"DINO обработка: {dino_end_time - dino_start_time:.2f} сек.")
+            
+            # 6. Фильтруем детекции с учетом AKAZE (ПРИОРИТЕТ AKAZE)
+            all_dino_detections = self.filter_overlapping_detections(all_dino_detections, akaze_hero_positions)
             
             # Анализируем распределение similarity scores
             self.analyze_similarity_distribution()
             
-            # 5. Комбинированная логика DINO + AKAZE с адаптивными порогами
+            # 7. УЛУЧШЕННАЯ логика финального решения с приоритетом AKAZE
             final_team_raw_names: List[str] = []
             final_team_normalized_names_set: Set[str] = set()
-            occupied_y_slots_by_akaze: List[Tuple[int, int, str]] = []
+            occupied_y_slots: List[Tuple[int, int, str]] = []
             
-            akaze_normalized_names = akaze_identified_names
+            # Сначала добавляем героев, найденных AKAZE (приоритет)
+            akaze_normalized_names = [self.normalize_hero_name_for_display(name) for name in akaze_identified_names]
             akaze_unique_normalized = sorted(list(set(akaze_normalized_names)))
             
-            # Сначала обрабатываем AKAZE-кандидатов
             for akaze_norm_name in akaze_unique_normalized:
                 if len(final_team_raw_names) >= TEAM_SIZE:
                     break
                 if akaze_norm_name in final_team_normalized_names_set:
                     continue
                 
-                best_dino_match = None
+                # Ищем подтверждение от DINO для этого героя
+                best_dino_match_for_akaze_hero: Optional[Dict[str, Any]] = None
                 highest_similarity = -1.0
+                akaze_matches_count = 0
                 
-                # Ищем соответствие в DINO детекциях
-                for dino_cand in all_dino_detections:
-                    dino_norm_name = dino_cand["name"]
+                # Находим количество совпадений AKAZE для этого героя
+                for hero_pos in akaze_hero_positions:
+                    if self.normalize_hero_name_for_display(hero_pos["name"]) == akaze_norm_name:
+                        akaze_matches_count = hero_pos["matches"]
+                        break
+                
+                # Ищем лучшее совпадение DINO
+                for dino_cand_data in all_dino_detections:
+                    dino_norm_name = self.normalize_hero_name_for_display(dino_cand_data["name"])
                     if dino_norm_name == akaze_norm_name:
-                        if dino_cand["similarity"] > highest_similarity:
-                            highest_similarity = dino_cand["similarity"]
-                            best_dino_match = dino_cand
+                        if dino_cand_data["similarity"] > highest_similarity:
+                            highest_similarity = dino_cand_data["similarity"]
+                            best_dino_match_for_akaze_hero = dino_cand_data
                 
                 # Используем адаптивный порог
-                akaze_matches = sum(1 for d in all_dino_detections if d["name"] == akaze_norm_name)
-                adaptive_threshold = self.get_adaptive_threshold(DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE, akaze_matches, akaze_norm_name)
+                adaptive_threshold = self.get_adaptive_threshold(DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE, akaze_matches_count, akaze_norm_name)
                 
                 # Обновляем статистику героя
-                if akaze_norm_name in self.hero_stats:
-                    stats = self.hero_stats[akaze_norm_name]
+                akaze_raw_name = None
+                for hero_pos in akaze_hero_positions:
+                    if self.normalize_hero_name_for_display(hero_pos["name"]) == akaze_norm_name:
+                        akaze_raw_name = hero_pos["name"]
+                        break
+                
+                if akaze_raw_name and akaze_raw_name in self.hero_stats:
+                    stats = self.hero_stats[akaze_raw_name]
                     if highest_similarity > 0:
-                        # Обновляем среднее сходство
                         current_count = stats['avg_similarity'] * stats['dino_confirmed'] if stats['dino_confirmed'] > 0 else 0
                         stats['avg_similarity'] = (current_count + highest_similarity) / (stats['dino_confirmed'] + 1)
                     
@@ -849,60 +1227,72 @@ class HeroRecognitionSystem:
                     else:
                         stats['dino_rejected'] += 1
                 
-                if best_dino_match and highest_similarity >= adaptive_threshold:
-                    raw_name_to_add = best_dino_match["name"]
-                    final_team_raw_names.append(raw_name_to_add)
+                # Добавляем героя (AKAZE + возможное подтверждение DINO)
+                if akaze_raw_name:
+                    final_team_raw_names.append(akaze_raw_name)
                     final_team_normalized_names_set.add(akaze_norm_name)
-                    y_start = best_dino_match["y"]
-                    y_end = y_start + best_dino_match["height"]
-                    occupied_y_slots_by_akaze.append((y_start, y_end, akaze_norm_name))
-                    logging.info(f"Добавлен герой (AKAZE+DINO): {self.normalize_hero_name_for_display(raw_name_to_add)} (sim: {highest_similarity:.3f}, адаптивный порог: {adaptive_threshold:.3f})")
-                else:
-                    # Добавляем AKAZE героя без DINO подтверждения, если у него есть эмбеддинг
-                    if akaze_norm_name in self.hero_embeddings:
-                        final_team_raw_names.append(akaze_norm_name)
-                        final_team_normalized_names_set.add(akaze_norm_name)
-                        logging.info(f"Добавлен герой (AKAZE только): {self.normalize_hero_name_for_display(akaze_norm_name)}")
+                    
+                    # Находим Y-координату для занятого слота
+                    y_start = None
+                    for hero_pos in akaze_hero_positions:
+                        if self.normalize_hero_name_for_display(hero_pos["name"]) == akaze_norm_name:
+                            y_start = hero_pos["y"]
+                            y_end = y_start + WINDOW_SIZE_H_DINO
+                            occupied_y_slots.append((y_start, y_end, akaze_norm_name))
+                            break
+                    
+                    if best_dino_match_for_akaze_hero and highest_similarity >= adaptive_threshold:
+                        logging.info(f"Добавлен герой (AKAZE+DINO): {akaze_norm_name} (sim: {highest_similarity:.3f}, адаптивный порог: {adaptive_threshold:.3f})")
+                    else:
+                        logging.info(f"Добавлен герой (AKAZE только): {akaze_norm_name} (совпадений: {akaze_matches_count})")
             
-            # Затем добавляем оставшиеся DINO-детекции
-            dino_candidates_sorted = sorted(
-                [cand for cand in all_dino_detections if cand["similarity"] >= DINOV2_FINAL_DECISION_THRESHOLD],
-                key=lambda x: x["similarity"],
-                reverse=True
-            )
+            # Затем добавляем героев, найденных только DINO
+            dino_candidates_for_final_decision = [
+                cand for cand in all_dino_detections
+                if cand["similarity"] >= DINOV2_FINAL_DECISION_THRESHOLD
+            ]
             
-            for dino_cand in dino_candidates_sorted:
+            logging.info(f"--- Кандидаты DINOv2 для финального решения (прошедшие порог {DINOV2_FINAL_DECISION_THRESHOLD*100:.0f}%, {len(dino_candidates_for_final_decision)} шт.) ---")
+            
+            for dino_cand_data in dino_candidates_for_final_decision:
                 if len(final_team_raw_names) >= TEAM_SIZE:
                     break
-                dino_raw_name = dino_cand["name"]
-                dino_norm_name = dino_raw_name
+                dino_raw_name = dino_cand_data["name"]
+                dino_norm_name = self.normalize_hero_name_for_display(dino_raw_name)
                 
                 if dino_norm_name in final_team_normalized_names_set:
                     continue
                 
-                dino_roi_y_start = dino_cand["y"]
-                dino_roi_y_end = dino_roi_y_start + dino_cand["height"]
+                dino_roi_y_start = dino_cand_data["y"]
+                dino_roi_y_end = dino_roi_y_start + dino_cand_data["height"]
                 
+                # Проверяем пересечение по Y-координате с уже добавленными героями
                 is_overlapping = False
-                for occ_y_start, occ_y_end, occ_hero_name in occupied_y_slots_by_akaze:
+                for occ_y_start, occ_y_end, occ_hero_name in occupied_y_slots:
                     overlap_start = max(dino_roi_y_start, occ_y_start)
                     overlap_end = min(dino_roi_y_end, occ_y_end)
                     overlap_height = overlap_end - overlap_start
-                    if overlap_height > (dino_cand["height"] * Y_OVERLAP_THRESHOLD_RATIO):
+                    overlap_ratio = overlap_height / dino_cand_data["height"]
+                    
+                    if overlap_ratio > Y_OVERLAP_THRESHOLD_RATIO:
+                        if dino_norm_name == occ_hero_name:
+                            logging.debug(f"Кандидат '{dino_raw_name}' ({dino_norm_name}) совпадает с уже добавленным героем '{occ_hero_name}'. Пропуск добавления.")
+                        else:
+                            logging.info(f"Кандидат '{dino_raw_name}' ({dino_norm_name}, ROI Y:{dino_roi_y_start}-{dino_roi_y_end}) пересекается с '{occ_hero_name}' (слот Y:{occ_y_start}-{occ_y_end}). Пропуск.")
                         is_overlapping = True
                         break
                 
                 if not is_overlapping:
                     final_team_raw_names.append(dino_raw_name)
                     final_team_normalized_names_set.add(dino_norm_name)
-                    occupied_y_slots_by_akaze.append((dino_roi_y_start, dino_roi_y_end, dino_norm_name))
-                    logging.info(f"Добавлен герой (DINO): {self.normalize_hero_name_for_display(dino_raw_name)} (sim: {dino_cand['similarity']:.3f})")
+                    occupied_y_slots.append((dino_roi_y_start, dino_roi_y_end, dino_norm_name))
+                    logging.info(f"Добавлен герой (DINO): {dino_norm_name} (sim: {dino_cand_data['similarity']:.3f})")
             
-            # 6. Финальные результаты
+            # 8. Финальные результаты
             end_time = time.time()
             total_time = end_time - start_time
             
-            logging.info(f"=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ ===")
+            logging.info(f"=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ (ПЛАН Б - УЛУЧШЕННЫЙ) ===")
             logging.info(f"Время выполнения: {total_time:.2f} секунд")
             logging.info(f"Распознано героев: {len(final_team_raw_names)}")
             for i, hero_name in enumerate(final_team_raw_names, 1):
@@ -989,7 +1379,7 @@ def print_test_summary(total_stats):
         logging.info(f"{'-'*100}")
 
 def main():
-    """Основная функция для тестирования с кардинально улучшенным DINO"""
+    """Основная функция для тестирования с AKAZE для X и Y координат"""
     system = HeroRecognitionSystem()
     
     # Загружаем компоненты
@@ -1028,7 +1418,9 @@ def main():
             if os.path.exists(screenshot_path):
                 logging.info(f"\n=== ТЕСТИРОВАНИЕ СКРИНШОТА {i} ===")
                 
-                save_debug = (i == 1)
+                # ИЗМЕНЕНО: Сохраняем отладочную информацию для ВСЕХ скриншотов
+                save_debug = True
+                
                 roi_sizes = [95, 224]
                 
                 for roi_size in roi_sizes:

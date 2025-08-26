@@ -1,6 +1,5 @@
 # 150 - размер изображения для эмбеддингов (измени эту цифру для другого размера)
 TARGET_SIZE = 95
-
 import os
 import sys
 import numpy as np
@@ -11,10 +10,12 @@ from PIL import Image, ImageOps, ImageEnhance
 import onnxruntime
 import shutil
 import hashlib
+
 # --- Конфигурация моделей ---
 NN_MODELS_DIR = "vision_models" 
 INPUT_IMAGES_DIR = "resources/heroes_icons" 
 EMBEDDINGS_DIR_OUT = "resources/embeddings_padded" 
+
 # Упрощенные конфигурации моделей
 MODEL_CONFIGS = {
     "dinov2-small": {
@@ -54,21 +55,26 @@ MODEL_CONFIGS = {
         "embedding_extraction": "nomic"
     }
 }
+
 # Установка параметров по умолчанию для всех моделей
 DEFAULT_PARAMS = {
     "image_mean": [0.485, 0.456, 0.406],
     "image_std": [0.229, 0.224, 0.225]
 }
+
 # Добавляем параметры по умолчанию ко всем моделям
 for model_config in MODEL_CONFIGS.values():
     model_config.update(DEFAULT_PARAMS)
+
 # Специальные параметры для nomic
 MODEL_CONFIGS["nomic-embed-vision"].update({
     "image_mean": [0.48145466, 0.4578275, 0.40821073],
     "image_std": [0.26862954, 0.26130258, 0.27577711]
 })
+
 CURRENT_MODEL = "dinov3-vitb16-pretrain-lvd1689m"
 MODEL_CONFIG = MODEL_CONFIGS[CURRENT_MODEL]
+
 # Извлекаем параметры
 ONNX_MODEL_FILENAME = MODEL_CONFIG["filename"]
 ONNX_MODEL_FOLDER = MODEL_CONFIG["folder_name"]
@@ -79,8 +85,10 @@ NORMALIZE_EMBEDDING = MODEL_CONFIG["normalize_embedding"]
 EMBEDDING_EXTRACTION = MODEL_CONFIG["embedding_extraction"]
 IMAGE_MEAN = MODEL_CONFIG["image_mean"]
 IMAGE_STD = MODEL_CONFIG["image_std"]
+
 SUPPORTED_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')
 SIMILARITY_CONFLICT_THRESHOLD = 0.70
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
 
