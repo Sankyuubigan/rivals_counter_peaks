@@ -65,10 +65,10 @@ LEFT_OFFSET = 45
 IMAGE_MEAN = [0.485, 0.456, 0.406]
 IMAGE_STD = [0.229, 0.224, 0.225]
 
-# Параметры для скользящего окна
+# Возвращаем рабочие параметры
 WINDOW_SIZE = 95
-STRIDE = 80
-CONFIDENCE_THRESHOLD = 0.65
+STRIDE = 20
+CONFIDENCE_THRESHOLD = 0.75
 MAX_HEROES = 6
 
 # Параметры распознавания
@@ -251,10 +251,17 @@ class HeroRecognitionSystem:
         rois = []
         roi_positions = []
         
+        roi_counter = 0
         for y in range(0, scr_pil.height - WINDOW_SIZE + 1, STRIDE):
             roi = scr_pil.crop((column_left, y, column_left + WINDOW_SIZE, y + WINDOW_SIZE))
             rois.append(roi)
             roi_positions.append((column_left, y))
+            
+            # Сохраняем все ROI для отладки
+            if save_debug:
+                roi_filename = os.path.join(roi_dir, f"roi_all_{roi_counter:03d}_x{column_left}_y{y}.png")
+                roi.save(roi_filename)
+                roi_counter += 1
         
         logging.info(f"Сгенерировано {len(rois)} ROI для колонки")
         
@@ -273,6 +280,12 @@ class HeroRecognitionSystem:
                 
                 (best_hero, confidence), _ = self.get_best_match(embedding)
                 
+                # Сохраняем ROI с распознанными героями (даже с низкой уверенностью)
+                if save_debug and best_hero:
+                    roi_img = batch_rois[j]
+                    roi_filename = os.path.join(roi_dir, f"roi_detected_{i+j:03d}_x{position[0]}_y{position[1]}_{best_hero.replace(' ', '_')}_conf{confidence:.3f}.png")
+                    roi_img.save(roi_filename)
+                
                 if best_hero and confidence >= CONFIDENCE_THRESHOLD:
                     detection = {
                         'hero': best_hero,
@@ -282,11 +295,6 @@ class HeroRecognitionSystem:
                         'column_idx': 0
                     }
                     all_detections.append(detection)
-                    
-                    # Сохраняем ROI с высокой уверенностью
-                    if save_debug and confidence >= 0.75:
-                        roi_img = batch_rois[j]
-                        roi_img.save(os.path.join(roi_dir, f"roi_col1_{i+j:03d}_x{position[0]}_y{position[1]}_{best_hero.replace(' ', '_')}_conf{confidence:.3f}.png"))
         
         logging.info(f"Всего найдено {len(all_detections)} детекций с уверенностью >= {CONFIDENCE_THRESHOLD}")
         
