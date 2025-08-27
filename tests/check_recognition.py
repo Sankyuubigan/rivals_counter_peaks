@@ -70,6 +70,7 @@ BATCH_SIZE_SLIDING_WINDOW_DINO = 32
 HERO_SQUARE_SIZE = 95
 MIN_SQUARE_SIZE = 85
 MAX_SQUARE_SIZE = 105
+
 RECOGNITION_AREA = {
     'monitor': 1, 'left_pct': 50, 'top_pct': 20, 'width_pct': 20, 'height_pct': 50
 }
@@ -84,6 +85,8 @@ class HeroRecognitionSystem:
         
     def load_model(self) -> bool:
         try:
+            # Для ускорения на GPU NVIDIA замените на ['CUDAExecutionProvider', 'CPUExecutionProvider']
+            # Для этого нужно установить onnxruntime-gpu
             self.ort_session = onnxruntime.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider'])
             self.input_name = self.ort_session.get_inputs()[0].name
             logging.info(f"Модель загружена. Вход: {self.input_name}")
@@ -187,45 +190,55 @@ class HeroRecognitionSystem:
         width, height = gray_image.size
         projection = [0] * height
         
-        for y in range(height):
-            row_sum = 0
-            for x in range(LEFT_OFFSET, LEFT_OFFSET + HERO_SQUARE_SIZE):
-                if x < width:
-                    row_sum += gray_image.getpixel((x, y))
-            projection[y] = row_sum
+        pixels = np.array(gray_image)
+        # Суммируем значения пикселей в интересующей нас вертикальной полосе
+        projection = np.sum(pixels[:, LEFT_OFFSET:LEFT_OFFSET + HERO_SQUARE_SIZE], axis=1)
         
         return projection
         
     def find_peaks_in_projection(self, projection):
-        """Поиск пиков в проекции"""
+        """Поиск пиков в проекции с использованием Non-Maximum Suppression"""
         # Сглаживание проекции
-        window_size = 3
-        smoothed = []
-        for i in range(len(projection)):
-            start = max(0, i - window_size//2)
-            end = min(len(projection), i + window_size//2 + 1)
-            smoothed.append(sum(projection[start:end]) / (end - start))
+        window_size = 5
+        smoothed = np.convolve(projection, np.ones(window_size)/window_size, mode='same')
         
-        # Поиск пиков
-        peaks = []
-        min_peak_height = sum(smoothed) / len(smoothed) * 0.6
-        
-        for i in range(1, len(smoothed)-1):
+        # Поиск предварительных пиков
+        min_peak_height = np.mean(smoothed) * 0.75
+        preliminary_peaks = []
+        for i in range(1, len(smoothed) - 1):
             if smoothed[i] > smoothed[i-1] and smoothed[i] > smoothed[i+1] and smoothed[i] > min_peak_height:
-                peaks.append(i)
+                preliminary_peaks.append(i)
         
+        # Non-Maximum Suppression (NMS) для объединения близких пиков
+        if not preliminary_peaks:
+            return []
+
+        min_distance = HERO_SQUARE_SIZE // 2  # Минимальное расстояние между центрами квадратов
+        
+        # Сортируем пики по их "силе" (значению в сглаженной проекции)
+        preliminary_peaks.sort(key=lambda p: smoothed[p], reverse=True)
+        
+        peaks = []
+        suppressed = np.zeros(len(projection), dtype=bool)
+        for peak_y in preliminary_peaks:
+            if not suppressed[peak_y]:
+                peaks.append(peak_y)
+                # Подавляем все пики в окрестности
+                suppress_start = max(0, peak_y - min_distance)
+                suppress_end = min(len(projection), peak_y + min_distance + 1)
+                suppressed[suppress_start:suppress_end] = True
+                
+        peaks.sort()  # Возвращаем отсортированный по позиции список
         return peaks
         
     def method_fast_projection(self, image_pil):
-        """Быстрый метод: анализ проекций"""
+        """Быстрый метод: анализ проекций для поиска кандидатов"""
         gray = image_pil.convert('L')
-        width, height = gray.size
+        height = gray.height
         
-        # Вычисляем проекцию и находим пики
         projection = self.calculate_vertical_projection(gray)
         peaks = self.find_peaks_in_projection(projection)
         
-        # Создаем квадраты вокруг пиков
         squares = []
         for peak_y in peaks:
             y = peak_y - HERO_SQUARE_SIZE // 2
@@ -234,183 +247,71 @@ class HeroRecognitionSystem:
         
         return squares
         
-    def method_detailed_analysis(self, image_pil, check_positions=None):
-        """Детальный метод: комбинированный анализ"""
-        gray = image_pil.convert('L')
-        width, height = gray.size
-        
-        squares = []
-        
-        # Если указаны позиции для проверки, проверяем только их
-        if check_positions:
-            for y in check_positions:
-                if y >= 0 and y + HERO_SQUARE_SIZE <= height:
-                    region = gray.crop((LEFT_OFFSET, y, LEFT_OFFSET + HERO_SQUARE_SIZE, y + HERO_SQUARE_SIZE))
-                    if self.is_hero_region(region):
-                        squares.append((LEFT_OFFSET, y, HERO_SQUARE_SIZE, HERO_SQUARE_SIZE))
-        else:
-            # Иначе проверяем с шагом HERO_SQUARE_SIZE // 2
-            for y in range(0, height - HERO_SQUARE_SIZE, HERO_SQUARE_SIZE // 2):
-                region = gray.crop((LEFT_OFFSET, y, LEFT_OFFSET + HERO_SQUARE_SIZE, y + HERO_SQUARE_SIZE))
-                if self.is_hero_region(region):
-                    squares.append((LEFT_OFFSET, y, HERO_SQUARE_SIZE, HERO_SQUARE_SIZE))
-        
-        return squares
-        
-    def is_hero_region(self, region):
-        """Проверка, является ли регион квадратом с героем"""
-        histogram = region.histogram()
-        total_pixels = sum(histogram)
-        if total_pixels == 0:
-            return False
-        
-        brightness = sum(i * count for i, count in enumerate(histogram)) / total_pixels
-        
-        if 5 < brightness < 250:
-            pixels = list(region.getdata())
-            std_dev = (sum((p - brightness)**2 for p in pixels) / len(pixels))**0.5
-            
-            threshold = 5 if brightness < 50 or brightness > 200 else 8
-            
-            if std_dev > threshold:
-                return True
-        
-        return False
-        
-    def recognize_heroes_optimized(self, test_file_index: int, save_debug: bool = True) -> List[str]:
-        """Оптимизированное распознавание героев"""
-        start_time = time.time()
-        
+    def recognize_heroes_optimized(self, test_file_index: int, save_debug: bool = False) -> List[str]:
+        """Оптимизированное распознавание героев с использованием пакетной обработки."""
         scr_path = os.path.join(SCREENSHOTS_DIR, f"{test_file_index}.png")
         if not os.path.exists(scr_path): 
             return []
         
         scr_pil = self.crop_image_to_recognition_area(Image.open(scr_path))
+        
         if save_debug:
-            scr_pil.save(os.path.join(DEBUG_DIR, "debug_crop.png"))
-            logging.info(f"Сохранен отладочный скриншот: {os.path.join(DEBUG_DIR, 'debug_crop.png')}")
+            scr_pil.save(os.path.join(DEBUG_DIR, f"debug_crop_{test_file_index}.png"))
         
         logging.info(f"Размер скриншота: {scr_pil.width}x{scr_pil.height}")
         
-        # Создаем директорию для сохранения ROI
+        roi_dir = None
         if save_debug:
             roi_dir = os.path.join(DEBUG_DIR, f"roi_test_{test_file_index}")
             os.makedirs(roi_dir, exist_ok=True)
-            logging.info(f"Сохранение ROI в директорию: {roi_dir}")
         
-        # Этап 1: Быстрый анализ проекций
-        fast_squares = self.method_fast_projection(scr_pil)
-        logging.info(f"Быстрый метод нашел {len(fast_squares)} квадратов")
+        # Этап 1: Находим всех кандидатов с помощью проекций и NMS
+        candidate_squares = self.method_fast_projection(scr_pil)
+        logging.info(f"Найдено {len(candidate_squares)} уникальных кандидатов для распознавания")
         
-        # Проверяем найденные квадраты
+        if not candidate_squares:
+            return []
+
+        # Этап 2: Пакетная обработка всех кандидатов
+        rois_batch = [scr_pil.crop((x, y, x + w, y + h)) for (x, y, w, h) in candidate_squares]
+        all_embeddings = self.get_cls_embeddings_for_batched_pil(rois_batch)
+
+        if all_embeddings.size == 0:
+            return []
+
+        # Этап 3: Сопоставление результатов
         all_detections = []
-        checked_positions = set()
-        
-        for i, (x, y, w, h) in enumerate(fast_squares):
-            roi = scr_pil.crop((x, y, x + w, y + h))
-            
-            if save_debug:
-                roi_filename = os.path.join(roi_dir, f"roi_fast_{i:03d}_x{x}_y{y}.png")
-                roi.save(roi_filename)
-            
-            embedding = self.get_cls_embeddings_for_batched_pil([roi])
-            if embedding.size == 0:
-                continue
-            
-            best_hero, confidence = self.get_best_match(embedding[0])
-            
-            if save_debug and best_hero:
-                roi_filename = os.path.join(roi_dir, f"roi_detected_{i:03d}_x{x}_y{y}_{best_hero.replace(' ', '_')}_conf{confidence:.3f}.png")
-                roi.save(roi_filename)
-                logging.info(f"Распознан герой: {best_hero} с уверенностью {confidence:.3f}")
+        for i, embedding in enumerate(all_embeddings):
+            best_hero, confidence = self.get_best_match(embedding)
             
             if best_hero and confidence >= CONFIDENCE_THRESHOLD:
+                x, y, w, h = candidate_squares[i]
                 all_detections.append({
                     'hero': best_hero,
                     'confidence': confidence,
                     'position': (x, y),
                     'size': (w, h)
                 })
-                checked_positions.add(y)
-        
-        # Этап 2: Если нашли меньше 6 героев, используем детальный анализ
-        if len(all_detections) < MAX_HEROES:
-            logging.info(f"Найдено только {len(all_detections)} героев, применяем детальный анализ")
-            
-            # Определяем позиции для детальной проверки
-            detail_positions = []
-            height = scr_pil.height
-            
-            # Добавляем позиции вокруг найденных героев
-            for y in checked_positions:
-                for dy in range(-HERO_SQUARE_SIZE, HERO_SQUARE_SIZE + 1, HERO_SQUARE_SIZE // 2):
-                    check_y = y + dy
-                    if 0 <= check_y <= height - HERO_SQUARE_SIZE:
-                        detail_positions.append(check_y)
-            
-            # Добавляем равномерно распределенные позиции
-            step = max(HERO_SQUARE_SIZE // 2, height // (MAX_HEROES * 2))
-            for y in range(0, height - HERO_SQUARE_SIZE, step):
-                if y not in checked_positions and y not in detail_positions:
-                    detail_positions.append(y)
-            
-            # Удаляем дубликаты и сортируем
-            detail_positions = sorted(list(set(detail_positions)))
-            
-            # Применяем детальный анализ
-            detail_squares = self.method_detailed_analysis(scr_pil, detail_positions)
-            logging.info(f"Детальный анализ нашел {len(detail_squares)} дополнительных квадратов")
-            
-            for i, (x, y, w, h) in enumerate(detail_squares):
-                if y in checked_positions:
-                    continue
-                
-                roi = scr_pil.crop((x, y, x + w, y + h))
-                
                 if save_debug:
-                    roi_filename = os.path.join(roi_dir, f"roi_detail_{i:03d}_x{x}_y{y}.png")
+                    roi = rois_batch[i]
+                    roi_filename = os.path.join(roi_dir, f"roi_{i:02d}_{best_hero}_conf{confidence:.3f}.png")
                     roi.save(roi_filename)
-                
-                embedding = self.get_cls_embeddings_for_batched_pil([roi])
-                if embedding.size == 0:
-                    continue
-                
-                best_hero, confidence = self.get_best_match(embedding[0])
-                
-                if save_debug and best_hero:
-                    roi_filename = os.path.join(roi_dir, f"roi_detected_detail_{i:03d}_x{x}_y{y}_{best_hero.replace(' ', '_')}_conf{confidence:.3f}.png")
-                    roi.save(roi_filename)
-                    logging.info(f"Распознан герой: {best_hero} с уверенностью {confidence:.3f}")
-                
-                if best_hero and confidence >= CONFIDENCE_THRESHOLD:
-                    all_detections.append({
-                        'hero': best_hero,
-                        'confidence': confidence,
-                        'position': (x, y),
-                        'size': (w, h)
-                    })
-                    checked_positions.add(y)
-        
-        # Постобработка: группировка по герою
+
+        # Этап 4: Постобработка для удаления дубликатов и сортировки
         hero_dict = {}
         for det in all_detections:
             hero_name = det['hero']
             if hero_name not in hero_dict or det['confidence'] > hero_dict[hero_name]['confidence']:
                 hero_dict[hero_name] = det
         
-        # Сортируем по уверенности и берем топ-6
         unique_detections = sorted(hero_dict.values(), key=lambda x: x['confidence'], reverse=True)
         final_detections = unique_detections[:MAX_HEROES]
-        
-        # Сортируем по вертикальной позиции
         final_detections.sort(key=lambda x: x['position'][1])
         
         result = [det['hero'] for det in final_detections]
         
-        # Логирование результатов
-        total_time = time.time() - start_time
+        logging.info(f"Всего найдено {len(all_detections)} детекций с уверенностью >= {CONFIDENCE_THRESHOLD}")
         logging.info(f"\n=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ (оптимизированный) ===")
-        logging.info(f"Время выполнения: {total_time:.2f} секунд")
         logging.info(f"Распознано героев: {len(result)}")
         for i, detection in enumerate(final_detections, 1):
             logging.info(f"  {i}. {self.normalize_hero_name_for_display(detection['hero'])} "
@@ -427,7 +328,7 @@ def calculate_metrics(recognized, expected):
     f1 = 2*precision*recall / (precision+recall) if (precision+recall) > 0 else 0
     return {'correct': correct, 'false_positive': fp, 'false_negative': fn, 'precision': precision, 'recall': recall, 'f1': f1}
 
-def print_test_summary(total_stats):
+def print_test_summary(total_stats, recognition_times):
     logging.info(f"\n{'='*60}\nСВОДНЫЙ ОТЧЕТ ПО ТЕСТИРОВАНИЮ\n{'='*60}")
     logging.info(f"Всего тестов: {total_stats['total_tests']}")
     if total_stats['total_tests'] > 0:
@@ -443,6 +344,13 @@ def print_test_summary(total_stats):
         for res in total_stats['results']:
             logging.info(f"{res['test_id']:<10} {res['correct']:<8} {res['false_positive']:<8} {res['false_negative']:<8} {res['precision']:<10.3f} {res['recall']:<10.3f} {res['f1']:<10.3f}")
         logging.info(f"{'-'*80}")
+    
+    # *** НОВОЕ: Логирование среднего времени ***
+    if recognition_times:
+        avg_time = sum(recognition_times) / len(recognition_times)
+        logging.info(f"\nСреднее время распознавания одного скриншота: {avg_time:.3f} секунд")
+        logging.info(f"{'='*60}")
+
 
 def main():
     system = HeroRecognitionSystem()
@@ -457,10 +365,23 @@ def main():
         return
     
     total_stats = {'total_tests': 0, 'total_precision': 0, 'total_recall': 0, 'total_f1': 0, 'results': []}
+    
+    # *** НОВОЕ: Список для хранения времени выполнения ***
+    recognition_times = []
+
     for i in range(1, 8):
         if os.path.exists(os.path.join(SCREENSHOTS_DIR, f"{i}.png")):
             logging.info(f"\n{'='*80}\nТЕСТИРОВАНИЕ СКРИНШОТА {i}\n{'='*80}")
-            recognized_raw = system.recognize_heroes_optimized(test_file_index=i)
+            
+            # *** НОВОЕ: Замеряем время выполнения и сохраняем его ***
+            start_time = time.time()
+            recognized_raw = system.recognize_heroes_optimized(test_file_index=i, save_debug=True)
+            end_time = time.time()
+            
+            current_time = end_time - start_time
+            recognition_times.append(current_time)
+            logging.info(f"Время выполнения для теста {i}: {current_time:.3f} секунд")
+
             expected = correct_answers.get(str(i), [])
             recognized_norm = [system.normalize_hero_name_for_display(h) for h in recognized_raw]
             metrics = calculate_metrics(recognized_norm, expected)
@@ -478,7 +399,8 @@ def main():
             total_stats['results'].append({'test_id': f"Тест {i}", **metrics})
         else:
             logging.warning(f"Скриншот {i}.png не найден, пропуск.")
-    print_test_summary(total_stats)
+            
+    print_test_summary(total_stats, recognition_times)
 
 if __name__ == "__main__":
     main()
