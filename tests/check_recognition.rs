@@ -2,11 +2,11 @@
 //! ```cargo
 //! [dependencies]
 //! image = "0.24"
-//! ort = { version = "2.0.0-rc.10", features = ["load-dynamic", "ndarray"] }
+//! ort = { version = "2.0.0-rc.10", features = ["ndarray"] }
 //! ndarray = { version = "0.15", features = ["serde"] }
 //! ndarray-npy = "0.8"
 //! log = "0.4"
-//! env_logger = "0.10"
+//! simplelog = "0.12"
 //! serde = { version = "1.0", features = ["derive"] }
 //! serde_json = "1.0"
 //! anyhow = "1.0"
@@ -19,7 +19,7 @@ use ndarray::{s, Array1, Array2, Array4, Axis};
 use ndarray_npy::read_npy;
 use ort::session::builder::GraphOptimizationLevel;
 use ort::session::Session;
-use ort::value::Value; // <-- ПРАВИЛЬНЫЙ ИМПОРТ
+use ort::value::Tensor;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -125,7 +125,7 @@ impl HeroRecognitionSystem {
         DynamicImage::ImageRgba8(background)
     }
 
-    fn get_embeddings_for_batch(&self, images: &[DynamicImage]) -> Result<Array2<f32>> {
+    fn get_embeddings_for_batch(&mut self, images: &[DynamicImage]) -> Result<Array2<f32>> {
         let batch_size = images.len();
         let mut batch_array =
             Array4::zeros((batch_size, 3, TARGET_SIZE as usize, TARGET_SIZE as usize));
@@ -146,23 +146,37 @@ impl HeroRecognitionSystem {
             }
         }
 
-        // <-- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ:
-        // 1. Создаем `Value` из владеемого `Array`.
-        let input_value = Value::from_array(batch_array)?;
-        // 2. Создаем срез `&[Value]`, который можно передать в `run`.
-        let inputs = [input_value];
-        let outputs = self.session.run(&inputs)?;
+        // Попробуем другой подход - используем raw данные напрямую
+        let flat_data: Vec<f32> = batch_array.iter().cloned().collect();
+        let dims: [usize; 4] = [batch_array.len_of(Axis(0)), batch_array.len_of(Axis(1)), batch_array.len_of(Axis(2)), batch_array.len_of(Axis(3))];
+        let input_tensor = Tensor::from_array((dims.as_slice(), flat_data))?;
+        let outputs = self.session.run(vec![("pixel_values", input_tensor)])?;
 
-        let tensor_view = outputs[0].try_extract_tensor::<f32>()?;
-        let embeddings = tensor_view.slice(s![.., 0, ..]).to_owned();
+        let output_value = &outputs["last_hidden_state"];
+        let output_tensor = output_value.try_extract_tensor::<f32>()?;
+        let (ort_shape, data) = output_tensor;
+        let seq_len = ort_shape[1] as usize;
+        let emb_size = ort_shape[2] as usize;
+        let batch_size = ort_shape[0] as usize;
 
-        let mut normalized_embeddings = Array2::zeros(embeddings.raw_dim());
-        for (i, emb) in embeddings.axis_iter(Axis(0)).enumerate() {
+        let mut embeddings = Vec::new();
+        for i in 0..batch_size {
+            let start = i * seq_len * emb_size;
+            let end = start + emb_size;
+            let cls_embedding: Vec<f32> = data[start..end].to_vec();
+            embeddings.extend(cls_embedding);
+        }
+
+        let embeddings_array = Array2::from_shape_vec((batch_size, emb_size), embeddings)?;
+
+        let mut normalized_embeddings = Array2::zeros(embeddings_array.raw_dim());
+        for (i, emb) in embeddings_array.axis_iter(Axis(0)).enumerate() {
             let norm = emb.mapv(|x| x.powi(2)).sum().sqrt();
             if norm > 1e-6 {
+                let normalized_emb = &emb / norm;
                 normalized_embeddings
                     .slice_mut(s![i, ..])
-                    .assign(&(emb / norm));
+                    .assign(&normalized_emb);
             }
         }
 
@@ -236,7 +250,7 @@ impl HeroRecognitionSystem {
     }
 
     pub fn recognize_heroes_optimized(
-        &self,
+        &mut self,
         test_file_index: u32,
         save_debug: bool,
     ) -> Result<Vec<String>> {
@@ -374,16 +388,38 @@ fn calculate_metrics(recognized: &[String], expected: &[String]) -> MetricsResul
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_default_env()
-        .format_timestamp_micros()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    // Настройка логирования в отдельный файл
+    let debug_dir = PathBuf::from("tests/debug");
+    if !debug_dir.exists() {
+        fs::create_dir_all(&debug_dir)?;
+    }
+    let log_file = debug_dir.join("recognition_test_rust.log");
+    if log_file.exists() {
+        fs::remove_file(&log_file)?;
+    }
+
+    // Используем simplelog для записи в файл
+    use simplelog::*;
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            fs::File::create(&log_file)?,
+        ),
+    ])?;
+
     let debug_dir = PathBuf::from("tests/debug_rust");
     if debug_dir.exists() {
         fs::remove_dir_all(&debug_dir)?;
     }
     fs::create_dir_all(&debug_dir)?;
-    let system = HeroRecognitionSystem::new(debug_dir)?;
+    let mut system = HeroRecognitionSystem::new(debug_dir)?;
     info!("Система готова! Начинаем тестирование...");
     let answers_content = fs::read_to_string("tests/for_recogn/correct_answers.json")?;
     let correct_answers: HashMap<String, Vec<String>> = serde_json::from_str(&answers_content)?;
