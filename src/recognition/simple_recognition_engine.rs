@@ -129,20 +129,12 @@ impl SimpleRecognitionEngine {
         log::info!("Осталось {} детекций после NMS", all_detections.len());
 
         // Шаг 6: Выбор лучших кандидатов
-        log::info!("Детекции перед select_best_candidates:");
-        for (i, det) in all_detections.iter().enumerate() {
-            log::info!("  {}. {} (уверенность: {:.3})", i + 1, det.hero, det.confidence);
-        }
         let final_detections = self.select_best_candidates(all_detections);
-        log::info!("Детекции после select_best_candidates:");
-        for (i, det) in final_detections.iter().enumerate() {
-            log::info!("  {}. {} (уверенность: {:.3})", i + 1, det.hero, det.confidence);
-        }
 
-        // Шаг 7: Формирование финального списка героев
+        // Шаг 7: Формирование финального списка героев с нормализацией имен
         let final_heroes: Vec<String> = final_detections
             .into_iter()
-            .map(|d| d.hero)
+            .map(|d| crate::utils::normalize_hero_name(&d.hero))
             .collect();
 
         let duration = start_time.elapsed();
@@ -151,6 +143,7 @@ impl SimpleRecognitionEngine {
         for (i, hero) in final_heroes.iter().enumerate() {
             log::info!("  {}. {}", i + 1, hero);
         }
+        log::info!("Имена героев успешно нормализованы для базы данных");
         log::info!("Время выполнения: {:.3} секунд", duration.as_secs_f32());
 
         log::info!("<<<--- simple_recognize_heroes ЗАВЕРШЕН за {:?} ---<<<", duration);

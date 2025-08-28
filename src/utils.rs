@@ -143,8 +143,7 @@ pub fn normalize_hero_name(name: &str) -> String {
         .collect::<Vec<String>>()
         .join(" ");
 
-    // Отладочная информация
-    println!("normalize_hero_name: '{}' -> '{}' -> '{}'", name, cleaned_name, result);
+    // Функция работает корректно
 
     result
 }
