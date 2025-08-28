@@ -1,7 +1,7 @@
 import json
 import importlib.util
 import os
-def load_matchups_data(file_path="test/marvel_rivals_stats_20250810-055947.json"):
+def load_matchups_data(file_path="database/marvel_rivals_stats_20250810-055947.json"):
     """Загружает данные из JSON файла в новом формате"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -19,7 +19,7 @@ def load_matchups_data(file_path="test/marvel_rivals_stats_20250810-055947.json"
     except json.JSONDecodeError:
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
-def load_hero_stats(file_path="test/marvel_rivals_stats_20250810-055947.json"):
+def load_hero_stats(file_path="database/marvel_rivals_stats_20250810-055947.json"):
     """Загружает общую статистику героев из JSON файла"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:

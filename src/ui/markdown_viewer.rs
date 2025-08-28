@@ -1,5 +1,4 @@
 use eframe::egui;
-
 /// Простой рендерер Markdown для `egui`.
 pub fn render_markdown(markdown_text: &str, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
