@@ -36,6 +36,7 @@ const IMAGE_STD: [f32; 3] = [0.229, 0.224, 0.225];
 const CONFIDENCE_THRESHOLD: f32 = 0.65;
 const MAX_HEROES: usize = 6;
 const HERO_SQUARE_SIZE: u32 = 95;
+const BATCH_SIZE: usize = 32; // Размер батча для обработки изображений
 
 #[derive(Debug, Clone, PartialEq)]
 struct Detection {
@@ -194,6 +195,37 @@ impl HeroRecognitionSystem {
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
     }
 
+    fn create_debug_visualization(&self, image: &DynamicImage, candidates: &[(u32, u32, u32, u32)], test_file_index: u32) -> Result<()> {
+        let debug_img = image.clone();
+        let mut img_buffer = debug_img.to_rgba8();
+
+        // Рисуем прямоугольники вокруг кандидатов
+        for (_i, &(x, y, w, h)) in candidates.iter().enumerate() {
+            // Рисуем рамку красным цветом для кандидатов
+            for dx in 0..w {
+                for dy in [0, h-1] {
+                    if x + dx < img_buffer.width() && y + dy < img_buffer.height() {
+                        img_buffer.put_pixel(x + dx, y + dy, image::Rgba([255, 0, 0, 255]));
+                    }
+                }
+            }
+            for dy in 0..h {
+                for dx in [0, w-1] {
+                    if x + dx < img_buffer.width() && y + dy < img_buffer.height() {
+                        img_buffer.put_pixel(x + dx, y + dy, image::Rgba([255, 0, 0, 255]));
+                    }
+                }
+            }
+        }
+
+        // Сохраняем визуализацию
+        let debug_path = self.debug_dir.join(format!("debug_visualization_{}.png", test_file_index));
+        DynamicImage::ImageRgba8(img_buffer).save(&debug_path)?;
+        info!("Создана отладочная визуализация: {}", debug_path.display());
+
+        Ok(())
+    }
+
     fn method_fast_projection(&self, image: &DynamicImage) -> Vec<(u32, u32, u32, u32)> {
         let gray_image = image.to_luma8();
         let height = gray_image.height() as usize;
@@ -236,7 +268,9 @@ impl HeroRecognitionSystem {
             }
         }
         final_peaks.sort();
-        final_peaks
+
+        // Генерируем базовые позиции
+        let base_candidates: Vec<(u32, u32, u32, u32)> = final_peaks
             .into_iter()
             .filter_map(|peak_y| {
                 let y = (peak_y as u32).saturating_sub(HERO_SQUARE_SIZE / 2);
@@ -245,6 +279,13 @@ impl HeroRecognitionSystem {
                 } else {
                     None
                 }
+            })
+            .collect();
+
+        // Возвращаем базовые кандидаты без джиттера для оптимизации
+        base_candidates.into_iter()
+            .filter(|&(x, y, w, h)| {
+                x >= 0 && y >= 0 && x + w <= image.width() && y + h <= image.height() && w > 0 && h > 0
             })
             .collect()
     }
@@ -259,6 +300,7 @@ impl HeroRecognitionSystem {
             image::open(&scr_path).context(format!("Не удалось открыть скриншот {}", scr_path))?;
         let cropped_img = self.crop_image_to_recognition_area(&img);
         if save_debug {
+            // Сохраняем полную область для отладки
             cropped_img.save(
                 self.debug_dir
                     .join(format!("debug_crop_{}.png", test_file_index)),
@@ -269,37 +311,113 @@ impl HeroRecognitionSystem {
             cropped_img.width(),
             cropped_img.height()
         );
-        let candidate_squares = self.method_fast_projection(&cropped_img);
+        let mut candidate_squares = self.method_fast_projection(&cropped_img);
         info!(
-            "Найдено {} уникальных кандидатов для распознавания",
+            "Найдено {} кандидатов после генерации (до фильтрации границ)",
             candidate_squares.len()
         );
+
+        // Логируем все кандидаты перед фильтрацией
+        for (i, &(x, y, w, h)) in candidate_squares.iter().enumerate() {
+            info!("Кандидат {}: координаты ({}, {}, {}, {})", i, x, y, w, h);
+        }
+
+        // Адаптивный порог уверенности - более консервативный подход
+        let adaptive_threshold = match candidate_squares.len() {
+            0..=5 => CONFIDENCE_THRESHOLD - 0.05, // Легкое понижение при малом количестве
+            6..=15 => CONFIDENCE_THRESHOLD,       // Стандартный порог
+            _ => CONFIDENCE_THRESHOLD + 0.02,     // Минимальное повышение при большом количестве
+        };
+
+        info!("Используется адаптивный порог уверенности: {:.3} (стандартный: {:.3})",
+              adaptive_threshold, CONFIDENCE_THRESHOLD);
+
+        // Создаем ROI с дополнительной проверкой границ
+        let mut rois_batch = Vec::new();
+        let mut valid_candidates = Vec::new();
+
+        for (i, &(x, y, w, h)) in candidate_squares.iter().enumerate() {
+            // Дополнительная проверка границ перед созданием ROI
+            if x >= cropped_img.width() || y >= cropped_img.height() ||
+               w == 0 || h == 0 || x + w > cropped_img.width() || y + h > cropped_img.height() {
+                warn!("Пропускаем кандидата {} с некорректными координатами: ({}, {}, {}, {})", i, x, y, w, h);
+                continue;
+            }
+
+            match cropped_img.crop_imm(x, y, w, h) {
+                roi if roi.width() > 0 && roi.height() > 0 => {
+                    rois_batch.push(roi);
+                    valid_candidates.push((x, y, w, h));
+                }
+                _ => {
+                    warn!("Не удалось создать ROI для кандидата {}: ({}, {}, {}, {})", i, x, y, w, h);
+                }
+            }
+        }
+
+        info!("После фильтрации осталось {} валидных кандидатов из {}", valid_candidates.len(), candidate_squares.len());
+
+        // Обновляем candidate_squares только валидными кандидатами
+        candidate_squares = valid_candidates;
+
         if candidate_squares.is_empty() {
             return Ok(Vec::new());
         }
-        let rois_batch: Vec<DynamicImage> = candidate_squares
-            .iter()
-            .map(|&(x, y, w, h)| cropped_img.crop_imm(x, y, w, h))
-            .collect();
-        let all_embeddings = self.get_embeddings_for_batch(&rois_batch)?;
+
+        info!(
+            "Осталось {} валидных кандидатов после фильтрации границ",
+            candidate_squares.len()
+        );
+
+        // Сохраняем отдельные ROI для отладки
+        if save_debug {
+            for (i, roi) in rois_batch.iter().enumerate() {
+                let roi_path = self.debug_dir.join(format!("roi_{}_{}.png", test_file_index, i));
+                roi.save(&roi_path)?;
+                info!("Сохранен ROI {}: {}x{} по координатам ({}, {})",
+                      i, roi.width(), roi.height(),
+                      candidate_squares[i].0, candidate_squares[i].1);
+            }
+
+            // Создаем отладочную визуализацию с отмеченными областями
+            self.create_debug_visualization(&cropped_img, &candidate_squares, test_file_index)?;
+        }
+
+        // Обработка в батчах для оптимизации производительности
+        let mut all_embeddings = Vec::new();
+        for chunk in rois_batch.chunks(BATCH_SIZE) {
+            let chunk_embeddings = self.get_embeddings_for_batch(chunk)?;
+            all_embeddings.extend(chunk_embeddings.iter().cloned());
+        }
+        let all_embeddings = Array2::from_shape_vec((all_embeddings.len() / 768, 768), all_embeddings)?;
         let mut all_detections = Vec::new();
         for (i, embedding) in all_embeddings.axis_iter(Axis(0)).enumerate() {
             if let Some((hero, confidence)) = self.get_best_match(&embedding.to_owned()) {
-                if confidence >= CONFIDENCE_THRESHOLD {
+                // Логируем все кандидаты для отладки
+                info!("Кандидат {}: {} (уверенность: {:.3})", i, hero, confidence);
+
+                if confidence >= adaptive_threshold {
                     let (x, y, w, h) = candidate_squares[i];
                     all_detections.push(Detection {
-                        hero,
+                        hero: hero.clone(),
                         confidence,
                         position: (x, y),
                         size: (w, h),
                     });
+                    info!("✓ Принят кандидат {}: {} (уверенность: {:.3} >= {:.3})",
+                          i, hero, confidence, adaptive_threshold);
+                } else {
+                    info!("✗ Отклонен кандидат {}: {} (уверенность: {:.3} < {:.3})",
+                          i, hero, confidence, adaptive_threshold);
                 }
+            } else {
+                info!("Кандидат {}: не распознан", i);
             }
         }
         info!(
-            "Всего найдено {} детекций с уверенностью >= {}",
+            "Всего найдено {} детекций с уверенностью >= {:.3}",
             all_detections.len(),
-            CONFIDENCE_THRESHOLD
+            adaptive_threshold
         );
         let mut hero_dict = HashMap::new();
         for det in all_detections {

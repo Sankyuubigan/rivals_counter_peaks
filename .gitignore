@@ -1,9 +1,7 @@
 /target
 /my_project_env
 __pycache__
-model_bnb4.onnx
-/vision_models
-# /resources/embeddings_padded
+
 /dist
 /.idea
 /resources/heroes_icons_old
@@ -11,3 +9,5 @@ model_bnb4.onnx
 /tests/debug_logs
 /tests/debug
 /tests/for_recogn/screenshots
+/vision_models
+/tests/debug_rust
