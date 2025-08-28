@@ -1,7 +1,7 @@
 use crate::app::{RivalsApp, ActiveTab};
+use crate::ui::markdown_viewer;
 use eframe::egui;
 use std::fs;
-use crate::ui::dialogs::markdown_viewer; // Импортируем markdown_viewer
 
 pub fn render(ctx: &egui::Context, app: &mut RivalsApp) {
     // Отображаем содержимое только в обычном режиме

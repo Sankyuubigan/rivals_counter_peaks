@@ -1,7 +1,7 @@
 use crate::app::RivalsApp;
+use crate::ui::markdown_viewer;
 use eframe::egui;
 use std::fs;
-pub mod markdown_viewer;
 pub fn render(ctx: &egui::Context, app: &mut RivalsApp) {
     about_window(&mut app.show_about_window, ctx);
     author_window(&mut app.show_author_window, ctx);
