@@ -38,6 +38,29 @@ pub struct AkazeParams {
     pub max_distance_ratio: f32,
 }
 
+/// Результат детектирования героя
+#[derive(Debug, Clone)]
+pub struct HeroDetectionResult {
+    pub hero_name: String,
+    pub match_count: usize,
+    pub avg_distance: f32,
+    pub center_x: u32,
+    pub center_y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Результат сопоставления шаблона
+#[derive(Debug, Clone)]
+pub struct TemplateMatchResult {
+    pub hero_name: String,
+    pub similarity: f32,
+    pub center_x: u32,
+    pub center_y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
 impl Default for AkazeParams {
     fn default() -> Self {
         Self {
@@ -343,4 +366,26 @@ pub fn find_heroes_akaze(
     }
 
     Ok(detected_heroes)
+}
+
+/// Заглушка для функции find_heroes_template_matching
+pub fn find_heroes_template_matching(
+    _image: &DynamicImage,
+    _hero_templates: &HashMap<String, Vec<GrayImage>>,
+    _hero_names: &[String],
+    _threshold: f32,
+) -> Result<Vec<TemplateMatchResult>, Box<dyn std::error::Error>> {
+    // Возвращаем пустой результат - эта функция не используется в новом алгоритме
+    Ok(Vec::new())
+}
+
+/// Заглушка для функции find_hero_positions_akaze
+pub fn find_hero_positions_akaze(
+    _image: &DynamicImage,
+    _hero_templates: &HashMap<String, Vec<GrayImage>>,
+    _hero_names: &[String],
+    _params: &AkazeParams,
+) -> Result<Vec<HeroDetectionResult>, Box<dyn std::error::Error>> {
+    // Возвращаем пустой результат - эта функция не используется в новом алгоритме
+    Ok(Vec::new())
 }

@@ -12,5 +12,6 @@ pub mod column_localization;
 pub mod performance_optimizer;
 pub mod akaze_analysis;
 pub mod akaze_opencv;
+pub mod simple_recognition_engine;
 // Реэкспортируем основные типы
 pub use manager::{RecognitionManager, RecognitionState};
