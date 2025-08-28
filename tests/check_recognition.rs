@@ -33,10 +33,10 @@ const TARGET_SIZE: u32 = 224;
 const LEFT_OFFSET: u32 = 45;
 const IMAGE_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
 const IMAGE_STD: [f32; 3] = [0.229, 0.224, 0.225];
-const CONFIDENCE_THRESHOLD: f32 = 0.65;
+const CONFIDENCE_THRESHOLD: f32 = 0.70;
 const MAX_HEROES: usize = 6;
 const HERO_SQUARE_SIZE: u32 = 95;
-const BATCH_SIZE: usize = 32; // Размер батча для обработки изображений
+const BATCH_SIZE: usize = 32;
 
 #[derive(Debug, Clone, PartialEq)]
 struct Detection {
@@ -46,9 +46,6 @@ struct Detection {
     size: (u32, u32),
 }
 
-// =============================================================================
-// ОСНОВНАЯ СТРУКТУРА
-// =============================================================================
 struct HeroRecognitionSystem {
     session: Session,
     hero_embeddings: HashMap<String, Vec<Array1<f32>>>,
@@ -58,15 +55,12 @@ struct HeroRecognitionSystem {
 impl HeroRecognitionSystem {
     fn new(debug_dir: PathBuf) -> Result<Self> {
         info!("Инициализация системы распознавания героев...");
-
         let model_path = "vision_models/dinov3-vitb16-pretrain-lvd1689m/model_q4.onnx";
         let session = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .commit_from_file(model_path)
             .context("Не удалось загрузить модель ONNX")?;
-
         info!("Модель загружена. Вход: {}", session.inputs[0].name);
-
         let embeddings_dir = Path::new("resources/embeddings_padded");
         let mut hero_embeddings = HashMap::new();
         for entry in fs::read_dir(embeddings_dir)?.filter_map(Result::ok) {
@@ -87,7 +81,6 @@ impl HeroRecognitionSystem {
             }
         }
         info!("Загружено эмбеддингов для {} героев", hero_embeddings.len());
-
         Ok(Self {
             session,
             hero_embeddings,
@@ -130,7 +123,6 @@ impl HeroRecognitionSystem {
         let batch_size = images.len();
         let mut batch_array =
             Array4::zeros((batch_size, 3, TARGET_SIZE as usize, TARGET_SIZE as usize));
-
         for (i, img) in images.iter().enumerate() {
             let padded = self.pad_image_to_target_size(img, TARGET_SIZE);
             let rgb_img = padded.to_rgb8();
@@ -146,41 +138,37 @@ impl HeroRecognitionSystem {
                 }
             }
         }
-
-        // Попробуем другой подход - используем raw данные напрямую
         let flat_data: Vec<f32> = batch_array.iter().cloned().collect();
-        let dims: [usize; 4] = [batch_array.len_of(Axis(0)), batch_array.len_of(Axis(1)), batch_array.len_of(Axis(2)), batch_array.len_of(Axis(3))];
+        let dims: [usize; 4] = [
+            batch_array.len_of(Axis(0)),
+            batch_array.len_of(Axis(1)),
+            batch_array.len_of(Axis(2)),
+            batch_array.len_of(Axis(3)),
+        ];
         let input_tensor = Tensor::from_array((dims.as_slice(), flat_data))?;
         let outputs = self.session.run(vec![("pixel_values", input_tensor)])?;
-
         let output_value = &outputs["last_hidden_state"];
         let output_tensor = output_value.try_extract_tensor::<f32>()?;
         let (ort_shape, data) = output_tensor;
         let seq_len = ort_shape[1] as usize;
         let emb_size = ort_shape[2] as usize;
         let batch_size = ort_shape[0] as usize;
-
         let mut embeddings = Vec::new();
         for i in 0..batch_size {
             let start = i * seq_len * emb_size;
             let end = start + emb_size;
-            let cls_embedding: Vec<f32> = data[start..end].to_vec();
-            embeddings.extend(cls_embedding);
+            embeddings.extend_from_slice(&data[start..end]);
         }
-
         let embeddings_array = Array2::from_shape_vec((batch_size, emb_size), embeddings)?;
-
         let mut normalized_embeddings = Array2::zeros(embeddings_array.raw_dim());
         for (i, emb) in embeddings_array.axis_iter(Axis(0)).enumerate() {
             let norm = emb.mapv(|x| x.powi(2)).sum().sqrt();
             if norm > 1e-6 {
-                let normalized_emb = &emb / norm;
                 normalized_embeddings
                     .slice_mut(s![i, ..])
-                    .assign(&normalized_emb);
+                    .assign(&(&emb / norm));
             }
         }
-
         Ok(normalized_embeddings)
     }
 
@@ -195,230 +183,111 @@ impl HeroRecognitionSystem {
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
     }
 
-    fn create_debug_visualization(&self, image: &DynamicImage, candidates: &[(u32, u32, u32, u32)], test_file_index: u32) -> Result<()> {
-        let debug_img = image.clone();
-        let mut img_buffer = debug_img.to_rgba8();
-
-        // Рисуем прямоугольники вокруг кандидатов
-        for (_i, &(x, y, w, h)) in candidates.iter().enumerate() {
-            // Рисуем рамку красным цветом для кандидатов
-            for dx in 0..w {
-                for dy in [0, h-1] {
-                    if x + dx < img_buffer.width() && y + dy < img_buffer.height() {
-                        img_buffer.put_pixel(x + dx, y + dy, image::Rgba([255, 0, 0, 255]));
-                    }
-                }
-            }
-            for dy in 0..h {
-                for dx in [0, w-1] {
-                    if x + dx < img_buffer.width() && y + dy < img_buffer.height() {
-                        img_buffer.put_pixel(x + dx, y + dy, image::Rgba([255, 0, 0, 255]));
-                    }
-                }
-            }
-        }
-
-        // Сохраняем визуализацию
-        let debug_path = self.debug_dir.join(format!("debug_visualization_{}.png", test_file_index));
-        DynamicImage::ImageRgba8(img_buffer).save(&debug_path)?;
-        info!("Создана отладочная визуализация: {}", debug_path.display());
-
-        Ok(())
-    }
-
     fn method_fast_projection(&self, image: &DynamicImage) -> Vec<(u32, u32, u32, u32)> {
-        let gray_image = image.to_luma8();
-        let height = gray_image.height() as usize;
-        let projection: Array1<f32> = {
-            let pixels =
-                Array2::from_shape_vec((height, gray_image.width() as usize), gray_image.to_vec())
-                    .unwrap();
-            let roi = pixels.slice(s![
-                ..,
-                LEFT_OFFSET as usize..(LEFT_OFFSET + HERO_SQUARE_SIZE) as usize
-            ]);
-            roi.map_axis(Axis(1), |row| row.sum() as f32)
-        };
-        let window_size = 5;
-        let mut smoothed = Array1::zeros(height);
-        for i in 0..height {
-            let start = i.saturating_sub(window_size / 2);
-            let end = (i + window_size / 2 + 1).min(height);
-            smoothed[i] = projection.slice(s![start..end]).mean().unwrap_or(0.0);
-        }
-        let min_peak_height = smoothed.mean().unwrap_or(0.0) * 0.75;
-        let mut preliminary_peaks: Vec<(usize, f32)> = (1..height - 1)
-            .filter(|&i| {
-                smoothed[i] > smoothed[i - 1]
-                    && smoothed[i] > smoothed[i + 1]
-                    && smoothed[i] > min_peak_height
-            })
-            .map(|i| (i, smoothed[i]))
-            .collect();
-        preliminary_peaks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        let mut final_peaks = Vec::new();
-        let mut suppressed = vec![false; height];
-        let min_distance = (HERO_SQUARE_SIZE / 2) as usize;
-        for &(peak_y, _) in &preliminary_peaks {
-            if !suppressed[peak_y] {
-                final_peaks.push(peak_y);
-                let start = peak_y.saturating_sub(min_distance);
-                let end = (peak_y + min_distance + 1).min(height);
-                (start..end).for_each(|i| suppressed[i] = true);
-            }
-        }
-        final_peaks.sort();
-
-        // Генерируем базовые позиции
-        let base_candidates: Vec<(u32, u32, u32, u32)> = final_peaks
-            .into_iter()
-            .filter_map(|peak_y| {
-                let y = (peak_y as u32).saturating_sub(HERO_SQUARE_SIZE / 2);
-                if y + HERO_SQUARE_SIZE <= image.height() {
-                    Some((LEFT_OFFSET, y, HERO_SQUARE_SIZE, HERO_SQUARE_SIZE))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        // Возвращаем базовые кандидаты без джиттера для оптимизации
-        base_candidates.into_iter()
-            .filter(|&(x, y, w, h)| {
-                x >= 0 && y >= 0 && x + w <= image.width() && y + h <= image.height() && w > 0 && h > 0
-            })
+        let step_size = HERO_SQUARE_SIZE / 4;
+        (0..=(image.height().saturating_sub(HERO_SQUARE_SIZE)))
+            .step_by(step_size as usize)
+            .map(|y| (LEFT_OFFSET, y, HERO_SQUARE_SIZE, HERO_SQUARE_SIZE))
             .collect()
     }
 
-    pub fn recognize_heroes_optimized(
-        &mut self,
-        test_file_index: u32,
-        save_debug: bool,
-    ) -> Result<Vec<String>> {
+    fn apply_nms(&self, detections: &mut Vec<Detection>, iou_threshold: f32) {
+        detections.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        let mut i = 0;
+        while i < detections.len() {
+            let mut j = i + 1;
+            while j < detections.len() {
+                let det_i = &detections[i];
+                let det_j = &detections[j];
+
+                let i_x1 = det_i.position.0 as i32;
+                let i_y1 = det_i.position.1 as i32;
+                let i_x2 = i_x1 + det_i.size.0 as i32;
+                let i_y2 = i_y1 + det_i.size.1 as i32;
+
+                let j_x1 = det_j.position.0 as i32;
+                let j_y1 = det_j.position.1 as i32;
+                let j_x2 = j_x1 + det_j.size.0 as i32;
+                let j_y2 = j_y1 + det_j.size.1 as i32;
+
+                let intersection_x1 = i_x1.max(j_x1);
+                let intersection_y1 = i_y1.max(j_y1);
+                let intersection_x2 = i_x2.min(j_x2);
+                let intersection_y2 = i_y2.min(j_y2);
+
+                let intersection_w = (intersection_x2 - intersection_x1).max(0);
+                let intersection_h = (intersection_y2 - intersection_y1).max(0);
+                let intersection_area = (intersection_w * intersection_h) as f32;
+
+                let area_i = (det_i.size.0 * det_i.size.1) as f32;
+                let area_j = (det_j.size.0 * det_j.size.1) as f32;
+                let union_area = area_i + area_j - intersection_area;
+
+                let iou = if union_area > 0.0 {
+                    intersection_area / union_area
+                } else {
+                    0.0
+                };
+
+                if iou > iou_threshold {
+                    detections.remove(j);
+                } else {
+                    j += 1;
+                }
+            }
+            i += 1;
+        }
+    }
+
+    pub fn recognize_heroes_optimized(&mut self, test_file_index: u32) -> Result<Vec<String>> {
         let scr_path = format!("tests/for_recogn/screenshots/{}.png", test_file_index);
         let img =
             image::open(&scr_path).context(format!("Не удалось открыть скриншот {}", scr_path))?;
         let cropped_img = self.crop_image_to_recognition_area(&img);
-        if save_debug {
-            // Сохраняем полную область для отладки
-            cropped_img.save(
-                self.debug_dir
-                    .join(format!("debug_crop_{}.png", test_file_index)),
-            )?;
-        }
-        info!(
-            "Размер обрезанного скриншота: {}x{}",
-            cropped_img.width(),
-            cropped_img.height()
-        );
-        let mut candidate_squares = self.method_fast_projection(&cropped_img);
-        info!(
-            "Найдено {} кандидатов после генерации (до фильтрации границ)",
-            candidate_squares.len()
-        );
 
-        // Логируем все кандидаты перед фильтрацией
-        for (i, &(x, y, w, h)) in candidate_squares.iter().enumerate() {
-            info!("Кандидат {}: координаты ({}, {}, {}, {})", i, x, y, w, h);
-        }
+        let candidate_squares = self.method_fast_projection(&cropped_img);
+        info!("Найдено {} кандидатов", candidate_squares.len());
 
-        // Адаптивный порог уверенности - более консервативный подход
-        let adaptive_threshold = match candidate_squares.len() {
-            0..=5 => CONFIDENCE_THRESHOLD - 0.05, // Легкое понижение при малом количестве
-            6..=15 => CONFIDENCE_THRESHOLD,       // Стандартный порог
-            _ => CONFIDENCE_THRESHOLD + 0.02,     // Минимальное повышение при большом количестве
-        };
+        let rois_batch: Vec<_> = candidate_squares
+            .iter()
+            .map(|&(x, y, w, h)| cropped_img.crop_imm(x, y, w, h))
+            .collect();
 
-        info!("Используется адаптивный порог уверенности: {:.3} (стандартный: {:.3})",
-              adaptive_threshold, CONFIDENCE_THRESHOLD);
-
-        // Создаем ROI с дополнительной проверкой границ
-        let mut rois_batch = Vec::new();
-        let mut valid_candidates = Vec::new();
-
-        for (i, &(x, y, w, h)) in candidate_squares.iter().enumerate() {
-            // Дополнительная проверка границ перед созданием ROI
-            if x >= cropped_img.width() || y >= cropped_img.height() ||
-               w == 0 || h == 0 || x + w > cropped_img.width() || y + h > cropped_img.height() {
-                warn!("Пропускаем кандидата {} с некорректными координатами: ({}, {}, {}, {})", i, x, y, w, h);
-                continue;
-            }
-
-            match cropped_img.crop_imm(x, y, w, h) {
-                roi if roi.width() > 0 && roi.height() > 0 => {
-                    rois_batch.push(roi);
-                    valid_candidates.push((x, y, w, h));
-                }
-                _ => {
-                    warn!("Не удалось создать ROI для кандидата {}: ({}, {}, {}, {})", i, x, y, w, h);
-                }
-            }
-        }
-
-        info!("После фильтрации осталось {} валидных кандидатов из {}", valid_candidates.len(), candidate_squares.len());
-
-        // Обновляем candidate_squares только валидными кандидатами
-        candidate_squares = valid_candidates;
-
-        if candidate_squares.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        info!(
-            "Осталось {} валидных кандидатов после фильтрации границ",
-            candidate_squares.len()
-        );
-
-        // Сохраняем отдельные ROI для отладки
-        if save_debug {
-            for (i, roi) in rois_batch.iter().enumerate() {
-                let roi_path = self.debug_dir.join(format!("roi_{}_{}.png", test_file_index, i));
-                roi.save(&roi_path)?;
-                info!("Сохранен ROI {}: {}x{} по координатам ({}, {})",
-                      i, roi.width(), roi.height(),
-                      candidate_squares[i].0, candidate_squares[i].1);
-            }
-
-            // Создаем отладочную визуализацию с отмеченными областями
-            self.create_debug_visualization(&cropped_img, &candidate_squares, test_file_index)?;
-        }
-
-        // Обработка в батчах для оптимизации производительности
         let mut all_embeddings = Vec::new();
         for chunk in rois_batch.chunks(BATCH_SIZE) {
             let chunk_embeddings = self.get_embeddings_for_batch(chunk)?;
-            all_embeddings.extend(chunk_embeddings.iter().cloned());
+            for row in chunk_embeddings.axis_iter(Axis(0)) {
+                all_embeddings.extend_from_slice(row.as_slice().unwrap());
+            }
         }
-        let all_embeddings = Array2::from_shape_vec((all_embeddings.len() / 768, 768), all_embeddings)?;
+        let all_embeddings =
+            Array2::from_shape_vec((all_embeddings.len() / 768, 768), all_embeddings)?;
+
         let mut all_detections = Vec::new();
         for (i, embedding) in all_embeddings.axis_iter(Axis(0)).enumerate() {
             if let Some((hero, confidence)) = self.get_best_match(&embedding.to_owned()) {
-                // Логируем все кандидаты для отладки
-                info!("Кандидат {}: {} (уверенность: {:.3})", i, hero, confidence);
-
-                if confidence >= adaptive_threshold {
+                if confidence >= CONFIDENCE_THRESHOLD {
                     let (x, y, w, h) = candidate_squares[i];
                     all_detections.push(Detection {
-                        hero: hero.clone(),
+                        hero,
                         confidence,
                         position: (x, y),
                         size: (w, h),
                     });
-                    info!("✓ Принят кандидат {}: {} (уверенность: {:.3} >= {:.3})",
-                          i, hero, confidence, adaptive_threshold);
-                } else {
-                    info!("✗ Отклонен кандидат {}: {} (уверенность: {:.3} < {:.3})",
-                          i, hero, confidence, adaptive_threshold);
                 }
-            } else {
-                info!("Кандидат {}: не распознан", i);
             }
         }
         info!(
-            "Всего найдено {} детекций с уверенностью >= {:.3}",
+            "Найдено {} детекций с уверенностью >= {:.2}",
             all_detections.len(),
-            adaptive_threshold
+            CONFIDENCE_THRESHOLD
         );
+
+        // ПРИМЕНЯЕМ NMS ДЛЯ УДАЛЕНИЯ ПЕРЕСЕКАЮЩИХСЯ БОКСОВ
+        self.apply_nms(&mut all_detections, 0.4);
+        info!("Осталось {} детекций после NMS", all_detections.len());
+
+        // Выбираем лучшего кандидата для каждого уникального героя
         let mut hero_dict = HashMap::new();
         for det in all_detections {
             hero_dict
@@ -430,29 +299,31 @@ impl HeroRecognitionSystem {
                 })
                 .or_insert(det);
         }
+
         let mut final_detections: Vec<Detection> = hero_dict.into_values().collect();
         final_detections.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
         final_detections.truncate(MAX_HEROES);
         final_detections.sort_by_key(|d| d.position.1);
-        info!("\n=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ (оптимизированный) ===");
+
+        info!("\n=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ ===");
         info!("Распознано героев: {}", final_detections.len());
         for (i, detection) in final_detections.iter().enumerate() {
             info!(
-                "  {}. {} (уверенность: {:.3}, позиция: ({}, {}))",
+                "  {}. {} (уверенность: {:.3})",
                 i + 1,
                 normalize_hero_name_for_display(&detection.hero),
-                detection.confidence,
-                detection.position.0,
-                detection.position.1
+                detection.confidence
             );
         }
+
         Ok(final_detections.into_iter().map(|d| d.hero).collect())
     }
 }
 
 fn normalize_hero_name_for_display(hero_name: &str) -> String {
-    let name = hero_name.replace('_', " ").replace("And", "&");
-    name.split_whitespace()
+    let name_with_spaces = hero_name.replace('_', " ");
+    let capitalized = name_with_spaces
+        .split_whitespace()
         .map(|word| {
             let mut c = word.chars();
             match c.next() {
@@ -461,7 +332,8 @@ fn normalize_hero_name_for_display(hero_name: &str) -> String {
             }
         })
         .collect::<Vec<String>>()
-        .join(" ")
+        .join(" ");
+    capitalized.replace("And", "&")
 }
 
 #[derive(Debug, Deserialize)]
@@ -483,12 +355,12 @@ fn calculate_metrics(recognized: &[String], expected: &[String]) -> MetricsResul
     let precision = if !rec_set.is_empty() {
         correct as f32 / rec_set.len() as f32
     } else {
-        0.0
+        1.0
     };
     let recall = if !exp_set.is_empty() {
         correct as f32 / exp_set.len() as f32
     } else {
-        0.0
+        1.0
     };
     let f1 = if precision + recall > 0.0 {
         2.0 * precision * recall / (precision + recall)
@@ -506,17 +378,15 @@ fn calculate_metrics(recognized: &[String], expected: &[String]) -> MetricsResul
 }
 
 fn main() -> Result<()> {
-    // Настройка логирования в отдельный файл
-    let debug_dir = PathBuf::from("tests/debug");
-    if !debug_dir.exists() {
-        fs::create_dir_all(&debug_dir)?;
+    let log_dir = PathBuf::from("tests/debug");
+    if !log_dir.exists() {
+        fs::create_dir_all(&log_dir)?;
     }
-    let log_file = debug_dir.join("recognition_test_rust.log");
+    let log_file = log_dir.join("recognition_test_rust.log");
     if log_file.exists() {
         fs::remove_file(&log_file)?;
     }
 
-    // Используем simplelog для записи в файл
     use simplelog::*;
     CombinedLogger::init(vec![
         TermLogger::new(
@@ -532,12 +402,7 @@ fn main() -> Result<()> {
         ),
     ])?;
 
-    let debug_dir = PathBuf::from("tests/debug_rust");
-    if debug_dir.exists() {
-        fs::remove_dir_all(&debug_dir)?;
-    }
-    fs::create_dir_all(&debug_dir)?;
-    let mut system = HeroRecognitionSystem::new(debug_dir)?;
+    let mut system = HeroRecognitionSystem::new(PathBuf::from("tests/debug_rust"))?;
     info!("Система готова! Начинаем тестирование...");
     let answers_content = fs::read_to_string("tests/for_recogn/correct_answers.json")?;
     let correct_answers: HashMap<String, Vec<String>> = serde_json::from_str(&answers_content)?;
@@ -556,7 +421,7 @@ fn main() -> Result<()> {
             "=".repeat(80)
         );
         let start_time = Instant::now();
-        let recognized_raw = system.recognize_heroes_optimized(i, true)?;
+        let recognized_raw = system.recognize_heroes_optimized(i)?;
         let duration = start_time.elapsed();
         recognition_times.push(duration);
         info!("Время выполнения: {:.3} секунд", duration.as_secs_f32());
