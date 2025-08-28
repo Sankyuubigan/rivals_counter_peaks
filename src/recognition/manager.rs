@@ -1,9 +1,7 @@
 use anyhow::Result;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use crate::recognition::recognition_engine::RecognitionEngine;
-use crate::recognition::embedding_manager::EmbeddingManager;
-use crate::recognition::onnx_runner::OnnxRunner;
+use crate::recognition::simple_recognition_engine::SimpleRecognitionEngine;
 /// Состояние распознавания
 #[derive(Debug, Clone, PartialEq)]
 pub enum RecognitionState {
@@ -16,7 +14,7 @@ pub struct RecognitionManager {
     state: Arc<Mutex<RecognitionState>>,
     result_sender: mpsc::Sender<Result<Vec<String>>>,
     result_receiver: Option<mpsc::Receiver<Result<Vec<String>>>>,
-    recognition_engine: Option<RecognitionEngine>,
+    recognition_engine: Option<SimpleRecognitionEngine>,
     last_error: Option<String>, // Храним последнюю ошибку отдельно
 }
 impl RecognitionManager {
@@ -47,7 +45,7 @@ impl RecognitionManager {
         
         // Инициализируем движок распознавания при первом запуске
         if self.recognition_engine.is_none() {
-            match self.init_recognition_engine() {
+            match SimpleRecognitionEngine::new() {
                 Ok(engine) => {
                     self.recognition_engine = Some(engine);
                     log::info!("Движок распознавания успешно инициализирован");
@@ -88,32 +86,30 @@ impl RecognitionManager {
                 
                 // Запускаем распознавание в отдельном потоке
                 tokio::spawn(async move {
-                    // Создаем новый движок для использования в другом потоке
-                    let embedding_manager = EmbeddingManager::new();
-                    let onnx_runner = OnnxRunner::new();
-                    
-                    if let (Ok(mut embedding_manager), Ok(onnx_runner)) = (embedding_manager, onnx_runner) {
-                        embedding_manager.set_onnx_runner(onnx_runner.clone());
-                        let mut engine_clone = RecognitionEngine::new(embedding_manager, onnx_runner).unwrap();
-                        
-                        match engine_clone.recognize_heroes(&rgba_image_clone).await {
-                            Ok(heroes) => {
-                                log::info!("Распознавание завершено успешно: {:?}", heroes);
-                                *state_clone.lock().unwrap() = RecognitionState::Finished(heroes.clone());
-                                let _ = sender_clone.send(Ok(heroes)).await;
-                            }
-                            Err(e) => {
-                                let error_msg = format!("Ошибка распознавания: {}", e);
-                                log::error!("{}", error_msg);
-                                *state_clone.lock().unwrap() = RecognitionState::Finished(Vec::new());
-                                let _ = sender_clone.send(Err(anyhow::anyhow!(error_msg))).await;
-                            }
+                    // Используем новый простой движок распознавания
+                    let mut engine = match SimpleRecognitionEngine::new() {
+                        Ok(engine) => engine,
+                        Err(e) => {
+                            let error_msg = format!("Ошибка создания движка распознавания: {}", e);
+                            log::error!("{}", error_msg);
+                            *state_clone.lock().unwrap() = RecognitionState::Finished(Vec::new());
+                            let _ = sender_clone.send(Err(anyhow::anyhow!(error_msg))).await;
+                            return;
                         }
-                    } else {
-                        let error_msg = "Не удалось инициализировать движок распознавания для фонового потока";
-                        log::error!("{}", error_msg);
-                        *state_clone.lock().unwrap() = RecognitionState::Finished(Vec::new());
-                        let _ = sender_clone.send(Err(anyhow::anyhow!(error_msg))).await;
+                    };
+
+                    match engine.recognize_heroes(&rgba_image_clone).await {
+                        Ok(heroes) => {
+                            log::info!("Распознавание завершено успешно: {:?}", heroes);
+                            *state_clone.lock().unwrap() = RecognitionState::Finished(heroes.clone());
+                            let _ = sender_clone.send(Ok(heroes)).await;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("Ошибка распознавания: {}", e);
+                            log::error!("{}", error_msg);
+                            *state_clone.lock().unwrap() = RecognitionState::Finished(Vec::new());
+                            let _ = sender_clone.send(Err(anyhow::anyhow!(error_msg))).await;
+                        }
                     }
                 });
             }
@@ -159,19 +155,4 @@ impl RecognitionManager {
         }
     }
     
-    /// Инициализирует движок распознавания
-    fn init_recognition_engine(&mut self) -> Result<RecognitionEngine> {
-        log::debug!("Инициализация движка распознавания...");
-        
-        let mut embedding_manager = EmbeddingManager::new()?;
-        let onnx_runner = OnnxRunner::new()?;
-        
-        // Передаем onnx_runner в embedding_manager
-        embedding_manager.set_onnx_runner(onnx_runner.clone());
-        
-        let engine = RecognitionEngine::new(embedding_manager, onnx_runner)?;
-        
-        log::debug!("Движок распознавания успешно инициализирован");
-        Ok(engine)
-    }
 }

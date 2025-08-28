@@ -114,3 +114,37 @@ pub fn file_exists(relative_path: &str) -> bool {
 pub fn get_absolute_path_string(relative_path: &str) -> String {
     get_absolute_path(relative_path).to_string_lossy().to_string()
 }
+
+/// Нормализует имя героя для сравнения (аналог normalize_hero_name из Python)
+pub fn normalize_hero_name(name: &str) -> String {
+    // Сначала удаляем числовые суффиксы после подчеркивания (_1, _2, _3 и т.д.)
+    let cleaned_name = if let Some(pos) = name.rfind('_') {
+        let suffix = &name[pos + 1..];
+        if suffix.chars().all(|c| c.is_ascii_digit()) {
+            &name[..pos]
+        } else {
+            name
+        }
+    } else {
+        name
+    };
+
+    let result = cleaned_name.to_lowercase()
+        .replace('_', " ")
+        .replace('&', "and")
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    // Отладочная информация
+    println!("normalize_hero_name: '{}' -> '{}' -> '{}'", name, cleaned_name, result);
+
+    result
+}
