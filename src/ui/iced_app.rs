@@ -3,17 +3,22 @@ use crate::{
     models::{AllHeroesData, HeroRoles},
     recognition::{RecognitionManager, RecognitionState},
     settings_manager::{self, AppSettings},
+    window_manager,
 };
+use crate::keyboard_monitor;
 use arboard::Clipboard;
 use iced::{
-    executor, keyboard, theme,
-    widget::{button, checkbox, column, container, image, row, scrollable, slider, text, Space},
-    window, Alignment, Application, Command, Element, Length, Point, Size, Subscription, Theme,
+    executor, theme,
+    widget::{button, column, container, image, row, scrollable, text, Space},
+    window, Alignment, Application, Command, Element, Length, Point, Size, Subscription, Theme, Renderer,
 };
 use log::{error, info};
 use std::collections::HashMap;
 use std::fs;
 use tokio::sync::mpsc;
+use std::path::PathBuf;
+
+use super::settings_view;
 
 // --- Сообщения, управляющие состоянием приложения ---
 #[derive(Debug, Clone)]
@@ -30,13 +35,20 @@ pub enum Message {
     StartRecognition,
     // Настройки
     ToggleAlwaysOnTop(bool),
-    OpacityChanged(f32),
     SaveSettings,
+    ToggleSaveScreenshots(bool),
+    ScreenshotPathChanged(String),
+    BrowseScreenshotPath,
+    ScreenshotPathSelected(Option<PathBuf>),
     // Системные тики и события
     Tick,
     WindowResized { width: u32, height: u32 },
     WindowMoved { x: i32, y: i32 },
-    HotkeyAction(hotkey_manager::HotkeyAction),
+    KeyboardEvent(keyboard_monitor::KeyboardEvent),
+    // Сообщения для Win32 API управления окном
+    InitWindowManager,
+    SetWindowOverlay(bool),
+    TimerTick,
 }
 
 // --- Режимы и вкладки UI (аналогично старой версии) ---
@@ -80,12 +92,16 @@ pub struct IcedApp {
     data_load_error: Option<String>,
     tab_mode_active: bool,
     pre_tab_mode_state: Option<WindowModeState>,
+    restoring_from_tab: bool, // Флаг для предотвращения перезаписи состояния окна
     // Настройки
-    settings: AppSettings,
+    pub settings: AppSettings,
     // Системные компоненты
     recognition_manager: Option<RecognitionManager>,
-    hotkey_rx: mpsc::Receiver<hotkey_manager::HotkeyAction>,
+    keyboard_rx: mpsc::Receiver<keyboard_monitor::KeyboardEvent>,
     _clipboard: Clipboard,
+    // Window manager для overlay функциональности
+    window_manager_initialized: bool,
+    init_timer: u8, // счетчик тиков для отсроченной инициализации
 }
 
 // --- Реализация трейта Application для Iced ---
@@ -96,13 +112,13 @@ impl Application for IcedApp {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let (hotkey_tx, hotkey_rx) = mpsc::channel(8);
+        let (keyboard_tx, keyboard_rx) = mpsc::channel(8);
+        let keyboard_monitor = keyboard_monitor::KeyboardMonitor::new(keyboard_tx);
+
+        keyboard_monitor.start();
+
         let settings = settings_manager::load_settings().unwrap_or_default();
-
-        if let Err(e) = hotkey_manager::initialize(hotkey_tx, settings.hotkeys.clone()) {
-            error!("Не удалось инициализировать менеджер горячих клавиш: {}", e);
-        }
-
+        
         let app = Self {
             all_heroes_data: HashMap::new(),
             hero_roles: HeroRoles::default(),
@@ -116,10 +132,13 @@ impl Application for IcedApp {
             data_load_error: None,
             tab_mode_active: false,
             pre_tab_mode_state: None,
+            restoring_from_tab: false,
             settings,
-            hotkey_rx,
+            keyboard_rx,
             recognition_manager: None,
             _clipboard: Clipboard::new().expect("Failed to initialize clipboard"),
+            window_manager_initialized: false,
+            init_timer: 0,
         };
 
         (app, Command::perform(load_data_async(), |result| Message::DataLoaded(Box::new(result))))
@@ -160,18 +179,44 @@ impl Application for IcedApp {
                 self.selected_enemies.clear();
                 self.update_ratings();
             }
-            Message::StartRecognition => self.start_recognition(),
-            Message::ToggleAlwaysOnTop(is_on) => self.settings.always_on_top = is_on,
-            Message::OpacityChanged(opacity) => self.settings.window_opacity = opacity,
+            Message::StartRecognition => {
+                self.start_recognition();
+                return Command::none();
+            }
+            Message::ToggleAlwaysOnTop(is_on) => {
+                self.settings.always_on_top = is_on;
+                #[cfg(target_os = "windows")]
+                if self.window_manager_initialized && !self.tab_mode_active {
+                    let _ = self.update(Message::SetWindowOverlay(is_on));
+                }
+            },
             Message::SaveSettings => self.save_settings(),
+            Message::ToggleSaveScreenshots(checked) => self.settings.save_failed_screenshots = checked,
+            Message::ScreenshotPathChanged(new_path) => self.settings.screenshot_path = new_path,
+            Message::BrowseScreenshotPath => {
+                return Command::perform(async {
+                    rfd::AsyncFileDialog::new().pick_folder().await
+                }, |handle| {
+                    Message::ScreenshotPathSelected(handle.map(|h| h.path().to_path_buf()))
+                });
+            }
+            Message::ScreenshotPathSelected(path) => {
+                if let Some(p) = path {
+                    self.settings.screenshot_path = p.to_string_lossy().to_string();
+                }
+            }
             Message::Tick => self.check_for_events(),
             Message::WindowResized { width, height } => {
                 if !self.tab_mode_active {
-                    let size = Size::new(width as f32, height as f32);
-                    if let Some(state) = &mut self.pre_tab_mode_state {
-                        state.size = size;
+                    if self.restoring_from_tab {
+                        self.restoring_from_tab = false;
                     } else {
-                        self.pre_tab_mode_state = Some(WindowModeState { size, position: Point::new(100.0, 100.0) });
+                        let size = Size::new(width as f32, height as f32);
+                        if let Some(state) = &mut self.pre_tab_mode_state {
+                            state.size = size;
+                        } else {
+                            self.pre_tab_mode_state = Some(WindowModeState { size, position: Point::new(100.0, 100.0) });
+                        }
                     }
                 }
             }
@@ -183,63 +228,68 @@ impl Application for IcedApp {
                     }
                 }
             }
-            Message::HotkeyAction(action) => {
-                match action {
-                    hotkey_manager::HotkeyAction::RecognizeHeroes => self.start_recognition(),
-                    hotkey_manager::HotkeyAction::ToggleTabMode(_) => {
-                        return self.handle_tab_mode_toggle();
-                    }
-                }
+            Message::KeyboardEvent(event) => return self.handle_keyboard_event(event),
+            Message::InitWindowManager => {
+                self.init_window_manager();
+                return Command::none();
+            }
+            Message::SetWindowOverlay(always_on_top) => {
+                self.set_window_overlay(always_on_top);
+                return Command::none();
+            }
+            Message::TimerTick => {
+                self.handle_timer_tick();
+                return Command::none();
             }
         }
         Command::none()
     }
 
     fn view(&self) -> Element<'_, Message> {
-        if let Some(err) = &self.data_load_error {
-            return container(text(err).size(20)).width(Length::Fill).height(Length::Fill).center_x().center_y().into();
-        }
-
-        let top_panel = self.view_top_panel();
-        let content = match self.active_tab {
-            ActiveTab::Main => {
-                if self.tab_mode_active {
-                    // В таб-режиме всегда показываем минимальный режим
-                    self.view_main_minimal_mode()
-                } else {
-                    // Обычная логика переключения режимов
-                    match self.ui_mode {
-                        UIMode::Normal => self.view_main_normal_mode(),
-                        UIMode::Minimal => self.view_main_minimal_mode(),
+        let content: Element<'_, Message> = if let Some(err) = &self.data_load_error {
+             container(text(err).size(20))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x()
+                .center_y()
+                .into()
+        } else {
+            let top_panel = self.view_top_panel();
+            let main_content = match self.active_tab {
+                ActiveTab::Main => {
+                    if self.tab_mode_active {
+                        self.view_main_minimal_mode()
+                    } else {
+                        match self.ui_mode {
+                            UIMode::Normal => self.view_main_normal_mode(),
+                            UIMode::Minimal => self.view_main_minimal_mode(),
+                        }
                     }
-                }
-            },
-            _ => self.view_placeholder_tab(),
+                },
+                ActiveTab::Settings => settings_view::view_settings_tab(self),
+                _ => self.view_placeholder_tab(),
+            };
+            column![top_panel, main_content].spacing(10).padding(15).into()
         };
 
-        column![top_panel, content].spacing(10).padding(15).into()
+        container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(theme::Container::Box)
+            .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let keyboard_sub = keyboard::on_key_press(|key, _mods| match key {
-            keyboard::Key::Named(keyboard::key::Named::Tab) => Some(Message::TabKeyPressed(true)),
-            _ => None,
-        });
-
-        let keyrelease_sub = keyboard::on_key_release(|key, _mods| match key {
-            keyboard::Key::Named(keyboard::key::Named::Tab) => Some(Message::TabKeyPressed(false)),
-            _ => None,
-        });
-
         let tick_sub = iced::time::every(std::time::Duration::from_millis(50)).map(|_| Message::Tick);
-        
+        let init_timer_sub = iced::time::every(std::time::Duration::from_millis(100)).map(|_| Message::TimerTick);
+
         let window_events = iced::event::listen_with(|event, _| match event {
             iced::Event::Window(_, window::Event::Resized { width, height }) => Some(Message::WindowResized { width, height }),
             iced::Event::Window(_, window::Event::Moved { x, y }) => Some(Message::WindowMoved { x, y }),
             _ => None,
         });
 
-        Subscription::batch(vec![keyboard_sub, keyrelease_sub, tick_sub, window_events])
+        Subscription::batch(vec![tick_sub, init_timer_sub, window_events])
     }
 
     fn theme(&self) -> Self::Theme {
@@ -280,15 +330,16 @@ impl IcedApp {
         if let Some(manager) = &mut self.recognition_manager {
             if let Ok(Some(heroes)) = manager.try_get_result() {
                 info!("Распознано: {:?}", heroes);
-                if heroes.len() < 6 {
+                if heroes.len() < 6 && self.settings.save_failed_screenshots {
                     self.save_debug_screenshot();
                 }
                 self.selected_enemies = heroes;
                 self.update_ratings();
             }
         }
-        if let Ok(action) = self.hotkey_rx.try_recv() {
-            let _ = self.update(Message::HotkeyAction(action));
+        
+        if let Ok(keyboard_event) = self.keyboard_rx.try_recv() {
+            let _ = self.update(Message::KeyboardEvent(keyboard_event));
         }
     }
 
@@ -320,6 +371,11 @@ impl IcedApp {
             error!("Не удалось сохранить настройки: {}", e);
         }
         info!("Настройки сохранены.");
+
+        #[cfg(target_os = "windows")]
+        if self.window_manager_initialized && !self.tab_mode_active {
+            let _ = self.update(Message::SetWindowOverlay(self.settings.always_on_top));
+        }
     }
 
     fn handle_mode_switch(&mut self, mode: UIMode) -> Command<Message> {
@@ -335,36 +391,6 @@ impl IcedApp {
         }
     }
 
-    fn handle_tab_mode_toggle(&mut self) -> Command<Message> {
-        if !self.tab_mode_active {
-            // Включаем таб-режим
-            self.tab_mode_active = true;
-            let (screen_w, _) = xcap::Monitor::all().ok()
-                .and_then(|m| m.first().map(|m| (m.width() as f32, m.height() as f32)))
-                .unwrap_or((1920.0, 1080.0));
-            let tab_width = screen_w * 0.8; // Немного шире для лучшей видимости
-            let tab_height = 120.0;
-            Command::batch(vec![
-                window::resize(window::Id::MAIN, Size::new(tab_width, tab_height)),
-                window::move_to(window::Id::MAIN, Point::new(0.0, 0.0)),
-                window::change_level(window::Id::MAIN, window::Level::AlwaysOnTop),
-            ])
-        } else {
-            // Выключаем таб-режим
-            self.tab_mode_active = false;
-            let restore_state = self.pre_tab_mode_state.unwrap_or(WindowModeState {
-                size: Size::new(1024.0, 768.0),
-                position: Point::new(100.0, 100.0),
-            });
-            let level = if self.settings.always_on_top { window::Level::AlwaysOnTop } else { window::Level::Normal };
-            Command::batch(vec![
-                window::resize(window::Id::MAIN, restore_state.size),
-                window::move_to(window::Id::MAIN, restore_state.position),
-                window::change_level(window::Id::MAIN, level),
-            ])
-        }
-    }
-
     fn handle_tab_mode(&mut self, pressed: bool) -> Command<Message> {
         if pressed && !self.tab_mode_active {
             self.tab_mode_active = true;
@@ -373,36 +399,123 @@ impl IcedApp {
                 .unwrap_or((1920.0, 1080.0));
             let tab_width = screen_w * 0.4;
             let tab_height = 120.0;
-            Command::batch(vec![
-                window::resize(window::Id::MAIN, Size::new(tab_width, tab_height)),
-                window::move_to(window::Id::MAIN, Point::new(0.0, 0.0)),
-                window::change_level(window::Id::MAIN, window::Level::AlwaysOnTop),
-            ])
+
+            #[cfg(target_os = "windows")]
+            if self.window_manager_initialized {
+                if let Err(e) = window_manager::move_resize_window(0, 0, tab_width as i32, tab_height as i32) {
+                    error!("Failed to move/resize window with Win32 API: {}", e);
+                }
+                let _ = self.update(Message::SetWindowOverlay(true));
+            }
+
+            Command::none()
+
         } else if !pressed && self.tab_mode_active {
             self.tab_mode_active = false;
+            self.restoring_from_tab = true; // Устанавливаем флаг перед изменением размера
             let restore_state = self.pre_tab_mode_state.unwrap_or(WindowModeState {
                 size: Size::new(1024.0, 768.0),
                 position: Point::new(100.0, 100.0),
             });
-            let level = if self.settings.always_on_top { window::Level::AlwaysOnTop } else { window::Level::Normal };
-            Command::batch(vec![
-                window::resize(window::Id::MAIN, restore_state.size),
-                window::move_to(window::Id::MAIN, restore_state.position),
-                window::change_level(window::Id::MAIN, level),
-            ])
+
+            #[cfg(target_os = "windows")]
+            if self.window_manager_initialized {
+                if let Err(e) = self.set_window_overlay_directly(self.settings.always_on_top) {
+                    error!("Failed to restore window overlay status: {}", e);
+                }
+                if let Err(e) = window_manager::move_resize_window(
+                    restore_state.position.x as i32,
+                    restore_state.position.y as i32,
+                    restore_state.size.width as i32,
+                    restore_state.size.height as i32
+                ) {
+                    error!("Failed to restore window with Win32 API: {}", e);
+                }
+            }
+            Command::none()
         } else {
             Command::none()
         }
     }
 
-    // --- Методы отрисовки ---
+    fn handle_keyboard_event(&mut self, event: keyboard_monitor::KeyboardEvent) -> Command<Message> {
+        match event {
+            keyboard_monitor::KeyboardEvent::TabPressed => {
+                log::debug!("TAB key pressed via global monitor");
+                self.handle_tab_mode(true)
+            }
+            keyboard_monitor::KeyboardEvent::TabReleased => {
+                log::debug!("TAB key released via global monitor");
+                self.handle_tab_mode(false)
+            }
+            keyboard_monitor::KeyboardEvent::Recognize => {
+                log::info!("Recognize hotkey (TAB+0) pressed");
+                self.start_recognition();
+                Command::none()
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn init_window_manager(&mut self) {
+        let window_titles = ["Rivals Counter Peaks", ""];
+        for title in &window_titles {
+            if let Ok(()) = window_manager::init_window_manager(title) {
+                self.window_manager_initialized = true;
+                log::info!("Window manager initialized successfully with title: '{}'", title);
+                break;
+            } else {
+                log::debug!("Failed to find window with title: '{}', trying next...", title);
+            }
+        }
+        if !self.window_manager_initialized {
+            log::warn!("Could not initialize window manager - overlay functionality may not work");
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn init_window_manager(&mut self) {
+        log::warn!("Window overlay functionality is only available on Windows");
+        self.window_manager_initialized = false;
+    }
+
+    #[cfg(target_os = "windows")]
+    fn set_window_overlay(&mut self, always_on_top: bool) {
+        if !self.window_manager_initialized { return; }
+        let result = if always_on_top {
+            window_manager::activate_overlay_mode()
+        } else {
+            window_manager::deactivate_overlay_mode()
+        };
+        if let Err(e) = result {
+            log::error!("Failed to set window overlay: {}", e);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn set_window_overlay_directly(&mut self, always_on_top: bool) -> Result<(), String> {
+        if !self.window_manager_initialized { return Ok(()); }
+        if always_on_top {
+            window_manager::activate_overlay_mode()
+        } else {
+            window_manager::deactivate_overlay_mode()
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn set_window_overlay(&mut self, _always_on_top: bool) {}
+
+    fn handle_timer_tick(&mut self) {
+        self.init_timer += 1;
+        if self.init_timer == 30 && !self.window_manager_initialized {
+            log::debug!("Timer triggered window manager initialization");
+            let _ = self.update(Message::InitWindowManager);
+        }
+    }
+
     fn view_top_panel(&self) -> Element<'_, Message> {
         if self.tab_mode_active {
-            // В таб-режиме скрываем все кнопки управления, включая настройки прозрачности
-            return column![
-                Space::with_height(Length::Fixed(5.0)),
-                Space::with_height(Length::Fixed(5.0))
-            ].into()
+            return Space::new(Length::Shrink, Length::Shrink).into();
         }
 
         let mode_buttons = row![
@@ -410,36 +523,27 @@ impl IcedApp {
             button("Минимальный").style(get_button_style(self.ui_mode == UIMode::Minimal)).on_press(Message::SwitchMode(UIMode::Minimal)),
         ].spacing(5);
 
-        let tab_buttons: iced::widget::Row<'_, Message, Theme, iced::Renderer> = row![
+        let tab_buttons: iced::widget::Row<'_, Message, Theme, Renderer> = row![
             button("Основная").style(get_button_style(self.active_tab == ActiveTab::Main)).on_press(Message::SwitchTab(ActiveTab::Main)),
             button("Настройки").style(get_button_style(self.active_tab == ActiveTab::Settings)).on_press(Message::SwitchTab(ActiveTab::Settings)),
-            button("О программе").style(get_button_style(self.active_tab == ActiveTab::About)).on_press(Message::SwitchTab(ActiveTab::About)),
-            button("Об авторе").style(get_button_style(self.active_tab == ActiveTab::Author)).on_press(Message::SwitchTab(ActiveTab::Author)),
         ].spacing(5);
 
-        let settings_controls = row![
-            checkbox("Поверх всех окон", self.settings.always_on_top).on_toggle(Message::ToggleAlwaysOnTop),
-            text("Прозрачность:"),
-            slider(0.1..=1.0, self.settings.window_opacity, Message::OpacityChanged).step(0.01).width(Length::Fixed(100.0)),
-        ].spacing(10).align_items(Alignment::Center);
+        let tab_content: Element<'_, Message> = if self.ui_mode == UIMode::Normal {
+            tab_buttons.into()
+        } else {
+            Space::new(Length::Shrink, Length::Shrink).into()
+        };
 
         column![
-            row![mode_buttons, Space::with_width(Length::Fill), settings_controls].spacing(20),
-            {
-                let tab_content: Element<'_, Message> = if self.ui_mode == UIMode::Normal {
-                    tab_buttons.into()
-                } else {
-                    Space::new(Length::Fixed(0.0), Length::Fixed(0.0)).into()
-                };
-                tab_content
-            }
+            row![mode_buttons, Space::with_width(Length::Fill)].spacing(20),
+            tab_content
         ].spacing(5).into()
     }
 
     fn view_main_normal_mode(&self) -> Element<'_, Message> {
         row![
-            container(self.view_left_panel()).width(Length::FillPortion(2)).padding(10).style(theme::Container::Box),
-            container(self.view_right_panel()).width(Length::FillPortion(1)).padding(10).style(theme::Container::Box)
+            container(self.view_left_panel()).width(Length::FillPortion(2)).padding(10),
+            container(self.view_right_panel()).width(Length::FillPortion(1)).padding(10)
         ].spacing(10).into()
     }
 
@@ -510,12 +614,12 @@ impl IcedApp {
         container(row![
             text("Рекомендации:"), optimal_team, Space::with_width(Length::Fixed(20.0)),
             text("Враги:"), enemies, Space::with_width(Length::Fill), rec_button,
-        ].align_items(Alignment::Center).spacing(10)).width(Length::Fill).center_y().padding(10).style(theme::Container::Box).into()
+        ].align_items(Alignment::Center).spacing(10)).width(Length::Fill).center_y().padding(10).into()
     }
     
     fn view_placeholder_tab(&self) -> Element<'_, Message> {
         let name = match self.active_tab {
-            ActiveTab::Settings => "Настройки", ActiveTab::About => "О программе", ActiveTab::Author => "Об авторе", _ => "Неизвестно"
+            ActiveTab::About => "О программе", ActiveTab::Author => "Об авторе", _ => "Неизвестно"
         };
         container(text(format!("Здесь будет содержимое вкладки '{}'", name)))
             .width(Length::Fill).height(Length::Fill).center_x().center_y().into()
@@ -523,7 +627,7 @@ impl IcedApp {
 }
 
 // --- Вспомогательные функции ---
-fn get_button_style(is_active: bool) -> theme::Button {
+pub fn get_button_style(is_active: bool) -> theme::Button {
     if is_active { theme::Button::Primary } else { theme::Button::Secondary }
 }
 

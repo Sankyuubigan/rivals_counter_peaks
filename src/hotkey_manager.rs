@@ -23,40 +23,42 @@ pub fn initialize(app_tx: mpsc::Sender<HotkeyAction>, config: HotkeyConfig) -> R
     for (action, info) in &info_map {
         let hotkey = info.hotkey;
 
-        if manager.register(hotkey).is_ok() {
-            info!("Хоткей для '{:?}' успешно зарегистрирован: {:?}", action, hotkey);
-            id_to_action_map.insert(hotkey.id(), action.clone());
-        } else {
-            warn!("Не удалось зарегистрировать хоткей для '{:?}'", action);
+        // Хоткей распознавания теперь обрабатывается через keyboard_monitor,
+        // поэтому здесь его регистрировать не нужно.
+        if matches!(action, Action::ToggleTabMode) {
+             if manager.register(hotkey).is_ok() {
+                info!("Хоткей для '{:?}' успешно зарегистрирован: {:?}", action, hotkey);
+                id_to_action_map.insert(hotkey.id(), action.clone());
+            } else {
+                warn!("Не удалось зарегистрировать хоткей для '{:?}'", action);
+            }
         }
     }
     
-    // Запускаем фоновый поток для прослушивания событий
-    std::thread::spawn(move || {
-        // Получаем ресивер событий в этом потоке
-        let receiver = GlobalHotKeyEvent::receiver();
-        loop {
-            // Используем `try_recv` для неблокирующей проверки
-            if let Ok(event) = receiver.try_recv() {
-                if event.state == HotKeyState::Pressed {
-                    if let Some(action) = id_to_action_map.get(&event.id) {
-                        let app_action = match action {
-                            Action::RecognizeHeroes => HotkeyAction::RecognizeHeroes,
-                            Action::ToggleTabMode => HotkeyAction::ToggleTabMode(true),
-                        };
-                        // Используем `blocking_send`, так как мы в синхронном потоке,
-                        // а канал `mpsc` из `tokio`
-                        if app_tx.blocking_send(app_action).is_err() {
-                            warn!("Канал приложения для хоткеев закрыт. Поток завершается.");
-                            break; // Выходим из цикла, если канал закрыт
+    // Запускаем фоновый поток для прослушивания событий, только если есть что слушать
+    if !id_to_action_map.is_empty() {
+        std::thread::spawn(move || {
+            let receiver = GlobalHotKeyEvent::receiver();
+            loop {
+                if let Ok(event) = receiver.try_recv() {
+                    if event.state == HotKeyState::Pressed {
+                        if let Some(action) = id_to_action_map.get(&event.id) {
+                            let app_action = match action {
+                                Action::ToggleTabMode => HotkeyAction::ToggleTabMode(true),
+                            };
+                            if app_tx.blocking_send(app_action).is_err() {
+                                warn!("Канал приложения для хоткеев закрыт. Поток завершается.");
+                                break;
+                            }
                         }
                     }
                 }
+                std::thread::sleep(std::time::Duration::from_millis(50));
             }
-            // Небольшая пауза, чтобы не загружать процессор
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        }
-    });
+        });
+    } else {
+        info!("Нет хоткеев для регистрации в global_hotkey, поток не запущен.");
+    }
     
     Ok(())
 }

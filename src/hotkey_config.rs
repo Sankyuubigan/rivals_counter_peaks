@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Action {
-    RecognizeHeroes,
+    // RecognizeHeroes убран, так как теперь используется глобальный монитор клавиатуры
     ToggleTabMode,
 }
 
@@ -68,7 +68,6 @@ impl TryFrom<&SerializableHotkey> for HotKey {
 #[derive(Debug, Clone)]
 pub struct HotkeyInfo {
     pub hotkey: HotKey,
-    // description убран, так как он не использовался
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,12 +111,8 @@ mod hashmap_as_vec {
 
 impl Default for HotkeyConfig {
     fn default() -> Self {
-        let mut actions = HashMap::new();
-        let default_recognize_hotkey = HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyX);
-        let tab_hotkey = HotKey::new(None, Code::Tab);
-
-        actions.insert(Action::RecognizeHeroes, SerializableHotkey::from(&default_recognize_hotkey));
-        actions.insert(Action::ToggleTabMode, SerializableHotkey::from(&tab_hotkey));
+        let actions = HashMap::new();
+        // Все хоткеи теперь обрабатываются через keyboard_monitor
         Self { actions }
     }
 }
@@ -127,6 +122,7 @@ impl HotkeyConfig {
         let mut info_map = HashMap::new();
         for (action, s_hotkey) in &self.actions {
             let hotkey = HotKey::try_from(s_hotkey).unwrap_or_else(|_| {
+                // Это значение по умолчанию больше не должно использоваться, но оставим его для безопасности
                 HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyX)
             });
             info_map.insert(action.clone(), HotkeyInfo { hotkey });

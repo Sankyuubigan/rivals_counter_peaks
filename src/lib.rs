@@ -4,6 +4,8 @@ pub mod models;
 pub mod core_logic;
 pub mod hotkey_config;
 pub mod hotkey_manager;
+pub mod keyboard_monitor;
+pub mod window_manager;
 pub mod settings_manager;
 pub mod data_loader;
 pub mod image_loader;

@@ -1,16 +1,6 @@
-mod core_logic;
-mod data_loader;
-mod hotkey_config;
-mod hotkey_manager;
-mod image_loader;
-mod models;
-mod recognition;
-mod settings_manager;
-mod ui;
-mod utils;
-
 use iced::{window, Application, Settings};
 use log::LevelFilter;
+use rust_rivals::*;
 
 #[tokio::main]
 async fn main() -> iced::Result {
@@ -20,6 +10,7 @@ async fn main() -> iced::Result {
         .filter_module("rust_rivals", LevelFilter::Debug)
         .filter_module("wgpu_core", LevelFilter::Warn)
         .filter_module("wgpu_hal", LevelFilter::Warn)
+        .filter_module("iced_wgpu", LevelFilter::Warn) // Уменьшаем "спам" в логах от рендера
         .format_timestamp_secs()
         .init();
 
@@ -27,7 +18,7 @@ async fn main() -> iced::Result {
     log::debug!("Включен DEBUG уровень логирования для rust_rivals.");
 
     // Загружаем иконку приложения из PNG файла
-    let icon = match image::open(utils::get_absolute_path("resources/logo.png")) {
+    let icon = match image::open(crate::utils::get_absolute_path("resources/logo.png")) {
         Ok(img) => {
             let rgba_image = img.to_rgba8();
             let (width, height) = rgba_image.dimensions();
@@ -46,7 +37,7 @@ async fn main() -> iced::Result {
     };
     
     // Запускаем Iced приложение с нашими настройками.
-    ui::iced_app::IcedApp::run(Settings {
+    crate::ui::iced_app::IcedApp::run(Settings {
         window: window::Settings {
             size: iced::Size::new(1024.0, 768.0),
             icon,

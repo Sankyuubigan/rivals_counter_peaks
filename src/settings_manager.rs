@@ -11,6 +11,7 @@ pub struct AppSettings {
     pub always_on_top: bool,
     pub window_opacity: f32,
     pub screenshot_path: String,
+    pub save_failed_screenshots: bool,
 }
 
 impl Default for AppSettings {
@@ -20,6 +21,7 @@ impl Default for AppSettings {
             always_on_top: false,
             window_opacity: 1.0,
             screenshot_path: "debug_screenshots".to_string(),
+            save_failed_screenshots: true,
         }
     }
 }
