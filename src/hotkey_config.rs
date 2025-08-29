@@ -5,6 +5,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Action {
     RecognizeHeroes,
+    ToggleTabMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -112,8 +113,11 @@ mod hashmap_as_vec {
 impl Default for HotkeyConfig {
     fn default() -> Self {
         let mut actions = HashMap::new();
-        let default_hotkey = HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyX);
-        actions.insert(Action::RecognizeHeroes, SerializableHotkey::from(&default_hotkey));
+        let default_recognize_hotkey = HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyX);
+        let tab_hotkey = HotKey::new(None, Code::Tab);
+
+        actions.insert(Action::RecognizeHeroes, SerializableHotkey::from(&default_recognize_hotkey));
+        actions.insert(Action::ToggleTabMode, SerializableHotkey::from(&tab_hotkey));
         Self { actions }
     }
 }

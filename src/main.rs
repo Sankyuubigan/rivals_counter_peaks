@@ -27,7 +27,7 @@ async fn main() -> iced::Result {
     log::debug!("Включен DEBUG уровень логирования для rust_rivals.");
 
     // Загружаем иконку приложения из PNG файла
-    let icon = match image::open("resources/logo.png") {
+    let icon = match image::open(utils::get_absolute_path("resources/logo.png")) {
         Ok(img) => {
             let rgba_image = img.to_rgba8();
             let (width, height) = rgba_image.dimensions();
@@ -48,6 +48,7 @@ async fn main() -> iced::Result {
     // Запускаем Iced приложение с нашими настройками.
     ui::iced_app::IcedApp::run(Settings {
         window: window::Settings {
+            size: iced::Size::new(1024.0, 768.0),
             icon,
             ..window::Settings::default()
         },

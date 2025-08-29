@@ -41,7 +41,6 @@ pub fn load_hero_icons(
         .collect();
 
     for hero_name in hero_names {
-        // РЕШЕНИЕ ПРОБЛЕМЫ С ИМЕНАМИ:
         // 1. Преобразуем имя героя в базовое имя файла (например, "Peni Parker" -> "peni_parker")
         let base_filename = hero_name_to_base_filename(hero_name);
         
@@ -50,11 +49,9 @@ pub fn load_hero_icons(
 
         if let Some(icon_filename) = found_icon_filename {
             let icon_path = icons_dir.join(icon_filename);
-            // Создаем `Handle` из пути к файлу. Iced загрузит его, когда потребуется.
             let handle = image::Handle::from_path(icon_path);
             icons.insert(hero_name.clone(), handle);
         } else {
-            // Для отладки оставляем предупреждение, если иконка всё же не найдена
             warn!("Иконка для героя '{}' не найдена (базовое имя для поиска: '{}')", hero_name, base_filename);
         }
     }
