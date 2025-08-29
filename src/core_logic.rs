@@ -1,47 +1,52 @@
 use crate::models::{AllHeroesData, HeroRoles, Role};
 use std::collections::{HashMap, HashSet};
 
-/// Рассчитывает "сырой" рейтинг для каждого героя против указанной команды врагов.
-/// Логика основана на `test_manual_raiting.py`.
+/// Рассчитывает рейтинг для каждого героя против указанной команды врагов.
+/// Логика основана на анализе контр-пиков: положительный рейтинг означает преимущество.
 pub fn calculate_hero_ratings(
-    enemy_team: &HashSet<String>,
+    enemy_team: &[String],
     all_heroes_data: &AllHeroesData,
 ) -> HashMap<String, f32> {
     let mut hero_scores = HashMap::new();
 
-    for (hero_name, _hero_data) in all_heroes_data {
-        if enemy_team.contains(hero_name) {
+    // Итерируем по всем героям в базе данных, это наши кандидаты
+    for (candidate_hero_name, candidate_hero_data) in all_heroes_data {
+        // Не оцениваем героев, которые уже находятся в команде врага
+        if enemy_team.contains(candidate_hero_name) {
             continue;
         }
 
         let mut total_score_contribution = 0.0;
         let mut matchups_found = 0;
 
+        // Для каждого кандидата проверяем его эффективность против каждого врага
         for enemy_hero_name in enemy_team {
-            if let Some(enemy_hero_data) = all_heroes_data.get(enemy_hero_name) {
-                if let Some(matchup) = enemy_hero_data
-                    .opponents
-                    .iter()
-                    .find(|opp| opp.opponent == *hero_name)
-                {
-                    if let Ok(diff_val) = matchup.difference.replace('%', "").trim().parse::<f32>() {
-                        // В скрипте `test_manual_raiting.py` значение инвертируется.
-                        // Это означает, что положительная 'difference' в JSON - это плохо.
-                        total_score_contribution -= diff_val;
-                        matchups_found += 1;
-                    }
+            // Ищем данные о матчапе "кандидат против врага"
+            if let Some(matchup) = candidate_hero_data
+                .opponents
+                .iter()
+                .find(|opp| &opp.opponent == enemy_hero_name)
+            {
+                if let Ok(diff_val) = matchup.difference.replace('%', "").trim().parse::<f32>() {
+                    // ИСПРАВЛЕНИЕ 1: Инвертируем значение, как в эталонном скрипте.
+                    // Положительное значение 'difference' в JSON означает, что ВРАГ имеет преимущество.
+                    // Мы инвертируем его, чтобы положительный score означал преимущество для НАШЕГО кандидата.
+                    total_score_contribution += -diff_val;
+                    matchups_found += 1;
                 }
             }
         }
 
+        // Если найдены матчапы, вычисляем средний балл и сохраняем
         if matchups_found > 0 {
             let avg_score = total_score_contribution / matchups_found as f32;
-            hero_scores.insert(hero_name.clone(), avg_score);
+            hero_scores.insert(candidate_hero_name.clone(), avg_score);
         }
     }
 
     hero_scores
 }
+
 
 /// Применяет контекст (общий винрейт героя) к "сырым" очкам.
 /// Логика основана на `absolute_with_context` из `test_manual_raiting.py`.
@@ -57,8 +62,11 @@ pub fn apply_context_to_scores(
             .and_then(|data| data.win_rate.replace('%', "").trim().parse::<f32>().ok())
             .unwrap_or(50.0);
 
+        // Чем сильнее герой в целом, тем ценнее его положительный вклад
         let context_factor = overall_winrate / 50.0;
-        // `100.0 + score` так как score обычно отрицательный. Например, 100.0 + (-8.75) = 91.25
+        
+        // ИСПРАВЛЕНИЕ 2: Используем базовое значение 100.0, как в эталонном скрипте.
+        // `score` - это преимущество/недостаток.
         let absolute_score = (100.0 + score) * context_factor;
         final_scores.push((hero.clone(), absolute_score));
     }
@@ -68,71 +76,89 @@ pub fn apply_context_to_scores(
     final_scores
 }
 
-
-const MIN_TANKS: usize = 1;
-const MAX_SUPPORTS: usize = 3;
-const MIN_SUPPORTS: usize = 2;
 const TEAM_SIZE: usize = 6;
+const MIN_SUPPORTS: usize = 2;
+const MAX_SUPPORTS: usize = 3;
 
-/// Выбирает оптимальную команду на основе рейтинга и ролей.
-/// Реализует упрощенный, но надежный жадный алгоритм.
+/// Выбирает оптимальную команду на основе рейтинга и ролей, как в test_manual_raiting.py.
+/// Алгоритм перебирает наилучшие комбинации ролей.
 pub fn select_optimal_team(
     sorted_heroes: &[(String, f32)],
     hero_roles: &HeroRoles,
 ) -> Vec<String> {
+    let tanks: Vec<_> = sorted_heroes.iter().filter(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Tank)).cloned().collect();
+    let supports: Vec<_> = sorted_heroes.iter().filter(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Support)).cloned().collect();
+    let dds: Vec<_> = sorted_heroes.iter().filter(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Dd) || hero_roles.roles.get(h) == Some(&Role::Unknown)).cloned().collect();
+
+    let mut best_team_composition: Vec<(String, f32)> = Vec::new();
+    let mut best_score = f32::NEG_INFINITY;
+
+    // Возможные комбинации (танки, саппорты, дд), удовлетворяющие условиям:
+    // V >= 1, 2 <= S <= 3, V + S + D = 6
+    // Эта логика полностью соответствует комбинациям, генерируемым в Python скрипте
+    let possible_combinations = [
+        (1, 2, 3), (1, 3, 2), (2, 2, 2), (2, 3, 1),
+        (3, 2, 1), (3, 3, 0), (4, 2, 0),
+    ];
+
+    for &(v_count, s_count, d_count) in &possible_combinations {
+        if tanks.len() >= v_count && supports.len() >= s_count && dds.len() >= d_count {
+            let mut current_team = Vec::new();
+            current_team.extend(tanks.iter().take(v_count));
+            current_team.extend(supports.iter().take(s_count));
+            current_team.extend(dds.iter().take(d_count));
+
+            let current_score: f32 = current_team.iter().map(|(_, score)| *score).sum();
+
+            if current_score > best_score {
+                best_score = current_score;
+                best_team_composition = current_team.into_iter().cloned().collect();
+            }
+        }
+    }
+    
+    // Если подходящая команда найдена, возвращаем ее
+    if !best_team_composition.is_empty() {
+        return best_team_composition.into_iter().map(|(name, _)| name).collect();
+    }
+
+    // Резервная логика (жадный алгоритм), если ни одна комбинация не сработала
     let mut team: Vec<(String, f32)> = Vec::new();
     let mut team_names = HashSet::new();
 
-    // 1. Сначала добавляем обязательные роли из лучших кандидатов
-    // Добавляем лучшего танка
-    if let Some(best_tank) = sorted_heroes.iter().find(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Tank)) {
+    // 1. Обязательный танк
+    if let Some(best_tank) = tanks.first() {
         if team_names.insert(best_tank.0.clone()) {
             team.push(best_tank.clone());
         }
     }
-    // Добавляем лучших саппортов
-    let best_supports: Vec<_> = sorted_heroes.iter().filter(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Support)).take(MIN_SUPPORTS).cloned().collect();
-    for support in best_supports {
+    // 2. Обязательные саппорты
+    for support in supports.iter().take(MIN_SUPPORTS) {
         if team_names.insert(support.0.clone()) {
-            team.push(support);
+            team.push(support.clone());
         }
     }
-
-    // 2. Создаем пул оставшихся кандидатов
+    
+    // 3. Добираем остальных из общего пула лучших героев
     let mut remaining_pool: Vec<_> = sorted_heroes
         .iter()
         .filter(|(name, _)| !team_names.contains(name))
         .cloned()
         .collect();
-    
-    // 3. Жадным алгоритмом заполняем оставшиеся слоты
+
     while team.len() < TEAM_SIZE && !remaining_pool.is_empty() {
-        let best_candidate = remaining_pool.remove(0); // Уже отсортировано по очкам
-        let role = hero_roles.roles.get(&best_candidate.0).unwrap_or(&Role::Unknown);
+        let best_candidate = remaining_pool.remove(0);
+        let role = hero_roles.roles.get(&best_candidate.0);
         
         let support_count = team.iter().filter(|(h, _)| hero_roles.roles.get(h) == Some(&Role::Support)).count();
 
-        // Проверяем ограничения
-        let can_add = match role {
-            Role::Support if support_count < MAX_SUPPORTS => true,
-            Role::Tank | Role::Dd => true,
-            _ => false,
-        };
-
-        if can_add {
-             if team_names.insert(best_candidate.0.clone()) {
-                team.push(best_candidate);
-            }
+        // Проверяем ограничение на максимальное количество саппортов
+        if role == Some(&Role::Support) && support_count >= MAX_SUPPORTS {
+            continue;
         }
-    }
-    
-    // 4. Если команда все еще не полная, просто добавляем лучших из оставшихся
-    if team.len() < TEAM_SIZE {
-        for hero in remaining_pool.iter() {
-            if team.len() >= TEAM_SIZE { break; }
-            if team_names.insert(hero.0.clone()) {
-                team.push(hero.clone());
-            }
+        
+        if team_names.insert(best_candidate.0.clone()) {
+            team.push(best_candidate);
         }
     }
 

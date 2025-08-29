@@ -8,4 +8,3 @@ pub mod settings_manager;
 pub mod data_loader;
 pub mod image_loader;
 pub mod ui;
-pub mod app;

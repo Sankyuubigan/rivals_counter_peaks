@@ -4,21 +4,26 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub hotkeys: HotkeyConfig,
     pub always_on_top: bool,
     pub window_opacity: f32,
+    pub screenshot_path: String,
 }
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
             hotkeys: HotkeyConfig::default(),
             always_on_top: false,
             window_opacity: 1.0,
+            screenshot_path: "debug_screenshots".to_string(),
         }
     }
 }
+
 /// Возвращает путь к файлу настроек.
 fn get_settings_path() -> Result<PathBuf> {
     if let Some(proj_dirs) = ProjectDirs::from("com", "RustRivals", "RustRivals") {
@@ -30,6 +35,7 @@ fn get_settings_path() -> Result<PathBuf> {
         Err(anyhow::anyhow!("Не удалось определить директорию для настроек."))
     }
 }
+
 /// Загружает настройки из файла.
 pub fn load_settings() -> Result<AppSettings> {
     let path = get_settings_path()?;
@@ -45,6 +51,7 @@ pub fn load_settings() -> Result<AppSettings> {
         Ok(AppSettings::default())
     }
 }
+
 /// Сохраняет настройки в файл.
 pub fn save_settings(settings: &AppSettings) -> Result<()> {
     let path = get_settings_path()?;

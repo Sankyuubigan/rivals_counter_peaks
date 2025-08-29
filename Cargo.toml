@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2021"
 description = "Marvel Rivals team counter-pick assistant"
 [dependencies]
-eframe = { version = "0.27.2", features = ["default", "glow"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0"
 log = "0.4"
 env_logger = "0.11"
 regex = "1"
-image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
+# Обновляем версию image до 0.25 для совместимости с xcap и другими крейтами
+image = "0.25"
 ort = { version = "2.0.0-rc.10" }
 npy = "0.4"
 ndarray = { version = "0.15", features = ["serde"] }
@@ -26,8 +26,15 @@ imageproc = "0.23.0"
 lazy_static = "1.4.0"
 akaze = "0.1"
 
+# ICED GUI framework
+iced = { version = "0.12", features = ["tokio", "image", "svg", "canvas"] }
+
 [build-dependencies]
-embed-resource = "2.4.0"
+embed-resource = "2.5.2"
+# Добавляем зависимости для автоматической конвертации PNG в ICO
+image = "0.25"
+ico = "0.3.0"
+
 
 [[test]]
 name = "check_recognition"

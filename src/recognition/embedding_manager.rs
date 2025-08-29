@@ -4,11 +4,13 @@ use ndarray::{Array1, ArrayView1};
 use std::collections::HashMap;
 use std::fs;
 const EMBEDDINGS_DIR: &str = "resources/embeddings_padded";
+
 #[derive(Clone)]
 pub struct EmbeddingManager {
     reference_embeddings: HashMap<String, Array1<f32>>,
-    onnx_runner: Option<crate::recognition::onnx_runner::OnnxRunner>,
+    // onnx_runner убран, так как он не использовался
 }
+
 impl EmbeddingManager {
     pub fn new() -> Result<Self> {
         let absolute_embeddings_dir = get_absolute_path_string(EMBEDDINGS_DIR);
@@ -17,17 +19,7 @@ impl EmbeddingManager {
         log::info!("Загружено {} эталонных эмбеддингов.", embeddings.len());
         Ok(Self { 
             reference_embeddings: embeddings,
-            onnx_runner: None,
         })
-    }
-    
-    pub fn set_onnx_runner(&mut self, runner: crate::recognition::onnx_runner::OnnxRunner) {
-        self.onnx_runner = Some(runner);
-    }
-    
-    pub fn get_onnx_runner(&self) -> &crate::recognition::onnx_runner::OnnxRunner {
-        // В реальной реализации здесь должна быть обработка ошибки, если onnx_runner равен None
-        self.onnx_runner.as_ref().unwrap()
     }
     
     pub fn find_best_match(
@@ -49,84 +41,9 @@ impl EmbeddingManager {
         
         best_match
     }
-    
-    // Новый метод для получения топ совпадений как в Python
-    pub fn get_top_matches(
-        &self,
-        query_embedding: ArrayView1<f32>,
-        threshold: f32,
-        top_n: usize,
-    ) -> Vec<(String, f32)> {
-        let mut matches: Vec<(String, f32)> = Vec::new();
-        
-        for (name, ref_emb) in &self.reference_embeddings {
-            let similarity = cosine_similarity(query_embedding, ref_emb.view());
-            if similarity > threshold {
-                matches.push((name.clone(), similarity));
-            }
-        }
-        
-        // Сортируем по убыванию сходства
-        matches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
-        // Возвращаем топ N совпадений
-        matches.truncate(top_n);
-        matches
-    }
-    
-    // Метод для поиска совпадений с использованием нескольких стратегий
-    pub fn find_matches_with_strategies(
-        &self,
-        query_embedding: ArrayView1<f32>,
-        threshold: f32,
-    ) -> Vec<(String, f32, String)> {
-        let mut matches = Vec::new();
-        
-        for (name, ref_emb) in &self.reference_embeddings {
-            // Косинусное сходство
-            let cosine_sim = cosine_similarity(query_embedding, ref_emb.view());
-            
-            // Евклидово расстояние (нормализованное)
-            let euclidean_dist = euclidean_distance_normalized(query_embedding, ref_emb.view());
-            
-            // Манхэттенское расстояние (нормализованное)
-            let manhattan_dist = manhattan_distance_normalized(query_embedding, ref_emb.view());
-            
-            // Комбинированная метрика
-            let combined_score = 0.6 * cosine_sim + 0.2 * (1.0 - euclidean_dist) + 0.2 * (1.0 - manhattan_dist);
-            
-            if combined_score > threshold {
-                matches.push((name.clone(), combined_score, format!("cosine:{:.3},euclid:{:.3},manh:{:.3}", 
-                                                              cosine_sim, euclidean_dist, manhattan_dist)));
-            }
-        }
-        
-        // Сортируем по убыванию комбинированной оценки
-        matches.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
-        matches
-    }
+    // Неиспользуемые методы удалены
 }
-// Вычисление нормализованного евклидова расстояния
-fn euclidean_distance_normalized(a: ArrayView1<f32>, b: ArrayView1<f32>) -> f32 {
-    let mut sum = 0.0;
-    for i in 0..a.len() {
-        let diff = a[i] - b[i];
-        sum += diff * diff;
-    }
-    let distance = sum.sqrt();
-    // Нормализуем в диапазон [0, 1], где 0 означает полное совпадение
-    1.0 / (1.0 + distance)
-}
-// Вычисление нормализованного манхэттенского расстояния
-fn manhattan_distance_normalized(a: ArrayView1<f32>, b: ArrayView1<f32>) -> f32 {
-    let mut sum = 0.0;
-    for i in 0..a.len() {
-        sum += (a[i] - b[i]).abs();
-    }
-    // Нормализуем в диапазон [0, 1], где 0 означает полное совпадение
-    1.0 / (1.0 + sum)
-}
+
 fn load_reference_embeddings(dir_path: &str) -> Result<HashMap<String, Array1<f32>>> {
     let mut embeddings = HashMap::new();
     let entries = fs::read_dir(dir_path)
@@ -150,7 +67,6 @@ fn load_reference_embeddings(dir_path: &str) -> Result<HashMap<String, Array1<f3
                 let data: Vec<f32> = reader.to_vec();
                 let embedding = Array1::from(data);
                 
-                // Проверка на наличие NaN или Inf значений
                 if embedding.iter().any(|x| x.is_nan() || x.is_infinite()) {
                     log::warn!("Эмбеддинг для '{}' содержит NaN или Inf значения и будет пропущен", stem);
                     continue;

@@ -1,8 +1,1 @@
-pub mod dialogs;
-pub mod left_panel;
-pub mod markdown_viewer;
-pub mod minimal_view;
-pub mod right_panel;
-pub mod settings_window;
-pub mod tab_content;
-pub mod top_panel;
+pub mod iced_app;
