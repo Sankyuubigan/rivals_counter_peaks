@@ -398,15 +398,9 @@ impl IcedApp {
     // --- Методы отрисовки ---
     fn view_top_panel(&self) -> Element<'_, Message> {
         if self.tab_mode_active {
-            // В таб-режиме скрываем все кнопки управления, показываем только настройки прозрачности
-            let settings_controls = row![
-                text("Прозрачность:"),
-                slider(0.1..=1.0, self.settings.window_opacity, Message::OpacityChanged).step(0.01).width(Length::Fixed(100.0)),
-            ].spacing(10).align_items(Alignment::Center);
-
+            // В таб-режиме скрываем все кнопки управления, включая настройки прозрачности
             return column![
                 Space::with_height(Length::Fixed(5.0)),
-                settings_controls,
                 Space::with_height(Length::Fixed(5.0))
             ].into()
         }
