@@ -1,0 +1,15 @@
+Markdown
+Pillow
+PySide6
+PySide6_Addons
+PySide6_Essentials
+keyboard
+mss
+numpy
+onnxruntime
+opencv_python
+playwright
+pyinstaller
+pynput
+pyperclip
+transformers

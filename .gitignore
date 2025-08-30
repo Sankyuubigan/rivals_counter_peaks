@@ -9,6 +9,5 @@ __pycache__
 /tests/debug_logs
 /tests/debug
 /tests/for_recogn/screenshots
-/vision_models
 /tests/debug_rust
 /env
