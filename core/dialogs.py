@@ -4,9 +4,7 @@ from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, 
                                QFileDialog)
 from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal, QObject
 from PySide6.QtGui import QKeySequence, QCloseEvent
-# --- ИЗМЕНЕНИЯ ---
-from database.stats_loader import load_matchups_data, get_all_heroes
-# --- КОНЕЦ ИЗМЕНЕНИЙ ---
+from database import heroes_bd
 from core.lang.translations import get_text
 import pyperclip
 import logging
@@ -17,11 +15,13 @@ import re
 import datetime 
 
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit 
+# PYNPUT_AVAILABLE_FOR_CAPTURE и keyboard больше не нужны здесь
 
 
-HOTKEY_INPUT_FINISHED_EVENT = QEvent.Type(QEvent.User + 1)
+HOTKEY_INPUT_FINISHED_EVENT = QEvent.Type(QEvent.User + 1) # Можно оставить, если используется где-то еще
 
 def resource_path_dialogs(relative_path):
+    # ... (без изменений) ...
     try:
         base_path = sys._MEIPASS
     except Exception: 
@@ -45,6 +45,7 @@ def resource_path_dialogs(relative_path):
 
 
 class BaseInfoDialog(QDialog):
+    # ... (без изменений) ...
     def __init__(self, parent, window_title_key, md_filename_base):
         super().__init__(parent)
         self.parent_window = parent
@@ -72,7 +73,7 @@ class BaseInfoDialog(QDialog):
         elif hasattr(self.parent_window, 'current_language'): 
              current_lang_code = self.parent_window.current_language
         
-        md_filename = f"{self.md_filename_base}_{current_lang_code.split('_')}.md"
+        md_filename = f"{self.md_filename_base}_{current_lang_code.split('_')[0]}.md"
         md_filepath = resource_path_dialogs(md_filename)
         
         current_theme = "light" 
@@ -141,6 +142,7 @@ class AuthorDialog(BaseInfoDialog):
 
 
 class HeroRatingDialog(QDialog):
+    # ... (без изменений) ...
     def __init__(self, parent, app_version):
         super().__init__(parent)
         self.setWindowTitle(get_text('hero_rating_title', version=app_version)) 
@@ -151,28 +153,14 @@ class HeroRatingDialog(QDialog):
         text_browser = QTextBrowser()
         text_browser.setReadOnly(True)
         text_browser.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard)
-        
-        # --- НОВАЯ ЛОГИКА РАСЧЕТА РЕЙТИНГА УНИВЕРСАЛЬНОСТИ ---
-        matchups_data = load_matchups_data()
-        all_heroes = get_all_heroes(matchups_data)
-        
-        positive_matchup_counts = {hero: 0 for hero in all_heroes}
-        
-        for hero, matchups in matchups_data.items():
-            count = 0
-            for matchup in matchups:
-                try:
-                    diff = -float(matchup.get("difference", "0%").replace('%',''))
-                    if diff > 0:
-                        count += 1
-                except (ValueError, TypeError):
-                    continue
-            positive_matchup_counts[hero] = count
-
-        sorted_heroes = sorted(positive_matchup_counts.items(), key=lambda item: item, reverse=True)
+        counter_counts = {hero: 0 for hero in heroes_bd.heroes}
+        for hero_being_countered, counters_data in heroes_bd.heroes_counters.items():
+            if isinstance(counters_data, dict): 
+                for counter_hero in counters_data.get("hard", []) + counters_data.get("soft", []):
+                    if counter_hero in counter_counts:
+                        counter_counts[counter_hero] +=1
+        sorted_heroes = sorted(counter_counts.items(), key=lambda item: item[1], reverse=True)
         rating_lines = [f"{hero} ({count})" for hero, count in sorted_heroes]
-        # --- КОНЕЦ НОВОЙ ЛОГИКИ ---
-
         text_browser.setText("\n".join(rating_lines))
         layout.addWidget(text_browser)
         close_button = QPushButton("OK")
@@ -192,6 +180,7 @@ class HeroRatingDialog(QDialog):
             self.move(center_point)
 
 class LogDialog(QDialog):
+    # ... (без изменений) ...
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(get_text('logs_window_title'))
@@ -286,7 +275,7 @@ class LogDialog(QDialog):
         self.hide(); event.ignore() 
 
 class HotkeyDisplayDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None): # parent должен быть MainWindow
         super().__init__(parent)
         self.parent_window = parent 
         self.setWindowTitle(get_text('hotkeys_window_title'))
@@ -304,7 +293,11 @@ class HotkeyDisplayDialog(QDialog):
         QTimer.singleShot(0, self.center_on_parent) 
     
     def _normalize_for_display_info(self, hotkey_str: str) -> str:
-        from core.settings_window import SettingsWindow
+        # Используем ту же логику нормализации, что и в SettingsWindow
+        # для консистентного отображения
+        from core.settings_window import SettingsWindow # Импорт здесь, чтобы избежать цикла
+        # Создаем временный экземпляр или делаем метод статическим, если возможно
+        # Проще всего дублировать логику или вынести в общий util, но для простоты пока так:
         if not hotkey_str or hotkey_str == get_text('hotkey_not_set') or hotkey_str == get_text('hotkey_none'):
             return get_text('hotkey_not_set')
         
@@ -322,7 +315,7 @@ class HotkeyDisplayDialog(QDialog):
             "page_up": "PageUp", "page_down": "PageDown", "space": "Space",
             "enter": "Enter", "esc": "Esc", "backspace": "Backspace",
             "tab": "Tab", "ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", 
-            "win": "Win", "windows": "Win"
+            "win": "Win", "windows": "Win" # "windows" от keyboard lib
         }
         
         parts = s.split('+')
@@ -331,7 +324,7 @@ class HotkeyDisplayDialog(QDialog):
             part_str = part_str_orig.strip()
             if part_str.lower().startswith("num "):
                 formatted_parts.append(part_str) 
-            elif part_str.lower().startswith("keypad "):
+            elif part_str.lower().startswith("keypad "): # Для формата keyboard lib
                 formatted_parts.append(part_str.replace("keypad ", "Num ").capitalize())
             elif part_str.lower() in key_name_replacements:
                 formatted_parts.append(key_name_replacements[part_str.lower()])
@@ -364,17 +357,20 @@ class HotkeyDisplayDialog(QDialog):
         <h3>{get_text('hotkeys_section_main')}</h3><ul>"""
         
         current_hotkeys_internal_format = {}
+        # Получаем хоткеи из нового адаптера
         if hasattr(self.parent_window, 'hotkey_adapter') and self.parent_window.hotkey_adapter:
             current_hotkeys_internal_format = self.parent_window.hotkey_adapter.get_current_hotkeys_config_for_settings()
         else:
             logging.warning("HotkeyAdapter не найден в parent_window для HotkeyDisplayDialog.")
 
-        from core.hotkey_config import HOTKEY_ACTIONS_CONFIG
+        from core.hotkey_config import HOTKEY_ACTIONS_CONFIG # Импорт здесь, чтобы избежать цикла
         
+        # Используем HOTKEY_ACTIONS_CONFIG для итерации по действиям
         for action_id, config_data in HOTKEY_ACTIONS_CONFIG.items():
             desc_key_str = config_data['desc_key']
+            # Получаем хоткей из загруженного конфига, используем action_id как ключ
             internal_hk_str = current_hotkeys_internal_format.get(action_id, get_text('hotkey_not_set'))
-            display_hk_str = self._normalize_for_display_info(internal_hk_str)
+            display_hk_str = self._normalize_for_display_info(internal_hk_str) # Нормализуем для отображения
             hotkeys_text_html += f"<li><code>{display_hk_str}</code>: {get_text(desc_key_str)}</li>"
 
         hotkeys_text_html += f"""</ul>
@@ -399,6 +395,8 @@ class HotkeyDisplayDialog(QDialog):
             self.move(center_point)
 
 
+# HotkeySettingsDialog удален, его функциональность перенесена в SettingsWindow
+
 def show_about_program_info(parent):
     dialog = AboutProgramDialog(parent)
     dialog.exec()
@@ -414,3 +412,5 @@ def show_hero_rating(parent, app_version):
 def show_hotkey_display_dialog(parent):
     dialog = HotkeyDisplayDialog(parent)
     dialog.exec()
+
+# show_hotkey_settings_dialog удалена, используется MainWindow.show_settings_window

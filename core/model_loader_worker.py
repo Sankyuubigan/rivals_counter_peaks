@@ -8,13 +8,11 @@ import onnxruntime
 from transformers import AutoImageProcessor
 import numpy as np
 
-# --- ИЗМЕНЕННЫЕ ПУТИ К МОДЕЛИ ---
-NN_MODELS_DIR_REL_TO_PROJECT_ROOT = "vision_models" 
+# Импортируем напрямую, чтобы избежать циклической зависимости, если бы AdvancedRecognitionLogic импортировал это
+NN_MODELS_DIR_REL_TO_PROJECT_ROOT = "nn_models" 
 EMBEDDINGS_DIR_REL_TO_PROJECT_ROOT = "resources/embeddings_padded" 
-ONNX_SUBDIR_IN_NN_MODELS = "dinov3-vitb16-pretrain-lvd1689m" 
-ONNX_MODEL_FILENAME = "model_q4.onnx" 
-# --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
+ONNX_SUBDIR_IN_NN_MODELS = "onnx" 
+ONNX_MODEL_FILENAME = "model.onnx" 
 IMAGE_PROCESSOR_ID = "facebook/dinov2-small"
 ONNX_PROVIDERS = ['CPUExecutionProvider']
 
@@ -29,7 +27,7 @@ class ModelLoaderWorker(QObject):
         logging.info(f"[ModelLoaderWorker] Initialized with project_root: {self.project_root_path}")
 
     def _get_abs_path(self, relative_to_project_root: str) -> str:
-        parts = relative_to_project_root.replace('\\', '/').split('/')
+        parts = relative_to_project_root.split('/')
         return os.path.join(self.project_root_path, *parts)
 
     def _ensure_dir_exists(self, dir_path_abs: str) -> bool:
@@ -67,10 +65,9 @@ class ModelLoaderWorker(QObject):
             return
         
         try:
-            logging.info(f"Attempting to load ONNX model from: {onnx_model_path}")
             session_options = onnxruntime.SessionOptions()
             ort_session_dino = onnxruntime.InferenceSession(onnx_model_path, sess_options=session_options, providers=ONNX_PROVIDERS)
-            input_name_dino = ort_session_dino.get_inputs().name
+            input_name_dino = ort_session_dino.get_inputs()[0].name # Сохраняем, хотя в AdvRec он тоже получается
             image_processor_dino = AutoImageProcessor.from_pretrained(IMAGE_PROCESSOR_ID, use_fast=False)
             
             if hasattr(image_processor_dino, 'size') and \
@@ -87,18 +84,23 @@ class ModelLoaderWorker(QObject):
         embedding_files = [f for f in os.listdir(embeddings_dir_abs) if f.lower().endswith(".npy")]
         if not embedding_files:
             logging.error(f"[ModelLoaderWorker] No DINOv2 embeddings (.npy files) found in '{embeddings_dir_abs}'.")
-
+            # Продолжаем, если модели загрузились, но эмбеддинги можно будет загрузить позже или они не критичны для старта
+        
         for emb_filename in embedding_files:
-            name = os.path.splitext(emb_filename) 
+            name = os.path.splitext(emb_filename)[0] 
             try:
                 dino_reference_embeddings[name] = np.load(os.path.join(embeddings_dir_abs, emb_filename))
             except Exception as e:
                 logging.warning(f"[ModelLoaderWorker] Error loading DINOv2 embedding '{emb_filename}': {e}")
         
-        if not dino_reference_embeddings and embedding_files:
+        if not dino_reference_embeddings and embedding_files: # Если были файлы, но ничего не загрузилось
             logging.error("[ModelLoaderWorker] Failed to load any DINOv2 embeddings from found files.")
+            # Решаем, является ли это критической ошибкой. Если да:
+            # self.models_loaded_signal.emit(False, ort_session_dino, image_processor_dino, {}, target_h_model_dino, target_w_model_dino)
+            # return
 
         logging.info(f"[ModelLoaderWorker] Loaded DINOv2 embeddings: {len(dino_reference_embeddings)}")
         
+        # Передаем input_name_dino неявно, он будет получен в AdvancedRecognitionLogic из сессии
         self.models_loaded_signal.emit(True, ort_session_dino, image_processor_dino, dino_reference_embeddings, target_h_model_dino, target_w_model_dino)
         logging.info("[ModelLoaderWorker] Model and embeddings load process finished.")
