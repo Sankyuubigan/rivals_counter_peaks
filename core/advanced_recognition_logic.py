@@ -39,6 +39,8 @@ TEAM_SIZE = 6
 Y_OVERLAP_THRESHOLD_RATIO = 0.5
 
 # Консанты из эталонного check_recognition.py
+IMAGE_MEAN = [0.485, 0.456, 0.406]
+IMAGE_STD = [0.229, 0.224, 0.225]
 CONFIDENCE_THRESHOLD = 0.70
 MAX_HEROES = 6
 
@@ -193,8 +195,8 @@ class AdvancedRecognition(QObject):
             self._loader_thread.quit()
 
     def is_ready(self) -> bool:
-        return self._models_ready and bool(self.ort_session_dino) and \
-               bool(self.image_processor_dino)
+        """Проверка готовности системы (убрана зависимость от image_processor_dino)"""
+        return self._models_ready and bool(self.ort_session_dino)
 
     def _cosine_similarity_single(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
         if vec_a is None or vec_b is None: return 0.0
@@ -240,22 +242,34 @@ class AdvancedRecognition(QObject):
         return padded_image
 
     def _get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
-        if not self.is_ready(): return np.array([])
-        if not pil_images_batch or not self.image_processor_dino or not self.ort_session_dino or not self.input_name_dino:
+        """Эталонная обработка изображений как в check_recognition.py"""
+        if not self.ort_session_dino or not self.input_name_dino:
             return np.array([])
 
-        padded_batch_for_processor = [
-            self._pad_image_to_target_size_pil(img, self.target_h_model_dino, self.target_w_model_dino, PADDING_COLOR_WINDOW_DINO)
-            for img in pil_images_batch if img is not None
-        ]
-
-        if not padded_batch_for_processor:
+        valid_imgs = [img for img in pil_images_batch if img is not None]
+        if not valid_imgs:
             return np.array([])
 
-        inputs = self.image_processor_dino(images=padded_batch_for_processor, return_tensors="np")
-        onnx_outputs = self.ort_session_dino.run(None, {self.input_name_dino: inputs.pixel_values})
-        batch_cls_embeddings = onnx_outputs[0][:, 0, :]
-        return batch_cls_embeddings
+        # Прямая обработка как в эталоне - без transformer image processor
+        arrays = []
+        for img in valid_imgs:
+            # Паддинг до целевого размера как в эталоне
+            padded_img = self._pad_image_to_target_size_pil(img, self.target_h_model_dino, self.target_w_model_dino, PADDING_COLOR_WINDOW_DINO)
+            # Простая нормализация как в эталоне
+            arr = (np.array(padded_img, dtype=np.float32)/255.0 - np.array(IMAGE_MEAN, dtype=np.float32)) / np.array(IMAGE_STD, dtype=np.float32)
+            arrays.append(np.transpose(arr, (2, 0, 1)))
+
+        if not arrays:
+            return np.array([])
+
+        outputs = self.ort_session_dino.run(None, {self.input_name_dino: np.stack(arrays, axis=0)})
+        embeddings = outputs[0][:, 0, :]
+
+        # Нормализация эмбеддингов как в эталоне (может использовать Numba или стандартную numpy)
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        embeddings = np.divide(embeddings, norms, out=np.zeros_like(embeddings), where=norms!=0)
+
+        return embeddings
 
     def _get_hero_column_center_x_akaze(self, large_image_cv2: np.ndarray) -> Tuple[Optional[int], List[str]]:
         if large_image_cv2 is None:
@@ -385,7 +399,7 @@ class AdvancedRecognition(QObject):
         # Параметры как в эталоне
         LEFT_OFFSET = 45  # Левое смещение для ROI
         HERO_SQUARE_SIZE = 95  # Размер квадрата героя
-        STEP_SIZE = HERO_SQUARE_SIZE // 2  # Шаг в полразмера
+        STEP_SIZE = HERO_SQUARE_SIZE // 4  # Шаг как в эталоне (95//4 = 23.75)
 
         rois_for_dino: List[Dict[str, int]] = []
 
