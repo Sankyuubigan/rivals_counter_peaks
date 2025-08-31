@@ -3,8 +3,23 @@
 
 import json
 import os
+import sys
 import logging
 from database.roles_and_groups import hero_roles  # Доступ роли для совместимости
+
+def resource_path(relative_path):
+    """Определяет путь к ресурсам в упакованном exe или development режиме."""
+    try:
+        # PyInstaller устанавливает sys._MEIPASS в путь к временной папке с распакованными ресурсами
+        base_path = sys._MEIPASS
+        logging.debug(f"resource_path: Используется sys._MEIPASS: {base_path}")
+    except AttributeError:
+        # В режиме разработки - путь к корню проекта
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+        logging.debug(f"resource_path: Режим разработки, используем путь: {base_path}")
+
+    final_path = os.path.join(base_path, relative_path)
+    return final_path
 
 # Глобальные переменные для совместимости с существующим кодом
 heroes = []
@@ -23,7 +38,10 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.j
         dict: Словарь {hero_name: opponents_data}
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        # Используем resource_path для корректной работы в bundle режиме
+        full_path = resource_path(file_path)
+        logging.debug(f"load_matchups_data: Загружаем файл: {full_path}")
+        with open(full_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         # Преобразуем данные в старый формат для совместимости с существующим кодом
@@ -80,7 +98,10 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json
         dict: Словарь {hero_name: {'win_rate': float, 'pick_rate': float, 'matches': int}}
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        # Используем resource_path для корректной работы в bundle режиме
+        full_path = resource_path(file_path)
+        logging.debug(f"load_hero_stats: Загружаем файл: {full_path}")
+        with open(full_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         name_mapping = {
@@ -207,7 +228,10 @@ def load_compositions_data(file_path="database/heroes_compositions.json"):
         dict: Словарь синергий {hero_name: [synergy_heroes]}
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        # Используем resource_path для корректной работы в bundle режиме
+        full_path = resource_path(file_path)
+        logging.debug(f"load_compositions_data: Загружаем файл: {full_path}")
+        with open(full_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         # Конвертируем имена героев
@@ -533,7 +557,9 @@ logging.info(f"Найдено {len(heroes)} героев")
 # Преобразуем роли в старый формат
 roles_data = None
 try:
-    with open("database/roles.json", 'r', encoding='utf-8') as f:
+    roles_path = resource_path("database/roles.json")
+    logging.debug(f"Загружаем роли героев: {roles_path}")
+    with open(roles_path, 'r', encoding='utf-8') as f:
         roles_raw = json.load(f)
         roles_data = {}
         # Преобразуем роли в старый формат

@@ -9,9 +9,34 @@ from database.heroes_bd import heroes as ALL_HERO_NAMES
 import logging
 
 def resource_path(relative_path):
-    try: base_path = sys._MEIPASS
-    except AttributeError: base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
-    return os.path.join(base_path, relative_path)
+    """Определяет путь к ресурсам в упакованном exe или development режиме."""
+    try:
+        # PyInstaller устанавливает sys._MEIPASS в путь к временной папке с распакованными ресурсами
+        base_path = sys._MEIPASS
+        logging.debug(f"resource_path: Используется sys._MEIPASS: {base_path}")
+    except AttributeError:
+        # В режиме разработки - путь к корню проекта
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        logging.debug(f"resource_path: Режим разработки, используем путь: {base_path}")
+
+    # Убеждаемся, что путь к resources правильный
+    resources_path = os.path.join(base_path, 'resources')
+    if not os.path.exists(resources_path):
+        logging.error(f"resource_path: Путь к resources не найден: {resources_path}")
+        # Попытка найти resources по другим путям
+        alt_base = os.path.dirname(sys.executable) if hasattr(sys, 'executable') else base_path
+        alt_resources = os.path.join(alt_base, 'resources')
+        if os.path.exists(alt_resources):
+            logging.info(f"resource_path: Найдена папка resources по альтернативному пути: {alt_resources}")
+            base_path = alt_base
+        else:
+            logging.error(f"resource_path: Папка resources не найдена даже по альтернативному пути: {alt_resources}")
+
+    logging.debug(f"resource_path: Финальный базовый путь: {base_path}")
+    final_path = os.path.join(base_path, relative_path)
+    logging.debug(f"resource_path: Финальный путь к {relative_path}: {final_path}")
+
+    return final_path
 
 SIZES = {
     'max': {'right': (60, 60), 'left': (50, 50), 'small': (35, 35), 'horizontal': (55, 55)},
@@ -42,6 +67,20 @@ def load_original_images():
     if not os.path.isdir(heroes_icons_folder):
         logging.error(f"Heroes icons folder not found: {heroes_icons_folder}")
         return
+
+    # Add debug logs
+    logging.info(f"ALL_HERO_NAMES count: {len(ALL_HERO_NAMES)}")
+    if ALL_HERO_NAMES:
+        logging.info(f"Sample ALL_HERO_NAMES: {list(ALL_HERO_NAMES)[:5]}")
+    else:
+        logging.error("ALL_HERO_NAMES is empty!")
+        return
+
+    try:
+        files_in_dir = os.listdir(heroes_icons_folder)
+        logging.info(f"Files in heroes_icons folder: {len(files_in_dir)} total - Sample: {files_in_dir[:10]}")
+    except Exception as e:
+        logging.error(f"Cannot list directory {heroes_icons_folder}: {e}")
 
     for hero in ALL_HERO_NAMES:
         # Конвертируем название героя в filename для иконок
@@ -84,6 +123,7 @@ def load_original_images():
 
         img_path = os.path.join(heroes_icons_folder, f"{icon_filename}.png")
 
+        logging.debug(f"Processing hero: {hero}, icon_filename: {icon_filename}, img_path: {img_path}")
         if os.path.exists(img_path):
             pixmap = QPixmap(img_path)
             if is_invalid_pixmap(pixmap):

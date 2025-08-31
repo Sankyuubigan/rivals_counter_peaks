@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%
 
 # --- Определяем пути ---
 script_dir = os.path.dirname(os.path.abspath(__file__))  # Папка core/build_scripts
-project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))  # Корень проекта rivals_counter_peaks
+project_root = os.path.dirname(script_dir)  # Корень проекта rivals_counter_peaks
 dist_dir = os.path.join(project_root, 'dist')
 build_cache_dir = os.path.join(project_root, "build_cache")  # PyInstaller создаст папку build здесь
 
@@ -73,20 +73,45 @@ if os.path.exists(spec_file_path_abs):
             spec_content = f_spec_read.read()
         
         # Замена имени приложения
+        logging.info(f"Пытаемся заменить name на '{app_name_with_version}'")
         new_spec_content, num_name_replacements = re.subn(
             r"name\s*=\s*['\"]([^'\"]+)['\"]",
             f"name='{app_name_with_version}'",
             spec_content,
             count=1
         )
-        
-        # Замена иконки
-        new_spec_content, num_icon_replacements = re.subn(
-            r"icon\s*=\s*['\"]([^'\"]+)['\"]",
-            f"icon='{ico_icon_path}'",
-            new_spec_content,
-            count=1
-        )
+        logging.info(f"Заменено строк с name: {num_name_replacements}")
+
+        # Замена иконки отключена
+        # escaped_ico_path = ico_icon_path.replace('\\', '\\\\')
+        # new_spec_content, num_icon_replacements = re.subn(
+        #     r"icon\s*=\s*(['\"])([^'\"]+)\1",
+        #     f"icon=r'{escaped_ico_path}'",
+        #     new_spec_content,
+        #     count=1
+        # )
+
+        # Icon handling disabled, icon already added manually to .spec
+        num_icon_replacements = 1
+#           logging.info("Строка 'icon=' не найдена в .spec файле. Добавляем иконку вручную.")
+#           if 'name=' in new_spec_content:
+#               # Вставляем перед name
+#               new_spec_content = re.sub(
+#                   r"(name\s*=\s*['\"][^'\"]+['\"])",
+#                   f"icon=r'{escaped_ico_path}'\n    \\1",
+#                   new_spec_content,
+#                   count=1
+#               )
+#           elif 'pyz = PYZ' in new_spec_content:
+#               # Вставляем перед PYZ
+#               new_spec_content = re.sub(
+#                   r"pyz = PYZ",
+#                   f"icon=r'{escaped_ico_path}'\n\npyz = PYZ",
+#                   new_spec_content,
+#                   count=1
+#               )
+#           else:
+#               logging.warning("Не удалось добавить строку иконки в .spec файл.")
         
         if num_name_replacements > 0:
             logging.info(f"Файл {spec_file_name_base} успешно обновлен. Новое имя приложения: {app_name_with_version}")
@@ -143,14 +168,10 @@ print("-" * 60)
 logging.info("Запуск PyInstaller...")
 rc = 1
 try:
-    build_process = subprocess.run(command, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=project_root, check=False)
-    print("--- PyInstaller STDOUT ---")
-    print(build_process.stdout or "STDOUT: (empty)")
-    print("-" * 26)
-    print("--- PyInstaller STDERR ---")
-    print(build_process.stderr or "STDERR: (empty)")
-    print("-" * 26)
-    rc = build_process.returncode
+    # Temporarily disable output capture to see real-time output
+    result = subprocess.run(command, shell=True, cwd=project_root)
+    rc = result.returncode
+    print("PyInstaller process completed")
     print("-" * 60)
     if rc == 0:
          logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
