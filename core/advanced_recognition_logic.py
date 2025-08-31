@@ -3,17 +3,23 @@ import os
 import numpy as np
 from PIL import Image
 import onnxruntime
-# AutoImageProcessor будет загружен в воркере
 import time
 import cv2
 import logging
 from collections import Counter, defaultdict
 from typing import Dict, List, Any, Tuple, Optional, Set
-from PySide6.QtCore import QObject, Signal, QThread, Slot # <--- ДОБАВЛЕН Slot
-
+from PySide6.QtCore import QObject, Signal, QThread, Slot
 from utils import normalize_hero_name as normalize_hero_name_util
 from core.image_processing_utils import preprocess_image_for_dino
-from core.model_loader_worker import ModelLoaderWorker # Импортируем новый воркер
+from core.model_loader_worker import ModelLoaderWorker
+
+# Установка Numba (если еще не установлена)
+try:
+    from numba import jit
+    NUMBA_AVAILABLE = True
+except ImportError:
+    NUMBA_AVAILABLE = False
+    print("Numba не установлена. Установите: pip install numba")
 
 
 # Константы остаются те же, но некоторые значения по умолчанию могут быть изменены в _on_models_loaded_from_worker
@@ -22,7 +28,7 @@ WINDOW_SIZE_H_DINO = 95
 ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.5)
 FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.5)
 FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.5)
-BATCH_SIZE_SLIDING_WINDOW_DINO = 128
+BATCH_SIZE_SLIDING_WINDOW_DINO = 32
 PADDING_COLOR_WINDOW_DINO = (0,0,0)
 
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
@@ -33,7 +39,7 @@ ROI_X_JITTER_VALUES_DINO = [-3, 0, 3]
 MAX_NOT_PASSED_AKAZE_TO_LOG = 15
 
 DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
-DINOV2_FINAL_DECISION_THRESHOLD = 0.65
+DINOV2_FINAL_DECISION_THRESHOLD = 0.70
 DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 TEAM_SIZE = 6
 Y_OVERLAP_THRESHOLD_RATIO = 0.5
@@ -52,13 +58,19 @@ def box_area(box):
     """Вычислить площадь bounding box"""
     return (box[2] - box[0]) * (box[3] - box[1])
 
-def box_iou_batch(boxes_a: np.ndarray, boxes_b: np.ndarray) -> np.ndarray:
+def box_iou_batch(boxes_a_np: np.ndarray, boxes_b_np: np.ndarray) -> np.ndarray:
     """Векторизованный расчет IoU для двух наборов bounding boxes"""
-    area_a = box_area(boxes_a.T)
-    area_b = box_area(boxes_b.T)
+    # Конвертируем в numpy если не являются
+    if not isinstance(boxes_a_np, np.ndarray):
+        boxes_a_np = np.array(boxes_a_np)
+    if not isinstance(boxes_b_np, np.ndarray):
+        boxes_b_np = np.array(boxes_b_np)
 
-    top_left = np.maximum(boxes_a[:, None, :2], boxes_b[:, :2])
-    bottom_right = np.minimum(boxes_a[:, None, 2:], boxes_b[:, 2:])
+    area_a = box_area(boxes_a_np.T)
+    area_b = box_area(boxes_b_np.T)
+
+    top_left = np.maximum(boxes_a_np[:, None, :2], boxes_b_np[:, :2])
+    bottom_right = np.minimum(boxes_a_np[:, None, 2:], boxes_b_np[:, 2:])
 
     area_inter = np.prod(
         np.clip(bottom_right - top_left, a_min=0, a_max=None), axis=2
@@ -83,7 +95,6 @@ def non_max_suppression(detections: List[Dict], iou_threshold: float = 0.4) -> L
         boxes.append([x, y, x + w, y + h])  # [x1, y1, x2, y2]
         scores.append(det['confidence'])
 
-    boxes = np.array(boxes)
     scores = np.array(scores)
 
     # Рассчитываем IoU для всех пар
@@ -106,6 +117,36 @@ def non_max_suppression(detections: List[Dict], iou_threshold: float = 0.4) -> L
     # Возвращаем оригинальные детекции в правильном порядке
     result = [detections_sorted[i] for i in keep]
     return result
+
+
+# =============================================================================
+# УСКОРЕНИЕ С NUMBA
+# =============================================================================
+
+if NUMBA_AVAILABLE:
+    @jit(nopython=True)
+    def get_embeddings_for_batch_jit(arrays_data, embeddings_shape):
+        """Ускоренная обработка эмбеддингов"""
+        batch_size = embeddings_shape[0]
+        emb_size = embeddings_shape[1]
+        embeddings = np.zeros((batch_size, emb_size), dtype=np.float32)
+
+        for i in range(batch_size):
+            start_idx = i * emb_size
+            end_idx = start_idx + emb_size
+            embedding = arrays_data[start_idx:end_idx]
+
+            # Нормализация
+            norm = 0.0
+            for j in range(emb_size):
+                norm += embedding[j] * embedding[j]
+            norm = np.sqrt(norm)
+
+            if norm > 1e-6:
+                for j in range(emb_size):
+                    embeddings[i, j] = embedding[j] / norm
+
+        return embeddings
 
 
 class AdvancedRecognition(QObject):
@@ -177,6 +218,8 @@ class AdvancedRecognition(QObject):
             self.dino_reference_embeddings = embeddings_dict
             self.target_h_model_dino = target_h
             self.target_w_model_dino = target_w
+            # Теперь dino_reference_embeddings это Dict[str, List[np.ndarray]] как в эталоне
+            self.dino_reference_embeddings = embeddings_dict  # key: hero_name, val: list[np.ndarray]
             self._models_ready = True
             logging.info("[AdvRec] Модели и эмбеддинги успешно установлены из воркера.")
         else:
@@ -242,7 +285,7 @@ class AdvancedRecognition(QObject):
         return padded_image
 
     def _get_cls_embeddings_for_batched_pil(self, pil_images_batch: List[Image.Image]) -> np.ndarray:
-        """Эталонная обработка изображений как в check_recognition.py"""
+        """Эталонная обработка изображений как в check_recognition.py с поддержкой Numba"""
         if not self.ort_session_dino or not self.input_name_dino:
             return np.array([])
 
@@ -265,9 +308,16 @@ class AdvancedRecognition(QObject):
         outputs = self.ort_session_dino.run(None, {self.input_name_dino: np.stack(arrays, axis=0)})
         embeddings = outputs[0][:, 0, :]
 
-        # Нормализация эмбеддингов как в эталоне (может использовать Numba или стандартную numpy)
-        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-        embeddings = np.divide(embeddings, norms, out=np.zeros_like(embeddings), where=norms!=0)
+        # Используем Numba для ускорения нормализации эмбеддингов как в эталоне
+        if NUMBA_AVAILABLE:
+            batch_size = embeddings.shape[0]
+            emb_size = embeddings.shape[1]
+            arrays_data = embeddings.flatten()
+            embeddings = get_embeddings_for_batch_jit(arrays_data, (batch_size, emb_size))
+        else:
+            # Стандартная нормализация
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            embeddings = np.divide(embeddings, norms, out=np.zeros_like(embeddings), where=norms!=0)
 
         return embeddings
 
@@ -403,8 +453,8 @@ class AdvancedRecognition(QObject):
 
         rois_for_dino: List[Dict[str, int]] = []
 
-        # Генерируем кандидатов по вертикали слева (как method_fast_projection в эталоне)
-        y = 0
+        # Генерируем кандидатов по вертикали слева (как method_fast_projection в эталоне, но пропускаем верхнюю часть)
+        y = 69
         while y <= s_height - HERO_SQUARE_SIZE:
             roi = {
                 'x': LEFT_OFFSET,
@@ -454,12 +504,25 @@ class AdvancedRecognition(QObject):
                         coord = coordinates_batch[i]
                         best_sim_for_window = -1.0
                         best_ref_name_for_window = None
-                        for ref_name, ref_embedding in self.dino_reference_embeddings.items():
-                            similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
-                            if similarity > best_sim_for_window:
-                                best_sim_for_window = similarity
+                        # Искать лучший hero как в эталоне get_best_match: макс sim из всех emb для героя
+                        all_sim_scores = []
+                        for ref_name, ref_embedding_list in self.dino_reference_embeddings.items():
+                            best_sim_for_hero = -1.0
+                            for emb in ref_embedding_list:
+                                similarity = self._cosine_similarity_single(window_embedding, emb)
+                                if similarity > best_sim_for_hero:
+                                    best_sim_for_hero = similarity
+                            all_sim_scores.append((ref_name, best_sim_for_hero))
+                            if best_sim_for_hero > best_sim_for_window:
+                                best_sim_for_window = best_sim_for_hero
                                 best_ref_name_for_window = ref_name
-                        if best_ref_name_for_window is not None and best_sim_for_window >= CONFIDENCE_THRESHOLD:
+
+                        # Логировать топ-5 если confidence низкий (для отладки)
+                        if best_sim_for_window < 0.8:
+                            sorted_sims = sorted(all_sim_scores, key=lambda x: x[1], reverse=True)
+                            top_5 = sorted_sims[:5]
+                            logging.info(f"[DEBUG] Окно ({coord['x']}, {coord['y']}), лучшая conf: {best_sim_for_window:.3f} -> {best_ref_name_for_window}. Топ-5: " + ", ".join(f"{h}@{s:.3f}" for h, s in top_5))
+                        if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_FINAL_DECISION_THRESHOLD:
                             all_dino_detections_from_roi.append({
                                 "hero": best_ref_name_for_window,
                                 "confidence": best_sim_for_window,
@@ -480,11 +543,24 @@ class AdvancedRecognition(QObject):
                     coord = coordinates_batch[i]
                     best_sim_for_window = -1.0
                     best_ref_name_for_window = None
-                    for ref_name, ref_embedding in self.dino_reference_embeddings.items():
-                        similarity = self._cosine_similarity_single(window_embedding, ref_embedding)
-                        if similarity > best_sim_for_window:
-                            best_sim_for_window = similarity
+                    # Искать лучший hero как в эталоне get_best_match: макс sim из всех emb для героя
+                    all_sim_scores = []
+                    for ref_name, ref_embedding_list in self.dino_reference_embeddings.items():
+                        best_sim_for_hero = -1.0
+                        for emb in ref_embedding_list:
+                            similarity = self._cosine_similarity_single(window_embedding, emb)
+                            if similarity > best_sim_for_hero:
+                                best_sim_for_hero = similarity
+                        all_sim_scores.append((ref_name, best_sim_for_hero))
+                        if best_sim_for_hero > best_sim_for_window:
+                            best_sim_for_window = best_sim_for_hero
                             best_ref_name_for_window = ref_name
+
+                    # Логировать топ-5 если confidence низкий (для отладки)
+                    if best_sim_for_window < 0.8:
+                        sorted_sims = sorted(all_sim_scores, key=lambda x: x[1], reverse=True)
+                        top_5 = sorted_sims[:5]
+                        logging.info(f"[DEBUG] Окно ({coord['x']}, {coord['y']}), лучшая conf: {best_sim_for_window:.3f} -> {best_ref_name_for_window}. Топ-5: " + ", ".join(f"{h}@{s:.3f}" for h, s in top_5))
                     if best_ref_name_for_window is not None and best_sim_for_window >= CONFIDENCE_THRESHOLD:
                         all_dino_detections_from_roi.append({
                             "hero": best_ref_name_for_window,
@@ -495,10 +571,8 @@ class AdvancedRecognition(QObject):
             processed_windows_count += len(pil_batch)
 
         dino_processing_end_time = time.time()
-        logging.info(f"[AdvRec] Обработано окон (DINOv2): {processed_windows_count}, Всего DINO детекций (выше порога {CONFIDENCE_THRESHOLD*100:.0f}%): {len(all_dino_detections_from_roi)}")
-        logging.info(f"[AdvRec] Время DINOv2 обработки ROI: {dino_processing_end_time - dino_processing_start_time:.2f} сек.")
-        processing_speed = processed_windows_count / (dino_processing_end_time - dino_processing_start_time) if (dino_processing_end_time - dino_processing_start_time) > 0 else 0
-        logging.info(f"[AdvRec] Скорость обработки: {processing_speed:.1f} окон/сек")
+        logging.info(f"[AdvRec] Обработано окон: {processed_windows_count}, Детекций выше порога: {len(all_dino_detections_from_roi)}")
+        logging.info(f"[AdvRec] Время обработки: {dino_processing_end_time - dino_processing_start_time:.2f} сек")
 
         # ЭТАП: Применяем NMS для удаления пересекающихся детекций
         logging.info(f"[AdvRec] Применяем NMS (порог IoU={0.4}) для {len(all_dino_detections_from_roi)} детекций")

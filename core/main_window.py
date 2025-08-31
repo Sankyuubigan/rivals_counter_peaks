@@ -151,11 +151,11 @@ class MainWindow(QMainWindow):
         formatter = logging.Formatter(log_format, datefmt='%H:%M:%S')
         self.log_handler.setFormatter(formatter)
 
-        self.log_handler.setLevel(logging.DEBUG)
+        self.log_handler.setLevel(logging.INFO)
         logging.getLogger().addHandler(self.log_handler)
 
-        if logging.getLogger().level > logging.DEBUG:
-             logging.getLogger().setLevel(logging.DEBUG)
+        if logging.getLogger().level > logging.INFO:
+              logging.getLogger().setLevel(logging.INFO)
 
         logging.info("GUI Log Handler initialized and added to root logger.")
         self.hotkey_display_dialog = None

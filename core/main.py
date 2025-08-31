@@ -4,7 +4,7 @@ import os
 
 # --- ОТЛАДОЧНЫЙ БЛОК: ПРОВЕРКА ПУТЕЙ ---
 # ... (блок оставлен без изменений) ...
-print("--- [DEBUG_PYINSTALLER] Завершение отладки путей ---")
+# print("--- [DEBUG_PYINSTALLER] Завершение отладки путей ---") # Отключен для чистоты логов
 # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
 
 
@@ -12,8 +12,8 @@ import logging
 import datetime
 import time 
 
-logging.basicConfig(level=logging.DEBUG, # Установим DEBUG для более детальных логов при запуске
-                    format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s', 
+logging.basicConfig(level=logging.INFO, # Уровень логирования INFO для оптимального баланса информации и производительности
+                    format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
                     datefmt='%H:%M:%S')
 logging.info("[Main] Начало работы main.py (после отладочного блока)")
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
-        print(f"CRITICAL ERROR during MainWindow creation/show: {e}") 
+        # print(f"CRITICAL ERROR during MainWindow creation/show: {e}") # Перенесено в logging выше
         if app_created_now: app.quit()
         sys.exit(1)
     
@@ -132,11 +132,10 @@ if __name__ == "__main__":
         exit_code = e.code if isinstance(e.code, int) else 1
     except Exception as e_exec: # Явное имя для переменной исключения
         logging.critical(f"Критическая ошибка во время app.exec(): {e_exec}", exc_info=True)
-        print(f"CRITICAL ERROR during app.exec(): {e_exec}")
-        exit_code = 1 
+        exit_code = 1
     finally:
         logging.info(f"--- Приложение завершено с кодом: {exit_code} (quitOnLastWindowClosed={app.quitOnLastWindowClosed()}) ---")
-        print(f"--- Application finished with code: {exit_code} ---")
+        # print(f"--- Application finished with code: {exit_code} ---") # Перенесено в logging
         # QApplication.quit() будет вызван из MainWindow.closeEvent, если quitOnLastWindowClosed is False
         # sys.exit(exit_code) здесь может быть избыточен, если quit() уже вызван.
         # Но для надежности, особенно если closeEvent не отработал корректно, можно оставить.

@@ -85,14 +85,24 @@ class ModelLoaderWorker(QObject):
         if not embedding_files:
             logging.error(f"[ModelLoaderWorker] No DINOv2 embeddings (.npy files) found in '{embeddings_dir_abs}'.")
             # Продолжаем, если модели загрузились, но эмбеддинги можно будет загрузить позже или они не критичны для старта
-        
+
+        # Группировка эмбеддингов как в эталоне check_recognition.py
+        from collections import defaultdict
+        hero_embedding_groups = defaultdict(list)
+
         for emb_filename in embedding_files:
-            name = os.path.splitext(emb_filename)[0] 
+            base_name = os.path.splitext(emb_filename)[0]
+            parts = base_name.split('_')
+            hero_name = '_'.join(parts[:-1]) if len(parts) > 1 and parts[-1].isdigit() else base_name
             try:
-                dino_reference_embeddings[name] = np.load(os.path.join(embeddings_dir_abs, emb_filename))
+                embedding = np.load(os.path.join(embeddings_dir_abs, emb_filename))
+                hero_embedding_groups[hero_name].append(embedding)
             except Exception as e:
                 logging.warning(f"[ModelLoaderWorker] Error loading DINOv2 embedding '{emb_filename}': {e}")
-        
+
+        # Преобразуем в dict с списками
+        dino_reference_embeddings = dict(hero_embedding_groups)
+
         if not dino_reference_embeddings and embedding_files: # Если были файлы, но ничего не загрузилось
             logging.error("[ModelLoaderWorker] Failed to load any DINOv2 embeddings from found files.")
             # Решаем, является ли это критической ошибкой. Если да:

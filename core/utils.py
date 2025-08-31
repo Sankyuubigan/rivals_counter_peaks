@@ -13,7 +13,7 @@ import re # Добавлен re для нормализации имен
 # но может использоваться другими частями или для справки.
 # Если он больше нигде не нужен, его можно удалить.
 RECOGNITION_AREA = {
-    'monitor': 1, 'left_pct': 50, 'top_pct': 20, 'width_pct': 40, 'height_pct': 50
+    'monitor': 1, 'left_pct': 50, 'top_pct': 20, 'width_pct': 20, 'height_pct': 50
 }
 SIMILARITY_THRESHOLD = 0.72
 SLIDING_WINDOW_SIZE = (50, 50)

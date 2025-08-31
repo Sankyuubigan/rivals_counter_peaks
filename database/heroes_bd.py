@@ -3,6 +3,7 @@
 
 import json
 import os
+import logging
 from database.roles_and_groups import hero_roles  # Доступ роли для совместимости
 
 # Глобальные переменные для совместимости с существующим кодом
@@ -58,13 +59,13 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.j
             internal_hero_name = name_mapping.get(hero_name, hero_name)
             old_format_data[internal_hero_name] = hero_stats.get("opponents", [])
 
-        print(f"Загружены матчап данные для {len(old_format_data)} героев")
+        logging.info(f"Загружены матчап данные для {len(old_format_data)} героев")
         return old_format_data
     except FileNotFoundError:
-        print(f"Файл {file_path} не найден")
+        logging.error(f"Файл {file_path} не найден")
         return {}
     except json.JSONDecodeError as e:
-        print(f"Ошибка при чтении JSON: {e}")
+        logging.error(f"Ошибка при чтении JSON: {e}")
         return {}
 
 
@@ -124,17 +125,17 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json
                     "matches": matches
                 }
             except (KeyError, ValueError) as e:
-                print(f"Пропуск героя {hero_name}: {e}")
+                logging.warning(f"Пропуск героя {hero_name}: {e}")
                 continue
 
-        print(f"Загружена статистика для {len(hero_stats)} героев")
+        logging.info(f"Загружена статистика для {len(hero_stats)} героев")
         return hero_stats
 
     except FileNotFoundError:
-        print(f"Файл {file_path} не найден")
+        logging.error(f"Файл {file_path} не найден")
         return {}
     except Exception as e:
-        print(f"Ошибка загрузки статистики: {e}")
+        logging.error(f"Ошибка загрузки статистики: {e}")
         return {}
 
 
@@ -191,7 +192,7 @@ def convert_hero_names_opponents(data):
 
         converted_data[internal_hero_name] = converted_opponents
 
-    print(f"Конвертированы имена для {len(converted_data)} матчапов")
+    logging.info(f"Конвертированы имена для {len(converted_data)} матчапов")
     return converted_data
 
 
@@ -260,14 +261,14 @@ def load_compositions_data(file_path="database/heroes_compositions.json"):
 
             compositions_converted[internal_hero_name] = converted_synergies
 
-        print(f"Загружены синергии для {len(compositions_converted)} героев")
+        logging.info(f"Загружены синергии для {len(compositions_converted)} героев")
         return compositions_converted
 
     except FileNotFoundError:
-        print(f"Файл {file_path} не найден, возвращаем пустые синергии")
+        logging.warning(f"Файл {file_path} не найден, возвращаем пустые синергии")
         return {}
     except Exception as e:
-        print(f"Ошибка загрузки синергий: {e}")
+        logging.error(f"Ошибка загрузки синергий: {e}")
         return {}
 
 
@@ -297,9 +298,6 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
 
     hero_scores = []
 
-    print(f"[DEBUG] calculate_team_counters called with enemy_team: {enemy_team}")
-    print(f"[DEBUG] Total heroes in matchups_data: {len(matchups_data)}")
-
     # Проходим по каждому герою в базе данных
     for hero, matchups in matchups_data.items():
         total_weighted_difference = 0
@@ -311,21 +309,16 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
 
         # Проходим по каждому вражескому герою
         for enemy in enemy_team:
-            print(f"[DEBUG] {hero}: Checking against enemy {enemy}")
             matchups_list = matchups
-            print(f"[DEBUG] {hero}: Found {len(matchups_list)} total opponents")
             # Ищем матчап против этого врага
             for matchup in matchups_list:
                 # Сравниваем имена, игнорируя регистр и возможные различия
                 if matchup["opponent"].lower() == enemy.lower():
-                    print(f"[DEBUG] Found matchup for {hero} vs {enemy}: {matchup}")
                     # Преобразуем строку difference в число
                     diff_str = matchup["difference"].strip().rstrip('%')  # Убираем '%' перед парсингом
                     try:
                         difference = -float(diff_str)  # Инвертируем так как большее число лучше
-                        print(f"[DEBUG] Calculated difference: {difference}")
                     except ValueError:
-                        print(f"[DEBUG] Invalid difference format after removing %: '{diff_str}'")
                         continue
 
                     # Определяем вес
@@ -339,14 +332,11 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
                     total_weighted_difference += difference * weight
                     total_weight += weight
                     found_matchups += 1
-                    print(f"[DEBUG] Added matchup: total_weighted={total_weighted_difference}, total_weight={total_weight}")
                     break
 
         # Пропускаем героев без данных
         if found_matchups == 0:
-            print(f"[DEBUG] {hero}: No matchups found (skipping)")
             continue
-        print(f"[DEBUG] {hero}: Found {found_matchups} matchups, total_diff={total_weighted_difference}, total_weight={total_weight}")
 
         # Рассчитываем итоговый рейтинг
         if total_weight > 0:
@@ -362,11 +352,6 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
 
     # Сортируем по рейтингу в порядке убывания
     hero_scores.sort(key=lambda x: x[1], reverse=True)
-
-    print(f"[DEBUG] calculate_team_counters: Final hero_scores (top 10): {hero_scores[:10]}")
-    # Подробные логи для топ героев
-    for i, (hero, rating) in enumerate(hero_scores[:10], 1):
-        print(f"[DEBUG] {i}. {hero}: rating={rating:.2f}")
 
     return hero_scores
 
@@ -511,10 +496,6 @@ def absolute_with_context(scores, hero_stats):
     """
     absolute_scores = []
 
-    print("[DEBUG] absolute_with_context: Starting with input scores (first 5):")
-    for hero, score in scores[:5]:
-        print(f"  {hero}: input_score={score:.2f}")
-
     for hero, score in scores:
         # Получаем статистику героя
         if hero in hero_stats:
@@ -531,25 +512,22 @@ def absolute_with_context(scores, hero_stats):
 
         # Логируем топ-героев
         if score > 2.0:  # Для героев с хорошим рейтингом
-            print(f"[DEBUG] {hero}: score={score:.2f}, winrate={overall_winrate:.1f}%, context_factor={context_factor:.3f}, absolute_score={absolute_score:.2f}")
+            pass  # Логирование удалено для производительности
 
     absolute_scores.sort(key=lambda x: x[1], reverse=True)
-    print(f"[DEBUG] absolute_with_context: Final top 10:")
-    for i, (hero, absolute_score) in enumerate(absolute_scores[:10], 1):
-        print(f"[DEBUG] {i}. {hero}: {absolute_score:.2f}")
 
     return absolute_scores
 
 
 # Загружаем данные при импорте модуля
-print("Инициализация новой базы данных...")
+logging.info("Инициализация новой базы данных...")
 matchups_data = load_matchups_data()
 hero_stats_data = load_hero_stats()
 matchups_data = convert_hero_names_opponents(matchups_data)
 
 # Создаем список героев из данных
 heroes = list(matchups_data.keys())
-print(f"Найдено {len(heroes)} героев")
+logging.info(f"Найдено {len(heroes)} героев")
 
 # Загружаем роли героев для совместимости
 # Преобразуем роли в старый формат
@@ -568,7 +546,7 @@ try:
             old_role = role_mapping.get(role, role.lower())
             roles_data[old_role] = heroes_list
 except FileNotFoundError:
-    print("Файл roles.json не найден, используем базовые роли")
+    logging.warning("Файл roles.json не найден, используем базовые роли")
     roles_data = {
         "tanks": ["Hulk", "Thor", "The Thing"],
         "supports": ["Groot", "Doctor Strange"],
@@ -586,4 +564,4 @@ heroes_counters = {}
 for hero_name, hero_data in matchups_data.items():
     heroes_counters[hero_name] = {}
 
-print("Новая база данных инициализирована")
+logging.info("Новая база данных инициализирована")
