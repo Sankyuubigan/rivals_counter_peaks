@@ -20,17 +20,6 @@ fliers={
 
 
 
-# Распределение героев по ролям (для расчета эффективной команды)
-hero_roles = {
-    "tank": ["Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
-              "Magneto","Emma Frost"],
-    "dd": ["The Punisher", "Hela", "Moon Knight", "Iron Man", "Winter Soldier", "Psylocke", "Mister Fantastic", "Storm",
-                  "Black Panther", "Squirrel Girl", "Spider Man", "Star Lord", "Wolverine", "Hawkeye", "Magik",
-                  "Widow", "Scarlet Witch", "Namor", "Fister", "Human Torch","Phoenix","Blade"],
-    "support": ["Loki", "Cloak & Dagger", "Jeff", "Mantis", "Luna Snow", "Rocket Raccoon", "Invisible Woman", 
-                 "Adam Warlock", "Ultron"]
-}
-
 hero_style={
     "brawl":["сущ стрендж тор презер эмма грут пени инвиз енот фистер луна росомаха мантис адам баки меджик ведьма локи"],
     "dive":["кэп стрендж тор веном паук пени халк пантера псай акула мантис меджик фистер старлорд росомаха"],
