@@ -443,6 +443,7 @@ class MainWindow(QMainWindow):
         self._original_geometry = self.geometry()
         self.mode_positions[self.mode] = self.pos()  # Сохраняем текущую позицию режима
         logging.debug(f"MainWindow: saved original geometry: {self._original_geometry}") # DEBUG
+        logging.debug(f"MainWindow: current flags before tab mode: {self.windowFlags():#x}")
 
         # Определяем размеры экрана
         screen = QApplication.primaryScreen()
@@ -458,32 +459,163 @@ class MainWindow(QMainWindow):
         tab_window_width = int(screen_width * 0.4)  # 40% ширины экрана
         tab_window_height = self._calculate_tab_mode_height()  # Высота по горизонтальному списку
 
-        logging.info(f"[TAB_MODE_HEIGHT] Высота таб-режима рассчитана: {tab_window_height}px")
-        logging.debug(f"MainWindow: calculated tab height: {tab_window_height}") # DEBUG
+        logging.info(f"[TAB_MODE_HEIGHT] Высота таб-режима рассчитана: {tab_window_height}px (минимум 70px из-за minimumSize)")
+        logging.debug(f"MainWindow: calculated tab height: {tab_window_height}px") # DEBUG
 
         # Располагаем в левой части экрана
         tab_x = 0
         tab_y = screen_geom.y()
 
-        # Устанавливаем позицию и размер с явной высотой
-        new_geometry = QRect(tab_x, tab_y, tab_window_width, tab_window_height)
-        self.setGeometry(new_geometry)
-        logging.info(f"Режим таба: установлен размер {tab_window_width}x{tab_window_height}, позиция ({tab_x},{tab_y})")
-
         # Скрываем основной контент, показываем только горизонтальный список
         self._set_tab_mode_ui_visible(True)
 
-        # Делаем окно поверх всех окон
+        # ВАЖНЫЙ ИЗМЕНЕНИЕ ПОРЯДКА: сначала устанавливаем флаги, ПОТОМ геометрию
+        # Это предотвратит восстановление геометрии window_flags_manager'ом
+
+        # Устанавливаем флаг намеренного изменения геометрии для таб-режима
+        # Это предотвратит восстановление старой геометрии в window_flags_manager.py
+        logging.debug(f"MainWindow: setting _intentional_geometry_change = True early")
+        self._intentional_geometry_change = True
+
+        # Делаем окно поверх всех окон (изменяем флаги ПЕРЕД установкой геометрии)
         self._is_win_topmost = True
+        flags_before_change = self.windowFlags()
+        logging.debug(f"MainWindow: flags before apply_mouse_invisible_mode: {flags_before_change:#x}")
         if hasattr(self, 'flags_manager'):
             self.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
-        self.show()
+        flags_after_change = self.windowFlags()
+        logging.debug(f"MainWindow: flags after apply_mouse_invisible_mode: {flags_after_change:#x}")
 
-        # Проверяем примененную геометрию
-        applied_geometry = self.geometry()
-        logging.debug(f"MainWindow: applied geometry after setGeometry: {applied_geometry}") # DEBUG
+        # ТЕПЕРЬ устанавливаем геометрию ПОСЛЕ изменения флагов
+        new_geometry = QRect(tab_x, tab_y, tab_window_width, tab_window_height)
+        logging.debug(f"MainWindow: setting new geometry after flags: {new_geometry}")
+        geom_before_set = self.geometry()
+        logging.debug(f"MainWindow: geometry before setGeometry() after flags: {geom_before_set}")
+        self.setGeometry(new_geometry)
+        geom_after_set = self.geometry()
+        logging.debug(f"MainWindow: geometry after setGeometry() after flags: {geom_after_set}")
+
+        # ФИКС: Принудительно устанавливаем fixed height, чтобы предотвратить автоматическое увеличение Qt
+        self.setMinimumHeight(tab_window_height)
+        self.setMaximumHeight(tab_window_height)
+        logging.debug(f"MainWindow: set fixed height to {tab_window_height} (min and max)")
+        logging.info(f"Режим таба: установлен размер {tab_window_width}x{tab_window_height}, позиция ({tab_x},{tab_y})")
+
+        # Проверяем геометрию после установки
+        if geom_after_set.height() != tab_window_height:
+            logging.warning(f"MainWindow: GEOMETRY PROBLEM - Expected height {tab_window_height}, got {geom_after_set.height()}")
+            # Попытка дополнительного применения геометрии
+            self.setGeometry(new_geometry)
+            geom_retry = self.geometry()
+            logging.debug(f"MainWindow: geometry after retry: {geom_retry}")
+
+        # Гарантируем показ окна
+        self.show()
+        geom_after_show = self.geometry()
+        logging.debug(f"MainWindow: geometry after show(): {geom_after_show}")
+
+        # ДОПОЛНИТЕЛЬНЫЙ ФИКС: Повторная установка fixed height через QTimer для гарантии
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(20, lambda: self._ensure_tab_height(tab_window_height))
+
+        # Финальная проверка и дополнительное применение если нужно
+        final_geometry = self.geometry()
+        logging.debug(f"MainWindow: final geometry: {final_geometry}")
+        if final_geometry.height() != tab_window_height:
+            logging.warning(f"MainWindow: Height still wrong, forcing geometry again. Expected: {tab_window_height}, Got: {final_geometry.height()}")
+            # Финальная попытка принудительного применения
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(10, lambda: self._force_tab_geometry(tab_window_width, tab_window_height))
+        else:
+            logging.info(f"MainWindow: successful tab mode geometry: {final_geometry}")
+
+        # Сбрасываем флаг после всех операций
+        logging.debug(f"MainWindow: setting _intentional_geometry_change = False")
+        self._intentional_geometry_change = False
 
         logging.info("MainWindow: enable_tab_mode завершен")
+
+    def _ensure_tab_height(self, target_height: int):
+        """Гарантирует, что высота окна таб-режима установлена корректно"""
+        current_geometry = self.geometry()
+        logging.debug(f"MainWindow: _ensure_tab_height called for target {target_height}, current height: {current_geometry.height()}")
+
+        if current_geometry.height() != target_height:
+            logging.warning(f"MainWindow: _ensure_tab_height detected wrong height {current_geometry.height()}, fixing to {target_height}")
+            self.setMinimumHeight(target_height)
+            self.setMaximumHeight(target_height)
+            self.resize(current_geometry.width(), target_height)
+            logging.debug(f"MainWindow: _ensure_tab_height applied. New geometry: {self.geometry()}")
+        else:
+            logging.debug(f"MainWindow: _ensure_tab_height - height already correct")
+
+    def _force_tab_geometry(self, width: int, height: int):
+        """Принудительное применение геометрии в таб-режиме (вызывается через QTimer)"""
+        logging.debug(f"MainWindow: _force_tab_geometry called with {width}x{height}")
+        current_geom = self.geometry()
+        logging.debug(f"MainWindow: geometry before force: {current_geom}")
+
+        if current_geom.width() == width and current_geom.height() == height:
+            logging.debug("MainWindow: _force_tab_geometry not needed - already correct")
+            return
+
+        # ДОПОЛНИТЕЛЬНО: Исправляем minimum и maximum height перед попытками
+        self.setMinimumHeight(height)
+        self.setMaximumHeight(height)
+
+        # ПЕРВАЯ ПОПЫТКА: Используем Qt setGeometry с repaint
+        logging.debug("MainWindow: Trying Qt setGeometry + repaint")
+        new_geom = QRect(current_geom.x(), current_geom.y(), width, height)
+        self.setGeometry(new_geom)
+        self.repaint()
+
+        forced_geom_qt = self.geometry()
+        logging.debug(f"MainWindow: geometry after Qt force: {forced_geom_qt}")
+
+        if forced_geom_qt.width() == width and forced_geom_qt.height() == height:
+            logging.info(f"MainWindow: _force_tab_geometry Qt SUCCESS: {forced_geom_qt}")
+            return
+
+        # ВТОРАЯ ПОПЫТКА: Используем WinAPI SetWindowPos для принудительного resize
+        if hasattr(self, 'win_api_manager') and self.win_api_manager:
+            logging.debug("MainWindow: Qt setGeometry failed, trying WinAPI SetWindowPos")
+            try:
+                screen_geom = self.geometry()
+                # Используем WinAPI manager для принудительного изменения размера
+                # WinAPI SetWindowPos без SWP_NOMOVE и SWP_NOSIZE флагов изменит и размер, и позицию
+                if self.win_api_manager._set_window_pos_api(
+                    self.win_api_manager._get_hwnd(),
+                    0, # hwnd_after - не меняем Z-order
+                    0x0010 | 0x0020 # SWP_NOZORDER | SWP_NOACTIVATE
+                ):
+                    # Повторяем вызов SetWindowPos с фактическими координатами и нужными размерами
+                    x, y = screen_geom.x(), screen_geom.y()
+                    import ctypes
+                    success = self.win_api_manager.user32_lib.SetWindowPos(
+                        self.win_api_manager._get_hwnd(),
+                        0, # не меняем Z-order
+                        x, y, width, height,
+                        0x0010 | 0x0020 # SWP_NOZORDER | SWP_NOACTIVATE
+                    )
+                    if success:
+                        self.update()
+                        forced_geom_winapi = self.geometry()
+                        logging.debug(f"MainWindow: geometry after WinAPI force: {forced_geom_winapi}")
+
+                        if forced_geom_winapi.width() == width and forced_geom_winapi.height() == height:
+                            logging.info(f"MainWindow: _force_tab_geometry WinAPI SUCCESS: {forced_geom_winapi}")
+                            return
+                        else:
+                            # ДОПОЛНИТЕЛЬНО: В WinAPI тоже исправить через resize
+                            self.resize(width, height)
+                            final_winapi_geom = self.geometry()
+                            logging.debug(f"MainWindow: after WinAPI + resize: {final_winapi_geom}")
+
+            except Exception as e:
+                logging.error(f"MainWindow: WinAPI resize failed: {e}")
+
+        # ОКОНЧАТЕЛЬНАЯ ПРОВЕРКА: Обе попытки неудачны
+        logging.error(f"MainWindow: _force_tab_geometry ALL METHODS FAILED: target {width}x{height}, current {self.geometry()}")
 
     @Slot()
     def disable_tab_mode(self):
@@ -492,7 +624,9 @@ class MainWindow(QMainWindow):
 
         # Логируем текущую высоту перед выходом из режима
         current_height = self.geometry().height()
-        logging.info(f"[TAB_MODE_HEIGHT] Высота перед выходом из таб-режима: {current_height}px")
+        logging.info(f"[TAB_MODE_HEIGHT] Высота перед выходом из таб-режима: {current_height}px (ожидается ~70px)")
+        if current_height < 60 or current_height > 80:
+            logging.warning(f"[TAB_MODE_HEIGHT] Необычная высота таб-режима: {current_height}px (ожидается ~70px)")
 
         # Сохраняем позицию до изменения режима
         self.mode_positions["tab"] = self.pos()
@@ -500,11 +634,26 @@ class MainWindow(QMainWindow):
         # Возвращаем обычные флаги окна
         self._is_win_topmost = False
 
+        # Сбрасываем fixed height для нормального режима
+        self.setMinimumHeight(0)
+        self.setMaximumHeight(16777215)
+        logging.debug("MainWindow: reset fixed height for normal mode")
+
         # Восстанавливаем интерфейс
         self._set_tab_mode_ui_visible(False)
 
         # Восстанавливаем предыдущий режим с сохраненной позицией
         previous_mode = self.mode_manager.current_mode if hasattr(self, 'mode_manager') else "middle"
+
+        # Явно устанавливаем нормальную высоту для режима (например 600px для middle)
+        from mode_manager import MODE_DEFAULT_WINDOW_SIZES
+        default_sizes = MODE_DEFAULT_WINDOW_SIZES.get(previous_mode, {'width': 950, 'height': 600})
+        normal_height = default_sizes.get('height', 600)
+        current_geometry = self.geometry()
+        if current_geometry.height() != normal_height:
+            self.resize(current_geometry.width(), normal_height)
+            logging.debug(f"MainWindow: restored normal height {normal_height}px for mode {previous_mode}")
+            logging.info(f"Восстановлена нормальная высота для режима '{previous_mode}': {normal_height}px")
 
         # Явно восстанавливаем позицию для предыдущего режима
         target_pos = self.mode_positions.get(previous_mode)
@@ -533,18 +682,16 @@ class MainWindow(QMainWindow):
 
     def _calculate_tab_mode_height(self) -> int:
         """Расчитывает высоту окна режима таба по высоте горизонтального списка героев"""
-        # Проверяем содержимое горизонтального списка
-        if self.counters_layout:
-            # Получаем общее количество виджетов в горизонтальном списке
-            widget_count = self.counters_layout.count()
-            if widget_count > 0:
-                # Предполагаем высоту элемента ~45px (размер иконки + отступы)
-                estimated_height = widget_count * 45
-                # Добавляем дополнительное пространство для подвала и отступов
-                total_height = min(estimated_height, 600)  # Увеличенный максимум 600px для динамической высоты
-                total_height = max(total_height, 80)  # Минимум 80px
-                logging.debug(f"_calculate_tab_mode_height: widget_count={widget_count}, estimated_height={estimated_height}, max_limited_to={600}, calculated_height={total_height}")
-                return total_height
+
+        # В таб-режиме горизонтальный список ОДНОГО ряда героев, высота должна быть ~45px + отступы
+        # ШИРИНА окна будет переменяться, ВЫСОТА всегда одного ряда
+        # НО: minimumSize блокирует высоту меньше 70px, поэтому используем минимум 70px
+
+        # Базовая высота одного ряда героев (45-50px + отступы)
+        tab_mode_height = 70  # Установлено в минимум 70px из-за setMinimumSize(300, 70)
+
+        logging.debug(f"_calculate_tab_mode_height: height for single row tab mode = {tab_mode_height}px")
+        return tab_mode_height
 
         # Fallback - перебираем все элементы в counters_layout
         if self.counters_layout:

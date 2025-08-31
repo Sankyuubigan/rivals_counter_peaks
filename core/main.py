@@ -23,7 +23,7 @@ if project_root not in sys.path: sys.path.insert(0, project_root)
 core_dir = os.path.dirname(__file__)
 if core_dir not in sys.path: sys.path.insert(0, core_dir)
 
-try:
+try:    
     now = datetime.datetime.now()
     app_version_display = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
     logging.info(f"[Main] Application display version set to: {app_version_display} (generated from date)")

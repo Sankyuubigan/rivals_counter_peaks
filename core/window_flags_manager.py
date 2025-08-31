@@ -93,11 +93,16 @@ class WindowFlagsManager:
 
 
             # Восстанавливаем геометрию, если она изменилась и окно видимо
+            # ИСКЛЮЧЕНИЕ: не восстанавливаем, если была намеренное изменение геометрии (например, в таб-режиме)
             current_geom_after_ops = self.mw.geometry()
-            if self.mw.isVisible() and geom_before_operation.isValid() and current_geom_after_ops != geom_before_operation:
+            intentional_change = getattr(self.mw, '_intentional_geometry_change', False)
+            if (not intentional_change and
+                self.mw.isVisible() and geom_before_operation.isValid() and current_geom_after_ops != geom_before_operation):
                 logging.debug(f"    [ApplyFlags] Восстановление геометрии с {current_geom_after_ops} на {geom_before_operation}. Причина: {reason}")
                 self.mw.setGeometry(geom_before_operation)
                 logging.debug(f"        Геометрия после восстановления: {self.mw.geometry()}")
+            elif intentional_change:
+                logging.debug(f"    [ApplyFlags] Пропущено восстановление геометрии - было намеренное изменение. Причина: {reason}")
 
         finally:
             self.mw.setUpdatesEnabled(True) # Включаем обновления UI

@@ -42,6 +42,69 @@ Y_OVERLAP_THRESHOLD_RATIO = 0.5
 CONFIDENCE_THRESHOLD = 0.70
 MAX_HEROES = 6
 
+# =============================================================================
+# ФУНКЦИИ NMS ИЗ ЭТАЛОННОГО check_recognition.py
+# =============================================================================
+
+def box_area(box):
+    """Вычислить площадь bounding box"""
+    return (box[2] - box[0]) * (box[3] - box[1])
+
+def box_iou_batch(boxes_a: np.ndarray, boxes_b: np.ndarray) -> np.ndarray:
+    """Векторизованный расчет IoU для двух наборов bounding boxes"""
+    area_a = box_area(boxes_a.T)
+    area_b = box_area(boxes_b.T)
+
+    top_left = np.maximum(boxes_a[:, None, :2], boxes_b[:, :2])
+    bottom_right = np.minimum(boxes_a[:, None, 2:], boxes_b[:, 2:])
+
+    area_inter = np.prod(
+        np.clip(bottom_right - top_left, a_min=0, a_max=None), axis=2
+    )
+
+    return area_inter / (area_a[:, None] + area_b - area_inter)
+
+def non_max_suppression(detections: List[Dict], iou_threshold: float = 0.4) -> List[Dict]:
+    """Non-Maximum Suppression для удаления пересекающихся детекций"""
+    if not detections:
+        return []
+
+    # Сортируем детекции по уверенности (по убыванию)
+    detections_sorted = sorted(detections, key=lambda x: x['confidence'], reverse=True)
+
+    # Преобразуем в формат для NMS
+    boxes = []
+    scores = []
+    for det in detections_sorted:
+        x, y = det['position']
+        w, h = det['size']
+        boxes.append([x, y, x + w, y + h])  # [x1, y1, x2, y2]
+        scores.append(det['confidence'])
+
+    boxes = np.array(boxes)
+    scores = np.array(scores)
+
+    # Рассчитываем IoU для всех пар
+    ious = box_iou_batch(boxes, boxes)
+    np.fill_diagonal(ious, 0)  # Исключаем сравнение с самим собой
+
+    keep = []
+    suppressed = np.zeros(len(boxes), dtype=bool)
+
+    for i in range(len(boxes)):
+        if suppressed[i]:
+            continue
+
+        keep.append(i)
+
+        # Подавляем все детекции с высоким IoU
+        suppress_indices = np.where(ious[i] > iou_threshold)[0]
+        suppressed[suppress_indices] = True
+
+    # Возвращаем оригинальные детекции в правильном порядке
+    result = [detections_sorted[i] for i in keep]
+    return result
+
 
 class AdvancedRecognition(QObject):
     load_started = Signal()
@@ -423,9 +486,14 @@ class AdvancedRecognition(QObject):
         processing_speed = processed_windows_count / (dino_processing_end_time - dino_processing_start_time) if (dino_processing_end_time - dino_processing_start_time) > 0 else 0
         logging.info(f"[AdvRec] Скорость обработки: {processing_speed:.1f} окон/сек")
 
-        # Дедупликация как в эталоне (проще, чем гибридная логика AKAZE+DINO)
+        # ЭТАП: Применяем NMS для удаления пересекающихся детекций
+        logging.info(f"[AdvRec] Применяем NMS (порог IoU={0.4}) для {len(all_dino_detections_from_roi)} детекций")
+        nms_detections = non_max_suppression(all_dino_detections_from_roi, iou_threshold=0.4)
+        logging.info(f"[AdvRec] После NMS осталось {len(nms_detections)} детекций")
+
+        # Дедупликация по уникальным героям (как в эталоне, но после NMS)
         hero_dict = {}
-        for det in all_dino_detections_from_roi:
+        for det in nms_detections:
             hero_name = det['hero']
             if hero_name not in hero_dict or det['confidence'] > hero_dict[hero_name]['confidence']:
                 hero_dict[hero_name] = det
