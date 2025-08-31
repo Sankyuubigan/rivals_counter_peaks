@@ -813,12 +813,21 @@ class MainWindow(QMainWindow):
     def _save_debug_screenshot_internal(self, reason="manual", recognized_heroes_for_filename: list | None = None):
         logging.info(f"Запрос на сохранение скриншота. Причина: {reason}")
         try:
-            area_to_capture = utils.RECOGNITION_AREA
-            if reason == "manual_hotkey_fullscreen_debug_only":
+            if reason == "auto" or reason == "manual_hotkey_fullscreen_debug_only":
                  area_to_capture = {'monitor': 1, 'left_pct': 0, 'top_pct': 0, 'width_pct': 100, 'height_pct': 100}
+                 logging.info(f"Скриншот будет выглядеть полностью экрана для reason='{reason}'")
+            else:
+                 area_to_capture = utils.RECOGNITION_AREA
+                 logging.info(f"Скриншот будет области распознавания для reason='{reason}'")
 
             logging.debug(f"Область для захвата скриншота (_save_debug_screenshot_internal): {area_to_capture}")
             screenshot_cv2 = utils.capture_screen_area(area_to_capture)
+
+            if screenshot_cv2 is not None:
+                request_height, request_width = screenshot_cv2.shape[:2]
+                logging.info(f"Размер захваченного скриншота: {request_width}x{request_height}")
+            else:
+                logging.warning("capture_screen_area вернула None")
 
             if screenshot_cv2 is not None:
                 logging.debug("Скриншот успешно захвачен.")
