@@ -1,7 +1,7 @@
 import json
 import importlib.util
 import os
-def load_matchups_data(file_path="database/marvel_rivals_stats_20250810-055947.json"):
+def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.json"):
     """Загружает данные из JSON файла в новом формате"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -19,7 +19,7 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250810-055947.j
     except json.JSONDecodeError:
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
-def load_hero_stats(file_path="database/marvel_rivals_stats_20250810-055947.json"):
+def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json"):
     """Загружает общую статистику героев из JSON файла"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     
     if matchups_data and hero_stats and hero_roles:
         print("=" * 50)
-        enemy_team = ["Hela"]
+        enemy_team = ["Loki"]
         num_count=10
         print(f"Поиск оптимальной команды против {enemy_team}")
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)

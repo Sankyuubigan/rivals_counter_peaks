@@ -59,7 +59,12 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
     if result_label_found: result_label_found.hide()
 
     counter_scores = logic.calculate_counter_scores()
-    if not counter_scores: 
+    logging.debug(f"[Display] Counter scores received: {len(counter_scores)} items")
+    if counter_scores:
+        random_items = list(counter_scores.items())[:5]  # Показываем первых 5 героев для отладки
+        for hero, score in random_items:
+            logging.debug(f"[Display] Hero: {hero}, Score: {score:.2f}")
+    if not counter_scores:
         if result_label_found:
             result_label_found.setText(get_text('no_recommendations', language=logic.DEFAULT_LANGUAGE))
             result_label_found.show()
@@ -69,6 +74,7 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
         return
 
     sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
+    logging.debug(f"[Display] Sorted counters (first 10): {sorted_counters[:10]}")
     effective_team = logic.calculate_effective_team(counter_scores) 
     selected_heroes_set = set(logic.selected_heroes)
     items_added = 0

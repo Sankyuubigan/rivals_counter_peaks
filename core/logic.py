@@ -120,6 +120,7 @@ class CounterpickLogic:
 
         # Применяем абсолютный контекст
         hero_scores_with_context = absolute_with_context(hero_scores, hero_stats_data)
+        # hero_scores_with_context = hero_scores
 
         # Конвертируем обратно в словарь {hero: score}
         counter_scores = {hero: score for hero, score in hero_scores_with_context}

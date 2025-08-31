@@ -24,8 +24,42 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.j
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            print(f"Загружены матчап данные для {len(data)} героев")
-            return data
+
+        # Преобразуем данные в старый формат для совместимости с существующим кодом
+        name_mapping = {
+            "Black Widow": "Widow",
+            "Iron Fist": "Fister",
+            "Jeff The Land Shark": "Jeff",
+            "Spider Man": "SpiderMan",
+            "Star Lord": "StarLord",
+            "Rocket Raccoon": "Rocket Racoon",
+            "Doctor Strange": "Doctor Strange",
+            "The Thing": "The Thing",
+            "Human Torch": "Human Torch",
+            "Mister Fantastic": "Mister Fantastic",
+            "Winter Soldier": "Winter Soldier",
+            "Squirrel Girl": "Squirrel Girl",
+            "Scarlet Witch": "Witch",
+            "Black Panther": "Black Panther",
+            "Iron Man": "Iron Man",
+            "Captain America": "Captain America",
+            "Hawkeye": "Hawkeye",
+            "The Punisher": "Punisher",
+            "Moon Knight": "Moon Knight",
+            "Cloak Dagger": "Cloak and Dagger",
+            "Invisible Woman": "Invisible Woman",
+            "Adam Warlock": "Adam Warlock",
+            "Phoenix": "Phoenix",
+            "Blade": "Blade"
+        }
+
+        old_format_data = {}
+        for hero_name, hero_stats in data.items():
+            internal_hero_name = name_mapping.get(hero_name, hero_name)
+            old_format_data[internal_hero_name] = hero_stats.get("opponents", [])
+
+        print(f"Загружены матчап данные для {len(old_format_data)} героев")
+        return old_format_data
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
         return {}
@@ -48,6 +82,33 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
+        name_mapping = {
+            "Black Widow": "Widow",
+            "Iron Fist": "Fister",
+            "Jeff The Land Shark": "Jeff",
+            "Spider Man": "SpiderMan",
+            "Star Lord": "StarLord",
+            "Rocket Raccoon": "Rocket Racoon",
+            "Doctor Strange": "Doctor Strange",
+            "The Thing": "The Thing",
+            "Human Torch": "Human Torch",
+            "Mister Fantastic": "Mister Fantastic",
+            "Winter Soldier": "Winter Soldier",
+            "Squirrel Girl": "Squirrel Girl",
+            "Scarlet Witch": "Witch",
+            "Black Panther": "Black Panther",
+            "Iron Man": "Iron Man",
+            "Captain America": "Captain America",
+            "Hawkeye": "Hawkeye",
+            "The Punisher": "Punisher",
+            "Moon Knight": "Moon Knight",
+            "Cloak Dagger": "Cloak and Dagger",
+            "Invisible Woman": "Invisible Woman",
+            "Adam Warlock": "Adam Warlock",
+            "Phoenix": "Phoenix",
+            "Blade": "Blade"
+        }
+
         hero_stats = {}
         for hero_name, hero_data in data.items():
             try:
@@ -56,7 +117,8 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json
                 matches_str = hero_data["matches"].replace(',', '')
                 matches = int(matches_str)
 
-                hero_stats[hero_name] = {
+                internal_hero_name = name_mapping.get(hero_name, hero_name)
+                hero_stats[internal_hero_name] = {
                     "win_rate": win_rate,
                     "pick_rate": pick_rate,
                     "matches": matches
@@ -114,21 +176,20 @@ def convert_hero_names_opponents(data):
     }
 
     converted_data = {}
-    for hero_name, hero_data in data.items():
+    for hero_name, opponents_list in data.items():
         # Конвертируем имя героя
         internal_hero_name = name_mapping.get(hero_name, hero_name)
 
-        # Конвертируем имена оппонентов в каждом matchup
+        # opponents_list уже список матчапов, конвертируем имена внутри каждого матчапа
         converted_opponents = []
-        for opponent in hero_data.get("opponents", []):
+        for opponent in opponents_list:
             opponent_name = opponent["opponent"]
             internal_opponent_name = name_mapping.get(opponent_name, opponent_name)
             converted_opponent = opponent.copy()
             converted_opponent["opponent"] = internal_opponent_name
             converted_opponents.append(converted_opponent)
 
-        converted_data[internal_hero_name] = hero_data.copy()
-        converted_data[internal_hero_name]["opponents"] = converted_opponents
+        converted_data[internal_hero_name] = converted_opponents
 
     print(f"Конвертированы имена для {len(converted_data)} матчапов")
     return converted_data
@@ -236,23 +297,35 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
 
     hero_scores = []
 
+    print(f"[DEBUG] calculate_team_counters called with enemy_team: {enemy_team}")
+    print(f"[DEBUG] Total heroes in matchups_data: {len(matchups_data)}")
+
     # Проходим по каждому герою в базе данных
     for hero, matchups in matchups_data.items():
+        total_weighted_difference = 0
+        total_weight = 0
+        found_matchups = 0
         total_weighted_difference = 0
         total_weight = 0
         found_matchups = 0
 
         # Проходим по каждому вражескому герою
         for enemy in enemy_team:
+            print(f"[DEBUG] {hero}: Checking against enemy {enemy}")
+            matchups_list = matchups
+            print(f"[DEBUG] {hero}: Found {len(matchups_list)} total opponents")
             # Ищем матчап против этого врага
-            for matchup in matchups.get("opponents", []):
+            for matchup in matchups_list:
                 # Сравниваем имена, игнорируя регистр и возможные различия
                 if matchup["opponent"].lower() == enemy.lower():
+                    print(f"[DEBUG] Found matchup for {hero} vs {enemy}: {matchup}")
                     # Преобразуем строку difference в число
-                    diff_str = matchup["difference"].strip()
+                    diff_str = matchup["difference"].strip().rstrip('%')  # Убираем '%' перед парсингом
                     try:
                         difference = -float(diff_str)  # Инвертируем так как большее число лучше
+                        print(f"[DEBUG] Calculated difference: {difference}")
                     except ValueError:
+                        print(f"[DEBUG] Invalid difference format after removing %: '{diff_str}'")
                         continue
 
                     # Определяем вес
@@ -266,11 +339,14 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
                     total_weighted_difference += difference * weight
                     total_weight += weight
                     found_matchups += 1
+                    print(f"[DEBUG] Added matchup: total_weighted={total_weighted_difference}, total_weight={total_weight}")
                     break
 
         # Пропускаем героев без данных
         if found_matchups == 0:
+            print(f"[DEBUG] {hero}: No matchups found (skipping)")
             continue
+        print(f"[DEBUG] {hero}: Found {found_matchups} matchups, total_diff={total_weighted_difference}, total_weight={total_weight}")
 
         # Рассчитываем итоговый рейтинг
         if total_weight > 0:
@@ -287,11 +363,16 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
     # Сортируем по рейтингу в порядке убывания
     hero_scores.sort(key=lambda x: x[1], reverse=True)
 
+    print(f"[DEBUG] calculate_team_counters: Final hero_scores (top 10): {hero_scores[:10]}")
+    # Подробные логи для топ героев
+    for i, (hero, rating) in enumerate(hero_scores[:10], 1):
+        print(f"[DEBUG] {i}. {hero}: rating={rating:.2f}")
+
     return hero_scores
 
 
 # Настраиваемую переменная для бонуса синергии
-SYNERGY_BONUS = 2.0
+SYNERGY_BONUS = 0.0
 
 def select_optimal_team(sorted_heroes, hero_roles):
     """
@@ -365,7 +446,7 @@ def select_optimal_team(sorted_heroes, hero_roles):
         if len(vanguards) >= v_count and len(strategists) >= s_count and len(duelists) >= d_count:
             # Формируем команду
             team_candidates = vanguards[:v_count] + strategists[:s_count] + duelists[:d_count]
-            team_names = [hero_mz[0] for hero_name in team_candidates]
+            team_names = [hero_name[0] for hero_name in team_candidates]
 
             # Рассчитываем базовый score для команды
             base_score = sum(diff for _, diff in team_candidates)
@@ -430,19 +511,32 @@ def absolute_with_context(scores, hero_stats):
     """
     absolute_scores = []
 
+    print("[DEBUG] absolute_with_context: Starting with input scores (first 5):")
+    for hero, score in scores[:5]:
+        print(f"  {hero}: input_score={score:.2f}")
+
     for hero, score in scores:
         # Получаем статистику героя
         if hero in hero_stats:
-            overall_winrate = hero_stats[hero]["win_rate"]
+            overall_winrate = hero_stats[hero]["win_rate"] * 100  # Преобразуем back в проценты как в тест
         else:
             overall_winrate = 50.0
 
         # Чем сильнее герой в целом, тем ценнее его положительный вклад
-        context_factor = overall_winrate / 0.5
+        context_factor = overall_winrate / 50.0
 
         # Инвертируем отрицательный score и применяем контекстный фактор
         absolute_score = (100 + score) * context_factor
         absolute_scores.append((hero, absolute_score))
+
+        # Логируем топ-героев
+        if score > 2.0:  # Для героев с хорошим рейтингом
+            print(f"[DEBUG] {hero}: score={score:.2f}, winrate={overall_winrate:.1f}%, context_factor={context_factor:.3f}, absolute_score={absolute_score:.2f}")
+
+    absolute_scores.sort(key=lambda x: x[1], reverse=True)
+    print(f"[DEBUG] absolute_with_context: Final top 10:")
+    for i, (hero, absolute_score) in enumerate(absolute_scores[:10], 1):
+        print(f"[DEBUG] {i}. {hero}: {absolute_score:.2f}")
 
     return absolute_scores
 
