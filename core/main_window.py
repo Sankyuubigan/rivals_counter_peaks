@@ -24,7 +24,7 @@ from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
                      show_hero_rating, show_author_info)
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG
-from core.keyboard_hotkey_adapter import KeyboardHotkeyAdapter, KEYBOARD_AVAILABLE # KEYBOARD_AVAILABLE здесь не используется напрямую
+from core.hotkey_manager_global import HotkeyManagerGlobal
 from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES
 from win_api import WinApiManager
 from recognition import RecognitionManager
@@ -59,13 +59,11 @@ class MainWindow(QMainWindow):
     action_clear_all = Signal()
     action_recognize_heroes = Signal()
     action_debug_capture = Signal()
-    action_toggle_tray_mode = Signal()
     action_copy_team = Signal()
     action_decrease_opacity = Signal()
     action_increase_opacity = Signal()
 
     recognition_complete_signal = Signal(list)
-    update_tray_button_property_signal = Signal(bool)
 
     clear_hotkey_state_signal = Signal()
 
@@ -85,8 +83,7 @@ class MainWindow(QMainWindow):
         self.appearance_manager = AppearanceManager(self, self.app_settings_manager)
         self.current_theme = self.appearance_manager.current_theme
 
-        self.hotkey_adapter = KeyboardHotkeyAdapter(self)
-        self.clear_hotkey_state_signal.connect(self.hotkey_adapter.clear_pressed_keys_state)
+        self.hotkey_manager_global = HotkeyManagerGlobal(self, self.app_settings_manager)
 
         self.ui_updater = UiUpdater(self)
         self.action_controller = ActionController(self)
@@ -100,6 +97,10 @@ class MainWindow(QMainWindow):
             logging.warning("RecognitionManager не имеет сигнала models_ready_signal.")
 
         self.drag_handler = WindowDragHandler(self, lambda: getattr(self, 'top_frame', None))
+
+        # Синхронизируем _is_win_topmost между MainWindow и WinAPI
+        if self.win_api_manager and hasattr(self.win_api_manager, 'topmost_state_changed'):
+            self.win_api_manager.topmost_state_changed.connect(self._on_win_api_topmost_changed)
 
         self.mode = self.mode_manager.current_mode
         logging.info(f"Начальный режим окна: {self.mode}")
@@ -202,6 +203,7 @@ class MainWindow(QMainWindow):
         initial_pos = self.pos() if self.isVisible() else QPoint(100,100)
         self.mode_positions = { "min": initial_pos, "middle": initial_pos, "max": initial_pos }
         self.mouse_invisible_mode_enabled = False
+        self._is_win_topmost = False
         self.is_programmatically_updating_selection = False
         self._last_mode_toggle_time = 0
         self.right_images, self.left_images, self.small_images, self.horizontal_images = {}, {}, {}, {}
@@ -209,7 +211,6 @@ class MainWindow(QMainWindow):
         self.right_panel_instance: RightPanel | None = None
         self.main_layout: QVBoxLayout | None = None
         self.top_frame: QFrame | None = None
-        self.tray_mode_button: QPushButton | None = None
 
         self.icons_scroll_area: QScrollArea | None = None
         self.icons_scroll_content: QWidget | None = None
@@ -266,7 +267,6 @@ class MainWindow(QMainWindow):
             self.top_panel_instance = TopPanel(self, self.change_mode, self.logic, self.app_version)
             if self.top_panel_instance:
                 self.top_frame = self.top_panel_instance.top_frame
-                self.tray_mode_button = self.top_panel_instance.tray_mode_button
                 if self.top_frame: self.main_layout.addWidget(self.top_frame)
 
         self._create_icons_scroll_area_structure()
@@ -343,16 +343,11 @@ class MainWindow(QMainWindow):
 
 
         self.action_debug_capture.connect(lambda: self._save_debug_screenshot_internal("manual_hotkey"))
-        self.action_toggle_tray_mode.connect(self.toggle_tray_mode)
 
         self.action_decrease_opacity.connect(self.decrease_window_opacity)
         self.action_increase_opacity.connect(self.increase_window_opacity)
 
-        if self.tray_mode_button and hasattr(self, 'update_tray_button_property_signal'):
-             self.update_tray_button_property_signal.connect(self._update_tray_button_property)
 
-        if self.win_api_manager and hasattr(self.win_api_manager, 'topmost_state_changed'):
-            self.win_api_manager.topmost_state_changed.connect(self._handle_topmost_state_change)
 
         logging.info("    MainWindow: Подключение сигналов завершено.")
 
@@ -360,6 +355,12 @@ class MainWindow(QMainWindow):
     @Slot(bool)
     def _on_recognition_models_ready(self, ready: bool):
         logging.info(f"MainWindow: Recognition models ready state: {ready}")
+
+    @Slot(bool)
+    def _on_win_api_topmost_changed(self, is_topmost: bool):
+        """Синхронизирует _is_win_topmost между MainWindow и WinAPI"""
+        self._is_win_topmost = is_topmost
+        logging.debug(f"MainWindow: _is_win_topmost синхронизирован с WinAPI: {is_topmost}")
 
 
     def showEvent(self, event: QShowEvent):
@@ -400,14 +401,11 @@ class MainWindow(QMainWindow):
                 if hasattr(self, 'flags_manager'):
                     self.flags_manager.apply_mouse_invisible_mode("initial_show_no_ui_updater")
 
-            if hasattr(self, 'hotkey_adapter'): # Проверяем KEYBOARD_AVAILABLE внутри адаптера
-                loaded_hotkeys_from_settings = self.app_settings_manager.get_hotkeys()
-                # Запускаем слушатель и затем регистрируем хоткеи
-                QTimer.singleShot(1000, self.hotkey_adapter.start_listening)
-                QTimer.singleShot(1010, lambda: self.hotkey_adapter.load_and_register_hotkeys(loaded_hotkeys_from_settings))
-                logging.info(f"    showEvent: Запланирован запуск слушателя и регистрация хоткеев (с задержкой).")
+            if hasattr(self, 'hotkey_manager_global'):
+                # Новый hotkey manager инициализируется автоматически
+                logging.info("    showEvent: HotkeyManagerGlobal запущен и готов.")
             else:
-                logging.warning("    showEvent: HotkeyAdapter не найден, хоткеи не будут загружены/зарегистрированы.")
+                logging.warning("    showEvent: HotkeyManagerGlobal не найден.")
 
 
             self._initial_ui_update_done = True
@@ -432,38 +430,151 @@ class MainWindow(QMainWindow):
         logging.debug(f"MainWindow hideEvent triggered. isApplyingFlags: {is_applying_flags}, Spontaneous: {event.spontaneous()}")
         super().hideEvent(event)
 
-    @Slot(bool)
-    def _update_tray_button_property(self, is_active):
-        if self.tray_mode_button:
-            self.tray_mode_button.setProperty("trayModeActive", is_active)
-            button_text_key = 'tray_mode_on' if is_active else 'tray_mode_off'
-            self.tray_mode_button.setText(get_text(button_text_key))
-            style = self.tray_mode_button.style()
-            if style:
-                style.unpolish(self.tray_mode_button)
-                style.polish(self.tray_mode_button)
-            self.tray_mode_button.update()
 
-    @Slot(bool)
-    def _handle_topmost_state_change(self, is_topmost: bool):
-        logging.debug(f"--> _handle_topmost_state_change: is_topmost={is_topmost}, current mouse_invisible_mode_enabled={self.mouse_invisible_mode_enabled}")
-        if hasattr(self, 'update_tray_button_property_signal'):
-            self.update_tray_button_property_signal.emit(is_topmost)
 
-        self.mouse_invisible_mode_enabled = is_topmost
-        if hasattr(self, 'flags_manager'):
-            self.flags_manager.apply_mouse_invisible_mode("_handle_topmost_state_change")
-        logging.debug(f"<-- _handle_topmost_state_change finished")
 
 
     @Slot()
-    def toggle_tray_mode(self):
-        logging.info("MainWindow: toggle_tray_mode slot triggered.")
-        if hasattr(self, 'win_api_manager'):
-            target_topmost_state = not self._is_win_topmost
-            self.win_api_manager.set_topmost_winapi(target_topmost_state)
+    def enable_tab_mode(self):
+        """Вкл. режима таба - окно в левой части экрана, поверх всех, только горизонтальный список"""
+        logging.info("MainWindow: enable_tab_mode начат")
+
+        # Сохраняем текущую геометрию перед таб режимом
+        self._original_geometry = self.geometry()
+        self.mode_positions[self.mode] = self.pos()  # Сохраняем текущую позицию режима
+        logging.debug(f"MainWindow: saved original geometry: {self._original_geometry}") # DEBUG
+
+        # Определяем размеры экрана
+        screen = QApplication.primaryScreen()
+        if not screen:
+            logging.error("Не удалось получить первичный экран")
+            return
+
+        screen_geom = screen.availableGeometry()
+        screen_width = screen_geom.width()
+        screen_height = screen_geom.height()
+
+        # Вычисляем размеры для режима таба
+        tab_window_width = int(screen_width * 0.4)  # 40% ширины экрана
+        tab_window_height = self._calculate_tab_mode_height()  # Высота по горизонтальному списку
+
+        logging.info(f"[TAB_MODE_HEIGHT] Высота таб-режима рассчитана: {tab_window_height}px")
+        logging.debug(f"MainWindow: calculated tab height: {tab_window_height}") # DEBUG
+
+        # Располагаем в левой части экрана
+        tab_x = 0
+        tab_y = screen_geom.y()
+
+        # Устанавливаем позицию и размер с явной высотой
+        new_geometry = QRect(tab_x, tab_y, tab_window_width, tab_window_height)
+        self.setGeometry(new_geometry)
+        logging.info(f"Режим таба: установлен размер {tab_window_width}x{tab_window_height}, позиция ({tab_x},{tab_y})")
+
+        # Скрываем основной контент, показываем только горизонтальный список
+        self._set_tab_mode_ui_visible(True)
+
+        # Делаем окно поверх всех окон
+        self._is_win_topmost = True
+        if hasattr(self, 'flags_manager'):
+            self.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
+        self.show()
+
+        # Проверяем примененную геометрию
+        applied_geometry = self.geometry()
+        logging.debug(f"MainWindow: applied geometry after setGeometry: {applied_geometry}") # DEBUG
+
+        logging.info("MainWindow: enable_tab_mode завершен")
+
+    @Slot()
+    def disable_tab_mode(self):
+        """Выкл. режима таба - возврат в нормальный режим"""
+        logging.info("MainWindow: disable_tab_mode начат")
+
+        # Логируем текущую высоту перед выходом из режима
+        current_height = self.geometry().height()
+        logging.info(f"[TAB_MODE_HEIGHT] Высота перед выходом из таб-режима: {current_height}px")
+
+        # Сохраняем позицию до изменения режима
+        self.mode_positions["tab"] = self.pos()
+
+        # Возвращаем обычные флаги окна
+        self._is_win_topmost = False
+
+        # Восстанавливаем интерфейс
+        self._set_tab_mode_ui_visible(False)
+
+        # Восстанавливаем предыдущий режим с сохраненной позицией
+        previous_mode = self.mode_manager.current_mode if hasattr(self, 'mode_manager') else "middle"
+
+        # Явно восстанавливаем позицию для предыдущего режима
+        target_pos = self.mode_positions.get(previous_mode)
+        if target_pos and target_pos != QPoint(0, 0):
+            logging.info(f"Восстановление позиции для режима '{previous_mode}': {target_pos}")
+            self.move(target_pos)
+
+        self.change_mode(previous_mode)
+
+        self.show()
+        logging.info("MainWindow: disable_tab_mode завершен")
+
+    def _set_tab_mode_ui_visible(self, tab_mode_active: bool):
+        """Устанавливает видимость элементов интерфейса для режима таба"""
+        # В режиме таба показываем только горизонтальный список
+        if hasattr(self, 'icons_scroll_area'):
+            self.icons_scroll_area.setVisible(tab_mode_active)
+
+        # Скрываем остальные панели
+        if hasattr(self, 'left_panel_widget'):
+            self.left_panel_widget.setVisible(not tab_mode_active)
+        if hasattr(self, 'right_panel_widget'):
+            self.right_panel_widget.setVisible(not tab_mode_active)
+        if hasattr(self, 'top_panel_instance') and hasattr(self.top_panel_instance, 'top_frame'):
+            self.top_panel_instance.top_frame.setVisible(not tab_mode_active)
+
+    def _calculate_tab_mode_height(self) -> int:
+        """Расчитывает высоту окна режима таба по высоте горизонтального списка героев"""
+        # Проверяем содержимое горизонтального списка
+        if self.counters_layout:
+            # Получаем общее количество виджетов в горизонтальном списке
+            widget_count = self.counters_layout.count()
+            if widget_count > 0:
+                # Предполагаем высоту элемента ~45px (размер иконки + отступы)
+                estimated_height = widget_count * 45
+                # Добавляем дополнительное пространство для подвала и отступов
+                total_height = min(estimated_height, 600)  # Увеличенный максимум 600px для динамической высоты
+                total_height = max(total_height, 80)  # Минимум 80px
+                logging.debug(f"_calculate_tab_mode_height: widget_count={widget_count}, estimated_height={estimated_height}, max_limited_to={600}, calculated_height={total_height}")
+                return total_height
+
+        # Fallback - перебираем все элементы в counters_layout
+        if self.counters_layout:
+            item_count = 0
+            for i in range(self.counters_layout.count()):
+                item = self.counters_layout.itemAt(i)
+                if item and item.widget():
+                    item_count += 1
+
+            if item_count > 0:
+                # Предполагаем высоту элемента ~50px
+                total_height = min(item_count * 50, 500)  # Увеличенный максимум для fallback
+                total_height = max(total_height, 100)
+                logging.debug(f"_calculate_tab_mode_height: fallback item_count={item_count}, calculated_height={total_height}")
+                return total_height
+
+        # Последний fallback
+        logging.debug("_calculate_tab_mode_height: using fallback height 150")
+        return 150
+
+    @Slot()
+    def trigger_tab_recognition(self):
+        """Триггер распознавания героев по TAB+0 в режиме таба"""
+        logging.info("MainWindow: trigger_tab_recognition начат - распознавание героев по горячей клавише")
+
+        if hasattr(self, 'rec_manager') and hasattr(self.rec_manager.recognize_heroes_signal, 'emit'):
+            self.rec_manager.recognize_heroes_signal.emit()
+            logging.info("Запущено распознавание героев из режима таба")
         else:
-            logging.error("MainWindow: win_api_manager not found in toggle_tray_mode.")
+            logging.error("RecognitionManager не доступен для запуска распознавания")
 
 
     def change_mode(self, mode_name: str):
@@ -527,9 +638,6 @@ class MainWindow(QMainWindow):
              logging.debug(f"    _move_window_safely: Окно уже на {target_pos}, перемещение не требуется.")
 
 
-    @property
-    def _is_win_topmost(self):
-        return self.win_api_manager.is_win_topmost if hasattr(self, 'win_api_manager') and self.win_api_manager else False
 
     @Slot(list)
     def _on_recognition_complete(self, recognized_heroes_original_names: list):
@@ -727,12 +835,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _show_hotkey_info_dialog(self):
-        current_hotkeys_internal_format = {}
-        if hasattr(self, 'hotkey_adapter'):
-            current_hotkeys_internal_format = self.hotkey_adapter.get_current_hotkeys_config_for_settings()
-        else:
-            logging.warning("HotkeyAdapter не найден, информационное окно хоткеев может быть неактуальным.")
-
+        # Новый hotkey manager имеет фиксированные хоткеи, которые не изменяются через настройки
+        # TAB и TAB+0 - встроенные функции режима таба
         if self.hotkey_display_dialog:
             self.hotkey_display_dialog.update_html_content()
         else:
@@ -762,9 +866,9 @@ class MainWindow(QMainWindow):
     @Slot()
     def on_settings_applied(self):
         logging.info("MainWindow: Настройки были применены из SettingsWindow.")
-        if self.hotkey_adapter:
-            new_hotkeys_from_settings = self.app_settings_manager.get_hotkeys()
-            self.hotkey_adapter.load_and_register_hotkeys(new_hotkeys_from_settings)
+        # Новый hotkey manager работает автоматически, настройки применены
+        if hasattr(self, 'hotkey_manager_global'):
+            logging.info("HotkeyManagerGlobal настроен с последними обновлениями")
 
         new_lang = self.app_settings_manager.get_language()
         if self.appearance_manager and self.appearance_manager.current_language != new_lang:
@@ -871,11 +975,9 @@ class MainWindow(QMainWindow):
         if self.settings_window_instance and self.settings_window_instance.isVisible():
             self.settings_window_instance.reject()
 
-        if hasattr(self, 'hotkey_adapter'):
-            logging.info("Остановка KeyboardHotkeyAdapter и очистка хуков перед закрытием...")
-            self.hotkey_adapter.stop_listening()
-            if hasattr(self.hotkey_adapter, 'shutdown_hook'): # Добавлено
-                self.hotkey_adapter.shutdown_hook()
+        if hasattr(self, 'hotkey_manager_global'):
+            logging.info("Остановка HotkeyManagerGlobal перед закрытием...")
+            self.hotkey_manager_global.stop()
 
         if hasattr(self, 'rec_manager') and self.rec_manager:
             logging.info("Остановка процессов распознавания и загрузки моделей перед закрытием...")

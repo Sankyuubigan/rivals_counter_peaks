@@ -9,10 +9,10 @@ from transformers import AutoImageProcessor
 import numpy as np
 
 # Импортируем напрямую, чтобы избежать циклической зависимости, если бы AdvancedRecognitionLogic импортировал это
-NN_MODELS_DIR_REL_TO_PROJECT_ROOT = "nn_models" 
-EMBEDDINGS_DIR_REL_TO_PROJECT_ROOT = "resources/embeddings_padded" 
-ONNX_SUBDIR_IN_NN_MODELS = "onnx" 
-ONNX_MODEL_FILENAME = "model.onnx" 
+NN_MODELS_DIR_REL_TO_PROJECT_ROOT = "vision_models"
+EMBEDDINGS_DIR_REL_TO_PROJECT_ROOT = "resources/embeddings_padded"
+ONNX_SUBDIR_IN_NN_MODELS = "dinov3-vitb16-pretrain-lvd1689m"
+ONNX_MODEL_FILENAME = "model_q4.onnx"
 IMAGE_PROCESSOR_ID = "facebook/dinov2-small"
 ONNX_PROVIDERS = ['CPUExecutionProvider']
 

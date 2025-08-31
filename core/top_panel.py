@@ -31,7 +31,6 @@ class TopPanel:
         self.min_button: QPushButton | None = None 
         self.middle_button: QPushButton | None = None
         self.max_button: QPushButton | None = None
-        self.tray_mode_button: QPushButton | None = None
         # self.recognize_button: QPushButton | None = None # Убираем кнопку распознавания
         self.menu_button: QPushButton | None = None 
         self.version_label: QLabel | None = None
@@ -52,14 +51,11 @@ class TopPanel:
         self.min_button = self._create_mode_button('mode_min', "min")
         self.middle_button = self._create_mode_button('mode_middle', "middle")
         self.max_button = self._create_mode_button('mode_max', "max")
-        
+
         layout.addWidget(self.mode_label)
         layout.addWidget(self.min_button)
         layout.addWidget(self.middle_button)
         layout.addWidget(self.max_button)
-
-        self.tray_mode_button = self._create_tray_mode_button()
-        layout.addWidget(self.tray_mode_button)
 
         # Убираем создание кнопки Распознать
         # self.recognize_button = QPushButton(get_text('recognize_button_text', default_text="Распознать"))
@@ -83,10 +79,7 @@ class TopPanel:
 
         self.close_button_min_mode = self._create_close_button_min_mode()
         layout.addWidget(self.close_button_min_mode)
-        self.close_button_min_mode.hide() 
-
-        if self.tray_mode_button:
-             QTimer.singleShot(0, lambda: self._update_tray_mode_button_text_and_property())
+        self.close_button_min_mode.hide()
 
 
     def _create_slider(self) -> QSlider: 
@@ -104,32 +97,6 @@ class TopPanel:
         button.clicked.connect(lambda: self.switch_mode_callback(mode_name))
         return button
     
-    def _create_tray_mode_button(self) -> QPushButton: 
-        button = QPushButton() 
-        button.setObjectName("tray_mode_button")
-        button.setProperty("trayModeActive", False) 
-        button.clicked.connect(self.parent.toggle_tray_mode) 
-        return button
-    
-    def _update_tray_mode_button_text_and_property(self): 
-        if not self.tray_mode_button or not self.parent: 
-            logging.warning("[TopPanel._update_tray_mode_button_text_and_property] Кнопка 'Трей' или родительское окно не найдены.")
-            return
-        
-        is_tray_active = getattr(self.parent, '_is_win_topmost', False)
-        
-        button_text_key = 'tray_mode_on' if is_tray_active else 'tray_mode_off'
-        button_text = get_text(button_text_key, language=self.logic.DEFAULT_LANGUAGE)
-        self.tray_mode_button.setText(button_text)
-        
-        current_prop = self.tray_mode_button.property("trayModeActive")
-        if current_prop != is_tray_active: 
-            self.tray_mode_button.setProperty("trayModeActive", is_tray_active)
-            style = self.tray_mode_button.style()
-            if style: 
-                style.unpolish(self.tray_mode_button)
-                style.polish(self.tray_mode_button)
-            self.tray_mode_button.update() 
     
     def _create_close_button_min_mode(self) -> QPushButton: 
         button = QPushButton("✕") 
@@ -222,9 +189,6 @@ class TopPanel:
         #     else:
         #         self.recognize_button.setToolTip(get_text("recognition_models_loading_tooltip", default_text="Модели распознавания загружаются..."))
 
-
-        self._update_tray_mode_button_text_and_property() 
-        
         if self.version_label:
              version_text = f"v{self.app_version}" if self.app_version and self.app_version != "dev" else "v?.?.?"
              self.version_label.setText(version_text)

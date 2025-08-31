@@ -11,7 +11,6 @@ DEFAULT_HOTKEYS = {
     "recognize_heroes": "tab+num_divide", # Убедились, что здесь tab+num_divide
     "clear_all": "tab+num_subtract",
     "copy_team": "tab+num_1",
-    "toggle_tray_mode": "tab+num_7",
     "debug_capture": "tab+num_3",
     "decrease_opacity": "tab+num_4",
     "increase_opacity": "tab+num_6",
@@ -28,7 +27,6 @@ HOTKEY_ACTIONS_CONFIG = {
     "recognize_heroes": {"desc_key": "hotkey_desc_recognize", "signal_name": "action_recognize_heroes", "suppress": True}, # suppress=True, так как комбинация специфична
     "clear_all": {"desc_key": "hotkey_desc_clear", "signal_name": "action_clear_all", "suppress": True},
     "copy_team": {"desc_key": "hotkey_desc_copy_team", "signal_name": "action_copy_team", "suppress": True},
-    "toggle_tray_mode": {"desc_key": "hotkey_desc_toggle_tray", "signal_name": "action_toggle_tray_mode", "suppress": True},
     "debug_capture": {"desc_key": "hotkey_desc_debug_screenshot", "signal_name": "action_debug_capture", "suppress": True},
     "decrease_opacity": {"desc_key": "hotkey_desc_decrease_opacity", "signal_name": "action_decrease_opacity", "suppress": True},
     "increase_opacity": {"desc_key": "hotkey_desc_increase_opacity", "signal_name": "action_increase_opacity", "suppress": True},

@@ -17,12 +17,12 @@ from core.model_loader_worker import ModelLoaderWorker # Импортируем 
 
 
 # Константы остаются те же, но некоторые значения по умолчанию могут быть изменены в _on_models_loaded_from_worker
-WINDOW_SIZE_W_DINO = 93
-WINDOW_SIZE_H_DINO = 93
-ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.8)
-FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.9)
-FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.9)
-BATCH_SIZE_SLIDING_WINDOW_DINO = 32
+WINDOW_SIZE_W_DINO = 95
+WINDOW_SIZE_H_DINO = 95
+ROI_GENERATION_STRIDE_Y_DINO = int(WINDOW_SIZE_H_DINO * 0.5)
+FALLBACK_DINO_STRIDE_W = int(WINDOW_SIZE_W_DINO * 0.5)
+FALLBACK_DINO_STRIDE_H = int(WINDOW_SIZE_H_DINO * 0.5)
+BATCH_SIZE_SLIDING_WINDOW_DINO = 128
 PADDING_COLOR_WINDOW_DINO = (0,0,0)
 
 AKAZE_DESCRIPTOR_TYPE = cv2.AKAZE_DESCRIPTOR_MLDB
@@ -37,6 +37,10 @@ DINOV2_FINAL_DECISION_THRESHOLD = 0.65
 DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 TEAM_SIZE = 6
 Y_OVERLAP_THRESHOLD_RATIO = 0.5
+
+# Консанты из эталонного check_recognition.py
+CONFIDENCE_THRESHOLD = 0.70
+MAX_HEROES = 6
 
 
 class AdvancedRecognition(QObject):
@@ -136,6 +140,10 @@ class AdvancedRecognition(QObject):
         norm_b = np.linalg.norm(vec_b)
         if norm_a == 0 or norm_b == 0: return 0.0
         return float(dot_product / (norm_a * norm_b))
+
+    def normalize_hero_name_for_display(self, hero_name: str) -> str:
+        """Нормализует имя героя для отображения (заменяет подчеркивания, заглавные буквы)"""
+        return hero_name.replace('_', ' ').title().replace('And', '&')
 
     def _pad_image_to_target_size_pil(self, image_pil: Image.Image, target_height: int, target_width: int, padding_color: Tuple[int,int,int]) -> Image.Image:
         if image_pil is None:
@@ -287,6 +295,7 @@ class AdvancedRecognition(QObject):
 
 
     def recognize_heroes_on_screenshot(self, screenshot_cv2: np.ndarray) -> List[str]:
+        """Упрощенное распознавание только с DINO моделью, аналогично эталонному check_recognition.py"""
         logging.info(f"[AdvRec] --->>> recognize_heroes_on_screenshot ВЫЗВАН <<<---. is_ready: {self.is_ready()}") # ДОБАВЛЕНО ЛОГИРОВАНИЕ
         if not self.is_ready():
             logging.error("[AdvRec] Модели не загружены. Распознавание невозможно.")
@@ -304,30 +313,42 @@ class AdvancedRecognition(QObject):
             logging.error(f"[AdvRec] Ошибка при конвертации скриншота CV2 в PIL: {e}")
             return []
 
-        akaze_loc_start_time = time.time()
-        column_x_center, akaze_identified_canonical_names = self._get_hero_column_center_x_akaze(screenshot_cv2)
-        akaze_loc_end_time = time.time()
-        logging.info(f"[AdvRec] Время AKAZE локализации: {akaze_loc_end_time - akaze_loc_start_time:.2f} сек. Найдено AKAZE: {akaze_identified_canonical_names}")
+        # Убрана локализация AKAZE - используем только DINO как в эталоне
+        logging.info("[AdvRec] Используется только DINO распознавание (без AKAZE)")
+
+        # Генерация ROI по принципу эталона: простой вертикальный прокрут слева
+        roi_generation_start_time = time.time()
+
+        # Параметры как в эталоне
+        LEFT_OFFSET = 45  # Левое смещение для ROI
+        HERO_SQUARE_SIZE = 95  # Размер квадрата героя
+        STEP_SIZE = HERO_SQUARE_SIZE // 2  # Шаг в полразмера
 
         rois_for_dino: List[Dict[str, int]] = []
-        if column_x_center is not None:
-            base_roi_start_x = column_x_center - (WINDOW_SIZE_W_DINO // 2)
-            logging.info(f"[AdvRec] Генерация ROI для DINO. Базовый левый край ROI X={base_roi_start_x} (на основе центра X={column_x_center}). Шаг Y={ROI_GENERATION_STRIDE_Y_DINO}")
-            for y_base in range(0, s_height - WINDOW_SIZE_H_DINO + 1, ROI_GENERATION_STRIDE_Y_DINO):
-                for x_offset in ROI_X_JITTER_VALUES_DINO:
-                    current_roi_start_x = base_roi_start_x + x_offset
-                    if 0 <= current_roi_start_x and (current_roi_start_x + WINDOW_SIZE_W_DINO) <= s_width:
-                         rois_for_dino.append({'x': current_roi_start_x, 'y': y_base})
-        else:
-            logging.warning("[AdvRec] Не удалось определить X-координату центра колонки. Включается fallback DINO (полное сканирование).")
-            for y in range(0, s_height - WINDOW_SIZE_H_DINO + 1, FALLBACK_DINO_STRIDE_H):
-                for x_val in range(0, s_width - WINDOW_SIZE_W_DINO + 1, FALLBACK_DINO_STRIDE_W):
-                    rois_for_dino.append({'x': x_val, 'y': y})
+
+        # Генерируем кандидатов по вертикали слева (как method_fast_projection в эталоне)
+        y = 0
+        while y <= s_height - HERO_SQUARE_SIZE:
+            roi = {
+                'x': LEFT_OFFSET,
+                'y': y,
+                'width': HERO_SQUARE_SIZE,
+                'height': HERO_SQUARE_SIZE
+            }
+            if roi['x'] + roi['width'] <= s_width and roi['y'] + roi['height'] <= s_height:
+                rois_for_dino.append(roi)
+            y += STEP_SIZE
+
+        roi_generation_end_time = time.time()
+        logging.info(f"[AdvRec] Время генерации ROI (эталонный метод): {roi_generation_end_time - roi_generation_start_time:.2f} сек. Сгенерировано ROI: {len(rois_for_dino)}")
 
         logging.info(f"[AdvRec] Сгенерировано {len(rois_for_dino)} ROI для DINO.")
         if not rois_for_dino:
             logging.warning("[AdvRec] Не сгенерировано ни одного ROI для DINO.")
             return []
+
+        roi_generation_end_time = time.time()
+        logging.info(f"[AdvRec] Время генерации ROI: {roi_generation_end_time - roi_generation_start_time:.2f} сек. Всего ROI: {len(rois_for_dino)}")
 
         all_dino_detections_from_roi: List[Dict[str, Any]] = []
         pil_batch: List[Image.Image] = []
@@ -337,14 +358,13 @@ class AdvancedRecognition(QObject):
 
         for roi_coord in rois_for_dino:
             x, y = roi_coord['x'], roi_coord['y']
-            window_pil_original = screenshot_pil_original.crop((x, y, x + WINDOW_SIZE_W_DINO, y + WINDOW_SIZE_H_DINO))
+            window_pil_original = screenshot_pil_original.crop((x, y, x + HERO_SQUARE_SIZE, y + HERO_SQUARE_SIZE))
 
-            window_pil_preprocessed = preprocess_image_for_dino(window_pil_original)
-            if window_pil_preprocessed is None:
-                logging.warning(f"Предобработка для ROI ({x},{y}) вернула None. Пропуск этого ROI.")
-                continue
+            # Простая конвертация в RGB как в эталоне (без preprocess_image_for_dino)
+            if window_pil_original.mode != 'RGB':
+                window_pil_original = window_pil_original.convert('RGB')
 
-            pil_batch.append(window_pil_preprocessed)
+            pil_batch.append(window_pil_original)
             coordinates_batch.append({'x': x, 'y': y})
 
             if len(pil_batch) >= BATCH_SIZE_SLIDING_WINDOW_DINO:
@@ -362,11 +382,12 @@ class AdvancedRecognition(QObject):
                             if similarity > best_sim_for_window:
                                 best_sim_for_window = similarity
                                 best_ref_name_for_window = ref_name
-                        if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
+                        if best_ref_name_for_window is not None and best_sim_for_window >= CONFIDENCE_THRESHOLD:
                             all_dino_detections_from_roi.append({
-                                "name": best_ref_name_for_window,
-                                "similarity": best_sim_for_window,
-                                "x": coord['x'], "y": coord['y']
+                                "hero": best_ref_name_for_window,
+                                "confidence": best_sim_for_window,
+                                "position": (coord['x'], coord['y']),
+                                "size": (HERO_SQUARE_SIZE, HERO_SQUARE_SIZE)
                             })
                 processed_windows_count += len(pil_batch)
                 pil_batch = []
@@ -387,101 +408,42 @@ class AdvancedRecognition(QObject):
                         if similarity > best_sim_for_window:
                             best_sim_for_window = similarity
                             best_ref_name_for_window = ref_name
-                    if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_LOGGING_SIMILARITY_THRESHOLD:
+                    if best_ref_name_for_window is not None and best_sim_for_window >= CONFIDENCE_THRESHOLD:
                         all_dino_detections_from_roi.append({
-                            "name": best_ref_name_for_window,
-                            "similarity": best_sim_for_window,
-                            "x": coord['x'], "y": coord['y']
+                            "hero": best_ref_name_for_window,
+                            "confidence": best_sim_for_window,
+                            "position": (coord['x'], coord['y']),
+                            "size": (HERO_SQUARE_SIZE, HERO_SQUARE_SIZE)
                         })
             processed_windows_count += len(pil_batch)
 
         dino_processing_end_time = time.time()
-        logging.info(f"[AdvRec] Обработано окон (DINOv2): {processed_windows_count}, Всего DINO детекций (выше порога логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%): {len(all_dino_detections_from_roi)}")
+        logging.info(f"[AdvRec] Обработано окон (DINOv2): {processed_windows_count}, Всего DINO детекций (выше порога {CONFIDENCE_THRESHOLD*100:.0f}%): {len(all_dino_detections_from_roi)}")
         logging.info(f"[AdvRec] Время DINOv2 обработки ROI: {dino_processing_end_time - dino_processing_start_time:.2f} сек.")
+        processing_speed = processed_windows_count / (dino_processing_end_time - dino_processing_start_time) if (dino_processing_end_time - dino_processing_start_time) > 0 else 0
+        logging.info(f"[AdvRec] Скорость обработки: {processing_speed:.1f} окон/сек")
 
-        all_dino_detections_sorted = sorted(all_dino_detections_from_roi, key=lambda x: x["similarity"], reverse=True)
+        # Дедупликация как в эталоне (проще, чем гибридная логика AKAZE+DINO)
+        hero_dict = {}
+        for det in all_dino_detections_from_roi:
+            hero_name = det['hero']
+            if hero_name not in hero_dict or det['confidence'] > hero_dict[hero_name]['confidence']:
+                hero_dict[hero_name] = det
 
-        logging.info(f"[AdvRec] --- Все кандидаты DINO (прошедшие порог логирования {DINOV2_LOGGING_SIMILARITY_THRESHOLD*100:.0f}%) ---")
-        for i, res in enumerate(all_dino_detections_sorted):
-            percentage = res["similarity"] * 100
-            logging.info(f"[AdvRec]   Raw DINO {i+1}. '{res['name']}' ({normalize_hero_name_util(res['name'])}) - Сходство: {percentage:.2f}% (ROI: x={res['x']}, y={res['y']})")
+        unique_detections = sorted(hero_dict.values(), key=lambda x: x['confidence'], reverse=True)
+        final_detections = unique_detections[:MAX_HEROES]
+        final_detections.sort(key=lambda x: x['position'][1])
 
-        final_team_raw_names: List[str] = []
-        final_team_normalized_names_set: Set[str] = set()
-        occupied_y_slots_by_akaze: List[Tuple[int, int, str]] = []
+        result = [det['hero'] for det in final_detections]
 
-        akaze_hero_norm_names_unique = sorted(list(set(akaze_identified_canonical_names)))
-
-        for akaze_norm_name in akaze_hero_norm_names_unique:
-            if len(final_team_raw_names) >= TEAM_SIZE: break
-            if akaze_norm_name in final_team_normalized_names_set: continue
-
-            best_dino_match_for_akaze_hero: Optional[Dict[str, Any]] = None
-            highest_similarity = -1.0
-            for dino_cand_data in all_dino_detections_sorted:
-                if normalize_hero_name_util(dino_cand_data["name"]) == akaze_norm_name:
-                    if dino_cand_data["similarity"] > highest_similarity and \
-                       dino_cand_data["similarity"] >= DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE:
-                        highest_similarity = dino_cand_data["similarity"]
-                        best_dino_match_for_akaze_hero = dino_cand_data
-
-            if best_dino_match_for_akaze_hero:
-                raw_name_to_add = best_dino_match_for_akaze_hero["name"]
-                final_team_raw_names.append(raw_name_to_add)
-                final_team_normalized_names_set.add(akaze_norm_name)
-
-                y_start = best_dino_match_for_akaze_hero["y"]
-                y_end = y_start + WINDOW_SIZE_H_DINO
-                occupied_y_slots_by_akaze.append((y_start, y_end, akaze_norm_name))
-                logging.info(f"[AdvRec] Гибрид (AKAZE): Добавлен '{raw_name_to_add}' ({akaze_norm_name}) с DINO sim: {highest_similarity*100:.1f}%. Занятый Y-слот: ({y_start}-{y_end})")
-            else:
-                logging.warning(f"[AdvRec] Гибрид (AKAZE): AKAZE нашел '{akaze_norm_name}', но DINO не подтвердил его с достаточной уверенностью (>{DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE*100:.0f}%).")
-
-        dino_candidates_for_final_decision = [
-            cand for cand in all_dino_detections_sorted
-            if cand["similarity"] >= DINOV2_FINAL_DECISION_THRESHOLD
-        ]
-
-        logging.info(f"[AdvRec] --- Кандидаты DINOv2 для финального решения (прошедшие порог {DINOV2_FINAL_DECISION_THRESHOLD*100:.0f}%, {len(dino_candidates_for_final_decision)} шт.) ---")
-
-        for dino_cand_data in dino_candidates_for_final_decision:
-            if len(final_team_raw_names) >= TEAM_SIZE: break
-
-            dino_raw_name = dino_cand_data["name"]
-            dino_norm_name = normalize_hero_name_util(dino_raw_name)
-
-            if dino_norm_name in final_team_normalized_names_set: continue
-
-            dino_roi_y_start = dino_cand_data["y"]
-            dino_roi_y_end = dino_roi_y_start + WINDOW_SIZE_H_DINO
-            is_overlapping = False
-
-            for occ_y_start, occ_y_end, occ_hero_name in occupied_y_slots_by_akaze:
-                overlap_start = max(dino_roi_y_start, occ_y_start)
-                overlap_end = min(dino_roi_y_end, occ_y_end)
-                overlap_height = overlap_end - overlap_start
-
-                if overlap_height > (WINDOW_SIZE_H_DINO * Y_OVERLAP_THRESHOLD_RATIO):
-                    if dino_norm_name == occ_hero_name:
-                        logging.debug(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}) совпадает с уже добавленным AKAZE-героем '{occ_hero_name}'. Пропуск добавления.")
-                    else:
-                        logging.info(f"[AdvRec] Гибрид (DINO): Кандидат '{dino_raw_name}' ({dino_norm_name}, ROI Y:{dino_roi_y_start}-{dino_roi_y_end}) пересекается с '{occ_hero_name}' от AKAZE (слот Y:{occ_y_start}-{occ_y_end}). Пропуск.")
-                    is_overlapping = True
-                    break
-
-            if not is_overlapping:
-                final_team_raw_names.append(dino_raw_name)
-                final_team_normalized_names_set.add(dino_norm_name)
-                logging.info(f"[AdvRec] Гибрид (DINO): Добавлен '{dino_raw_name}' ({dino_norm_name}) с DINO sim: {dino_cand_data['similarity']*100:.1f}%.")
-                occupied_y_slots_by_akaze.append((dino_roi_y_start, dino_roi_y_end, dino_norm_name))
-
-
-        logging.info(f"[AdvRec] --- Финальный гибридный результат (сырые имена, {len(final_team_raw_names)} героев) ---")
-        for i, name in enumerate(final_team_raw_names):
-            logging.info(f"[AdvRec]   {i+1}. {name} ({normalize_hero_name_util(name)})")
+        logging.info(f"\n=== РЕЗУЛЬТАТ РАСПОЗНАВАНИЯ (только DINO, как в эталоне) ===")
+        logging.info(f"Распознано героев: {len(result)}")
+        for i, detection in enumerate(final_detections, 1):
+            logging.info(f"  {i}. {self.normalize_hero_name_for_display(detection['hero'])} "
+                        f"(уверенность: {detection['confidence']:.3f}, позиция: {detection['position']})")
 
         script_end_time = time.time()
         logging.info(f"[AdvRec] Общее время выполнения распознавания: {script_end_time - script_start_time:.2f} сек.")
-        logging.info(f"[AdvRec] <<<--- recognize_heroes_on_screenshot ЗАВЕРШЕН ---<<<") # ДОБАВЛЕНО ЛОГИРОВАНИЕ
+        logging.info(f"[AdvRec] <<<--- recognize_heroes_on_screenshot ЗАВЕРШЕН ---<<<")
 
-        return final_team_raw_names
+        return result

@@ -1,32 +1,32 @@
 # File: core/lang/translations.py
-import logging
+import logging 
 
 DEFAULT_LANGUAGE = 'ru_RU'
-SUPPORTED_LANGUAGES = {'ru_RU': 'Русский', 'en_US': 'English'}
+SUPPORTED_LANGUAGES = {'ru_RU': 'Русский', 'en_US': 'English'} 
 
 TRANSLATIONS = {
     'ru_RU': {
         'title': 'Подбор контрпиков',
         'select_heroes': 'Выберите героев, чтобы увидеть контрпики.',
         'no_heroes_selected': 'Выберите героев вражеской команды.',
-        'selected': 'Выбрано',
-        'selected_none': 'Выбрано (0/{max_team_size})',
-        'selected_some': 'Выбрано',
-        'selected_heroes_label_format': '{selected_text} ({count}/{max_team_size}): {heroes_list}',
-        'none_selected_placeholder': 'нет выбранных',
+        'selected': 'Выбрано', 
+        'selected_none': 'Выбрано (0/{max_team_size})', 
+        'selected_some': 'Выбрано', 
+        'selected_heroes_label_format': '{selected_text} ({count}/{max_team_size}): {heroes_list}', 
+        'none_selected_placeholder': 'нет выбранных', 
         'copy_rating': 'Копировать состав',
         'clear_all': 'Очистить всё',
         'about_program': 'О программе',
-        'author_info_title': 'Об авторе',
-        'author_menu_item_text': 'Об авторе',
+        'author_info_title': 'Об авторе', 
+        'author_menu_item_text': 'Об авторе', 
         'language': 'Язык',
         'strong_player': 'сильный игрок',
         'version': 'Версия: {version}',
         'counterpick_rating': 'Рейтинг контрпиков для вражеской команды:',
         'points': 'балл(ов)',
-        'hero_rating': 'Универсальные герои',
-        'hero_rating_title': 'Рейтинг универсальных героев',
-        'donate_info_title': 'Купить мне кофе (помощь и благодарность за софт):',
+        'hero_rating': 'Универсальные герои', 
+        'hero_rating_title': 'Рейтинг универсальных героев', 
+        'donate_info_title': 'Купить мне кофе (помощь и благодарность за софт):', 
         'donate_tinkoff_label': 'Тинькофф:',
         'donate_tinkoff_card': '2200 7007 5813 1881',
         'donate_donationalerts_label': 'Ссылка для донатов из-за рубежа:',
@@ -41,8 +41,8 @@ TRANSLATIONS = {
         'mode_min': 'Компактный',
         'mode_middle': 'Средний',
         'mode_max': 'Большой',
-        'tray_mode_on': 'Трей: Вкл',
-        'tray_mode_off': 'Трей: Выкл',
+        'tray_mode_on': 'Трей: Вкл', 
+        'tray_mode_off': 'Трей: Выкл', 
         'counters': 'контрит',
         'remove_priority': 'Снять приоритет',
         'set_priority': 'Назначить приоритет',
@@ -55,8 +55,8 @@ TRANSLATIONS = {
         'info': 'Информация',
         'no_data_to_copy': 'Нет данных для копирования (команда не сформирована).',
         'enemy_selected_tooltip': 'Выбран врагом',
-        'no_recommendations': 'Нет подходящих контрпиков',
-        'select_enemies_for_recommendations': 'Выберите врагов для отображения рекомендаций',
+        'no_recommendations': 'Нет подходящих контрпиков', 
+        'select_enemies_for_recommendations': 'Выберите врагов для отображения рекомендаций', 
         'recognition_error_prefix': 'Ошибка распознавания:',
         'recognition_no_screenshot': 'Не удалось сделать скриншот.',
         'recognition_no_templates': 'Шаблоны героев не загружены.',
@@ -64,8 +64,8 @@ TRANSLATIONS = {
         'screenshot_saved': 'Скриншот сохранен: {filepath}',
         'screenshot_save_failed': 'Не удалось сохранить скриншот: {error}',
         'menu': 'Меню',
-        'hotkeys_menu_item': 'Горячие клавиши (Инфо)',
-        'hotkey_settings_menu_item': 'Настройки',
+        'hotkeys_menu_item': 'Горячие клавиши (Инфо)', 
+        'hotkey_settings_menu_item': 'Настройки', 
         'logs_menu_item': 'Логи',
         'logs_window_title': 'Логи приложения',
         'copy_all_logs_button': 'Копировать все логи',
@@ -73,16 +73,16 @@ TRANSLATIONS = {
         'log_copy_no_logs': 'Нет логов для копирования.',
         'log_copy_success': 'Логи скопированы в буфер обмена.',
         'log_copy_error': 'Ошибка копирования логов',
-        'save_logs_to_file_button': "Сохранить логи в файл",
-        'log_save_no_logs': "Нет логов для сохранения.",
-        'log_save_dialog_title': "Сохранить логи как...",
-        'log_save_success': "Логи успешно сохранены в:\n{filepath}",
-        'log_save_error_detailed': "Не удалось сохранить логи в файл:\n{filepath}\n\nОшибка: {error_message}",
-        'hotkeys_window_title': 'Горячие клавиши',
-        'hotkey_settings_window_title': 'Настройка горячих клавиш',
-        'hotkeys_section_main': 'Основные действия:',
+        'save_logs_to_file_button': "Сохранить логи в файл", 
+        'log_save_no_logs': "Нет логов для сохранения.", 
+        'log_save_dialog_title': "Сохранить логи как...", 
+        'log_save_success': "Логи успешно сохранены в:\n{filepath}", 
+        'log_save_error_detailed': "Не удалось сохранить логи в файл:\n{filepath}\n\nОшибка: {error_message}", 
+        'hotkeys_window_title': 'Горячие клавиши', 
+        'hotkey_settings_window_title': 'Настройка горячих клавиш', 
+        'hotkeys_section_main': 'Основные действия:', 
         'hotkeys_section_interaction_title': 'Взаимодействие с интерфейсом:',
-        'hotkeys_section_window_title': 'Управление окном:',
+        'hotkeys_section_window_title': 'Управление окном:', 
         'hotkey_desc_navigation_up': 'Навигация: Вверх',
         'hotkey_desc_navigation_down': 'Навигация: Вниз',
         'hotkey_desc_navigation_left': 'Навигация: Влево',
@@ -94,8 +94,8 @@ TRANSLATIONS = {
         'hotkey_desc_copy_team': 'Копировать состав',
         'hotkey_desc_toggle_tray': 'Режим "Трей" (Поверх + Игнор. мыши)',
         'hotkey_desc_debug_screenshot': 'Тестовый скриншот',
-        'hotkey_desc_decrease_opacity': 'Уменьшить непрозрачность окна',
-        'hotkey_desc_increase_opacity': 'Увеличить непрозрачность окна',
+        'hotkey_desc_decrease_opacity': 'Уменьшить непрозрачность окна', 
+        'hotkey_desc_increase_opacity': 'Увеличить непрозрачность окна', 
         'hotkey_desc_lmb': 'ЛКМ по герою',
         'hotkey_desc_lmb_select': 'Выбрать/Снять выбор',
         'hotkey_desc_rmb': 'ПКМ по герою',
@@ -105,17 +105,17 @@ TRANSLATIONS = {
         'hotkey_desc_slider': 'Слайдер прозрачности',
         'hotkey_desc_slider_transparency': 'В левом верхнем углу',
         'hotkey_settings_change_btn': 'Изменить',
-        'hotkey_settings_press_keys': 'Нажмите клавиши...',
+        'hotkey_settings_press_keys': 'Нажмите клавиши...', 
         'hotkey_settings_press_new_hotkey_for': 'Нажмите новую комбинацию для "{action}"',
         'hotkey_settings_capture_title': 'Ввод нового хоткея',
-        'hotkey_settings_save': 'Сохранить',
+        'hotkey_settings_save': 'Сохранить', 
         'hotkey_settings_cancel': 'Отмена',
         'hotkey_settings_reset_defaults': 'Сбросить по умолчанию',
         'hotkey_settings_cancel_capture': 'Отменить ввод',
         'hotkey_not_set': 'Не назначен',
-        'hotkey_none': 'Нет',
-        'hotkey_settings_defaults_reset_title': 'Сброс настроек',
-        'hotkey_settings_defaults_reset_msg': 'Настройки хоткеев сброшены к стандартным значениям.',
+        'hotkey_none': 'Нет', 
+        'hotkey_settings_defaults_reset_title': 'Сброс настроек', 
+        'hotkey_settings_defaults_reset_msg': 'Настройки хоткеев сброшены к стандартным значениям.', 
         'hotkey_settings_duplicate_title': 'Дублирующиеся хоткеи',
         'hotkey_settings_duplicate_message': 'Обнаружены дублирующиеся горячие клавиши. Пожалуйста, исправьте:',
         'theme_menu_title': "Тема",
@@ -123,7 +123,7 @@ TRANSLATIONS = {
         'dark_theme_action': "Темная",
         'sw_general_tab_title': "Общие",
         'sw_hotkeys_tab_title': "Горячие клавиши",
-        'sw_screenshots_tab_title': "Скриншоты",
+        'sw_screenshots_tab_title': "Скриншоты", 
         'sw_save_less_than_6_label': "Сохранять скриншоты экрана, если распознано < 6 героев",
         'sw_save_path_label': "Папка для сохранения скриншотов:",
         'sw_default_path_text': "По умолчанию (рядом с программой)",
@@ -136,13 +136,13 @@ TRANSLATIONS = {
         'sw_settings_applied_msg': "Изменения успешно применены.",
         'sw_for_action_text': "для",
         'sw_and_text': "и",
-        'version_tooltip_prefix': "Версия приложения",
-        'recognize_button_text': "Распознать",
-        'recognize_button_tooltip': "Распознать героев",
-        'recognition_models_loading_tooltip': "Модели распознавания загружаются...",
-        'recognition_models_not_ready': "Модели распознавания еще не загружены. Пожалуйста, подождите.",
-        'recognition_models_not_ready_tooltip': "Модели распознавания не готовы.",
-        'close_button_tooltip': "Закрыть приложение",
+        'version_tooltip_prefix': "Версия приложения", 
+        'recognize_button_text': "Распознать", 
+        'recognize_button_tooltip': "Распознать героев", 
+        'recognition_models_loading_tooltip': "Модели распознавания загружаются...", 
+        'recognition_models_not_ready': "Модели распознавания еще не загружены. Пожалуйста, подождите.", 
+        'recognition_models_not_ready_tooltip': "Модели распознавания не готовы.", 
+        'close_button_tooltip': "Закрыть приложение", 
 
     },
     'en_US': {
@@ -157,15 +157,15 @@ TRANSLATIONS = {
         'copy_rating': 'Copy Team',
         'clear_all': 'Clear All',
         'about_program': 'About Program',
-        'author_info_title': 'About Author',
-        'author_menu_item_text': 'About Author',
+        'author_info_title': 'About Author', 
+        'author_menu_item_text': 'About Author', 
         'language': 'Language',
         'strong_player': 'strong player',
         'version': 'Version: {version}',
         'counterpick_rating': 'Counterpick rating for the enemy team:',
         'points': 'points',
-        'hero_rating': 'Universal Heroes',
-        'hero_rating_title': 'Universal Heroes Rating',
+        'hero_rating': 'Universal Heroes', 
+        'hero_rating_title': 'Universal Heroes Rating', 
         'donate_info_title': 'Buy me a coffee (support and thanks for the software):',
         'donate_tinkoff_label': 'Tinkoff:',
         'donate_tinkoff_card': '2200 7007 5813 1881',
@@ -205,7 +205,7 @@ TRANSLATIONS = {
         'screenshot_save_failed': 'Failed to save screenshot: {error}',
         'menu': 'Menu',
         'hotkeys_menu_item': 'Hotkeys (Info)',
-        'hotkey_settings_menu_item': 'Settings',
+        'hotkey_settings_menu_item': 'Settings', 
         'logs_menu_item': 'Logs',
         'logs_window_title': 'Application Logs',
         'copy_all_logs_button': 'Copy All Logs',
@@ -213,16 +213,16 @@ TRANSLATIONS = {
         'log_copy_no_logs': 'No logs to copy.',
         'log_copy_success': 'Logs copied to clipboard.',
         'log_copy_error': 'Error copying logs',
-        'save_logs_to_file_button': "Save Logs to File",
-        'log_save_no_logs': "No logs to save.",
-        'log_save_dialog_title': "Save Logs As...",
-        'log_save_success': "Logs successfully saved to:\n{filepath}",
-        'log_save_error_detailed': "Could not save logs to file:\n{filepath}\n\nError: {error_message}",
+        'save_logs_to_file_button': "Save Logs to File", 
+        'log_save_no_logs': "No logs to save.", 
+        'log_save_dialog_title': "Save Logs As...", 
+        'log_save_success': "Logs successfully saved to:\n{filepath}", 
+        'log_save_error_detailed': "Could not save logs to file:\n{filepath}\n\nError: {error_message}", 
         'hotkeys_window_title': 'Hotkeys',
         'hotkey_settings_window_title': 'Hotkey Configuration',
         'hotkeys_section_main': 'Main Actions:',
         'hotkeys_section_interaction_title': 'Interface Interaction:',
-        'hotkeys_section_window_title': 'Window Management:',
+        'hotkeys_section_window_title': 'Window Management:', 
         'hotkey_desc_navigation_up': 'Navigate: Up',
         'hotkey_desc_navigation_down': 'Navigate: Down',
         'hotkey_desc_navigation_left': 'Navigate: Left',
@@ -234,8 +234,8 @@ TRANSLATIONS = {
         'hotkey_desc_copy_team': 'Copy team composition',
         'hotkey_desc_toggle_tray': '"Tray" Mode (Always on Top + Mouse Ignore)',
         'hotkey_desc_debug_screenshot': 'Test screenshot',
-        'hotkey_desc_decrease_opacity': 'Decrease window opacity',
-        'hotkey_desc_increase_opacity': 'Increase window opacity',
+        'hotkey_desc_decrease_opacity': 'Decrease window opacity', 
+        'hotkey_desc_increase_opacity': 'Increase window opacity', 
         'hotkey_desc_lmb': 'LMB on hero',
         'hotkey_desc_lmb_select': 'Select/Deselect',
         'hotkey_desc_rmb': 'RMB on hero',
@@ -248,7 +248,7 @@ TRANSLATIONS = {
         'hotkey_settings_press_keys': 'Press keys...',
         'hotkey_settings_press_new_hotkey_for': 'Press new combination for "{action}"',
         'hotkey_settings_capture_title': 'Enter New Hotkey',
-        'hotkey_settings_save': 'Save',
+        'hotkey_settings_save': 'Save', 
         'hotkey_settings_cancel': 'Cancel',
         'hotkey_settings_reset_defaults': 'Reset to Defaults',
         'hotkey_settings_cancel_capture': 'Cancel Input',
@@ -291,29 +291,29 @@ _current_lang_internal = DEFAULT_LANGUAGE
 
 
 def _get_translation_table(language_code):
-    return TRANSLATIONS.get(language_code, TRANSLATIONS[DEFAULT_LANGUAGE])
+    return TRANSLATIONS.get(language_code, TRANSLATIONS[DEFAULT_LANGUAGE]) 
 
 
 def _validate_key(key, translations_for_lang, default_text, language_code_for_fallback_search):
     base_text = translations_for_lang.get(key)
     if base_text is None:
-        if language_code_for_fallback_search != 'en_US':
+        if language_code_for_fallback_search != 'en_US': 
             en_translations = TRANSLATIONS.get('en_US', {})
             base_text = en_translations.get(key)
-
-        if base_text is None:
+        
+        if base_text is None: 
              if default_text is None:
                  # Только логируем, не выбрасываем исключение
                  logging.warning(f"[Translations] Key '{key}' not found in translations for '{language_code_for_fallback_search}' or 'en_US', and no default_text provided.")
              # Возвращаем либо default_text, либо специальную строку, указывающую на отсутствующий ключ
-             base_text = default_text if default_text is not None else f"_{key}_"
+             base_text = default_text if default_text is not None else f"_{key}_" 
     return base_text
 
 
 def get_text(key, default_text=None, language=None, **kwargs):
     # Определяем язык для использования
     resolved_language = language if language else _current_lang_internal
-
+    
     # Создаем ключ для кэша
     cache_key_base = (resolved_language, key)
     # Для форматированных строк включаем kwargs в ключ, отсортировав их для консистентности
@@ -336,7 +336,7 @@ def get_text(key, default_text=None, language=None, **kwargs):
         try:
             result_text = base_text.format(**kwargs)
         except KeyError as e: # Обработка ошибки, если ключ для форматирования отсутствует
-            logging.warning(f"[Translations] Missing key '{e}' for formatting text_id '{key}' in lang '{resolved_language}'. Base text: '{base_text}'")
+            logging.warning(f"[Translations] Missing key '{e}' for formatting text_id '{key}' in lang '{resolved_language}'. Base text: '{base_text}'") 
             # Можно вернуть base_text как есть или специальную строку ошибки
         except ValueError as e: # Обработка других ошибок форматирования
             logging.warning(f"[Translations] Formatting ValueError for text_id '{key}' in lang '{resolved_language}': {e}. Base text: '{base_text}'")
