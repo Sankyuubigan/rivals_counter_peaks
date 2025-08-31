@@ -1,7 +1,9 @@
 # File: core/logic.py
 from collections import deque
-from database.heroes_bd import heroes, heroes_counters, heroes_compositions 
-from database.roles_and_groups import hero_roles
+from database.heroes_bd import (heroes, heroes_counters, heroes_compositions,
+                                matchups_data, hero_stats_data,
+                                calculate_team_counters, absolute_with_context,
+                                select_optimal_team, SYNERGY_BONUS, hero_roles)
 from core.lang.translations import get_text, DEFAULT_LANGUAGE as global_default_language
 # Убраны неиспользуемые константы AKAZE
 # from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
@@ -10,7 +12,8 @@ from core.lang.translations import get_text, DEFAULT_LANGUAGE as global_default_
 # import cv2 # cv2 больше не используется напрямую в этом файле
 import logging
 
-MIN_TANKS = 1; MAX_TANKS = 3; MIN_SUPPORTS = 2; MAX_SUPPORTS = 3; TEAM_SIZE = 6
+# Константы для формирования команды в новом формате ролей
+MIN_VANGUARDS = 1; MAX_VANGUARDS = 3; MIN_STRATEGISTS = 2; MAX_STRATEGISTS = 3; TEAM_SIZE = 6
 
 HARD_COUNTER_SCORE_BONUS = 2.0
 SOFT_COUNTER_SCORE_BONUS = 1.0
@@ -102,94 +105,68 @@ class CounterpickLogic:
 
     def calculate_counter_scores(self):
         if not self.selected_heroes: return {}
-        counter_scores = {}
-        current_selection_set = set(self.selected_heroes)
-        priority_heroes_set = self.priority_heroes 
 
-        for hero_candidate in heroes: 
-            counter_scores[hero_candidate] = self._calculate_hero_score(
-                hero_candidate, current_selection_set, priority_heroes_set
-            )
+        # Конвертируем внутренние имена обратно в стандартный формат для матчапов
+        enemy_team = list(self.selected_heroes)
+
+        # Получаем рейтинг героев против нашей команды (выбранной команды)
+        hero_scores = calculate_team_counters(
+            enemy_team=enemy_team,
+            matchups_data=matchups_data,
+            hero_roles=hero_roles,  # Используем реальные роли в новом формате
+            method="avg",
+            weighting="equal"
+        )
+
+        # Применяем абсолютный контекст
+        hero_scores_with_context = absolute_with_context(hero_scores, hero_stats_data)
+
+        # Конвертируем обратно в словарь {hero: score}
+        counter_scores = {hero: score for hero, score in hero_scores_with_context}
+
+        # Убедимся, что все герои из базы данных присутствуют
+        for hero in heroes:
+            if hero not in counter_scores:
+                counter_scores[hero] = 0.0
+
         return counter_scores
 
     def calculate_effective_team(self, counter_scores):
-        if not counter_scores: self.effective_team = []; return []
+        """
+        Рассчитывает эффективную команду с использованием новой системы синергии.
+
+        Новая система:
+        - Использует новый формат ролей Vanguard/Duelist/Strategist
+        - Применяет бонус синергии 2.0 балла за каждую синергию
+        - Оптимизирует сочетание героев для максимального счета
+
+        Args:
+            counter_scores (dict): Словари оценок героев {hero_name: score}
+
+        Returns:
+            list: Оптимальный список героев с учётом синергии
+        """
+        if not counter_scores:
+            self.effective_team = []
+            return []
+
+        # Фильтруем кандидатов - только с положительной оценкой, не выбранные
         candidates = {h: s for h, s in counter_scores.items() if s > 0 and h not in self.selected_heroes}
-        if not candidates: self.effective_team = []; return []
-        
+        if not candidates:
+            self.effective_team = []
+            return []
+
+        # Сортируем кандидатов по оценке (основание)
         sorted_candidates_by_score = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
-        
-        effective_team = deque(maxlen=TEAM_SIZE)
-        added_heroes_set = set()
-        tanks_count, supports_count, attackers_count = 0, 0, 0
 
-        def role_priority_key(item_tuple):
-            hero_name, score = item_tuple
-            role_tanks_list = hero_roles.get("tanks", [])
-            role_supports_list = hero_roles.get("supports", [])
-            if hero_name in role_tanks_list: return (0, -score) 
-            if hero_name in role_supports_list: return (1, -score)
-            return (2, -score) 
+        # Используем новую функцию оптимизации команды с синергиями
+        optimal_team = select_optimal_team(sorted_candidates_by_score, hero_roles)
 
-        role_sorted_all_candidates = sorted(candidates.items(), key=role_priority_key)
+        # Исключаем героев которые уже выбраны (дополнительная проверка)
+        optimal_team_filtered = [hero for hero in optimal_team if hero not in self.selected_heroes]
 
-        for hero, score in role_sorted_all_candidates:
-            if tanks_count < MIN_TANKS and hero in hero_roles.get("tanks", []) and hero not in added_heroes_set:
-                effective_team.append(hero); added_heroes_set.add(hero); tanks_count += 1
-                if tanks_count >= MIN_TANKS: break 
-
-        for hero, score in role_sorted_all_candidates:
-            if supports_count < MIN_SUPPORTS and hero in hero_roles.get("supports", []) and hero not in added_heroes_set:
-                effective_team.append(hero); added_heroes_set.add(hero); supports_count += 1
-                if supports_count >= MIN_SUPPORTS: break
-
-        remaining_candidates_by_score = [item for item in sorted_candidates_by_score if item[0] not in added_heroes_set]
-
-        while len(effective_team) < TEAM_SIZE and remaining_candidates_by_score:
-            best_hero_to_add = None
-            best_adjusted_score = -float('inf')
-            candidate_index_to_remove = -1
-
-            for i, (hero, score) in enumerate(remaining_candidates_by_score):
-                can_add_hero = False
-                current_role = "unknown"
-                if hero in hero_roles.get("tanks", []): current_role = "tanks"
-                elif hero in hero_roles.get("supports", []): current_role = "supports"
-                elif hero in hero_roles.get("attackers", []): current_role = "attackers"
-                
-                if current_role == "tanks" and tanks_count < MAX_TANKS: can_add_hero = True
-                elif current_role == "supports" and supports_count < MAX_SUPPORTS: can_add_hero = True
-                elif current_role == "attackers": can_add_hero = True 
-                elif current_role == "unknown": can_add_hero = True 
-
-                if can_add_hero:
-                    synergy_bonus = 0
-                    for teammate in effective_team: 
-                        if hero in heroes_compositions.get(teammate, []): synergy_bonus += 0.5
-                        if teammate in heroes_compositions.get(hero, []): synergy_bonus += 0.5
-                    
-                    adjusted_score_for_candidate = score + synergy_bonus
-                    if adjusted_score_for_candidate > best_adjusted_score:
-                        best_adjusted_score = adjusted_score_for_candidate
-                        best_hero_to_add = hero
-                        candidate_index_to_remove = i
-            
-            if best_hero_to_add is not None:
-                effective_team.append(best_hero_to_add)
-                added_heroes_set.add(best_hero_to_add)
-                if best_hero_to_add in hero_roles.get("tanks", []): tanks_count += 1
-                elif best_hero_to_add in hero_roles.get("supports", []): supports_count += 1
-                elif best_hero_to_add in hero_roles.get("attackers", []): attackers_count +=1
-
-                if 0 <= candidate_index_to_remove < len(remaining_candidates_by_score):
-                    remaining_candidates_by_score.pop(candidate_index_to_remove)
-                else: 
-                    logging.warning(f"[Logic - EffectiveTeam] Invalid index {candidate_index_to_remove} for remaining_candidates.")
-                    break 
-            else: 
-                break
-        
-        self.effective_team = list(effective_team)
+        # Ограничиваем размер команды согласно константам
+        self.effective_team = optimal_team_filtered[:TEAM_SIZE]
         return self.effective_team
 
     # Метод recognize_heroes_from_image удален, т.к. логика перенесена в AdvancedRecognition

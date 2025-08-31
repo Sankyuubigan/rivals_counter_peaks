@@ -178,78 +178,40 @@ heroes_counters = {
     ]},
 }
 
-# Основной список всех героев
-heroes = [
-    "Hulk", "Groot", "Thor", "Doctor Strange", "The Thing", "Venom", "Peni Parker", "Captain America",
-    "Magneto","Emma Frost",
-    "Punisher", "Hela", "Moon Knight","Iron Man", "Bucky", "Psylocke", "Mr Fantastic", "Storm",
-    "Black Panther", "Squirrel Girl", "SpiderMan", "StarLord", "Wolverine", "Hawkeye", "Magik", "Widow",
-    "Witch", "Namor", "Fister", "Human Torch",
-    "Loki", "Cloak and Dagger", "Jeff", "Mantis", "Luna Snow",
-    "Rocket Racoon", "Invisible Woman", "Adam Warlock", "Ultron"
+
+
+
+# осталось дополнить : = [
+#       "Luna Snow",
+#     "Rocket Racoon", "Invisible Woman", "Adam Warlock",
+# ]
+
+
+
+
+flunkers=[
+"Hulk" "Thor" "The Thing" "Venom" "Captain America" "Psylocke" "Mr Fantastic" "Black Panther" "SpiderMan" "Magik" "Witch" "Fister" "Jeff"
 ]
 
-# Герои, которые пока не реализованы (для информации)
-futures = ["Quicksilver", "Doctor Doom", "Cyclops", "Jean Grey", "Rogue", "Gambit", "Beast", "Iceman", "Colossus",
-           "Nightcrawler",
-           "Shadowcat", "Cable", "Deadpool", "Juggernaut", "Mystique", "Sabretooth",
-           "Silver Surfer", "Vision", ]
+range =["Punisher" "Hela" "Bucky" "Hawkeye" "Widow"]
 
-# Возможные синергии между героями (не используется в текущей логике подсчета рейтинга, но может быть полезно)
-heroes_compositions = {
-    "Hulk": [],
-    "Groot": ["Invisible Woman", "Jeff", "Cloak and Dagger", "Luna Snow"],
-    "Thor": ["Hela", "Doctor Strange", "Magneto"],
-    "Doctor Strange": ["Hulk"],
-    "The Thing": ["Invisible Woman", "Mr Fantastic", "Captain America", "Thor", "Hulk", "Venom", "Doctor Strange",
-                  "Cloak and Dagger", "Jeff", "Magneto"],
-    "Venom": [],
-    "Peni Parker": ["Venom", "Groot", "Luna Snow", "Invisible Woman", "Cloak and Dagger"],
-    "Captain America": ["Thor"],
-    "Magneto": [],
 
-    "Punisher": ["Doctor Strange", "Rocket Racoon"],
-    "Hela": [],
-    "Moon Knight": ["Cloak and Dagger"],
-    "Iron Man": ["Hulk", "Groot"],
-    "Bucky": ["Rocket Racoon"],
-    "Psylocke": ["Doctor Strange", "Magik"],
-    "Mr Fantastic": ["Invisible Woman", "Captain America", "Thor", "Hulk", "Venom", "Doctor Strange", "The Thing"],
-    "Storm": ["Thor", "Invisible Woman", "Human Torch"],
-    "Black Panther": ["Magik"],
-    "Squirrel Girl": ["SpiderMan"],
-    "SpiderMan": ["Venom"],
-    "StarLord": ["Adam Warlock"],
-    "Wolverine": ["Hulk", "The Thing"],
-    "Hawkeye": [],
-    "Magik": [],
-    "Widow": ["Hawkeye"],
-    "Witch": ["Doctor Strange", "Jeff"],
-    "Namor": ["Hulk"],
-    "Fister": [],
-    "Human Torch": ["Invisible Woman"],
+# Информационные списки (не используются в логике напрямую)
+if_teammates_healers_noobs = {
+    "SpiderMan", "Jeff", "Fister", "Witch", "Psylocke", "Captain America"
+}
+if_need_defend_healers={
+# "Groot" "Doctor Strange" "Peni Parker" "Magneto" 3хила "Bucky" "Punisher" "Hela" "Psylocke" "Storm" "Hawkeye" "Witch" "Namor"
+}
 
-    "Loki": ["Hela"],
-    "Cloak and Dagger": [],
-    "Jeff": ["Luna Snow", "Groot"],
-    "Mantis": ["Captain America", "Adam Warlock"],
-    "Luna Snow": ["Hulk", "The Thing", "Groot", "Fister"],
-    "Rocket Racoon": ["Captain America"],
-    "Invisible Woman": [],
-    "Adam Warlock": [],
+fliers={
+    "Iron Man", "Human Torch" ,"Storm" ,"Witch", "StarLord"
 }
 
 
 
-
-# перепроверить нужно : = [
-#
-#
-#
-#       "Luna Snow",
-#     "Rocket Racoon", "Invisible Woman", "Adam Warlock",
-
-
-# ]
-
-# https://rivalsmeta.com/characters/spider-man/matchups
+hero_style={
+    "brawl":["сущ стрендж тор презер эмма грут пени инвиз енот фистер луна росомаха мантис адам баки меджик ведьма локи"],
+    "dive":["кэп стрендж тор веном паук пени халк пантера псай акула мантис меджик фистер старлорд росомаха"],
+    "poke":["белка магнето стрендж муннайт пени жч вдова торч енот псай хокай локи луна намор мантис панишер баки хела адам муннайт старлорд шторм"],
+}

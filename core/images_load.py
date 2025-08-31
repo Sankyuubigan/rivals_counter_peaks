@@ -35,21 +35,56 @@ def load_original_images():
     logging.info("Loading original hero images...")
     loaded_count = 0; missing_heroes = []; invalid_load_heroes = []
     temp_original_images = {}
-    resources_folder = resource_path("resources") 
-    logging.debug(f"Searching for images in: {resources_folder}") # ИЗМЕНЕНО: DEBUG
-    if not os.path.isdir(resources_folder): 
-        logging.error(f"Resources folder not found: {resources_folder}")
+
+    # ИСПОЛЬЗУЕМ heroes_icons ПАΠОКУ ВМЕСТО resources
+    heroes_icons_folder = resource_path("resources/heroes_icons")
+    logging.debug(f"Searching for images in: {heroes_icons_folder}")
+    if not os.path.isdir(heroes_icons_folder):
+        logging.error(f"Heroes icons folder not found: {heroes_icons_folder}")
         return
 
     for hero in ALL_HERO_NAMES:
-        base_filename = hero.lower().replace(' ', '_').replace('&', 'and')
-        img_path_png = os.path.join(resources_folder, f"{base_filename}.png")
-        img_path_jpg = os.path.join(resources_folder, f"{base_filename}.jpg")
-        img_path = None
-        if os.path.exists(img_path_png): img_path = img_path_png
-        elif os.path.exists(img_path_jpg): img_path = img_path_jpg
+        # Конвертируем название героя в filename для иконок
+        # Сначала конвертируем специальные случаи
+        if hero == "Jeff":
+            icon_filename = "jeff_the_land_shark_1"
+        elif hero == "Widow":
+            icon_filename = "black_widow_1"
+        elif hero == "Fister":
+            icon_filename = "iron_fist_1"
+        elif hero == "SpiderMan":
+            icon_filename = "spider_man_1"
+        elif hero == "StarLord":
+            icon_filename = "star_lord_1"
+        elif hero == "Rocket Racoon":
+            icon_filename = "rocket_raccoon_1"
+        elif hero == "Witch":
+            icon_filename = "scarlet_witch_1"
+        elif hero == "Cloak and Dagger":
+            icon_filename = "cloak_and_dagger_1"
+        elif hero == "Punisher":
+            icon_filename = "the_punisher_1"
+        elif hero == "The Thing":
+            icon_filename = "the_thing_1"
+        elif hero == "Mister Fantastic":
+            icon_filename = "mister_fantastic_1"
+        elif hero == "Doctor Strange":
+            icon_filename = "doctor_strange_1"
+        elif hero == "Human Torch":
+            icon_filename = "human_torch_1"
+        elif hero == "Moon Knight":
+            icon_filename = "moon_knight_1"
+        elif hero == "Winter Soldier":
+            icon_filename = "winter_soldier_1"
+        elif hero == "Squirrel Girl":
+            icon_filename = "squirrel_girl_1"
+        else:
+            # Стандартная конвертация для остальных героев
+            icon_filename = hero.lower().replace(' ', '_').replace('&', 'and') + '_1'
 
-        if img_path:
+        img_path = os.path.join(heroes_icons_folder, f"{icon_filename}.png")
+
+        if os.path.exists(img_path):
             pixmap = QPixmap(img_path)
             if is_invalid_pixmap(pixmap):
                 logging.warning(f"Image for hero '{hero}' at '{img_path}' failed to load or is invalid (isNull/1x1). Using placeholder.")
@@ -59,7 +94,7 @@ def load_original_images():
                 temp_original_images[hero] = pixmap
                 loaded_count += 1
         else:
-            logging.warning(f"Image file not found for hero: '{hero}' (Searched for '{base_filename}.png' / '{base_filename}.jpg' in {resources_folder})")
+            logging.warning(f"Image file not found for hero: '{hero}' (Searched for '{icon_filename}.png' in {heroes_icons_folder})")
             temp_original_images[hero] = load_default_pixmap()
             missing_heroes.append(hero)
 
