@@ -87,10 +87,10 @@ datas_list.extend([
     (os.path.join(project_root, 'database', 'marvel_rivals_stats_20250831-030213.json'), 'database'),
     (os.path.join(project_root, 'database', 'heroes_compositions.json'), 'database'),
     (os.path.join(project_root, 'database', 'roles.json'), 'database'),
-    (os.path.join(project_root, 'core', 'lang', 'information_ru.md'), os.path.join('core', 'lang')),
-    (os.path.join(project_root, 'core', 'lang', 'information_en.md'), os.path.join('core', 'lang')),
-    (os.path.join(project_root, 'core', 'lang', 'author_ru.md'), os.path.join('core', 'lang')),
-    (os.path.join(project_root, 'core', 'lang', 'author_en.md'), os.path.join('core', 'lang')),
+    (os.path.join(project_root,  'info', 'information_ru.md'), os.path.join( 'info')),
+    (os.path.join(project_root, 'info', 'information_en.md'), os.path.join( 'info')),
+    (os.path.join(project_root, 'info', 'author_ru.md'), os.path.join( 'info')),
+    (os.path.join(project_root, 'info', 'author_en.md'), os.path.join( 'info')),
     (os.path.join(project_root, 'vision_models'), 'vision_models')
 ])
 
@@ -130,7 +130,7 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 exe = EXE(
     pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [],
-    name='rivals_counter_peaks_25.08.31',
+    name='rivals_counter_peaks_25.09.01',
     icon=r'd:\Projects\rivals_counter_peaks\resources\logo.ico',
     debug=False,         # <--- ИЗМЕНЕНО НА False
     console=False,       # <--- ИЗМЕНЕНО НА False

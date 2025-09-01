@@ -87,39 +87,56 @@ def load_original_images():
         # Сначала конвертируем специальные случаи
         if hero == "Jeff":
             icon_filename = "jeff_the_land_shark_1"
+            full_name = "Jeff The Land Shark"
         elif hero == "Widow":
             icon_filename = "black_widow_1"
+            full_name = "Black Widow"
         elif hero == "Fister":
             icon_filename = "iron_fist_1"
+            canonical = "Iron Fist"
         elif hero == "SpiderMan":
             icon_filename = "spider_man_1"
+            canonical = "Spider-Man"
         elif hero == "StarLord":
             icon_filename = "star_lord_1"
+            canonical = "Star-Lord"
         elif hero == "Rocket Racoon":
             icon_filename = "rocket_raccoon_1"
+            canonical = "Rocket Racoon"
         elif hero == "Witch":
             icon_filename = "scarlet_witch_1"
+            canonical = "Scarlet Witch"
         elif hero == "Cloak and Dagger":
             icon_filename = "cloak_and_dagger_1"
+            canonical = "Cloak and Dagger"
         elif hero == "Punisher":
             icon_filename = "the_punisher_1"
+            canonical = "Punisher"
         elif hero == "The Thing":
             icon_filename = "the_thing_1"
+            canonical = "The Thing"
         elif hero == "Mister Fantastic":
             icon_filename = "mister_fantastic_1"
+            canonical = "Mister Fantastic"
         elif hero == "Doctor Strange":
             icon_filename = "doctor_strange_1"
+            canonical = "Doctor Strange"
         elif hero == "Human Torch":
             icon_filename = "human_torch_1"
+            canonical = "Human Torch"
         elif hero == "Moon Knight":
             icon_filename = "moon_knight_1"
+            canonical = "Moon Knight"
         elif hero == "Winter Soldier":
             icon_filename = "winter_soldier_1"
+            canonical = "Winter Soldier"
         elif hero == "Squirrel Girl":
             icon_filename = "squirrel_girl_1"
+            canonical = "Squirrel Girl"
         else:
             # Стандартная конвертация для остальных героев
             icon_filename = hero.lower().replace(' ', '_').replace('&', 'and') + '_1'
+            full_name = hero
 
         img_path = os.path.join(heroes_icons_folder, f"{icon_filename}.png")
 
@@ -127,16 +144,22 @@ def load_original_images():
         if os.path.exists(img_path):
             pixmap = QPixmap(img_path)
             if is_invalid_pixmap(pixmap):
-                logging.warning(f"Image for hero '{hero}' at '{img_path}' failed to load or is invalid (isNull/1x1). Using placeholder.")
-                temp_original_images[hero] = load_default_pixmap()
-                invalid_load_heroes.append(hero)
+                logging.warning(f"Image for hero '{full_name}' at '{img_path}' failed to load or is invalid (isNull/1x1). Using placeholder.")
+                temp_original_images[full_name] = load_default_pixmap()
+                invalid_load_heroes.append(full_name)
             else:
-                temp_original_images[hero] = pixmap
+                temp_original_images[full_name] = pixmap
+                if full_name != hero:
+                    temp_original_images[hero] = pixmap  # Backward compatibility
                 loaded_count += 1
+                if full_name in ["Jeff The Land Shark", "Black Widow"]:
+                    logging.info(f"[DEBUG ICON] Hero '{full_name}' loaded successfully. Pixmap null: {pixmap.isNull()}, size: {pixmap.size()}")
         else:
-            logging.warning(f"Image file not found for hero: '{hero}' (Searched for '{icon_filename}.png' in {heroes_icons_folder})")
-            temp_original_images[hero] = load_default_pixmap()
-            missing_heroes.append(hero)
+            logging.warning(f"Image file not found for hero: '{full_name}' (Searched for '{icon_filename}.png' in {heroes_icons_folder})")
+            temp_original_images[full_name] = load_default_pixmap()
+            if full_name != hero:
+                temp_original_images[hero] = load_default_pixmap()  # Backward compatibility
+            missing_heroes.append(full_name)
 
     original_images = temp_original_images
     logging.info(f"Original images loaded: {loaded_count} / {len(ALL_HERO_NAMES)}")
@@ -201,6 +224,8 @@ def get_images_for_mode(mode='middle'):
         
         scaled_horizontal = scale_image(horizontal_size, 'horizontal')
         if scaled_horizontal is not None: horizontal_images[hero] = scaled_horizontal
+        if hero in ["Jeff The Land Shark", "Black Widow"]:
+            logging.info(f"[DEBUG ICON] Hero '{hero}' horizontal scaled. Original size: {img.size()}, Scaled: {scaled_horizontal.size() if scaled_horizontal else 'None'}")
 
 
     loaded_images[mode]['right'] = right_images; loaded_images[mode]['left'] = left_images
