@@ -194,9 +194,14 @@ class UiUpdater:
         
         logging.info("[TAB MODE] Calling update_ui_after_logic_change")
         self.update_ui_after_logic_change()
-        logging.info("[TAB MODE] Window geometry after update: position={}, size={}".format(
-            self.mw.pos(), self.mw.size()))
         logging.info("[TAB MODE] Finished update_ui_after_logic_change")
+
+        # Обновляем геометрию окна после изменений контента в таб режиме
+        if self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active():
+            self.mw.tab_mode_manager._adapt_window_to_content()
+
+        logging.info("[TAB MODE] Window geometry after adaptation: position={}, size={}".format(
+            self.mw.pos(), self.mw.size()))
         if self.mw.right_list_widget:
               self.update_list_item_selection_states(force_update=True)
 
@@ -310,6 +315,10 @@ class UiUpdater:
 
             # Принудительное исправление видимости виджетов
             self._fix_tab_widget_visibility()
+
+            # Адаптируем размер окна под новое содержимое
+            if self.mw.tab_mode_manager:
+                self.mw.tab_mode_manager._adapt_window_to_content()
         else:
             if not (self.mw.counters_layout and self.mw.enemies_layout and self.mw.horizontal_info_label):
                 logging.warning("UiUpdater: Пропуск обновления списков обычного режима (нет элементов).")

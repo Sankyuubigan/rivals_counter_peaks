@@ -30,7 +30,6 @@ class TabModeManager:
 
         self._is_active = True
         self._geometry_before_tab = self.mw.geometry()
-        self.mw.mode_positions[self.mw.mode] = self.mw.pos()
 
         screen = QApplication.primaryScreen()
         if not screen:
@@ -38,32 +37,44 @@ class TabModeManager:
             return
         screen_geom = screen.availableGeometry()
 
+        # Проверяем сохраненную геометрию и используем её, если она существует
+        saved_geometry = None
+        if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
+            try:
+                saved_geometry = self.mw.app_settings_manager.get_tab_window_geometry()
+                logging.info(f"[TAB MODE] Loaded saved tab geometry: {saved_geometry}")
+            except Exception as e:
+                logging.warning(f"[TAB MODE] Failed to load saved geometry: {e}")
+                saved_geometry = None
+
         tab_window_width = int(screen_geom.width() * 0.4)
         tab_window_height = self._calculate_tab_mode_height()
 
-        tab_x = (screen_geom.width() - tab_window_width) // 2
-        tab_y = screen_geom.y()
+        # Используем сохраненную позицию или рассчитываем новую
+        if saved_geometry and saved_geometry.get('x') is not None and saved_geometry.get('y') is not None:
+            tab_x = saved_geometry['x']
+            tab_y = saved_geometry['y']
+            tab_window_width = saved_geometry.get('width', tab_window_width)  # Используем сохраненную ширину, если есть
+            tab_window_height = saved_geometry.get('height', tab_window_height)  # Используем сохраненную высоту, если есть
+            logging.info(f"[TAB MODE] Using saved position: ({tab_x},{tab_y}), size=({tab_window_width},{tab_window_height})")
+        else:
+            tab_x = (screen_geom.width() - tab_window_width) // 2
+            tab_y = screen_geom.y()
+            logging.info("[TAB MODE] Using default centered position")
 
-        # КРИТИЧНЫЙ ИНСАЙТ: Установить геометрию ОНА НА НЕТРИБИВ от тяжелых UI обновлений
-        tab_height = self._calculate_tab_mode_height()
-
+        # Устанавливаем флаги окна перед показом для уменьшения мелькания
         self.mw._is_win_topmost = True
         if hasattr(self.mw, 'flags_manager'):
             self.mw.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
 
-        self.mw.setMinimumSize(tab_window_width, tab_height)
-        self.mw.setMaximumSize(tab_window_width, tab_height)
-        self.mw.setGeometry(tab_x, tab_y, tab_window_width, tab_height)
-        logging.info("[TAB MODE] Window geometry set FIRST at: ({},{}), size=({},{})".format(tab_x, tab_y, tab_window_width, tab_height))
-
-        # Моментально показать окно БЕЗ ожидания UI обновлений
+        # Устанавливаем геометрию и показываем окно для гладкого перехода
+        self.mw.setGeometry(tab_x, tab_y, tab_window_width, tab_window_height)
         self.mw.show()
-        # Убрал QApplication.processEvents() здесь - вызовем позже для смоотх переключения
-        logging.info("[TAB MODE] Window shown IMMEDIATELY: {}".format(self.mw.geometry()))
+        logging.info("[TAB MODE] Window geometry set and shown: ({},{}), size=({},{})".format(tab_x, tab_y, tab_window_width, tab_window_height))
 
-        # Отложим UI обновления чтобы избежать мелькания
-        QTimer.singleShot(50, self._start_ui_updates_async)  # Увеличил задержку
-        QTimer.singleShot(150, self._finalize_and_process_events)  # Увеличил задержку
+        # Откладываем тяжёлые UI обновления для минимизации мелькания
+        QTimer.singleShot(100, self._start_ui_updates_async)
+        QTimer.singleShot(200, self._finalize_and_process_events)
 
     def disable(self):
         """Выключает режим 'Таба' и восстанавливает предыдущее состояние."""
@@ -72,6 +83,21 @@ class TabModeManager:
             logging.warning("TabModeManager: disable() called, but not active.")
             return
 
+        # Сохраняем текущую геометрию окна таб-режима в настройки перед выходом
+        if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
+            try:
+                current_geometry = self.mw.geometry()
+                geometry_dict = {
+                    'x': current_geometry.x(),
+                    'y': current_geometry.y(),
+                    'width': current_geometry.width(),
+                    'height': current_geometry.height()
+                }
+                self.mw.app_settings_manager.set_tab_window_geometry(geometry_dict)
+                logging.info(f"[TAB MODE] Saved tab geometry: {geometry_dict}")
+            except Exception as e:
+                logging.warning(f"[TAB MODE] Failed to save tab geometry: {e}")
+
         self._is_active = False
         self.mw._is_win_topmost = False
 
@@ -79,9 +105,9 @@ class TabModeManager:
         self.mw.setMaximumSize(16777215, 16777215)
 
         self._set_tab_mode_ui_visible(False)
-        
+
         previous_mode = self.mw.mode_manager.current_mode if hasattr(self.mw, 'mode_manager') else "middle"
-        
+
         self.mw.change_mode(previous_mode)
 
         if self._geometry_before_tab and self._geometry_before_tab.isValid():
@@ -116,7 +142,7 @@ class TabModeManager:
     def _calculate_tab_mode_height(self) -> int:
         """Рассчитывает высоту окна для таб-режима на основе высоты контейнеров."""
         container_height = getattr(self.mw, 'container_height_for_tab_mode', 48) # Default to 48 if not set
-        
+
         if self.mw.icons_main_layout:
             margins = self.mw.icons_main_layout.contentsMargins()
             spacing = self.mw.icons_main_layout.spacing()
@@ -154,11 +180,61 @@ class TabModeManager:
         current_size = self.mw.size()
         logging.info(f"[TAB MODE] Final position and size: pos={current_pos}, size={current_size}")
 
-        # Принудительное обновление без processEvents чтобы избежать мелькания
+        # Автоматически адаптируем размер окна под содержимое после UI обновлений
+        self._adapt_window_to_content()
+
+        # Принудительное обновление без processEvents чтобы избежать визуального мерцания
         self.mw.update()
         # QApplication.processEvents() убран для предотвращения визуального мерцания
 
         logging.info("[TAB MODE] Tab mode activation completed")
+
+    def _adapt_window_to_content(self):
+        """Адаптирует размер окна под текущее содержимое контейнеров в таб режиме"""
+        if not self.is_active():
+            return
+
+        try:
+            content_height = 0
+
+            # Рассчитываем новую высоту на основе текущего содержимого контейнеров
+            if self.mw.tab_enemies_container and self.mw.tab_enemies_container.isVisible():
+                enemies_size_hint = self.mw.tab_enemies_container.sizeHint()
+                content_height += enemies_size_hint.height()
+
+            if self.mw.tab_counters_container and self.mw.tab_counters_container.isVisible():
+                counters_size_hint = self.mw.tab_counters_container.sizeHint()
+                content_height += counters_size_hint.height()
+
+            # Добавляем отступы и границы
+            if self.mw.icons_main_layout:
+                margins = self.mw.icons_main_layout.contentsMargins()
+                spacing = self.mw.icons_main_layout.spacing()
+                content_height += margins.top() + margins.bottom() + spacing
+
+            # Минимальная и максимальная высота
+            new_height = max(100, content_height)
+
+            # Получаем информацию об экране для фиксации ширины на 40%
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geom = screen.availableGeometry()
+                new_width = int(screen_geom.width() * 0.4)
+                new_x = max(0, self.mw.geometry().x())  # сохраняем текущую позицию по X, но не меньше 0
+                if new_x + new_width > screen_geom.width():
+                    new_x = screen_geom.width() - new_width
+            else:
+                new_width = 1000  # fallback
+                new_x = self.mw.geometry().x()
+
+            current_geom = self.mw.geometry()
+
+            # Устанавливаем новый размер с фиксированной шириной 40%, но адаптированной высотой
+            self.mw.setGeometry(new_x, current_geom.y(), new_width, new_height)
+            logging.info(f"[TAB MODE] Window adapted: pos=({new_x}, {current_geom.y()}), size=({new_width}, {new_height}) - fixed width 40%, adaptive height")
+
+        except Exception as e:
+            logging.warning(f"[TAB MODE] Error adapting window to content: {e}")
 
     def _finalize_window_position(self):
         """Финализация позиции окна после первого рендеринга для устранения задержек"""

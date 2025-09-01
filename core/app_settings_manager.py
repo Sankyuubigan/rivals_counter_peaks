@@ -8,14 +8,21 @@ from typing import Any, Dict
 
 from core.app_settings_keys import (
     THEME_KEY, LANGUAGE_KEY, HOTKEYS_KEY,
-    SAVE_SCREENSHOT_LESS_THAN_6_KEY, SCREENSHOT_SAVE_PATH_KEY
+    SAVE_SCREENSHOT_LESS_THAN_6_KEY, SCREENSHOT_SAVE_PATH_KEY,
+    TAB_WINDOW_GEOMETRY_KEY
 )
 from core.hotkey_config import DEFAULT_HOTKEYS as DEFAULT_HOTKEYS_VALUES
 from info.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
 
-DEFAULT_THEME_VALUE = "light" 
-DEFAULT_SAVE_SCREENSHOT_VALUE = False 
-DEFAULT_SCREENSHOT_PATH_VALUE = "" 
+DEFAULT_THEME_VALUE = "light"
+DEFAULT_SAVE_SCREENSHOT_VALUE = False
+DEFAULT_SCREENSHOT_PATH_VALUE = ""
+DEFAULT_TAB_GEOMETRY_VALUE = {
+    "x": 100,
+    "y": 100,
+    "width": 800,
+    "height": 600
+}
 
 def _get_app_data_dir() -> Path:
     app_data_dir_str = ""
@@ -66,22 +73,25 @@ class AppSettingsManager:
 
     def _load_settings_from_file(self) -> Dict[str, Any]:
         loaded_data = {}
-        if SETTINGS_FILE_PATH.exists():
-            if SETTINGS_FILE_PATH.is_file():
-                try: 
-                    with open(SETTINGS_FILE_PATH, 'r', encoding='utf-8') as f:
+        # Получить путь к файлу настроек (поддерживает подклассы с переопределенными путями)
+        settings_path = getattr(self, 'get_settings_file_path', lambda: SETTINGS_FILE_PATH)()
+
+        if settings_path.exists():
+            if settings_path.is_file():
+                try:
+                    with open(settings_path, 'r', encoding='utf-8') as f:
                         loaded_data_json = json.load(f)
                     if isinstance(loaded_data_json, dict):
-                        logging.info(f"Настройки успешно загружены из {SETTINGS_FILE_PATH}")
+                        logging.info(f"Настройки успешно загружены из {settings_path}")
                         loaded_data = loaded_data_json
                     else:
-                        logging.warning(f"Файл настроек {SETTINGS_FILE_PATH} имеет неверный формат (не словарь). Используются настройки по умолчанию.")
+                        logging.warning(f"Файл настроек {settings_path} имеет неверный формат (не словарь). Используются настройки по умолчанию.")
                 except (json.JSONDecodeError, IOError) as e:
-                    logging.error(f"Ошибка загрузки настроек из {SETTINGS_FILE_PATH}: {e}. Используются настройки по умолчанию.")
+                    logging.error(f"Ошибка загрузки настроек из {settings_path}: {e}. Используются настройки по умолчанию.")
             else:
-                logging.warning(f"Путь к настройкам {SETTINGS_FILE_PATH} существует, но не является файлом. Используются настройки по умолчанию.")
+                logging.warning(f"Путь к настройкам {settings_path} существует, но не является файлом. Используются настройки по умолчанию.")
         else:
-            logging.info(f"Файл настроек {SETTINGS_FILE_PATH} не найден. Будут использованы и сохранены настройки по умолчанию.")
+            logging.info(f"Файл настроек {settings_path} не найден. Будут использованы и сохранены настройки по умолчанию.")
         return loaded_data
 
     def _ensure_all_defaults_present(self):
@@ -121,6 +131,10 @@ class AppSettingsManager:
             self.settings[SCREENSHOT_SAVE_PATH_KEY] = DEFAULT_SCREENSHOT_PATH_VALUE
             changes_made = True
 
+        if TAB_WINDOW_GEOMETRY_KEY not in self.settings:
+            self.settings[TAB_WINDOW_GEOMETRY_KEY] = DEFAULT_TAB_GEOMETRY_VALUE.copy()
+            changes_made = True
+
         if changes_made:
             logging.info("Обнаружены отсутствующие или устаревшие настройки, применены значения по умолчанию. Сохранение обновленных настроек.")
             self.save_settings_to_file()
@@ -128,19 +142,24 @@ class AppSettingsManager:
     def save_settings_to_file(self):
         # try-except оставлен для критической операции I/O
         try:
-            parent_dir = SETTINGS_FILE_PATH.parent
+            # Получить путь к файлу настроек (поддерживает подклассы с переопределенными путями)
+            settings_path = getattr(self, 'get_settings_file_path', lambda: SETTINGS_FILE_PATH)()
+
+            parent_dir = settings_path.parent
             if not parent_dir.exists():
                 parent_dir.mkdir(parents=True, exist_ok=True)
             elif not parent_dir.is_dir():
                 logging.error(f"Не удалось сохранить настройки: путь {parent_dir} не является директорией.")
                 return
 
-            with open(SETTINGS_FILE_PATH, 'w', encoding='utf-8') as f:
+            with open(settings_path, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=4, ensure_ascii=False)
-            logging.info(f"Настройки сохранены в {SETTINGS_FILE_PATH}")
+            logging.info(f"Настройки сохранены в {settings_path}")
         except IOError as e:
-            logging.error(f"Ошибка сохранения настроек в {SETTINGS_FILE_PATH}: {e}")
+            settings_path = getattr(self, 'get_settings_file_path', lambda: SETTINGS_FILE_PATH)()
+            logging.error(f"Ошибка сохранения настроек в {settings_path}: {e}")
         except Exception as e_global:
+            settings_path = getattr(self, 'get_settings_file_path', lambda: SETTINGS_FILE_PATH)()
             logging.error(f"Непредвиденная ошибка при сохранении настроек: {e_global}", exc_info=True)
 
 
@@ -199,3 +218,19 @@ class AppSettingsManager:
 
     def set_screenshot_save_path(self, path: str, auto_save: bool = True):
         self.set_setting(SCREENSHOT_SAVE_PATH_KEY, str(path), auto_save)
+
+    def get_tab_window_geometry(self) -> Dict[str, int]:
+        """Получить геометрию окна режима таба (x, y, width, height)"""
+        geometry_data = self.get_setting(TAB_WINDOW_GEOMETRY_KEY, DEFAULT_TAB_GEOMETRY_VALUE)
+        if isinstance(geometry_data, dict) and all(k in geometry_data for k in ['x', 'y', 'width', 'height']):
+            return {k: int(v) if isinstance(v, (int, float)) else DEFAULT_TAB_GEOMETRY_VALUE[k] for k, v in geometry_data.items()}
+        return DEFAULT_TAB_GEOMETRY_VALUE.copy()
+
+    def set_tab_window_geometry(self, geometry: Dict[str, int], auto_save: bool = True):
+        """Установить геометрию окна режима таба (x, y, width, height)"""
+        if isinstance(geometry, dict) and all(k in geometry for k in ['x', 'y', 'width', 'height']):
+            validated_geometry = {k: int(v) if isinstance(v, (int, float)) else 0 for k, v in geometry.items()}
+            self.set_setting(TAB_WINDOW_GEOMETRY_KEY, validated_geometry, auto_save)
+        else:
+            logging.warning(f"Некорректная геометрия для режима таба: {geometry}. Используются значения по умолчанию.")
+            self.set_setting(TAB_WINDOW_GEOMETRY_KEY, DEFAULT_TAB_GEOMETRY_VALUE.copy(), auto_save)

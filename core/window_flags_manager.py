@@ -18,14 +18,15 @@ class WindowFlagsManager:
 
     def _calculate_target_flags(self) -> Qt.WindowFlags:
         is_min_mode = (self.mw.mode == "min")
+        is_tab_mode = hasattr(self.mw, 'tab_mode_manager') and self.mw.tab_mode_manager.is_active()
 
-        if is_min_mode:
+        if is_min_mode or is_tab_mode:
             base_flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
         else:
             base_flags = Qt.WindowType.Window | Qt.WindowType.WindowSystemMenuHint | \
-                         Qt.WindowType.WindowMinimizeButtonHint | Qt.WindowType.WindowCloseButtonHint
+                          Qt.WindowType.WindowMinimizeButtonHint | Qt.WindowType.WindowCloseButtonHint
             if self.mw.mode == 'max' or self.mw.mode == 'middle':
-                 base_flags |= Qt.WindowType.WindowMaximizeButtonHint
+                  base_flags |= Qt.WindowType.WindowMaximizeButtonHint
 
         topmost_flag_to_add = Qt.WindowType.WindowStaysOnTopHint if self.mw._is_win_topmost else Qt.WindowType(0)
         transparent_flag_to_add = Qt.WindowType.WindowTransparentForInput if getattr(self.mw, 'mouse_invisible_mode_enabled', False) else Qt.WindowType(0)
