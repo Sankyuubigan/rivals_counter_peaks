@@ -7,11 +7,24 @@ PANEL_MIN_WIDTHS = {
     'middle': {'left': 400, 'right': 300},
     'min': {'left': 0, 'right': 0}
 }
+def get_tab_window_width() -> int:
+    """Возвращает ширину окна для таб-режима: 40% от экрана, минимум 1000px."""
+    try:
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            screen_geom = app.primaryScreen().availableGeometry()
+            tab_width = int(screen_geom.width() * 0.4)  # 40% от экрана
+            return max(1000, tab_width)  # Минимум 1000px
+    except Exception:
+        pass
+    return 1400  # Fallback значение
+
 MODE_DEFAULT_WINDOW_SIZES = {
     'max': {'width': 1100, 'height': 800},
     'middle': {'width': 950, 'height': 600},
-    # Увеличена ширина для min режима, чтобы иконки влезали
-    'min': {'width': 1400, 'height': 0} # Height будет рассчитана автоматически
+    # С использованием динамического расчета ширины для таб-режима
+    'min': {'width': get_tab_window_width(), 'height': 0} # Height будет рассчитана автоматически
 }
 # --- ---
 

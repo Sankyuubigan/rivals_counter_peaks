@@ -33,12 +33,12 @@ except Exception as e_ver:
 
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 import logic
-import images_load 
+import images_load  
 import utils
 from main_window import MainWindow 
 
 if __name__ == "__main__":
-    logging.info("[LOG] core/main.py: __main__ block started")
+    logging.info("[LOG] core/main.py: __main__ block s  tarted")
 
     app = QApplication.instance()
     if app is None:
@@ -105,9 +105,9 @@ if __name__ == "__main__":
         logging.info("MainWindow.show() called.")
         if window.isVisible():
             logging.info("Окно стало видимым после вызова show().")
-            win_id = window.winId()
+            win_id = window.winId() 
             logging.info(f"Window ID: {win_id}")
-            if win_id == 0 : # Проверка winId(), если доступно
+            if win_id == 0 : # Проверка winId(), если доступно                                                                          
                 logging.error("Window ID is 0, окно не было создано корректно на уровне ОС!")
         else:
             logging.error("Окно НЕ стало видимым после вызова show()!")

@@ -321,104 +321,104 @@ class AdvancedRecognition(QObject):
 
         return embeddings
 
-    def _get_hero_column_center_x_akaze(self, large_image_cv2: np.ndarray) -> Tuple[Optional[int], List[str]]:
-        if large_image_cv2 is None:
-            logging.error("[AdvRec][AKAZE CENTER] Входное изображение - None.")
-            return None, []
-        if not self.akaze_template_images_cv2:
-            logging.warning("[AdvRec][AKAZE CENTER] Словарь AKAZE шаблонов пуст. Локализация колонки невозможна.")
-            return None, []
+    # def _get_hero_column_center_x_akaze(self, large_image_cv2: np.ndarray) -> Tuple[Optional[int], List[str]]:
+    #     if large_image_cv2 is None:
+    #         logging.error("[AdvRec][AKAZE CENTER] Входное изображение - None.")
+    #         return None, []
+    #     if not self.akaze_template_images_cv2:
+    #         logging.warning("[AdvRec][AKAZE CENTER] Словарь AKAZE шаблонов пуст. Локализация колонки невозможна.")
+    #         return None, []
 
-        try:
-            image_gray = cv2.cvtColor(large_image_cv2, cv2.COLOR_BGR2GRAY)
-        except cv2.error as e:
-            logging.error(f"[AdvRec][AKAZE CENTER] Ошибка конвертации в серое: {e}")
-            return None, []
+    #     try:
+    #         image_gray = cv2.cvtColor(large_image_cv2, cv2.COLOR_BGR2GRAY)
+    #     except cv2.error as e:
+    #         logging.error(f"[AdvRec][AKAZE CENTER] Ошибка конвертации в серое: {e}")
+    #         return None, []
 
-        akaze = cv2.AKAZE_create(descriptor_type=AKAZE_DESCRIPTOR_TYPE)
-        try:
-            kp_screenshot, des_screenshot = akaze.detectAndCompute(image_gray, None)
-        except cv2.error as e:
-            logging.error(f"[AdvRec][AKAZE CENTER] Ошибка detectAndCompute для скриншота: {e}")
-            return None, []
+    #     akaze = cv2.AKAZE_create(descriptor_type=AKAZE_DESCRIPTOR_TYPE)
+    #     try:
+    #         kp_screenshot, des_screenshot = akaze.detectAndCompute(image_gray, None)
+    #     except cv2.error as e:
+    #         logging.error(f"[AdvRec][AKAZE CENTER] Ошибка detectAndCompute для скриншота: {e}")
+    #         return None, []
 
-        if des_screenshot is None or len(kp_screenshot) == 0:
-            logging.warning("[AdvRec][AKAZE CENTER] Не найдено дескрипторов на скриншоте.")
-            return None, []
+    #     if des_screenshot is None or len(kp_screenshot) == 0:
+    #         logging.warning("[AdvRec][AKAZE CENTER] Не найдено дескрипторов на скриншоте.")
+    #         return None, []
 
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        all_matched_x_coords_on_screenshot: List[float] = []
-        akaze_candidates_found: List[str] = []
-        hero_match_details: List[Dict[str, Any]] = []
+    #     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+    #     all_matched_x_coords_on_screenshot: List[float] = []
+    #     akaze_candidates_found: List[str] = []
+    #     hero_match_details: List[Dict[str, Any]] = []
 
-        logging.info(f"[AdvRec][AKAZE CENTER] Поиск центра колонки (порог совпадений: {AKAZE_MIN_MATCH_COUNT_COLUMN_LOC}):")
+    #     logging.info(f"[AdvRec][AKAZE CENTER] Поиск центра колонки (порог совпадений: {AKAZE_MIN_MATCH_COUNT_COLUMN_LOC}):")
 
-        for hero_name, templates_cv2_list in self.akaze_template_images_cv2.items():
-            max_good_matches_for_hero = 0
-            best_match_coords_for_hero: List[float] = []
-            if not templates_cv2_list: continue
-            for i, template_cv2_single in enumerate(templates_cv2_list):
-                if template_cv2_single is None: continue
-                try:
-                    template_gray = cv2.cvtColor(template_cv2_single, cv2.COLOR_BGR2GRAY) if len(template_cv2_single.shape) == 3 else template_cv2_single
-                    kp_template, des_template = akaze.detectAndCompute(template_gray, None)
-                except cv2.error as e:
-                    logging.warning(f"[AdvRec][AKAZE CENTER] Ошибка detectAndCompute для шаблона {hero_name}_{i}: {e}")
-                    continue
-                if des_template is None or len(kp_template) == 0: continue
-                try: matches = bf.knnMatch(des_template, des_screenshot, k=2)
-                except cv2.error: continue
+    #     for hero_name, templates_cv2_list in self.akaze_template_images_cv2.items():
+    #         max_good_matches_for_hero = 0
+    #         best_match_coords_for_hero: List[float] = []
+    #         if not templates_cv2_list: continue
+    #         for i, template_cv2_single in enumerate(templates_cv2_list):
+    #             if template_cv2_single is None: continue
+    #             try:
+    #                 template_gray = cv2.cvtColor(template_cv2_single, cv2.COLOR_BGR2GRAY) if len(template_cv2_single.shape) == 3 else template_cv2_single
+    #                 kp_template, des_template = akaze.detectAndCompute(template_gray, None)
+    #             except cv2.error as e:
+    #                 logging.warning(f"[AdvRec][AKAZE CENTER] Ошибка detectAndCompute для шаблона {hero_name}_{i}: {e}")
+    #                 continue
+    #             if des_template is None or len(kp_template) == 0: continue
+    #             try: matches = bf.knnMatch(des_template, des_screenshot, k=2)
+    #             except cv2.error: continue
 
-                good_matches = []
-                current_match_coords_for_template: List[float] = []
-                valid_matches = [m_pair for m_pair in matches if m_pair is not None and len(m_pair) == 2]
-                for m, n in valid_matches:
-                    if m.distance < AKAZE_LOWE_RATIO * n.distance:
-                        good_matches.append(m)
-                        screenshot_pt_idx = m.trainIdx
-                        if screenshot_pt_idx < len(kp_screenshot):
-                             current_match_coords_for_template.append(kp_screenshot[screenshot_pt_idx].pt[0])
+    #             good_matches = []
+    #             current_match_coords_for_template: List[float] = []
+    #             valid_matches = [m_pair for m_pair in matches if m_pair is not None and len(m_pair) == 2]
+    #             for m, n in valid_matches:
+    #                 if m.distance < AKAZE_LOWE_RATIO * n.distance:
+    #                     good_matches.append(m)
+    #                     screenshot_pt_idx = m.trainIdx
+    #                     if screenshot_pt_idx < len(kp_screenshot):
+    #                          current_match_coords_for_template.append(kp_screenshot[screenshot_pt_idx].pt[0])
 
-                if len(good_matches) > max_good_matches_for_hero:
-                    max_good_matches_for_hero = len(good_matches)
-                    best_match_coords_for_hero = current_match_coords_for_template
+    #             if len(good_matches) > max_good_matches_for_hero:
+    #                 max_good_matches_for_hero = len(good_matches)
+    #                 best_match_coords_for_hero = current_match_coords_for_template
 
-            if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT_COLUMN_LOC:
-                hero_match_details.append({"name": hero_name, "matches": max_good_matches_for_hero, "x_coords": best_match_coords_for_hero})
-                akaze_candidates_found.append(hero_name)
+    #         if max_good_matches_for_hero >= AKAZE_MIN_MATCH_COUNT_COLUMN_LOC:
+    #             hero_match_details.append({"name": hero_name, "matches": max_good_matches_for_hero, "x_coords": best_match_coords_for_hero})
+    #             akaze_candidates_found.append(hero_name)
 
-        sorted_hero_match_details = sorted(hero_match_details, key=lambda item: item["matches"], reverse=True)
-        for detail in sorted_hero_match_details:
-             logging.info(f"[AdvRec][AKAZE CENTER]   {detail['name']}: {detail['matches']} совпадений (ПРОШЕЛ ФИЛЬТР)")
-             all_matched_x_coords_on_screenshot.extend(detail['x_coords'])
+    #     sorted_hero_match_details = sorted(hero_match_details, key=lambda item: item["matches"], reverse=True)
+    #     for detail in sorted_hero_match_details:
+    #          logging.info(f"[AdvRec][AKAZE CENTER]   {detail['name']}: {detail['matches']} совпадений (ПРОШЕЛ ФИЛЬТР)")
+    #          all_matched_x_coords_on_screenshot.extend(detail['x_coords'])
 
-        all_template_heroes_set = set(self.akaze_template_images_cv2.keys())
-        passed_heroes_set = set(d['name'] for d in hero_match_details)
-        not_passed_heroes = sorted(list(all_template_heroes_set - passed_heroes_set))
-        logged_not_passed_count = 0
-        for hero_name in not_passed_heroes:
-            if logged_not_passed_count < MAX_NOT_PASSED_AKAZE_TO_LOG:
-                logging.info(f"[AdvRec][AKAZE CENTER]   {hero_name}: <{AKAZE_MIN_MATCH_COUNT_COLUMN_LOC} совпадений (НЕ ПРОШЕЛ)")
-                logged_not_passed_count += 1
-            elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG:
-                logging.info(f"[AdvRec][AKAZE CENTER]   ... и еще {len(not_passed_heroes) - MAX_NOT_PASSED_AKAZE_TO_LOG} не прошли фильтр (логирование ограничено).")
-                break
+    #     all_template_heroes_set = set(self.akaze_template_images_cv2.keys())
+    #     passed_heroes_set = set(d['name'] for d in hero_match_details)
+    #     not_passed_heroes = sorted(list(all_template_heroes_set - passed_heroes_set))
+    #     logged_not_passed_count = 0
+    #     for hero_name in not_passed_heroes:
+    #         if logged_not_passed_count < MAX_NOT_PASSED_AKAZE_TO_LOG:
+    #             logging.info(f"[AdvRec][AKAZE CENTER]   {hero_name}: <{AKAZE_MIN_MATCH_COUNT_COLUMN_LOC} совпадений (НЕ ПРОШЕЛ)")
+    #             logged_not_passed_count += 1
+    #         elif logged_not_passed_count == MAX_NOT_PASSED_AKAZE_TO_LOG:
+    #             logging.info(f"[AdvRec][AKAZE CENTER]   ... и еще {len(not_passed_heroes) - MAX_NOT_PASSED_AKAZE_TO_LOG} не прошли фильтр (логирование ограничено).")
+    #             break
 
-        if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
-            logging.warning(f"[AdvRec][AKAZE CENTER] Найдено слишком мало героев ({len(akaze_candidates_found)}), чтобы надежно определить центр колонки. Требуется: {MIN_HEROES_FOR_COLUMN_DETECTION}.")
-            return None, akaze_candidates_found
+    #     if len(akaze_candidates_found) < MIN_HEROES_FOR_COLUMN_DETECTION:
+    #         logging.warning(f"[AdvRec][AKAZE CENTER] Найдено слишком мало героев ({len(akaze_candidates_found)}), чтобы надежно определить центр колонки. Требуется: {MIN_HEROES_FOR_COLUMN_DETECTION}.")
+    #         return None, akaze_candidates_found
 
-        if not all_matched_x_coords_on_screenshot:
-            logging.warning("[AdvRec][AKAZE CENTER] Не найдено X-координат совпадений для определения центра колонки.")
-            return None, akaze_candidates_found
+    #     if not all_matched_x_coords_on_screenshot:
+    #         logging.warning("[AdvRec][AKAZE CENTER] Не найдено X-координат совпадений для определения центра колонки.")
+    #         return None, akaze_candidates_found
 
-        rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot]
-        if not rounded_x_coords:
-            logging.warning("[AdvRec][AKAZE CENTER] Нет округленных X-координат для определения центра.")
-            return None, akaze_candidates_found
+    #     rounded_x_coords = [round(x / 10.0) * 10 for x in all_matched_x_coords_on_screenshot]
+    #     if not rounded_x_coords:
+    #         logging.warning("[AdvRec][AKAZE CENTER] Нет округленных X-координат для определения центра.")
+    #         return None, akaze_candidates_found
 
-        most_common_x_center = Counter(rounded_x_coords).most_common(1)[0][0]
-        return int(most_common_x_center), akaze_candidates_found
+    #     most_common_x_center = Counter(rounded_x_coords).most_common(1)[0][0]
+    #     return int(most_common_x_center), akaze_candidates_found
 
 
     def recognize_heroes_on_screenshot(self, screenshot_cv2: np.ndarray) -> List[str]:

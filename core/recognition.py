@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import QMessageBox
 
 from utils import RECOGNITION_AREA, capture_screen_area 
-from core.lang.translations import get_text
+from info.translations import get_text
 from core.advanced_recognition_logic import AdvancedRecognition 
 from core.images_load import load_hero_templates_cv2 
 

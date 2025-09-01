@@ -25,7 +25,7 @@ from dialogs import (LogDialog, HotkeyDisplayDialog, show_about_program_info,
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG
 from core.hotkey_manager_global import HotkeyManagerGlobal
-from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES
+from mode_manager import ModeManager, MODE_DEFAULT_WINDOW_SIZES, get_tab_window_width
 from win_api import WinApiManager
 from recognition import RecognitionManager
 from ui_updater import UiUpdater
@@ -35,8 +35,11 @@ from appearance_manager import AppearanceManager
 from core.window_flags_manager import WindowFlagsManager
 from core.app_settings_manager import AppSettingsManager
 from core.settings_window import SettingsWindow
+# --- НОВЫЙ ИМПОРТ ДЛЯ РЕФАКТОРИНГА ---
+from core.tab_mode_manager import TabModeManager
+# ------------------------------------
 
-from core.lang.translations import get_text
+from info.translations import get_text
 import cv2
 import re
 
@@ -89,6 +92,9 @@ class MainWindow(QMainWindow):
         self.action_controller = ActionController(self)
         self.win_api_manager = WinApiManager(self)
         self.mode_manager = ModeManager(self)
+        # --- НОВЫЙ МЕНЕДЖЕР РЕЖИМА ТАБА ---
+        self.tab_mode_manager = TabModeManager(self)
+        # ------------------------------------
 
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
         if hasattr(self.rec_manager, 'models_ready_signal'):
@@ -98,7 +104,6 @@ class MainWindow(QMainWindow):
 
         self.drag_handler = WindowDragHandler(self, lambda: getattr(self, 'top_frame', None))
 
-        # Синхронизируем _is_win_topmost между MainWindow и WinAPI
         if self.win_api_manager and hasattr(self.win_api_manager, 'topmost_state_changed'):
             self.win_api_manager.topmost_state_changed.connect(self._on_win_api_topmost_changed)
 
@@ -214,15 +219,22 @@ class MainWindow(QMainWindow):
 
         self.icons_scroll_area: QScrollArea | None = None
         self.icons_scroll_content: QWidget | None = None
-        self.icons_main_h_layout: QHBoxLayout | None = None
+        self.icons_main_layout: QVBoxLayout | None = None
+        
+        self.normal_mode_container: QWidget | None = None
+        self.normal_mode_layout: QHBoxLayout | None = None
         self.counters_widget: QWidget | None = None
         self.counters_layout: QHBoxLayout | None = None
         self.enemies_widget: QWidget | None = None
         self.enemies_layout: QHBoxLayout | None = None
+        self.horizontal_info_label: QLabel | None = None
+
+        self.tab_enemies_container: QWidget | None = None
+        self.tab_enemies_layout: QHBoxLayout | None = None
+        self.tab_counters_container: QWidget | None = None
+        self.tab_counters_layout: QHBoxLayout | None = None
 
         self.result_label: QLabel | None = None
-
-        self.horizontal_info_label: QLabel | None = None
 
         self.main_widget: QWidget | None = None
         self.inner_layout: QHBoxLayout | None = None
@@ -240,6 +252,7 @@ class MainWindow(QMainWindow):
         self.hero_items: dict[str, QListWidgetItem] = {}
         self.hotkey_cursor_index = -1
         self.opacity_slider_step = 5
+        self.container_height_for_tab_mode = 0
 
     def _setup_window_properties(self):
         logging.debug(f"    [WindowProps] START. Current flags before setup: {self.windowFlags():#x}")
@@ -276,39 +289,106 @@ class MainWindow(QMainWindow):
         self.inner_layout = QHBoxLayout(self.main_widget)
         self.inner_layout.setContentsMargins(0,0,0,0); self.inner_layout.setSpacing(0)
         self.main_layout.addWidget(self.main_widget, stretch=1)
+
+        self.left_panel_widget = QWidget()
+        self.left_panel_widget.setObjectName("left_panel_widget")
+        self.inner_layout.addWidget(self.left_panel_widget)
+
+        self.right_panel_widget = QWidget()
+        self.right_panel_widget.setObjectName("right_panel_widget")
+        self.inner_layout.addWidget(self.right_panel_widget, stretch=1)
+
         logging.debug("    MainWindow: _create_main_ui_layout END")
 
     def _create_icons_scroll_area_structure(self):
-        logging.debug("    MainWindow: _create_icons_scroll_area_structure START")
+        logging.info("MainWindow: _create_icons_scroll_area_structure START")
         self.icons_scroll_area = QScrollArea(); self.icons_scroll_area.setObjectName("icons_scroll_area")
         self.icons_scroll_area.setWidgetResizable(True)
         self.icons_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.icons_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        logging.info(f"MainWindow: icons_scroll_area created, widgetResizable: {self.icons_scroll_area.widgetResizable()}")
+        
         self.icons_scroll_content = QWidget(); self.icons_scroll_content.setObjectName("icons_scroll_content")
-        self.icons_main_h_layout = QHBoxLayout(self.icons_scroll_content)
-        self.icons_main_h_layout.setContentsMargins(5, 2, 5, 2); self.icons_main_h_layout.setSpacing(10)
-        self.icons_main_h_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        self.icons_main_layout = QVBoxLayout(self.icons_scroll_content)
+        self.icons_main_layout.setContentsMargins(5, 2, 5, 2); self.icons_main_layout.setSpacing(4)
+        self.icons_main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        # --- Calculate height for tab mode containers ---
+        _, icon_height = SIZES.get('min', {}).get('horizontal', (40, 40))
+        self.container_height_for_tab_mode = icon_height + 8 # e.g. 40 + 8 = 48
+
+        # --- Контейнер для Normal/Min режима ---
+        self.normal_mode_container = QWidget(); self.normal_mode_container.setObjectName("normal_mode_container")
+        self.normal_mode_layout = QHBoxLayout(self.normal_mode_container)
+        self.normal_mode_layout.setContentsMargins(0,0,0,0); self.normal_mode_layout.setSpacing(10)
+        
         self.counters_widget = QWidget(); self.counters_widget.setObjectName("counters_widget")
         self.counters_layout = QHBoxLayout(self.counters_widget)
         self.counters_layout.setContentsMargins(0, 0, 0, 0); self.counters_layout.setSpacing(4)
         self.counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.icons_main_h_layout.addWidget(self.counters_widget, stretch=1)
-
+        
         self.enemies_widget = QWidget(); self.enemies_widget.setObjectName("enemies_widget")
         self.enemies_layout = QHBoxLayout(self.enemies_widget)
-        self.enemies_layout.setContentsMargins(2, 2, 2, 2);
-        self.enemies_layout.setSpacing(4)
+        self.enemies_layout.setContentsMargins(2, 2, 2, 2); self.enemies_layout.setSpacing(4)
         self.enemies_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.icons_main_h_layout.addWidget(self.enemies_widget, stretch=0); self.enemies_widget.hide()
 
-        if not self.horizontal_info_label:
-            self.horizontal_info_label = QLabel("Info Label Placeholder")
-            self.horizontal_info_label.setObjectName("horizontal_info_label")
-            self.horizontal_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.horizontal_info_label.hide()
-            if self.counters_layout:
-                self.counters_layout.addWidget(self.horizontal_info_label)
+        self.normal_mode_layout.addWidget(self.counters_widget, stretch=1)
+        self.normal_mode_layout.addWidget(self.enemies_widget, stretch=0)
+        
+        self.horizontal_info_label = QLabel("Info Label Placeholder")
+        self.horizontal_info_label.setObjectName("horizontal_info_label")
+        self.horizontal_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.horizontal_info_label.hide()
+        self.counters_layout.addWidget(self.horizontal_info_label)
+
+        # --- Контейнеры для Tab режима ---
+        tab_window_width = get_tab_window_width()
+        # Адаптивное распределение ширины - контейнеры сами подстраиваются под контент
+        icon_width = SIZES.get('min', {}).get('horizontal', (40, 40))[0] + 4  # ширина иконки + spacing
+
+        # Максимальное количество иконок для каждого списка (для справки, ширина теперь динамическая)
+        max_enemies = 8  # гибко для 2-8 героев
+        # max_counters - больше нет ограничения, все вмещается
+
+        self.tab_enemies_container = QWidget(); self.tab_enemies_container.setObjectName("tab_enemies_container")
+        self.tab_enemies_layout = QHBoxLayout(self.tab_enemies_container)
+        self.tab_enemies_layout.setContentsMargins(2, 2, 2, 2); self.tab_enemies_layout.setSpacing(4)
+        self.tab_enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.tab_enemies_container.setFixedHeight(self.container_height_for_tab_mode)
+        self.tab_enemies_container.setMinimumWidth(200)  # минимальная ширина для гибкости
+        # Убрана максимальная ширина - контейнер адаптируется под контент
+        logging.info(f"MainWindow: Created tab_enemies_container with fixedHeight: {self.container_height_for_tab_mode}, adaptive width, margins: {self.tab_enemies_layout.contentsMargins()}")
+
+        # Обернем контейнер контрпиков в QScrollArea для горизонтального скролла (скрытый scroll)
+        self.tab_counters_scroll = QScrollArea()
+        self.tab_counters_scroll.setObjectName("tab_counters_scroll")
+        self.tab_counters_scroll.setWidgetResizable(True)
+        self.tab_counters_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.tab_counters_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.tab_counters_scroll.setFixedHeight(self.container_height_for_tab_mode)
+        self.tab_counters_scroll.setMinimumWidth(300)
+        self.tab_counters_scroll.setMaximumHeight(self.container_height_for_tab_mode)
+
+        self.tab_counters_container = QWidget(); self.tab_counters_container.setObjectName("tab_counters_container")
+        self.tab_counters_layout = QHBoxLayout(self.tab_counters_container)
+        self.tab_counters_layout.setContentsMargins(0, 0, 0, 0); self.tab_counters_layout.setSpacing(4)
+        self.tab_counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.tab_counters_scroll.setWidget(self.tab_counters_container)
+        logging.info(f"MainWindow: Created tab_counters with ScrollArea, fixedHeight: {self.container_height_for_tab_mode}, adaptive width with scroll")
+
+        # Ширины адаптивные - данные о фиксированных ширинах больше не нужны для логирования
+
+        # --- Добавление всех контейнеров в главный вертикальный layout ---
+        self.icons_main_layout.addWidget(self.normal_mode_container)
+        self.icons_main_layout.addWidget(self.tab_enemies_container)
+        self.icons_main_layout.addWidget(self.tab_counters_scroll)
+        self.icons_main_layout.addStretch(1)
+
+        # --- Начальная настройка видимости ---
+        self.tab_enemies_container.hide()
+        self.tab_counters_container.hide()
+        self.normal_mode_container.show()
 
         self.icons_scroll_area.setWidget(self.icons_scroll_content)
         logging.debug("    MainWindow: _create_icons_scroll_area_structure END")
@@ -358,7 +438,6 @@ class MainWindow(QMainWindow):
 
     @Slot(bool)
     def _on_win_api_topmost_changed(self, is_topmost: bool):
-        """Синхронизирует _is_win_topmost между MainWindow и WinAPI"""
         self._is_win_topmost = is_topmost
         logging.debug(f"MainWindow: _is_win_topmost синхронизирован с WinAPI: {is_topmost}")
 
@@ -402,7 +481,6 @@ class MainWindow(QMainWindow):
                     self.flags_manager.apply_mouse_invisible_mode("initial_show_no_ui_updater")
 
             if hasattr(self, 'hotkey_manager_global'):
-                # Новый hotkey manager инициализируется автоматически
                 logging.info("    showEvent: HotkeyManagerGlobal запущен и готов.")
             else:
                 logging.warning("    showEvent: HotkeyManagerGlobal не найден.")
@@ -430,307 +508,35 @@ class MainWindow(QMainWindow):
         logging.debug(f"MainWindow hideEvent triggered. isApplyingFlags: {is_applying_flags}, Spontaneous: {event.spontaneous()}")
         super().hideEvent(event)
 
-
-
-
-
+    # --- МЕТОДЫ TAB РЕЖИМА ПЕРЕНЕСЕНЫ В TabModeManager ---
     @Slot()
     def enable_tab_mode(self):
-        """Вкл. режима таба - окно в левой части экрана, поверх всех, только горизонтальный список"""
-        logging.info("MainWindow: enable_tab_mode начат")
-
-        # Сохраняем текущую геометрию перед таб режимом
-        self._original_geometry = self.geometry()
-        self.mode_positions[self.mode] = self.pos()  # Сохраняем текущую позицию режима
-        logging.debug(f"MainWindow: saved original geometry: {self._original_geometry}") # DEBUG
-        logging.debug(f"MainWindow: current flags before tab mode: {self.windowFlags():#x}")
-
-        # Определяем размеры экрана
-        screen = QApplication.primaryScreen()
-        if not screen:
-            logging.error("Не удалось получить первичный экран")
-            return
-
-        screen_geom = screen.availableGeometry()
-        screen_width = screen_geom.width()
-        screen_height = screen_geom.height()
-
-        # Вычисляем размеры для режима таба
-        tab_window_width = int(screen_width * 0.4)  # 40% ширины экрана
-        tab_window_height = self._calculate_tab_mode_height()  # Высота по горизонтальному списку
-
-        logging.info(f"[TAB_MODE_HEIGHT] Высота таб-режима рассчитана: {tab_window_height}px (минимум 70px из-за minimumSize)")
-        logging.debug(f"MainWindow: calculated tab height: {tab_window_height}px") # DEBUG
-
-        # Располагаем в левой части экрана
-        tab_x = 0
-        tab_y = screen_geom.y()
-
-        # Скрываем основной контент, показываем только горизонтальный список
-        self._set_tab_mode_ui_visible(True)
-
-        # ВАЖНЫЙ ИЗМЕНЕНИЕ ПОРЯДКА: сначала устанавливаем флаги, ПОТОМ геометрию
-        # Это предотвратит восстановление геометрии window_flags_manager'ом
-
-        # Устанавливаем флаг намеренного изменения геометрии для таб-режима
-        # Это предотвратит восстановление старой геометрии в window_flags_manager.py
-        logging.debug(f"MainWindow: setting _intentional_geometry_change = True early")
-        self._intentional_geometry_change = True
-
-        # Делаем окно поверх всех окон (изменяем флаги ПЕРЕД установкой геометрии)
-        self._is_win_topmost = True
-        flags_before_change = self.windowFlags()
-        logging.debug(f"MainWindow: flags before apply_mouse_invisible_mode: {flags_before_change:#x}")
-        if hasattr(self, 'flags_manager'):
-            self.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
-        flags_after_change = self.windowFlags()
-        logging.debug(f"MainWindow: flags after apply_mouse_invisible_mode: {flags_after_change:#x}")
-
-        # ТЕПЕРЬ устанавливаем геометрию ПОСЛЕ изменения флагов
-        new_geometry = QRect(tab_x, tab_y, tab_window_width, tab_window_height)
-        logging.debug(f"MainWindow: setting new geometry after flags: {new_geometry}")
-        geom_before_set = self.geometry()
-        logging.debug(f"MainWindow: geometry before setGeometry() after flags: {geom_before_set}")
-        self.setGeometry(new_geometry)
-        geom_after_set = self.geometry()
-        logging.debug(f"MainWindow: geometry after setGeometry() after flags: {geom_after_set}")
-
-        # ФИКС: Принудительно устанавливаем fixed height, чтобы предотвратить автоматическое увеличение Qt
-        self.setMinimumHeight(tab_window_height)
-        self.setMaximumHeight(tab_window_height)
-        logging.debug(f"MainWindow: set fixed height to {tab_window_height} (min and max)")
-        logging.info(f"Режим таба: установлен размер {tab_window_width}x{tab_window_height}, позиция ({tab_x},{tab_y})")
-
-        # Проверяем геометрию после установки
-        if geom_after_set.height() != tab_window_height:
-            logging.warning(f"MainWindow: GEOMETRY PROBLEM - Expected height {tab_window_height}, got {geom_after_set.height()}")
-            # Попытка дополнительного применения геометрии
-            self.setGeometry(new_geometry)
-            geom_retry = self.geometry()
-            logging.debug(f"MainWindow: geometry after retry: {geom_retry}")
-
-        # Гарантируем показ окна
-        self.show()
-        geom_after_show = self.geometry()
-        logging.debug(f"MainWindow: geometry after show(): {geom_after_show}")
-
-        # ДОПОЛНИТЕЛЬНЫЙ ФИКС: Повторная установка fixed height через QTimer для гарантии
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(20, lambda: self._ensure_tab_height(tab_window_height))
-
-        # Финальная проверка и дополнительное применение если нужно
-        final_geometry = self.geometry()
-        logging.debug(f"MainWindow: final geometry: {final_geometry}")
-        if final_geometry.height() != tab_window_height:
-            logging.warning(f"MainWindow: Height still wrong, forcing geometry again. Expected: {tab_window_height}, Got: {final_geometry.height()}")
-            # Финальная попытка принудительного применения
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(10, lambda: self._force_tab_geometry(tab_window_width, tab_window_height))
-        else:
-            logging.info(f"MainWindow: successful tab mode geometry: {final_geometry}")
-
-        # Сбрасываем флаг после всех операций
-        logging.debug(f"MainWindow: setting _intentional_geometry_change = False")
-        self._intentional_geometry_change = False
-
-        logging.info("MainWindow: enable_tab_mode завершен")
-
-    def _ensure_tab_height(self, target_height: int):
-        """Гарантирует, что высота окна таб-режима установлена корректно"""
-        current_geometry = self.geometry()
-        logging.debug(f"MainWindow: _ensure_tab_height called for target {target_height}, current height: {current_geometry.height()}")
-
-        if current_geometry.height() != target_height:
-            logging.warning(f"MainWindow: _ensure_tab_height detected wrong height {current_geometry.height()}, fixing to {target_height}")
-            self.setMinimumHeight(target_height)
-            self.setMaximumHeight(target_height)
-            self.resize(current_geometry.width(), target_height)
-            logging.debug(f"MainWindow: _ensure_tab_height applied. New geometry: {self.geometry()}")
-        else:
-            logging.debug(f"MainWindow: _ensure_tab_height - height already correct")
-
-    def _force_tab_geometry(self, width: int, height: int):
-        """Принудительное применение геометрии в таб-режиме (вызывается через QTimer)"""
-        logging.debug(f"MainWindow: _force_tab_geometry called with {width}x{height}")
-        current_geom = self.geometry()
-        logging.debug(f"MainWindow: geometry before force: {current_geom}")
-
-        if current_geom.width() == width and current_geom.height() == height:
-            logging.debug("MainWindow: _force_tab_geometry not needed - already correct")
-            return
-
-        # ДОПОЛНИТЕЛЬНО: Исправляем minimum и maximum height перед попытками
-        self.setMinimumHeight(height)
-        self.setMaximumHeight(height)
-
-        # ПЕРВАЯ ПОПЫТКА: Используем Qt setGeometry с repaint
-        logging.debug("MainWindow: Trying Qt setGeometry + repaint")
-        new_geom = QRect(current_geom.x(), current_geom.y(), width, height)
-        self.setGeometry(new_geom)
-        self.repaint()
-
-        forced_geom_qt = self.geometry()
-        logging.debug(f"MainWindow: geometry after Qt force: {forced_geom_qt}")
-
-        if forced_geom_qt.width() == width and forced_geom_qt.height() == height:
-            logging.info(f"MainWindow: _force_tab_geometry Qt SUCCESS: {forced_geom_qt}")
-            return
-
-        # ВТОРАЯ ПОПЫТКА: Используем WinAPI SetWindowPos для принудительного resize
-        if hasattr(self, 'win_api_manager') and self.win_api_manager:
-            logging.debug("MainWindow: Qt setGeometry failed, trying WinAPI SetWindowPos")
-            try:
-                screen_geom = self.geometry()
-                # Используем WinAPI manager для принудительного изменения размера
-                # WinAPI SetWindowPos без SWP_NOMOVE и SWP_NOSIZE флагов изменит и размер, и позицию
-                if self.win_api_manager._set_window_pos_api(
-                    self.win_api_manager._get_hwnd(),
-                    0, # hwnd_after - не меняем Z-order
-                    0x0010 | 0x0020 # SWP_NOZORDER | SWP_NOACTIVATE
-                ):
-                    # Повторяем вызов SetWindowPos с фактическими координатами и нужными размерами
-                    x, y = screen_geom.x(), screen_geom.y()
-                    import ctypes
-                    success = self.win_api_manager.user32_lib.SetWindowPos(
-                        self.win_api_manager._get_hwnd(),
-                        0, # не меняем Z-order
-                        x, y, width, height,
-                        0x0010 | 0x0020 # SWP_NOZORDER | SWP_NOACTIVATE
-                    )
-                    if success:
-                        self.update()
-                        forced_geom_winapi = self.geometry()
-                        logging.debug(f"MainWindow: geometry after WinAPI force: {forced_geom_winapi}")
-
-                        if forced_geom_winapi.width() == width and forced_geom_winapi.height() == height:
-                            logging.info(f"MainWindow: _force_tab_geometry WinAPI SUCCESS: {forced_geom_winapi}")
-                            return
-                        else:
-                            # ДОПОЛНИТЕЛЬНО: В WinAPI тоже исправить через resize
-                            self.resize(width, height)
-                            final_winapi_geom = self.geometry()
-                            logging.debug(f"MainWindow: after WinAPI + resize: {final_winapi_geom}")
-
-            except Exception as e:
-                logging.error(f"MainWindow: WinAPI resize failed: {e}")
-
-        # ОКОНЧАТЕЛЬНАЯ ПРОВЕРКА: Обе попытки неудачны
-        logging.error(f"MainWindow: _force_tab_geometry ALL METHODS FAILED: target {width}x{height}, current {self.geometry()}")
+        self.tab_mode_manager.enable()
 
     @Slot()
     def disable_tab_mode(self):
-        """Выкл. режима таба - возврат в нормальный режим"""
-        logging.info("MainWindow: disable_tab_mode начат")
-
-        # Логируем текущую высоту перед выходом из режима
-        current_height = self.geometry().height()
-        logging.info(f"[TAB_MODE_HEIGHT] Высота перед выходом из таб-режима: {current_height}px (ожидается ~70px)")
-        if current_height < 60 or current_height > 80:
-            logging.warning(f"[TAB_MODE_HEIGHT] Необычная высота таб-режима: {current_height}px (ожидается ~70px)")
-
-        # Сохраняем позицию до изменения режима
-        self.mode_positions["tab"] = self.pos()
-
-        # Возвращаем обычные флаги окна
-        self._is_win_topmost = False
-
-        # Сбрасываем fixed height для нормального режима
-        self.setMinimumHeight(0)
-        self.setMaximumHeight(16777215)
-        logging.debug("MainWindow: reset fixed height for normal mode")
-
-        # Восстанавливаем интерфейс
-        self._set_tab_mode_ui_visible(False)
-
-        # Восстанавливаем предыдущий режим с сохраненной позицией
-        previous_mode = self.mode_manager.current_mode if hasattr(self, 'mode_manager') else "middle"
-
-        # Явно устанавливаем нормальную высоту для режима (например 600px для middle)
-        from mode_manager import MODE_DEFAULT_WINDOW_SIZES
-        default_sizes = MODE_DEFAULT_WINDOW_SIZES.get(previous_mode, {'width': 950, 'height': 600})
-        normal_height = default_sizes.get('height', 600)
-        current_geometry = self.geometry()
-        if current_geometry.height() != normal_height:
-            self.resize(current_geometry.width(), normal_height)
-            logging.debug(f"MainWindow: restored normal height {normal_height}px for mode {previous_mode}")
-            logging.info(f"Восстановлена нормальная высота для режима '{previous_mode}': {normal_height}px")
-
-        # Явно восстанавливаем позицию для предыдущего режима
-        target_pos = self.mode_positions.get(previous_mode)
-        if target_pos and target_pos != QPoint(0, 0):
-            logging.info(f"Восстановление позиции для режима '{previous_mode}': {target_pos}")
-            self.move(target_pos)
-
-        self.change_mode(previous_mode)
-
-        self.show()
-        logging.info("MainWindow: disable_tab_mode завершен")
-
-    def _set_tab_mode_ui_visible(self, tab_mode_active: bool):
-        """Устанавливает видимость элементов интерфейса для режима таба"""
-        # В режиме таба показываем только горизонтальный список
-        if hasattr(self, 'icons_scroll_area'):
-            self.icons_scroll_area.setVisible(tab_mode_active)
-
-        # Скрываем остальные панели
-        if hasattr(self, 'left_panel_widget'):
-            self.left_panel_widget.setVisible(not tab_mode_active)
-        if hasattr(self, 'right_panel_widget'):
-            self.right_panel_widget.setVisible(not tab_mode_active)
-        if hasattr(self, 'top_panel_instance') and hasattr(self.top_panel_instance, 'top_frame'):
-            self.top_panel_instance.top_frame.setVisible(not tab_mode_active)
-
-    def _calculate_tab_mode_height(self) -> int:
-        """Расчитывает высоту окна режима таба по высоте горизонтального списка героев"""
-
-        # В таб-режиме горизонтальный список ОДНОГО ряда героев, высота должна быть ~45px + отступы
-        # ШИРИНА окна будет переменяться, ВЫСОТА всегда одного ряда
-        # НО: minimumSize блокирует высоту меньше 70px, поэтому используем минимум 70px
-
-        # Базовая высота одного ряда героев (45-50px + отступы)
-        tab_mode_height = 70  # Установлено в минимум 70px из-за setMinimumSize(300, 70)
-
-        logging.debug(f"_calculate_tab_mode_height: height for single row tab mode = {tab_mode_height}px")
-        return tab_mode_height
-
-        # Fallback - перебираем все элементы в counters_layout
-        if self.counters_layout:
-            item_count = 0
-            for i in range(self.counters_layout.count()):
-                item = self.counters_layout.itemAt(i)
-                if item and item.widget():
-                    item_count += 1
-
-            if item_count > 0:
-                # Предполагаем высоту элемента ~50px
-                total_height = min(item_count * 50, 500)  # Увеличенный максимум для fallback
-                total_height = max(total_height, 100)
-                logging.debug(f"_calculate_tab_mode_height: fallback item_count={item_count}, calculated_height={total_height}")
-                return total_height
-
-        # Последний fallback
-        logging.debug("_calculate_tab_mode_height: using fallback height 150")
-        return 150
+        self.tab_mode_manager.disable()
 
     @Slot()
     def trigger_tab_recognition(self):
         """Триггер распознавания героев по TAB+0 в режиме таба"""
-        logging.info("MainWindow: trigger_tab_recognition начат - распознавание героев по горячей клавише")
-
+        logging.info("MainWindow: trigger_tab_recognition начат")
         if hasattr(self, 'rec_manager') and hasattr(self.rec_manager.recognize_heroes_signal, 'emit'):
             self.rec_manager.recognize_heroes_signal.emit()
             logging.info("Запущено распознавание героев из режима таба")
         else:
             logging.error("RecognitionManager не доступен для запуска распознавания")
-
+    # ----------------------------------------------------
 
     def change_mode(self, mode_name: str):
         t_change_mode_start = time.perf_counter()
         logging.info(f"--> MainWindow: change_mode to: {mode_name} (Current: {self.mode})")
-        if self.mode == mode_name:
+        
+        is_currently_in_tab_mode = self.tab_mode_manager.is_active() if self.tab_mode_manager else False
+        if self.mode == mode_name and not is_currently_in_tab_mode:
             logging.info(f"    Mode is already {mode_name}. No change.")
             if hasattr(self, 'flags_manager'):
-                QTimer.singleShot(10, lambda: self.flags_manager.force_taskbar_update_internal(f"already_in_mode_{mode_name}_refresh"))
+                self.flags_manager.force_taskbar_update_internal(f"already_in_mode_{mode_name}_refresh")
             logging.debug(f"<-- MainWindow: change_mode finished (no change). Time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
             return
 
@@ -757,7 +563,7 @@ class MainWindow(QMainWindow):
         target_pos = self.mode_positions.get(self.mode)
         if target_pos and self.isVisible() and self.pos() != target_pos:
             logging.debug(f"    Попытка восстановить позицию для режима '{self.mode}' на {target_pos} (текущая: {self.pos()})")
-            QTimer.singleShot(50, lambda: self._move_window_safely(target_pos))
+            self._move_window_safely(target_pos)
         elif self.isVisible():
             current_pos_for_new_mode = self.pos()
             if self.mode_positions.get(self.mode) != current_pos_for_new_mode:
@@ -772,7 +578,7 @@ class MainWindow(QMainWindow):
             else: self._set_application_icon()
 
         if hasattr(self, 'flags_manager'):
-            QTimer.singleShot(150, lambda: self.flags_manager.force_taskbar_update_internal(f"after_mode_{mode_name}_change"))
+            self.flags_manager.force_taskbar_update_internal(f"after_mode_{mode_name}_change")
 
         logging.info(f"<-- MainWindow: change_mode to {mode_name} FINISHED. Total time: {(time.perf_counter() - t_change_mode_start)*1000:.2f} ms")
 
@@ -991,8 +797,6 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _show_hotkey_info_dialog(self):
-        # Новый hotkey manager имеет фиксированные хоткеи, которые не изменяются через настройки
-        # TAB и TAB+0 - встроенные функции режима таба
         if self.hotkey_display_dialog:
             self.hotkey_display_dialog.update_html_content()
         else:
@@ -1022,7 +826,6 @@ class MainWindow(QMainWindow):
     @Slot()
     def on_settings_applied(self):
         logging.info("MainWindow: Настройки были применены из SettingsWindow.")
-        # Новый hotkey manager работает автоматически, настройки применены
         if hasattr(self, 'hotkey_manager_global'):
             logging.info("HotkeyManagerGlobal настроен с последними обновлениями")
 
@@ -1075,11 +878,8 @@ class MainWindow(QMainWindow):
                 if isinstance(focus_widget, HotkeyCaptureLineEdit):
                     logging.debug("MainWindow.eventFilter: Tab for HotkeyCaptureLineEdit. Forwarding.")
                     return False
-                # В остальных случаях, если Tab используется в глобальных хоткеях,
-                # KeyboardHotkeyAdapter должен его обработать. Чтобы предотвратить
-                # стандартную навигацию Qt по фокусу, мы "съедаем" событие здесь.
                 logging.debug("MainWindow.eventFilter: Tab pressed. Consuming to prevent Qt focus navigation.")
-                return True # Поглощаем событие Tab, чтобы оно не вызывало смену фокуса
+                return True
 
         if self.mode == "min" and hasattr(self, 'drag_handler') and self.drag_handler:
             if event.type() == QEvent.Type.MouseButtonPress:

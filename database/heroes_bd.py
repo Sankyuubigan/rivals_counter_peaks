@@ -14,11 +14,12 @@ def resource_path(relative_path):
         base_path = sys._MEIPASS
         logging.debug(f"resource_path: Используется sys._MEIPASS: {base_path}")
     except AttributeError:
-        # В режиме разработки - путь к корню проекта
-        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+        # В режиме разработки - путь к корню проекта (родительская дир от database/)
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         logging.debug(f"resource_path: Режим разработки, используем путь: {base_path}")
 
     final_path = os.path.join(base_path, relative_path)
+    logging.debug(f"resource_path: Финальный путь для '{relative_path}': {final_path}")
     return final_path
 
 # Глобальные переменные для совместимости с существующим кодом
@@ -548,6 +549,22 @@ logging.info("Инициализация новой базы данных...")
 matchups_data = load_matchups_data()
 hero_stats_data = load_hero_stats()
 matchups_data = convert_hero_names_opponents(matchups_data)
+
+# Fallback данных для случаев, когда файлы статистики не найдены
+if not matchups_data:
+    logging.warning("Файлы статистики не найдены. Используем базовый набор героев.")
+    # Базовый список основных героев Marvel Rivals
+    fallback_heroes = [
+        "Adam Warlock", "Blade", "Captain America", "Captain Marvel", "Cloak and Dagger",
+        "Doctor Strange", "Emma Frost", "Groot", "Hawk", "Hawkeye", "Hela", "Hulk", "Human Torch",
+        "Invisible Woman", "Iron Fist", "Iron Man", "Loki", "Luna Snow", "Magneto", "Mantis",
+        "Moon Knight", "Namor", "Penelope Parker", "Phoenix", "Psylocke", "Rocket Racoon",
+        "Scarlet Witch", "Spider-Man", "Squirrel Girl", "Star-Lord", "Storm", "The Punisher",
+        "The Thing", "Thor", "Venom", "Win", "Wolverine"
+    ]
+
+    # Создаем базовые матчап данные с пустыми оппонентами
+    matchups_data = {hero: [] for hero in fallback_heroes}
 
 # Создаем список героев из данных
 heroes = list(matchups_data.keys())

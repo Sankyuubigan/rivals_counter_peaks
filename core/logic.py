@@ -4,7 +4,7 @@ from database.heroes_bd import (heroes, heroes_counters, heroes_compositions,
                                 matchups_data, hero_stats_data,
                                 calculate_team_counters, absolute_with_context,
                                 select_optimal_team, SYNERGY_BONUS, hero_roles)
-from core.lang.translations import get_text, DEFAULT_LANGUAGE as global_default_language
+from info.translations import get_text, DEFAULT_LANGUAGE as global_default_language
 # Убраны неиспользуемые константы AKAZE
 # from core.utils import (AKAZE_MIN_MATCH_COUNT, AKAZE_LOWE_RATIO,
 #                        AKAZE_DESCRIPTOR_TYPE)
@@ -75,33 +75,33 @@ class CounterpickLogic:
         if not heroes_list: return get_text('selected_none', language=lang, max_team_size=TEAM_SIZE)
         else: header = f"{get_text('selected_some', language=lang)} ({count}/{TEAM_SIZE}): "; return f"{header}{', '.join(heroes_list)}"
 
-    def _calculate_hero_score(self, hero_to_evaluate, current_enemy_selection_set, priority_enemy_heroes):
-        score = 0.0
+    # def _calculate_hero_score(self, hero_to_evaluate, current_enemy_selection_set, priority_enemy_heroes):
+    #     score = 0.0
 
-        for enemy_hero in current_enemy_selection_set:
-            enemy_counters_data = heroes_counters.get(enemy_hero, {}) 
-            if isinstance(enemy_counters_data, dict):
-                multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
-                if hero_to_evaluate in enemy_counters_data.get("hard", []):
-                    score += HARD_COUNTER_SCORE_BONUS * multiplier
-                elif hero_to_evaluate in enemy_counters_data.get("soft", []):
-                    score += SOFT_COUNTER_SCORE_BONUS * multiplier
+    #     for enemy_hero in current_enemy_selection_set:
+    #         enemy_counters_data = heroes_counters.get(enemy_hero, {}) 
+    #         if isinstance(enemy_counters_data, dict):
+    #             multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
+    #             if hero_to_evaluate in enemy_counters_data.get("hard", []):
+    #                 score += HARD_COUNTER_SCORE_BONUS * multiplier
+    #             elif hero_to_evaluate in enemy_counters_data.get("soft", []):
+    #                 score += SOFT_COUNTER_SCORE_BONUS * multiplier
         
-        if hero_to_evaluate in current_enemy_selection_set:
-            score -= 10.0 
+    #     if hero_to_evaluate in current_enemy_selection_set:
+    #         score -= 10.0 
 
-        hero_to_evaluate_data = heroes_counters.get(hero_to_evaluate, {}) 
-        if isinstance(hero_to_evaluate_data, dict):
-            hero_hard_countered_by = hero_to_evaluate_data.get("hard", [])
-            hero_soft_countered_by = hero_to_evaluate_data.get("soft", [])
+    #     hero_to_evaluate_data = heroes_counters.get(hero_to_evaluate, {}) 
+    #     if isinstance(hero_to_evaluate_data, dict):
+    #         hero_hard_countered_by = hero_to_evaluate_data.get("hard", [])
+    #         hero_soft_countered_by = hero_to_evaluate_data.get("soft", [])
 
-            for enemy_hero in current_enemy_selection_set:
-                multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
-                if enemy_hero in hero_hard_countered_by:
-                    score += HARD_COUNTERED_BY_PENALTY * multiplier
-                elif enemy_hero in hero_soft_countered_by:
-                    score += SOFT_COUNTERED_BY_PENALTY * multiplier
-        return score
+    #         for enemy_hero in current_enemy_selection_set:
+    #             multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
+    #             if enemy_hero in hero_hard_countered_by:
+    #                 score += HARD_COUNTERED_BY_PENALTY * multiplier
+    #             elif enemy_hero in hero_soft_countered_by:
+    #                 score += SOFT_COUNTERED_BY_PENALTY * multiplier
+    #     return score
 
     def calculate_counter_scores(self):
         if not self.selected_heroes: return {}

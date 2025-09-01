@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QSlider, QPushButton, QHBoxLayout, QMenu
 )
 from PySide6.QtCore import Qt, QTimer
-from core.lang.translations import get_text, SUPPORTED_LANGUAGES
+from info.translations import get_text, SUPPORTED_LANGUAGES
 from dialogs import show_about_program_info, show_hero_rating, show_author_info 
 from typing import TYPE_CHECKING 
 import logging

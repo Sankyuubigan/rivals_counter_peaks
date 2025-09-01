@@ -3,10 +3,10 @@ import logging
 # json не используется напрямую, AppSettingsManager управляет JSON
 from PySide6.QtWidgets import QApplication, QDialog 
 
-from core.lang.translations import SUPPORTED_LANGUAGES, set_language as set_global_language, get_text
+from info.translations import SUPPORTED_LANGUAGES, set_language as set_global_language, get_text
 # Вместо utils.get_settings_path используем AppSettingsManager
 from core.app_settings_manager import AppSettingsManager
-from core.lang.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
+from info.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
 from core.app_settings_manager import DEFAULT_THEME_VALUE
 
 
@@ -238,11 +238,12 @@ class AppearanceManager:
             QSlider::handle:horizontal:hover { background: #45a049; }
             QWidget#icons_scroll_content { background-color: #e9e9e9; } 
             QScrollArea#icons_scroll_area { background-color: #e9e9e9; }
-            QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: #ffeeee; } /* Увеличен padding */
+            QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: #ffeeee; }
             QLabel#horizontal_info_label { color: #666666; }
             HotkeyCaptureLineEdit { color: black; background-color: white; }
             QFrame#result_frame QLabel { color: black !important; } 
             QFrame#result_frame QFrame QLabel { color: black !important; }
+            QWidget#tab_enemies_container { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: transparent; }
         """
         dark_qss = """
             QMainWindow, QDialog { background-color: #2e2e2e; }
@@ -298,11 +299,12 @@ class AppearanceManager:
             QSlider::handle:horizontal:hover { background: #45a049; }
             QWidget#icons_scroll_content { background-color: #222222; } 
             QScrollArea#icons_scroll_area { background-color: #222222; }
-            QWidget#enemies_widget { border: 2px solid #CC0000; border-radius: 4px; padding: 2px; background-color: #402020; } /* Увеличен padding */
+            QWidget#enemies_widget { border: 2px solid #CC0000; border-radius: 4px; padding: 2px; background-color: #402020; }
             QLabel#horizontal_info_label { color: #999999; }
             HotkeyCaptureLineEdit { color: #e0e0e0; background-color: #3c3c3c; }
             QFrame#result_frame QLabel { color: #e0e0e0 !important; } 
             QFrame#result_frame QFrame QLabel { color: #e0e0e0 !important; }
+            QWidget#tab_enemies_container { border: 2px solid #CC0000; border-radius: 4px; padding: 2px; background-color: transparent; }
         """
         qss = light_qss if theme_name == "light" else dark_qss
         

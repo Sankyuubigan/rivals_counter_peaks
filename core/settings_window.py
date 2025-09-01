@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QFileDialog)
 from PySide6.QtCore import Qt, Signal, Slot, QTimer 
 
-from core.lang.translations import get_text
+from info.translations import get_text
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG, DEFAULT_HOTKEYS as DEFAULT_HOTKEYS_VALUES_INTERNAL
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from core.app_settings_manager import AppSettingsManager

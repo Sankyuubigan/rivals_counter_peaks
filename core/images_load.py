@@ -15,7 +15,7 @@ def resource_path(relative_path):
         base_path = sys._MEIPASS
         logging.debug(f"resource_path: Используется sys._MEIPASS: {base_path}")
     except AttributeError:
-        # В режиме разработки - путь к корню проекта
+        # В режиме разработки - путь к корню проекта (родительская дир от core/)
         base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         logging.debug(f"resource_path: Режим разработки, используем путь: {base_path}")
 

@@ -11,5 +11,5 @@ __pycache__
 /tests/for_recogn/screenshots
 /tests/debug_rust
 /env
-
+/roo_tests
 /vision_models

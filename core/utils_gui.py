@@ -1,7 +1,7 @@
 # File: core/utils_gui.py
 from PySide6.QtWidgets import QMessageBox
 # <<< ИСПРАВЛЕНО: Используем абсолютный импорт >>>
-from core.lang import translations
+from info import translations
 # <<< ----------------------------------------- >>>
 import pyperclip
 

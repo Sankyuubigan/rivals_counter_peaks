@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout, QScrollA
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor # Добавлен QColor
 from database.heroes_bd import heroes_counters
-from core.lang.translations import get_text
+from info.translations import get_text
 from images_load import is_invalid_pixmap
 import logging
 

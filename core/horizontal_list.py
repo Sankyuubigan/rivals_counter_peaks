@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
 from PySide6.QtCore import QSize, Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QBrush, QPixmap
-from core.lang.translations import get_text
+from info.translations import get_text
 from images_load import is_invalid_pixmap, SIZES as IMG_SIZES
 import math
 import logging
@@ -11,7 +11,7 @@ class IconWithRatingWidget(QWidget):
     """Виджет для отображения иконки героя с его рейтингом."""
     def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, is_enemy: bool, tooltip: str, parent=None):
         super().__init__(parent)
-        self.hero_name = tooltip.split('\n')[0]
+        self.hero_name = tooltip.split('\n')
         self.pixmap = pixmap
         self.rating_text = f"{math.ceil(rating) if rating > 0 else math.floor(rating)}"
         self.is_in_effective_team = is_in_effective_team; self.is_enemy = is_enemy
@@ -68,15 +68,20 @@ class IconWithRatingWidget(QWidget):
                 painter.drawText(text_x, text_y, self.rating_text)
         painter.end()
 
-def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> None:
+def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> int:
     """
-    Обновляет горизонтальный список иконок КОНТРПИКОВ (вверху окна, левая часть в min режиме).
+    Обновляет горизонтальный список иконок КОНТРПИКОВ.
     Добавляет виджеты в переданный target_layout.
+    Возвращает количество добавленных элементов.
     """
-    logging.debug("Starting update_horizontal_icon_list (counter picks)")
     logic = window.logic
-    if not target_layout: logging.error("Target layout for counter-picks not provided."); return
-    clear_layout(target_layout)
+    is_tab_mode = window.tab_mode_manager.is_active() if hasattr(window, 'tab_mode_manager') else False
+
+    if not target_layout:
+        logging.error("Target layout for counter-picks not provided.")
+        return
+
+    # clear_layout(target_layout) # ИЗМЕНЕНО: Очистка layout'а теперь выполняется вызывающей функцией (ui_updater)
 
     counter_scores = {}; effective_team_set = set(); selected_heroes_set = set(logic.selected_heroes)
 
@@ -86,11 +91,13 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> None:
 
     counter_scores = logic.calculate_counter_scores()
     if counter_scores:
+        logging.info(f"[TAB MODE] Counter scores calculated for {len(counter_scores)} heroes")
         effective_team = logic.calculate_effective_team(counter_scores)
         effective_team_set = set(effective_team)
         logic.effective_team = effective_team
+        logging.info(f"[TAB MODE] Effective team size: {len(effective_team) if effective_team else 0}")
     else:
-        logging.warning("Counter scores calculation returned empty.")
+        logging.warning(f"[TAB MODE] Counter scores calculation returned empty (selected_heroes: {selected_heroes_set})")
         target_layout.addStretch(1)
         return
 
@@ -105,8 +112,9 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> None:
     sorted_heroes = sorted(heroes_to_display_map.keys(), key=lambda h: heroes_to_display_map.get(h, -99), reverse=True)
 
     if not sorted_heroes:
+        logging.info(f"[TAB MODE] No counter-picks to display (empty sorted_heroes)")
         target_layout.addStretch(1)
-        return
+        return 0
 
     horizontal_images = getattr(window, 'horizontal_images', {})
     if not horizontal_images:
@@ -115,9 +123,18 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> None:
         label.setStyleSheet("color: red;")
         target_layout.addWidget(label)
         target_layout.addStretch(1)
+    
+        logging.info(f"[TAB MODE] Counters: added {items_added} heroes to layout")
+        return items_added
+        logging.info("[TAB MODE] Counters: added 0 error messages to layout")
         return
 
     items_added = 0
+    # В таб-режиме показываем иконки без рейтинга
+    is_tab_mode = window.tab_mode_manager.is_active() if hasattr(window, 'tab_mode_manager') else False
+
+    logging.info(f"[TAB MODE] Processing {len(sorted_heroes)} counter candidates")
+
     for hero in sorted_heroes:
         rating = counter_scores.get(hero, 0.0)
 
@@ -126,53 +143,70 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> None:
             if is_invalid_pixmap(pixmap):
                 logging.warning(f"[Horizontal List - Counters] Invalid or missing pixmap for hero '{hero}'. Using placeholder.")
                 h_size = IMG_SIZES.get(window.mode, {}).get('horizontal', (35, 35))
-                placeholder = QLabel(f"{hero[0] if hero else '?'}")
+                placeholder = QLabel(f"{hero if hero else '?'}")
                 placeholder.setFixedSize(QSize(*h_size)); placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 placeholder.setStyleSheet("background-color: lightgrey; border: 1px solid grey; border-radius: 3px; color: black;")
                 placeholder.setToolTip(f"{hero}\n(Icon Error)")
+                logging.info(f"[Horizontal List - Counters] Adding placeholder widget for '{hero}': size {placeholder.size()}, sizeHint: {placeholder.sizeHint()}")
                 target_layout.addWidget(placeholder); items_added += 1
             else:
                 is_in_effective_team = hero in effective_team_set
                 tooltip = f"{hero}\nRating: {rating:.1f}"
-                icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, False, tooltip, parent=window)
-                border_color = "gray"; border_width = 1
-                if is_in_effective_team:
-                    border_color = "blue"; border_width = 2
-                icon_widget.set_border(border_color, border_width)
+
+                if is_tab_mode:
+                    # В таб-режиме просто QLabel
+                    icon_widget = QLabel()
+                    icon_widget.setPixmap(pixmap)
+                    icon_widget.setFixedSize(pixmap.size())
+                    icon_widget.setToolTip(tooltip)
+                    icon_widget.setVisible(True)
+                else:
+                    # В обычном режиме виджет с рейтингом
+                    icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, False, tooltip, parent=window)
+                    border_color = "gray"; border_width = 1
+                    if is_in_effective_team:
+                        border_color = "blue"; border_width = 2
+                    icon_widget.set_border(border_color, border_width)
+
                 target_layout.addWidget(icon_widget); items_added += 1
 
     target_layout.addStretch(1)
-    logging.debug(f"Horizontal counter-pick list updated with {items_added} items.")
 
 
 def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
-    """
-    Обновляет горизонтальный список иконок ВРАГОВ (правая часть в min режиме).
-    Добавляет виджеты в переданный target_layout.
-    """
-    logging.debug("Starting update_enemy_horizontal_list")
+    """Обновляет горизонтальный список иконок ВРАГОВ."""
     logic = window.logic
     if not target_layout: logging.error("Target layout for enemies not provided."); return
 
-    enemies_widget = target_layout.parentWidget()
-    if not isinstance(enemies_widget, QWidget):
-        logging.error("Target layout parent is not a QWidget, cannot apply border.")
-        enemies_widget = None
+    is_tab_mode = window.tab_mode_manager.is_active() if hasattr(window, 'tab_mode_manager') else False
 
-    clear_layout(target_layout)
+    # Управление рамкой родительского виджета только в min-режиме (не таб)
+    if not is_tab_mode:
+        enemies_widget = target_layout.parentWidget()
+        if not isinstance(enemies_widget, QWidget):
+            logging.error("Target layout parent is not a QWidget, cannot apply border.")
+            enemies_widget = None
 
+        if logic.selected_heroes and enemies_widget:
+            enemies_widget.setStyleSheet("QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 2px; }")
+        elif enemies_widget:
+            enemies_widget.setStyleSheet("QWidget#enemies_widget { border: none; }")
+
+    MAX_ENEMIES_IN_TAB = 8  # Увеличено для гибкости
+
+    # Оптимизированное выравнивание по правому краю для таб-режима
+    target_layout.addStretch(1)
     selected_heroes = list(logic.selected_heroes)
 
-    # <<< ИЗМЕНЕНО: Увеличена толщина рамки и немного увеличен padding >>>
-    if selected_heroes and enemies_widget:
-        enemies_widget.setStyleSheet("QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 2px; }") # Толще рамка, больше радиус и паддинг
-    elif enemies_widget:
-        enemies_widget.setStyleSheet("QWidget#enemies_widget { border: none; }")
-    # <<< END ИЗМЕНЕНО >>>
-
-    if not selected_heroes:
-        target_layout.addStretch(1)
-        return
+    if is_tab_mode and len(selected_heroes) > MAX_ENEMIES_IN_TAB:
+        # В таб-режиме показываем только первых 6 врагов
+        selected_heroes = selected_heroes[:MAX_ENEMIES_IN_TAB]
+        logging.debug(f"Limited enemies list to {MAX_ENEMIES_IN_TAB} heroes for tab mode")
+    
+        if not selected_heroes:
+            logging.info(f"[TAB MODE] No selected heroes to display in enemy list")
+            return 0
+        logging.debug(f"[TAB MODE] Displaying {len(selected_heroes)} enemies")
 
     horizontal_images = getattr(window, 'horizontal_images', {})
     if not horizontal_images:
@@ -180,7 +214,6 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
         label = QLabel("Err")
         label.setStyleSheet("color: red;")
         target_layout.addWidget(label)
-        target_layout.addStretch(1)
         return
 
     items_added = 0
@@ -189,7 +222,7 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
         if is_invalid_pixmap(pixmap):
             logging.warning(f"[Horizontal List - Enemies] Invalid or missing pixmap for enemy '{hero}'. Using placeholder.")
             h_size = IMG_SIZES.get(window.mode, {}).get('horizontal', (35, 35))
-            placeholder = QLabel(f"{hero[0] if hero else '?'}")
+            placeholder = QLabel(f"{hero if hero else '?'}")
             placeholder.setFixedSize(QSize(*h_size)); placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
             placeholder.setStyleSheet("background-color: lightgrey; border: 1px solid grey; border-radius: 3px; color: black;")
             placeholder.setToolTip(f"{hero}\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})")
@@ -198,12 +231,15 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
             icon_label = QLabel()
             icon_label.setPixmap(pixmap)
             icon_label.setFixedSize(pixmap.size())
-            icon_label.setStyleSheet("border: none; border-radius: 3px; padding: 0px;") # Убрали индивидуальную рамку
+            # Рамка не нужна, т.к. она на родительском виджете
+            icon_label.setStyleSheet("border: none; border-radius: 3px; padding: 0px;")
             icon_label.setToolTip(f"{hero}\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})")
+            if is_tab_mode:
+                icon_label.setVisible(True)  # Эксплицитно устанавливаем видимость для QLabel в таб-режиме
             target_layout.addWidget(icon_label); items_added += 1
 
-    target_layout.addStretch(1)
-    logging.debug(f"Horizontal enemy list updated with {items_added} items.")
+    logging.info(f"[TAB MODE] Enemies: added {items_added} heroes to layout")
+    return items_added
 
 def clear_layout(layout):
     if layout is None: return

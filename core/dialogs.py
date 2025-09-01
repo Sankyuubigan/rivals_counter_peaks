@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, 
 from PySide6.QtCore import Qt, Slot, QTimer, QEvent, QKeyCombination, Signal, QObject
 from PySide6.QtGui import QKeySequence, QCloseEvent
 from database import heroes_bd
-from core.lang.translations import get_text
+from info.translations import get_text
 import pyperclip
 import logging
 import os

@@ -11,7 +11,7 @@ from core.app_settings_keys import (
     SAVE_SCREENSHOT_LESS_THAN_6_KEY, SCREENSHOT_SAVE_PATH_KEY
 )
 from core.hotkey_config import DEFAULT_HOTKEYS as DEFAULT_HOTKEYS_VALUES
-from core.lang.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
+from info.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
 
 DEFAULT_THEME_VALUE = "light" 
 DEFAULT_SAVE_SCREENSHOT_VALUE = False 

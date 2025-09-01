@@ -4,7 +4,7 @@ from typing import Dict, Any
 from PySide6.QtWidgets import QLineEdit, QApplication, QDialog
 from PySide6.QtCore import Qt, Signal, QTimer, QEvent
 from PySide6.QtGui import QKeySequence
-from core.lang.translations import get_text
+from info.translations import get_text
 from core.hotkey_parser_utils import normalize_string_for_storage
 
 
