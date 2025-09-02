@@ -53,9 +53,7 @@ def load_hero_roles_from_file(file_path="database/roles_and_groups.py"):
     
     # Создаем соответствие между разными именами героев
     name_mapping = {
-        "Widow": "Black Widow",
-        "Fister": "Iron Fist",
-        "Jeff": "Jeff The Land Shark",
+     
     }
     
     # Преобразуем в формат {имя_героя: роль}

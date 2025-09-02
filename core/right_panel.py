@@ -77,44 +77,62 @@ class RightPanel:
 
 
     def _populate_list_widget(self):
+        # ПОЛНАЯ ОЧИСТКА СПИСКА ПЕРЕД ЗАПОЛНЕНИЕМ ПО НОВОЙ
         self.hero_items.clear()
+        self.list_widget.clear()
+        logging.info(f"[RightPanel] Cleared list widget and hero_items dictionary for mode {self.current_mode}")
+
         right_images = getattr(self.window, 'right_images', {})
-        if not right_images: logging.warning("[RightPanel] 'right_images' not found or empty in main window.")
+        if not right_images:
+            logging.error(f"[RightPanel] ERROR: 'right_images' not found or empty in main window for mode {self.current_mode}. Cannot populate list!")
+            return
 
-        # Получаем размеры иконок для текущего режима (снова, т.к. populate может вызываться отдельно)
+        # Получаем размеры иконок для текущего режима
         icon_w, icon_h = SIZES.get(self.current_mode, {}).get('right', (40, 40))
+        logging.debug(f"[RightPanel] Populating list with icon size {icon_w}x{icon_h} for mode {self.current_mode}")
 
-        for hero in heroes:
-            item = QListWidgetItem()
-            # Текст под иконкой только для 'max' режима, как и было
-            item_text = hero if self.current_mode == "max" else ""
-            item.setText(item_text)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
-            
-            icon_pixmap : QPixmap | None = right_images.get(hero)
-            if is_invalid_pixmap(icon_pixmap):
-                logging.warning(f"[RightPanel] Invalid or missing icon for hero: '{hero}'. Setting placeholder.")
-                # Можно создать плейсхолдер с текстом, если иконка не загрузилась
-                # placeholder_pixmap = QPixmap(icon_w, icon_h)
-                # placeholder_pixmap.fill(Qt.GlobalColor.lightGray)
-                # painter = QPainter(placeholder_pixmap)
-                # painter.drawText(placeholder_pixmap.rect(), Qt.AlignmentFlag.AlignCenter, hero[:1])
-                # painter.end()
-                # item.setIcon(QIcon(placeholder_pixmap))
+        try:
+            heroes_processed = 0
+            heroes_with_valid_icons = 0
+
+            for hero in heroes:
+                item = QListWidgetItem()
+                # Текст под иконкой только для 'max' режима, как и было
+                item_text = hero if self.current_mode == "max" else ""
+                item.setText(item_text)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
+
+                icon_pixmap : QPixmap | None = right_images.get(hero)
+                if is_invalid_pixmap(icon_pixmap):
+                    logging.warning(f"[RightPanel] Invalid or missing icon for hero: '{hero}' in mode {self.current_mode}")
+                    # Не добавляем элементы без корректных иконок для предотвращения визуального мусора
+                    continue
+                else:
+                    item.setIcon(QIcon(icon_pixmap))
+                    heroes_with_valid_icons += 1
+
+                # Устанавливаем размер элемента, чтобы он был предсказуем для расчета столбцов
+                item.setSizeHint(QSize(icon_w + 10, icon_h + (20 if self.current_mode == "max" else 10) ))
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                item.setData(HERO_NAME_ROLE, hero)
+                item.setToolTip(hero)
+
+                self.list_widget.addItem(item)
+                self.hero_items[hero] = item
+                heroes_processed += 1
+
+            logging.info(f"[RightPanel] List populated successfully: {len(heroes)} total heroes, {heroes_processed} processed, {heroes_with_valid_icons} with valid icons, {len(self.hero_items)} items in list for mode {self.current_mode}")
+
+            # ПРОПРКА НА ДУБЛИРОВАНИЕ: проверяем, не добавились ли дубликаты
+            if len(self.hero_items) != len(set(self.hero_items.keys())):
+                logging.error(f"[RightPanel] ERROR: Found duplicates in hero_items ({len(self.hero_items)} items vs {len(set(self.hero_items.keys()))} unique keys)")
+            elif len(self.hero_items) != heroes_processed:
+                logging.error(f"[RightPanel] ERROR: hero_items size mismatch ({len(self.hero_items)} items vs {heroes_processed} processed)")
             else:
-                item.setIcon(QIcon(icon_pixmap))
-            
-            # Устанавливаем размер элемента, чтобы он был предсказуем для расчета столбцов
-            # Это может быть переопределено gridSize, но для ясности
-            item.setSizeHint(QSize(icon_w + 10, icon_h + (20 if self.current_mode == "max" else 10) ))
+                logging.info(f"[RightPanel] Integrity check passed: {len(self.hero_items)} items, no duplicates found")
 
-
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            item.setData(HERO_NAME_ROLE, hero)
-            item.setToolTip(hero)
-            self.list_widget.addItem(item)
-            self.hero_items[hero] = item
-        logging.debug(f"[RightPanel] List populated with {len(self.hero_items)} items for mode {self.current_mode}.")
+        except Exception as e:
+            logging.error(f"[RightPanel] ERROR: Exception occurred during list population: {e}", exc_info=True)
 
     def _setup_layout(self):
         self.layout = QVBoxLayout(self.frame); self.layout.setObjectName("right_panel_layout")

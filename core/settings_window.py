@@ -3,47 +3,38 @@ import logging
 import re 
 import sys 
 from pathlib import Path 
-
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QWidget,
                                QGridLayout, QLabel, QScrollArea, QMessageBox, QCheckBox, QLineEdit,
                                QFileDialog)
 from PySide6.QtCore import Qt, Signal, Slot, QTimer 
-
 from info.translations import get_text
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG, DEFAULT_HOTKEYS as DEFAULT_HOTKEYS_VALUES_INTERNAL
 from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from core.app_settings_manager import AppSettingsManager
-from core.app_settings_manager import DEFAULT_SAVE_SCREENSHOT_VALUE, DEFAULT_SCREENSHOT_PATH_VALUE
-
+# ИСПРАВЛЕНО: Заменены имена констант
+from core.app_settings_manager import DEFAULT_SAVE_SCREENSHOT, DEFAULT_SCREENSHOT_PATH
 
 class SettingsWindow(QDialog):
     settings_applied_signal = Signal()
-
     def __init__(self, app_settings_manager: AppSettingsManager, parent=None): 
         super().__init__(parent)
         self.app_settings_manager = app_settings_manager
         self.parent_window = parent 
         logging.info("[SettingsWindow] Initializing...")
-
         self.temp_hotkeys: dict[str, str] = {}
         self.temp_save_screenshot_flag: bool = False
         self.temp_screenshot_path: str = ""
-
         self.setWindowTitle(get_text('hotkey_settings_menu_item')) 
         self.setMinimumWidth(650)
         self.setMinimumHeight(450)
         self.setModal(True) 
-
         # Эти атрибуты будут пересоздаваться в _create_hotkeys_tab_content
         self.hotkeys_grid_layout: QGridLayout | None = None 
         self.scroll_widget_content_hotkeys: QWidget | None = None
         self.hotkeys_scroll_area: QScrollArea | None = None # Добавим сам QScrollArea как атрибут
-
         self.hotkey_action_widgets: dict[str, dict] = {} 
-
         self._init_ui()
         logging.info("[SettingsWindow] Initialization complete.")
-
 
     def _load_settings_and_populate_ui(self):
         logging.info("[SettingsWindow] _load_settings_and_populate_ui CALLED")
@@ -55,9 +46,7 @@ class SettingsWindow(QDialog):
         logging.debug(f"  Loaded temp_hotkeys (internal format): {len(self.temp_hotkeys)} items")
         logging.debug(f"  Loaded temp_save_screenshot_flag: {self.temp_save_screenshot_flag}")
         logging.debug(f"  Loaded temp_screenshot_path: '{self.temp_screenshot_path}'")
-
         self._populate_hotkey_list_ui() # Это вызовет _create_hotkeys_tab_content, если нужно
-
         if hasattr(self, 'save_screenshots_checkbox'):
             self.save_screenshots_checkbox.setChecked(self.temp_save_screenshot_flag)
         
@@ -71,17 +60,14 @@ class SettingsWindow(QDialog):
             self.path_line_edit.setToolTip(tooltip_path)
         logging.info("[SettingsWindow] _load_settings_and_populate_ui END")
 
-
     def _init_ui(self):
         logging.debug("[SettingsWindow] _init_ui: Start")
         self.main_layout = QVBoxLayout(self)
         self.tab_widget = QTabWidget()
-
         self._create_general_tab() 
         self._create_hotkeys_tab_structure() # Создаем структуру вкладки хоткеев
         
         self.main_layout.addWidget(self.tab_widget)
-
         self.buttons_layout = QHBoxLayout()
         self.reset_all_button = QPushButton(get_text('hotkey_settings_reset_defaults')) 
         self.reset_all_button.clicked.connect(self._reset_all_settings_to_defaults)
@@ -102,7 +88,6 @@ class SettingsWindow(QDialog):
         self.buttons_layout.addWidget(self.cancel_button)
         self.main_layout.addLayout(self.buttons_layout)
         logging.debug("[SettingsWindow] _init_ui: End.")
-
     def _create_hotkeys_tab_structure(self):
         """Создает базовую структуру вкладки хоткеев (ScrollArea). Содержимое будет создаваться позже."""
         self.hotkeys_tab = QWidget()
@@ -110,7 +95,6 @@ class SettingsWindow(QDialog):
         self.hotkeys_scroll_area = QScrollArea(); self.hotkeys_scroll_area.setWidgetResizable(True)
         hotkeys_tab_layout.addWidget(self.hotkeys_scroll_area)
         self.tab_widget.addTab(self.hotkeys_tab, get_text("sw_hotkeys_tab_title", default_text="Горячие клавиши"))
-
     def _create_hotkeys_tab_content(self):
         """Создает или пересоздает содержимое вкладки хоткеев (GridLayout и его виджеты)."""
         logging.debug("[SettingsWindow] _create_hotkeys_tab_content CALLED")
@@ -121,7 +105,6 @@ class SettingsWindow(QDialog):
             self.scroll_widget_content_hotkeys = None
             self.hotkeys_grid_layout = None # Старый layout будет удален вместе с виджетом
             self.hotkey_action_widgets.clear()
-
         self.scroll_widget_content_hotkeys = QWidget()
         self.hotkeys_grid_layout = QGridLayout(self.scroll_widget_content_hotkeys)
         self.hotkeys_grid_layout.setHorizontalSpacing(15)
@@ -131,20 +114,8 @@ class SettingsWindow(QDialog):
             self.hotkeys_scroll_area.setWidget(self.scroll_widget_content_hotkeys)
         else:
             logging.error("[SettingsWindow] hotkeys_scroll_area is None, cannot set widget content!")
-
-    def _populate_hotkey_list_ui(self):
-        logging.info(f"[SettingsWindow] _populate_hotkey_list_ui START.")
-        
-        # Пересоздаем содержимое вкладки хоткеев
-        self._create_hotkeys_tab_content()
-        
-        if not self.hotkeys_grid_layout: # Дополнительная проверка
-            logging.error("[SettingsWindow] hotkeys_grid_layout is None in _populate_hotkey_list_ui after _create_hotkeys_tab_content. Aborting population.")
-            return
-
         self.hotkey_action_widgets.clear() # Очищаем словарь ссылок
         logging.debug(f"  Grid layout and widget dict re-created/cleared. Widgets in dict now: {len(self.hotkey_action_widgets)}")
-
         row = 0
         for action_id, config in HOTKEY_ACTIONS_CONFIG.items():
             desc_key = config['desc_key']
@@ -152,7 +123,6 @@ class SettingsWindow(QDialog):
             
             current_hotkey_internal = self.temp_hotkeys.get(action_id, get_text('hotkey_not_set'))
             display_hotkey_str = self._normalize_hotkey_for_display(current_hotkey_internal)
-
             desc_label = QLabel(description); desc_label.setObjectName(f"desc_label_{action_id}")
             hotkey_label = QLabel(f"<code>{display_hotkey_str}</code>"); hotkey_label.setObjectName(f"hotkey_label_{action_id}")
             hotkey_label.setTextFormat(Qt.TextFormat.RichText) 
@@ -160,7 +130,6 @@ class SettingsWindow(QDialog):
             change_button = QPushButton(get_text('hotkey_settings_change_btn')); change_button.setObjectName(f"change_button_{action_id}")
             change_button.setProperty("action_id", action_id) 
             change_button.clicked.connect(self._on_change_hotkey_button_clicked)
-
             self.hotkeys_grid_layout.addWidget(desc_label, row, 0, Qt.AlignmentFlag.AlignLeft)
             self.hotkeys_grid_layout.addWidget(hotkey_label, row, 1, Qt.AlignmentFlag.AlignCenter)
             self.hotkeys_grid_layout.addWidget(change_button, row, 2, Qt.AlignmentFlag.AlignRight)
@@ -174,9 +143,45 @@ class SettingsWindow(QDialog):
              self.scroll_widget_content_hotkeys.adjustSize()
              self.scroll_widget_content_hotkeys.updateGeometry()
         logging.info(f"[SettingsWindow] _populate_hotkey_list_ui END. Widgets in dict: {len(self.hotkey_action_widgets)}")
-
+    def _populate_hotkey_list_ui(self):
+        logging.info(f"[SettingsWindow] _populate_hotkey_list_ui START.")
+        
+        # Пересоздаем содержимое вкладки хоткеев
+        self._create_hotkeys_tab_content()
+        
+        if not self.hotkeys_grid_layout: # Дополнительная проверка
+            logging.error("[SettingsWindow] hotkeys_grid_layout is None in _populate_hotkey_list_ui after _create_hotkeys_tab_content. Aborting population.")
+            return
+        self.hotkey_action_widgets.clear() # Очищаем словарь ссылок
+        logging.debug(f"  Grid layout and widget dict re-created/cleared. Widgets in dict now: {len(self.hotkey_action_widgets)}")
+        row = 0
+        for action_id, config in HOTKEY_ACTIONS_CONFIG.items():
+            desc_key = config['desc_key']
+            description = get_text(desc_key, default_text=action_id) 
+            
+            current_hotkey_internal = self.temp_hotkeys.get(action_id, get_text('hotkey_not_set'))
+            display_hotkey_str = self._normalize_hotkey_for_display(current_hotkey_internal)
+            desc_label = QLabel(description); desc_label.setObjectName(f"desc_label_{action_id}")
+            hotkey_label = QLabel(f"<code>{display_hotkey_str}</code>"); hotkey_label.setObjectName(f"hotkey_label_{action_id}")
+            hotkey_label.setTextFormat(Qt.TextFormat.RichText) 
+            
+            change_button = QPushButton(get_text('hotkey_settings_change_btn')); change_button.setObjectName(f"change_button_{action_id}")
+            change_button.setProperty("action_id", action_id) 
+            change_button.clicked.connect(self._on_change_hotkey_button_clicked)
+            self.hotkeys_grid_layout.addWidget(desc_label, row, 0, Qt.AlignmentFlag.AlignLeft)
+            self.hotkeys_grid_layout.addWidget(hotkey_label, row, 1, Qt.AlignmentFlag.AlignCenter)
+            self.hotkeys_grid_layout.addWidget(change_button, row, 2, Qt.AlignmentFlag.AlignRight)
+            
+            self.hotkey_action_widgets[action_id] = {'desc': desc_label, 'hotkey': hotkey_label, 'button': change_button}
+            row += 1
+        
+        self.hotkeys_grid_layout.setColumnStretch(0, 2); self.hotkeys_grid_layout.setColumnStretch(1, 1); self.hotkeys_grid_layout.setColumnStretch(2, 0) 
+        
+        if self.scroll_widget_content_hotkeys:
+             self.scroll_widget_content_hotkeys.adjustSize()
+             self.scroll_widget_content_hotkeys.updateGeometry()
+        logging.info(f"[SettingsWindow] _populate_hotkey_list_ui END. Widgets in dict: {len(self.hotkey_action_widgets)}")
     # ... (остальные методы без изменений, кроме _clear_layout, который больше не нужен) ...
-
     def _normalize_hotkey_for_display(self, internal_hotkey_str: str) -> str:
         if not internal_hotkey_str or \
            internal_hotkey_str.lower() == get_text('hotkey_not_set').lower() or \
@@ -192,7 +197,6 @@ class SettingsWindow(QDialog):
         s = s.replace("num_add", "Num +")
         for i in range(10):
             s = s.replace(f"num_{i}", f"Num {i}")
-
         key_name_replacements_for_display = {
             "up": "Up", "down": "Down", "left": "Left", "right": "Right",
             "delete": "Delete", "insert": "Insert", "home": "Home", "end": "End",
@@ -217,21 +221,18 @@ class SettingsWindow(QDialog):
         
         return " + ".join(formatted_parts)
 
-
     def _on_change_hotkey_button_clicked(self):
         sender_button = self.sender()
         if not sender_button: return
         action_id = sender_button.property("action_id")
         logging.info(f"[SettingsWindow] Change hotkey for action_id: {action_id}")
         if not action_id or action_id not in self.hotkey_action_widgets: return
-
         appearance_manager = getattr(self.parent_window, 'appearance_manager', None)
         current_theme = appearance_manager.current_theme if appearance_manager else "light"
         text_color_capture = "orange" if current_theme == "light" else "#FFA500"
         
         self.hotkey_action_widgets[action_id]['hotkey'].setText(f"<i>{get_text('hotkey_settings_press_keys')}</i>")
         self.hotkey_action_widgets[action_id]['hotkey'].setStyleSheet(f"font-style:italic;color:{text_color_capture};")
-
         capture_dialog = QDialog(self) 
         capture_dialog.setWindowTitle(get_text('hotkey_settings_capture_title'))
         capture_dialog.setModal(True)
@@ -241,7 +242,6 @@ class SettingsWindow(QDialog):
         action_desc_text = get_text(action_desc_key)
         info_label = QLabel(get_text('hotkey_settings_press_new_hotkey_for', action=action_desc_text))
         dialog_layout.addWidget(info_label)
-
         hotkey_input_field = HotkeyCaptureLineEdit(action_id, capture_dialog)
         dialog_layout.addWidget(hotkey_input_field)
         
@@ -264,14 +264,12 @@ class SettingsWindow(QDialog):
         else:
              logging.debug(f"  Hotkey capture dialog rejected or canceled for {action_id}")
              self.revert_hotkey_display_on_cancel(action_id)
-
         try:
             if hotkey_input_field: 
                 hotkey_input_field.hotkey_captured.disconnect()
                 hotkey_input_field.capture_canceled.disconnect()
         except RuntimeError: 
             pass
-
 
     @Slot(str, str)
     def update_temp_hotkey_and_ui(self, action_id: str, new_hotkey_internal_format: str):
@@ -282,7 +280,6 @@ class SettingsWindow(QDialog):
             self.hotkey_action_widgets[action_id]['hotkey'].setText(f"<code>{display_str}</code>")
             self.hotkey_action_widgets[action_id]['hotkey'].setStyleSheet("") 
 
-
     @Slot(str)
     def revert_hotkey_display_on_cancel(self, action_id: str):
         if action_id in self.hotkey_action_widgets:
@@ -292,7 +289,6 @@ class SettingsWindow(QDialog):
             self.hotkey_action_widgets[action_id]['hotkey'].setText(f"<code>{display_str}</code>")
             self.hotkey_action_widgets[action_id]['hotkey'].setStyleSheet("")
 
-
     def _create_general_tab(self): 
         self.general_tab = QWidget()
         general_layout = QVBoxLayout(self.general_tab)
@@ -301,7 +297,6 @@ class SettingsWindow(QDialog):
         self.save_screenshots_checkbox.setObjectName("save_screenshots_checkbox")
         self.save_screenshots_checkbox.stateChanged.connect(self._on_save_screenshot_checkbox_changed)
         general_layout.addWidget(self.save_screenshots_checkbox)
-
         path_label = QLabel(get_text("sw_save_path_label"))
         general_layout.addWidget(path_label)
         
@@ -321,33 +316,30 @@ class SettingsWindow(QDialog):
         general_layout.addStretch(1) 
         self.tab_widget.addTab(self.general_tab, get_text("sw_general_tab_title"))
 
-
     @Slot(int)
     def _on_save_screenshot_checkbox_changed(self, state: int):
         self.temp_save_screenshot_flag = (state == Qt.CheckState.Checked.value)
         logging.debug(f"Флаг сохранения скриншотов изменен на: {self.temp_save_screenshot_flag}")
-
     @Slot()
     def _browse_save_directory(self):
         current_path = self.temp_screenshot_path
         if not current_path: 
             if hasattr(sys, 'executable') and sys.executable: current_path = str(Path(sys.executable).parent)
             else: current_path = str(Path.home())
-
         directory = QFileDialog.getExistingDirectory(self, get_text("sw_select_dir_dialog_title"), current_path)
         if directory: 
             self.temp_screenshot_path = directory
             self.path_line_edit.setText(directory); self.path_line_edit.setToolTip(directory)
             logging.info(f"Выбрана папка для сохранения скриншотов: {directory}")
 
-
     def _reset_all_settings_to_defaults(self):
         logging.info("[SettingsWindow] Сброс всех настроек к значениям по умолчанию.")
         self.temp_hotkeys = DEFAULT_HOTKEYS_VALUES_INTERNAL.copy()
         self._populate_hotkey_list_ui() # Перезаполнит UI
         
-        self.temp_save_screenshot_flag = DEFAULT_SAVE_SCREENSHOT_VALUE
-        self.temp_screenshot_path = DEFAULT_SCREENSHOT_PATH_VALUE
+        # ИСПРАВЛЕНО: Исправлены имена констант
+        self.temp_save_screenshot_flag = DEFAULT_SAVE_SCREENSHOT
+        self.temp_screenshot_path = DEFAULT_SCREENSHOT_PATH
         
         self.save_screenshots_checkbox.setChecked(self.temp_save_screenshot_flag)
         display_path = self.temp_screenshot_path if self.temp_screenshot_path else get_text("sw_default_path_text")
@@ -359,8 +351,7 @@ class SettingsWindow(QDialog):
                                 get_text('sw_all_settings_reset_msg'))
         logging.info("  Сброс всех настроек завершен.")
 
-
-    def _apply_settings(self, show_message: bool = True) -> bool:
+    def _apply_settings(self, show_message: bool = False) -> bool:
         logging.info("[SettingsWindow] Применение настроек...")
         hotkey_usage_map: dict[str, str] = {} 
         duplicates_info: list[str] = []
@@ -387,20 +378,17 @@ class SettingsWindow(QDialog):
             QMessageBox.warning(self, get_text('hotkey_settings_duplicate_title'),
                                 get_text('hotkey_settings_duplicate_message') + "\n- " + "\n- ".join(duplicates_info))
             return False 
-
         self.app_settings_manager.set_hotkeys(self.temp_hotkeys, auto_save=False)
         self.app_settings_manager.set_save_screenshot_flag(self.temp_save_screenshot_flag, auto_save=False)
         self.app_settings_manager.set_screenshot_save_path(self.temp_screenshot_path, auto_save=False)
         self.app_settings_manager.save_settings_to_file() 
         logging.info("  Настройки сохранены в AppSettingsManager и записаны в файл.")
-
         self.settings_applied_signal.emit() 
         if show_message:
              QMessageBox.information(self, get_text("sw_settings_applied_title"),
                                     get_text("sw_settings_applied_msg"))
         logging.info("Применение настроек успешно завершено.")
         return True
-
 
     def _ok_and_save_settings(self):
         logging.info("[SettingsWindow] Нажата кнопка OK.")
@@ -410,17 +398,14 @@ class SettingsWindow(QDialog):
         else:
             logging.warning("  Настройки не были применены из-за ошибок (например, дубликаты). Диалог не закрыт.")
 
-
     def open(self): 
         logging.info("[SettingsWindow] open() called. Загрузка настроек в диалог.")
         self._load_settings_and_populate_ui() 
         super().open()
-
     def exec(self): 
         logging.info("[SettingsWindow] exec() called. Загрузка настроек в диалог.")
         self._load_settings_and_populate_ui() 
         return super().exec()
-
     def update_theme_dependent_elements(self):
         logging.debug("[SettingsWindow] update_theme_dependent_elements called.")
         if self.parent_window and hasattr(self.parent_window, 'appearance_manager'):

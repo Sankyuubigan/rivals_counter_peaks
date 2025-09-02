@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QRect, QTimer
 
-from mode_manager import MODE_DEFAULT_WINDOW_SIZES
-from images_load import SIZES
+from core.mode_manager import MODE_DEFAULT_WINDOW_SIZES
+from core.images_load import SIZES
 
 if TYPE_CHECKING:
     from main_window import MainWindow
@@ -72,9 +72,9 @@ class TabModeManager:
         self.mw.show()
         logging.info("[TAB MODE] Window geometry set and shown: ({},{}), size=({},{})".format(tab_x, tab_y, tab_window_width, tab_window_height))
 
-        # Откладываем тяжёлые UI обновления для минимизации мелькания
-        QTimer.singleShot(100, self._start_ui_updates_async)
-        QTimer.singleShot(200, self._finalize_and_process_events)
+        # Оптимизация: Уменьшаем задержки таймеров для более быстрого отклика
+        QTimer.singleShot(50, self._start_ui_updates_async)
+        QTimer.singleShot(100, self._finalize_and_process_events)
 
     def disable(self):
         """Выключает режим 'Таба' и восстанавливает предыдущее состояние."""
@@ -98,22 +98,38 @@ class TabModeManager:
             except Exception as e:
                 logging.warning(f"[TAB MODE] Failed to save tab geometry: {e}")
 
-        self._is_active = False
+        # ДОСТАТОЧНОЕ СНЯТИЕ ALWAYS-ON-TOP: Не убираем все операции для надежности
+        logging.info("[TAB MODE] Disabling: Sufficient always-on-top removal")
         self.mw._is_win_topmost = False
 
+        if hasattr(self.mw, 'flags_manager') and self.mw.flags_manager:
+            # Используем проверенный метод с ограниченными processEvents
+            self.mw.flags_manager.force_always_on_top_reset(False, "tab_mode_disable_optimized")
+
+        self._is_active = False
         self.mw.setMinimumSize(300, 70)
         self.mw.setMaximumSize(16777215, 16777215)
 
-        self._set_tab_mode_ui_visible(False)
+        # Отложенное обновление видимости для предотвращения мелькания
+        QTimer.singleShot(50, lambda: self._set_tab_mode_ui_visible(False))
 
         previous_mode = self.mw.mode_manager.current_mode if hasattr(self.mw, 'mode_manager') else "middle"
-
+        logging.info(f"[TAB MODE] Switching to previous mode: {previous_mode}")
         self.mw.change_mode(previous_mode)
 
+        # Отложенное восстановление геометрии для устранения мелькания
+        if self._geometry_before_tab and self._geometry_before_tab.isValid():
+            QTimer.singleShot(100, lambda: self._restore_geometry_and_show())
+        else:
+            QTimer.singleShot(100, lambda: self.mw.show())
+
+
+    def _restore_geometry_and_show(self):
+        """Отложенное восстановление геометрии и показ окна"""
         if self._geometry_before_tab and self._geometry_before_tab.isValid():
             self.mw.setGeometry(self._geometry_before_tab)
-
         self.mw.show()
+        logging.info("[TAB MODE] Geometry restored and window shown")
 
     def _set_tab_mode_ui_visible(self, tab_mode_active: bool):
         """Управляет видимостью контейнеров для разных режимов."""
@@ -165,11 +181,26 @@ class TabModeManager:
         self._set_tab_mode_ui_visible(True)
         logging.info("[TAB MODE] UI visibility set")
 
-        # Затем запустить тяжелое обновление интерфейса
-        if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+        # ПРОВЕРКА: Избегать дублирующего вызова update_interface_for_mode
+        # update_interface_for_mode уже вызывается в enable() через QMetaObject?
+        # Анализируем флаги для предотвращения дублирующего обновления
+
+        # Смотрим, был ли уже вызван update_interface_for_mode для этот режима
+        current_mode = self.mw.mode if hasattr(self.mw, 'mode') else "middle"
+        is_tab_mode_already_initialized = getattr(self.mw.ui_updater, '_last_updated_mode', None) == current_mode + "_tab"
+
+        if not is_tab_mode_already_initialized and hasattr(self, 'mw') and hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
             logging.info("[TAB MODE] Starting heavy UI update process")
             self.mw.ui_updater.update_interface_for_mode()
+            # Устанавливаем флаг, что обновление для этого режима уже выполнено
+            if hasattr(self.mw.ui_updater, '_last_updated_mode'):
+                self.mw.ui_updater._last_updated_mode = current_mode + "_tab"
             logging.info("[TAB MODE] UI updates completed")
+        else:
+            logging.info("[TAB MODE] UI update skipped - already initialized for this mode")
+            # Даже без полного обновления, обновим горизонтальные списки
+            if hasattr(self.mw.ui_updater, '_update_horizontal_lists'):
+                self.mw.ui_updater._update_horizontal_lists()
 
     def _finalize_and_process_events(self):
         """Финализация и обработка всех отложенных событий"""

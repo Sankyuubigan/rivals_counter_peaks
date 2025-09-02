@@ -1,7 +1,7 @@
 # File: delegate.py
 from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QComboBox
-from PySide6.QtGui import QPen, QColor, Qt, QPainter, QStandardItemModel
-from PySide6.QtCore import QModelIndex, QRect, QEvent
+from PySide6.QtGui import QPen, QColor, QPainter, QStandardItemModel
+from PySide6.QtCore import Qt, QModelIndex, QRect, QEvent
 from logic import CounterpickLogic
 
 class HotkeyFocusDelegate(QStyledItemDelegate):

@@ -22,27 +22,7 @@ def load_hero_roles():
             # Конвертируем имена героев в внутренний формат для совместимости
             # Словарь маппинга для конверсии названий героев
             name_mapping = {
-                "Black Widow": "Widow",
-                "Iron Fist": "Fister",
-                "Jeff The Land Shark": "Jeff",
-                "Spider Man": "SpiderMan",
-                "Star Lord": "StarLord",
-                "Rocket Raccoon": "Rocket Racoon",
-                "Doctor Strange": "Doctor Strange",
-                "The Thing": "The Thing",
-                "Human Torch": "Human Torch",
-                "Mister Fantastic": "Mister Fantastic",
-                "Winter Soldier": "Winter Soldier",
-                "Squirrel Girl": "Squirrel Girl",
-                "Scarlet Witch": "Witch",
-                "Black Panther": "Black Panther",
-                "Iron Man": "Iron Man",
-                "Captain America": "Captain America",
-                "Hawkeye": "Hawkeye",
-                "The Punisher": "Punisher",
-                "Moon Knight": "Moon Knight",
-                "Phoenix": "Phoenix",
-                "Blade": "Blade"
+              
             }
 
             # Преобразуем роли в совместимый формат
@@ -62,7 +42,7 @@ def load_hero_roles():
         print("Файл database/roles.json не найден, используем базовые роли")
         hero_roles = {
             "Vanguard": ["Hulk", "Thor", "The Thing", "Venom", "Captain America"],
-            "Strategist": ["Groot", "Doctor Strange", "Mr Fantastic"],
+            "Strategist": ["Groot", "Doctor Strange", "Mister Fantastic"],
             "Duelist": ["Iron Man", "Widow", "Hawkeye", "Punisher", "Moon Knight"]
         }
         return hero_roles

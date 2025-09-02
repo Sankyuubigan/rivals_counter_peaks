@@ -20,6 +20,13 @@ from logic import TEAM_SIZE
 class UiUpdater:
     def __init__(self, main_window):
         self.mw = main_window
+        # Флаги для предотвращения дублирующих обновлений UI
+        self._last_updated_mode = None
+        self._is_updating_ui = False
+        self._last_uilogic_update_time = 0
+        # Кэширование результатов последних обновлений
+        self._cached_enemy_widgets = {}
+        self._cached_counter_widgets = {}
 
     def update_interface_for_mode(self, new_mode=None):
         if new_mode is None: new_mode = self.mw.mode
@@ -50,17 +57,27 @@ class UiUpdater:
                     widget.deleteLater()
         
         if widgets_to_delete:
-            logging.debug("    UiUpdater: Calling QApplication.processEvents() after requesting deletion of old panels.")
-            QApplication.processEvents() 
+            # УБРАН processEvents() для предотвращения мелькания
+            pass
 
 
         logging.debug(f"    UiUpdater: Deleting old panel widgets (and processEvents) took {(time.perf_counter() - t_delete_start)*1000:.2f} ms")
         
         self.mw.left_panel_widget = None; self.mw.canvas = None; self.mw.result_frame = None
-        self.mw.result_label = None; self.mw.update_scrollregion_callback = lambda: None 
+        self.mw.result_label = None; self.mw.update_scrollregion_callback = lambda: None
         self.mw.right_panel_widget = None; self.mw.right_frame = None
         self.mw.selected_heroes_label = None; self.mw.right_list_widget = None
-        self.mw.hero_items.clear(); self.mw.right_panel_instance = None
+        # ПОЛНАЯ ОЧИСТКА hero_items для предотвращения дублирования иконок
+        self.mw.hero_items.clear()
+        logging.info(f"    UiUpdater: Cleared hero_items ({len(self.mw.hero_items)} items remaining)")
+        self.mw.right_panel_instance = None
+
+        # ПРИНУДИТЕЛЬНАЯ ОЧИСТКА КЭША ИЗОБРАЖЕНИЙ при смене режима
+        import images_load
+        images_load.loaded_images.clear()
+        images_load.original_images.clear()
+        images_load.CV2_HERO_TEMPLATES.clear()
+        logging.info("    UiUpdater: Cleared all image caches (QPixmap and CV2)")
         
         t_img_load_start = time.perf_counter()
         img_load_success = True
@@ -213,17 +230,39 @@ class UiUpdater:
         logging.info(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {(time.perf_counter() - t0)*1000:.2f} ms")
 
 
-    def update_ui_after_logic_change(self):
+    def update_ui_after_logic_change(self, force_update=False):
+        """Оптимизированный update_ui_after_logic_change с предотвращением дублирующих вызовов"""
+        current_time = time.perf_counter()
+
+        # Предотвращение слишком частых обновлений (менее 100ms между вызовами)
+        if not force_update and (current_time - self._last_uilogic_update_time) < 0.1:
+            logging.debug("    UiUpdater: update_ui_after_logic_change SKIPPED - too frequent call")
+            return
+
+        # Предотвращение рекурсивных вызовов
+        if self._is_updating_ui:
+            logging.debug("    UiUpdater: update_ui_after_logic_change SKIPPED - recursive call detected")
+            return
+
+        self._is_updating_ui = True
+        self._last_uilogic_update_time = current_time
+
         t_start_logic_update = time.perf_counter()
         logging.info("    UiUpdater: update_ui_after_logic_change START")
-        self._update_selected_label()
-        self._update_counterpick_display()
-        logging.info("    UiUpdater: Calling _update_horizontal_lists")
-        self._update_horizontal_lists()
-        logging.info("    UiUpdater: Finished _update_horizontal_lists")
-        self.update_list_item_selection_states()
-        self._update_priority_labels()
-        logging.info(f"    UiUpdater: update_ui_after_logic_change FINISHED in {(time.perf_counter() - t_start_logic_update)*1000:.2f} ms.")
+
+        try:
+            self._update_selected_label()
+            self._update_counterpick_display()
+            logging.info("    UiUpdater: Calling _update_horizontal_lists")
+            self._update_horizontal_lists()
+            logging.info("    UiUpdater: Finished _update_horizontal_lists")
+            self.update_list_item_selection_states()
+            self._update_priority_labels()
+        finally:
+            self._is_updating_ui = False
+
+        finish_time = time.perf_counter() - t_start_logic_update
+        logging.info(f"    UiUpdater: update_ui_after_logic_change FINISHED in {finish_time*1000:.2f} ms.")
 
     def _update_selected_label(self):
         label_to_update = self.mw.selected_heroes_label
@@ -255,6 +294,7 @@ class UiUpdater:
 
 
     def _update_horizontal_lists(self):
+        """Оптимизированный _update_horizontal_lists с кэшированием для таб режима"""
         is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
 
         if is_tab_mode:
@@ -262,8 +302,16 @@ class UiUpdater:
             if not (self.mw.tab_enemies_layout and self.mw.tab_counters_layout):
                 return
 
+            # КЭШИРОВАНИЕ: проверяем, не изменились ли данные с последнего обновления
+            current_selection = list(self.mw.logic.selected_heroes) if self.mw.logic.selected_heroes else []
+            cache_key = f"tab_{len(current_selection)}_{hash(str(current_selection))}"
+
+            if hasattr(self, '_last_tab_update_cache') and self._last_tab_update_cache == cache_key:
+                logging.debug("[TAB MODE] Skipping horizontal lists update - data unchanged")
+                return
+
             # Добавляем логирование для отладки
-            logging.info(f"[TAB MODE] Updating horizontal lists. Selected heroes: {list(self.mw.logic.selected_heroes) if self.mw.logic.selected_heroes else 'None'}")
+            logging.info(f"[TAB MODE] Updating horizontal lists. Selected heroes: {current_selection}")
 
             # Очистка и обновление списков с логированием
             clear_layout_util(self.mw.tab_enemies_layout)
@@ -274,46 +322,41 @@ class UiUpdater:
             enemy_count = horizontal_list.update_enemy_horizontal_list(self.mw, self.mw.tab_enemies_layout)
             counter_count = horizontal_list.update_horizontal_icon_list(self.mw, self.mw.tab_counters_layout)
 
+            # Сохраняем кэш для следующего вызова
+            self._last_tab_update_cache = cache_key
+
             # Логируем результаты
             logging.info(f"[TAB MODE] Count from enemies update: {enemy_count}")
             logging.info(f"[TAB MODE] Count from counters update: {counter_count}")
 
-            # Логируем финальное состояние layouts
+            # Оптимизированная проверка видимости без детального логирования
             if self.mw.tab_enemies_layout.count() > 0:
                 first_item = self.mw.tab_enemies_layout.itemAt(0)
                 if first_item and first_item.widget():
-                    logging.info(f"FIRST ENEMY ITEM: size: {first_item.widget().size()}, visible: {first_item.widget().isVisible()}")
+                    widget = first_item.widget()
+                    if not widget.isVisible():
+                        widget.setVisible(True)
 
             if self.mw.tab_counters_layout.count() > 0:
                 first_item = self.mw.tab_counters_layout.itemAt(0)
                 if first_item and first_item.widget():
                     widget = first_item.widget()
-                    logging.info(f"FIRST COUNTER ITEM: size: {widget.size()}, visible: {widget.isVisible()}")
-                    # Дополнительная проверка - пытаемся получить parent
+                    if not widget.isVisible():
+                        widget.setVisible(True)
                     if widget.parentWidget():
                         parent_visible = widget.parentWidget().isVisible()
-                        logging.info(f"  - Parent widget visible: {parent_visible}")
+                        if not parent_visible:
+                            widget.parentWidget().setVisible(True)
                     else:
-                        logging.info(f"  - Widget has NO parent (this is the problem!)")
                         # Попробуем установить корректного родителя
                         widget.setParent(self.mw.tab_counters_container)
                         widget.setVisible(True)
-                        logging.info(f"  - Fixed: Set parent to tab_counters_container, visible: {widget.isVisible()}")
 
-            # Синхронное обновление контейнеров без таймеров
-            if self.mw.tab_enemies_container:
-                self.mw.tab_enemies_container.adjustSize()
-                self.mw.tab_enemies_container.update()
-            if self.mw.tab_counters_container:
-                self.mw.tab_counters_container.adjustSize()
-                self.mw.tab_counters_container.update()
-
-            # Синхронные вызовы для мгновенного обновления
+            # Оптимизированные синхронные вызовы
             self._fix_scroll_area_size_hint()
             self._force_visual_update()
-            self._log_sizes_after_update()
 
-            # Принудительное исправление видимости виджетов
+            # Принудительное исправление видимости виджетов (оптимизированное)
             self._fix_tab_widget_visibility()
 
             # Адаптируем размер окна под новое содержимое
@@ -447,32 +490,10 @@ class UiUpdater:
                   QMetaObject.invokeMethod(list_widget.viewport(), "update", Qt.ConnectionType.QueuedConnection)
 
     def _force_visual_update(self):
-        """Принудительное обновление визуального дисплея для исправления отображения списков в режиме таба"""
-        # Обновление контейнеров таба без логирования
-        if self.mw.tab_enemies_container:
-            self.mw.tab_enemies_container.update()
-            self.mw.tab_enemies_container.repaint()
-
-        if self.mw.tab_counters_container:
-            self.mw.tab_counters_container.update()
-            self.mw.tab_counters_container.repaint()
-
-        # Обновление scroll area и content
-        if self.mw.icons_scroll_area:
-            self.mw.icons_scroll_area.update()
-            self.mw.icons_scroll_area.repaint()
-
-        if self.mw.icons_scroll_content:
-            self.mw.icons_scroll_content.update()
-            self.mw.icons_scroll_content.repaint()
-
-        # Обновление основного виджета и окна
-        if self.mw.main_widget:
-            self.mw.main_widget.update()
-            self.mw.main_widget.repaint()
-
+        """Оптимизированное принудительное обновление визуального дисплея для таб-режима"""
+        # УБРАНЫ избыточные update() и repaint() вызовы для отдельных виджетов
+        # Оставлен только один финальный repaint() основного окна - достаточно эффективно
         if self.mw:
-            self.mw.update()
             self.mw.repaint()
 
     def _fix_scroll_area_size_hint(self):
@@ -481,24 +502,15 @@ class UiUpdater:
             return
 
         try:
-            # Пересчитаем content size
-            self.mw.icons_scroll_content.adjustSize()
-            self.mw.icons_scroll_content.updateGeometry()
-
-            # Пересчитаем scroll area
-            self.mw.icons_scroll_area.updateGeometry()
-            self.mw.icons_scroll_area.adjustSize()
-
-            # Применяем минимальные размеры для таб режима
+            # Упрощенная оптимизация scroll area - только необходимый расчет размеров
             if self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active():
                 container_height = getattr(self.mw, 'container_height_for_tab_mode', 48)
                 min_height = max(container_height * 2 + 6, self.mw.icons_scroll_area.minimumHeight())
                 new_scroll_size_hint = self.mw.icons_scroll_area.sizeHint()
                 min_width = max(new_scroll_size_hint.width(), self.mw.icons_scroll_area.minimumWidth())
                 self.mw.icons_scroll_area.setMinimumSize(min_width, min_height)
-
-            # Принудительно перерисуем
-            self.mw.icons_scroll_area.repaint()
+            # updateGeometry() достаточно для пересчета размеров без избыточных операций
+            self.mw.icons_scroll_area.updateGeometry()
 
         except Exception as e:
             logging.error(f"UiUpdater: Error in _fix_scroll_area_size_hint: {e}")

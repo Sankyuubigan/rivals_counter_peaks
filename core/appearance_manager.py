@@ -2,13 +2,11 @@
 import logging
 # json не используется напрямую, AppSettingsManager управляет JSON
 from PySide6.QtWidgets import QApplication, QDialog 
-
 from info.translations import SUPPORTED_LANGUAGES, set_language as set_global_language, get_text
 # Вместо utils.get_settings_path используем AppSettingsManager
 from core.app_settings_manager import AppSettingsManager
 from info.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE
-from core.app_settings_manager import DEFAULT_THEME_VALUE
-
+from core.app_settings_manager import DEFAULT_THEME
 
 class AppearanceManager:
     def __init__(self, main_window, app_settings_manager: AppSettingsManager):
@@ -17,7 +15,6 @@ class AppearanceManager:
         
         self.current_theme = self.app_settings_manager.get_theme()
         self.current_language = self.app_settings_manager.get_language()
-
         # Применяем загруженный язык глобально
         if self.current_language not in SUPPORTED_LANGUAGES:
             logging.warning(f"Загружен неподдерживаемый язык '{self.current_language}', используется язык по умолчанию '{DEFAULT_LANG_VALUE}'.")
@@ -27,9 +24,7 @@ class AppearanceManager:
         set_global_language(self.current_language)
         if hasattr(self.mw, 'logic') and self.mw.logic: 
             self.mw.logic.DEFAULT_LANGUAGE = self.current_language
-
         logging.info(f"AppearanceManager инициализирован. Тема: {self.current_theme}, Язык: {self.current_language}")
-
 
     def switch_language(self, lang_code: str):
         if lang_code not in SUPPORTED_LANGUAGES:
@@ -38,7 +33,6 @@ class AppearanceManager:
         if self.current_language == lang_code:
             logging.debug(f"Язык уже установлен: {lang_code}.")
             return
-
         logging.info(f"Переключение языка на: {lang_code}")
         self.current_language = lang_code
         set_global_language(self.current_language) # Устанавливаем глобально для get_text
@@ -56,7 +50,6 @@ class AppearanceManager:
             if hasattr(self.mw, 'hotkey_cursor_index') and self.mw.hotkey_cursor_index != -1:
                  self.mw.ui_updater.update_hotkey_highlight() # Обновит тултипы с фокусом
 
-
     def update_main_window_language_texts(self):
         """Обновляет все тексты в главном окне и его компонентах на текущий язык."""
         logging.debug("AppearanceManager: Обновление текстов в MainWindow...")
@@ -64,7 +57,6 @@ class AppearanceManager:
         if not mw: 
             logging.error("AppearanceManager: MainWindow (self.mw) is None. Обновление текстов невозможно.")
             return 
-
         try:
             if hasattr(mw, 'mode') and mw.mode != "min": 
                  # Убедимся, что app_version существует
@@ -73,7 +65,6 @@ class AppearanceManager:
         except RuntimeError: # Если окно уже удалено
             logging.warning("AppearanceManager: MainWindow было удалено до вызова setWindowTitle.")
             return # Дальнейшие действия бессмысленны
-
         # Обновление TopPanel
         if hasattr(mw, 'top_panel_instance') and mw.top_panel_instance:
             try:
@@ -114,7 +105,6 @@ class AppearanceManager:
                 mw.result_label.setText(get_text('no_heroes_selected'))
             except RuntimeError: 
                 logging.warning("AppearanceManager: mw.result_label был удален.")
-
         # Обновление открытых диалоговых окон, если они поддерживают это
         if hasattr(mw, 'hotkey_display_dialog') and mw.hotkey_display_dialog and mw.hotkey_display_dialog.isVisible():
             try:
@@ -137,7 +127,6 @@ class AppearanceManager:
             except RuntimeError:
                  logging.warning("AppearanceManager: Ошибка при обновлении языка для открытых диалогов (возможно, были удалены).")
 
-
     def switch_theme(self, theme_name: str):
         if theme_name not in ["light", "dark"]:
             logging.warning(f"Неизвестная тема: {theme_name}. Переключение отменено.")
@@ -149,7 +138,6 @@ class AppearanceManager:
             logging.info(f"Переключение темы на: {theme_name}")
             self.current_theme = theme_name
             self.app_settings_manager.set_theme(self.current_theme) # Сохраняем настройку
-
         self._apply_qss_theme_globally(self.current_theme) 
         
         # После применения QSS, нужно обновить специфичные для темы элементы UI,
@@ -167,7 +155,6 @@ class AppearanceManager:
         if hasattr(self.mw, 'hotkey_display_dialog') and self.mw.hotkey_display_dialog and self.mw.hotkey_display_dialog.isVisible():
             try: self.mw.hotkey_display_dialog.update_html_content() # Перегенерирует HTML с новыми цветами
             except RuntimeError: logging.warning("AppearanceManager: hotkey_display_dialog был удален при смене темы.")
-
         if hasattr(self.mw, 'findChild'):
             try:
                 about_dialog = self.mw.findChild(QDialog, "informationDialog")
@@ -184,7 +171,6 @@ class AppearanceManager:
         if hasattr(self.mw, 'settings_window_instance') and self.mw.settings_window_instance and self.mw.settings_window_instance.isVisible():
              if hasattr(self.mw.settings_window_instance, 'update_theme_dependent_elements'):
                  self.mw.settings_window_instance.update_theme_dependent_elements()
-
 
     def _apply_qss_theme_globally(self, theme_name: str, on_startup=False):
         """Применяет QSS стиль ко всему приложению."""
@@ -276,7 +262,6 @@ class AppearanceManager:
             QTabBar::tab { background: #484848; border: 1px solid #5a5a5a; padding: 5px; color: #e0e0e0; border-bottom: none; }
             QTabBar::tab:selected { background: #2e2e2e; }
             QTabBar::tab:!selected:hover { background: #585858; }
-
             QWidget#main_widget { background-color: #2e2e2e; } 
             QFrame#top_frame { background-color: #202020; border-bottom: 1px solid #353535; }
             QFrame#left_panel_container_frame { background-color: #2a2a2a; } 

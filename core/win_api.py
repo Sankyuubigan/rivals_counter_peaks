@@ -11,8 +11,10 @@ if sys.platform == 'win32':
     from ctypes import wintypes
     HWND_TOPMOST = -1
     HWND_NOTOPMOST = -2
+    HWND_BOTTOM = 1
     SWP_NOMOVE = 0x0002
     SWP_NOSIZE = 0x0001
+    SWP_SHOWWINDOW = 0x0040
     GWL_EXSTYLE = -20
     WS_EX_TOPMOST = 0x00000008
     try:
@@ -139,7 +141,7 @@ class WinApiManager(QObject):
 
     def set_topmost_winapi(self, enable: bool):
         logging.info(f"[ACTION][WinAPI] Запрос на установку Topmost: {enable}")
-        
+
         current_actual_state = self.is_win_topmost # Текущее известное состояние
         if current_actual_state == enable:
             logging.info(f"[WinAPI] Topmost уже в состоянии {enable}. Ничего не делаем.")
@@ -170,10 +172,66 @@ class WinApiManager(QObject):
                     return # Выходим, так как API было использовано (успешно или нет)
                 else:
                     logging.warning("[API WARN] Вызов SetWindowPos не удался, пробуем Qt fallback.")
-                    self._apply_qt_fallback(enable) 
+                    self._apply_qt_fallback(enable)
             else:
                 logging.warning("[WARN][WinAPI] Не удалось получить HWND для SetWindowPos, используем Qt fallback.")
                 self._apply_qt_fallback(enable)
         else:
             logging.info("[INFO][WinAPI] WinAPI недоступно, используем Qt fallback.")
             self._apply_qt_fallback(enable)
+
+    def set_topmost_winapi_with_zorder_management(self, enable: bool):
+        """
+        Улучшенная версия set_topmost_winapi с правильным управлением Z-order.
+        Особое внимание снятию always-on-top статуса с полноценной Z-order манипуляцией.
+        """
+        logging.info(f"[ZORDER][WinAPI] Запрос на установку Topmost с Z-order управлением: {enable}")
+
+        current_actual_state = self.is_win_topmost
+        if current_actual_state == enable:
+            logging.info(f"[ZORDER][WinAPI] Topmost уже в состоянии {enable}. Ничего не делаем.")
+            self.topmost_state_changed.emit(current_actual_state)
+            return
+
+        if not self.user32_lib:
+            logging.info("[ZORDER][WinAPI] WinAPI недоступно, используем Qt fallback.")
+            self._apply_qt_fallback(enable)
+            return
+
+        hwnd = self._get_hwnd(force_check=True)
+        if not hwnd:
+            logging.warning("[ZORDER][WARN] Не удалось получить HWND для SetWindowPos, используем Qt fallback.")
+            self._apply_qt_fallback(enable)
+            return
+
+        if enable:
+            # Установка always-on-top - обычный подход
+            insert_after = HWND_TOPMOST
+            flags = SWP_NOMOVE | SWP_NOSIZE
+            success = self._set_window_pos_api(hwnd, insert_after, flags)
+
+            if success:
+                logging.info("[ZORDER][API] Always-on-top установлен успешно")
+                ex_style = self.get_window_long_ptr_func(hwnd, GWL_EXSTYLE)
+                self._is_win_topmost = bool(ex_style & WS_EX_TOPMOST)
+                self.topmost_state_changed.emit(self._is_win_topmost)
+            else:
+                logging.warning("[ZORDER][API] Вызов SetWindowPos для установки failed, Qt fallback")
+                self._apply_qt_fallback(enable)
+
+        else:
+            # Снятие always-on-top - упрощенный подход без агрессивной Z-order манипуляции
+            logging.info("[ZORDER][API] Начинаем снятие always-on-top без агрессивных Z-order манипуляций")
+
+            # Простое снятие always-on-top флага без дополнительных переключений
+            success = self._set_window_pos_api(hwnd, HWND_NOTOPMOST, SWP_NOMOVE | SWP_NOSIZE)
+            logging.info(f"[ZORDER][API] Снятие флага always-on-top: {'успешно' if success else 'не удалось'}")
+
+            if success:
+                logging.info("[ZORDER][API] Always-on-top снят успешно")
+                ex_style = self.get_window_long_ptr_func(hwnd, GWL_EXSTYLE)
+                self._is_win_topmost = bool(ex_style & WS_EX_TOPMOST)
+                self.topmost_state_changed.emit(self._is_win_topmost)
+            else:
+                logging.warning("[ZORDER][API] Снятие always-on-top failed, Qt fallback")
+                self._apply_qt_fallback(enable)

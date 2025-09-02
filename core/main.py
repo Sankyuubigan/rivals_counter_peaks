@@ -1,28 +1,23 @@
 # File: core/main.py
 import sys
 import os 
-
 # --- ОТЛАДОЧНЫЙ БЛОК: ПРОВЕРКА ПУТЕЙ ---
 # ... (блок оставлен без изменений) ...
 # print("--- [DEBUG_PYINSTALLER] Завершение отладки путей ---") # Отключен для чистоты логов
 # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
 
-
 import logging 
 import datetime
 import time 
-
 logging.basicConfig(level=logging.INFO, # Уровень логирования INFO для оптимального баланса информации и производительности
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
                     datefmt='%H:%M:%S')
 logging.info("[Main] Начало работы main.py (после отладочного блока)")
 
-
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path: sys.path.insert(0, project_root)
 core_dir = os.path.dirname(__file__)
 if core_dir not in sys.path: sys.path.insert(0, core_dir)
-
 try:    
     now = datetime.datetime.now()
     app_version_display = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
@@ -30,16 +25,19 @@ try:
 except Exception as e_ver:
     logging.error(f"[Main] Error generating display version: {e_ver}. Using 'dev'.")
     app_version_display = "dev"
-
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 import logic
 import images_load  
 import utils
-from main_window import MainWindow 
+from config import USE_REFACTORED_ARCHITECTURE
+
+if USE_REFACTORED_ARCHITECTURE:
+    from main_window_refactored import MainWindowRefactored as MainWindow
+else:
+    from main_window import MainWindow
 
 if __name__ == "__main__":
-    logging.info("[LOG] core/main.py: __main__ block s  tarted")
-
+    logging.info("[LOG] core/main.py: __main__ block started")
     app = QApplication.instance()
     if app is None:
         logging.info("Создание нового QApplication...")
@@ -48,10 +46,8 @@ if __name__ == "__main__":
     else:
         logging.info("Использование существующего QApplication...")
         app_created_now = False 
-
     app.setQuitOnLastWindowClosed(False) 
     logging.info(f"QApplication.quitOnLastWindowClosed set to {app.quitOnLastWindowClosed()}")
-
 
     logging.info("[LOG] Запуск валидации героев...")
     validation_errors = utils.validate_heroes()
@@ -61,7 +57,6 @@ if __name__ == "__main__":
         logging.warning("Ошибки валидации обнаружены, но приложение продолжит работу.")
     else:
         logging.info("Валидация героев прошла успешно.")
-
     is_admin = False
     try:
         if sys.platform == 'win32': import ctypes; is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
@@ -69,9 +64,7 @@ if __name__ == "__main__":
     except Exception as e: logging.warning(f"Не удалось проверить права администратора: {e}")
     if not is_admin: logging.warning("Приложение запущено без прав администратора. Глобальные горячие клавиши (keyboard) могут не работать.")
     else: logging.info("Приложение запущено с правами администратора.")
-
     logging.info(f"Используется стиль по умолчанию: {app.style().objectName()}")
-
 
     logging.info("Предварительная загрузка ресурсов...")
     # hero_templates больше не нужен для MainWindow, он используется внутри RecognitionManager
@@ -84,7 +77,6 @@ if __name__ == "__main__":
         logging.critical(f"Критическая ошибка при загрузке ресурсов: {e}", exc_info=True)
         if app_created_now: app.quit() 
         sys.exit(1)
-
     logging.info("Создание экземпляра CounterpickLogic...")
     try:
         logic_instance = logic.CounterpickLogic(app_version=app_version_display)
@@ -94,7 +86,6 @@ if __name__ == "__main__":
         QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
         if app_created_now: app.quit()
         sys.exit(1)
-
     logging.info("Создание MainWindow...")
     window = None 
     try:
@@ -111,7 +102,6 @@ if __name__ == "__main__":
                 logging.error("Window ID is 0, окно не было создано корректно на уровне ОС!")
         else:
             logging.error("Окно НЕ стало видимым после вызова show()!")
-
     except Exception as e:
         logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
         # print(f"CRITICAL ERROR during MainWindow creation/show: {e}") # Перенесено в logging выше
@@ -122,7 +112,6 @@ if __name__ == "__main__":
         logging.critical("Экземпляр MainWindow не был создан. Выход.")
         print("CRITICAL ERROR: MainWindow instance is None. Exiting.")
         sys.exit(1)
-
     logging.info("Запуск главного цикла приложения (app.exec())...")
     exit_code = 0
     try:

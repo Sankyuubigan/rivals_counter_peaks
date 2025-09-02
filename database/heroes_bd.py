@@ -47,31 +47,7 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.j
 
         # Преобразуем данные в старый формат для совместимости с существующим кодом
         name_mapping = {
-            "Black Widow": "Widow",
-            "Iron Fist": "Fister",
-            "Jeff The Land Shark": "Jeff",
-            "Spider Man": "SpiderMan",
-            "Star Lord": "StarLord",
-            "Rocket Raccoon": "Rocket Racoon",
-            "Doctor Strange": "Doctor Strange",
-            "The Thing": "The Thing",
-            "Human Torch": "Human Torch",
-            "Mister Fantastic": "Mister Fantastic",
-            "Winter Soldier": "Winter Soldier",
-            "Squirrel Girl": "Squirrel Girl",
-            "Scarlet Witch": "Witch",
-            "Black Panther": "Black Panther",
-            "Iron Man": "Iron Man",
-            "Captain America": "Captain America",
-            "Hawkeye": "Hawkeye",
-            "The Punisher": "Punisher",
-            "Moon Knight": "Moon Knight",
-            "Cloak Dagger": "Cloak and Dagger",
-            "Cloak & Dagger": "Cloak and Dagger",
-            "Invisible Woman": "Invisible Woman",
-            "Adam Warlock": "Adam Warlock",
-            "Phoenix": "Phoenix",
-            "Blade": "Blade"
+           
         }
 
         old_format_data = {}
@@ -107,31 +83,7 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json
             data = json.load(f)
 
         name_mapping = {
-            "Black Widow": "Widow",
-            "Iron Fist": "Fister",
-            "Jeff The Land Shark": "Jeff",
-            "Spider Man": "SpiderMan",
-            "Star Lord": "StarLord",
-            "Rocket Raccoon": "Rocket Racoon",
-            "Doctor Strange": "Doctor Strange",
-            "The Thing": "The Thing",
-            "Human Torch": "Human Torch",
-            "Mister Fantastic": "Mister Fantastic",
-            "Winter Soldier": "Winter Soldier",
-            "Squirrel Girl": "Squirrel Girl",
-            "Scarlet Witch": "Witch",
-            "Black Panther": "Black Panther",
-            "Iron Man": "Iron Man",
-            "Captain America": "Captain America",
-            "Hawkeye": "Hawkeye",
-            "The Punisher": "Punisher",
-            "Moon Knight": "Moon Knight",
-            "Cloak Dagger": "Cloak and Dagger",
-            "Cloak & Dagger": "Cloak and Dagger",
-            "Invisible Woman": "Invisible Woman",
-            "Adam Warlock": "Adam Warlock",
-            "Phoenix": "Phoenix",
-            "Blade": "Blade"
+         
         }
 
         hero_stats = {}
@@ -174,31 +126,7 @@ def convert_hero_names_opponents(data):
         dict: Конвертированные данные
     """
     name_mapping = {
-        "Black Widow": "Widow",
-        "Iron Fist": "Fister",
-        "Jeff The Land Shark": "Jeff",
-        "Spider Man": "SpiderMan",
-        "Star Lord": "StarLord",
-        "Rocket Raccoon": "Rocket Racoon",
-        "Doctor Strange": "Doctor Strange",
-        "The Thing": "The Thing",
-        "Human Torch": "Human Torch",
-        "Mister Fantastic": "Mister Fantastic",
-        "Winter Soldier": "Winter Soldier",
-        "Squirrel Girl": "Squirrel Girl",
-        "Scarlet Witch": "Witch",
-        "Black Panther": "Black Panther",
-        "Iron Man": "Iron Man",
-        "Captain America": "Captain America",
-        "Hawkeye": "Hawkeye",
-        "The Punisher": "Punisher",
-        "Moon Knight": "Moon Knight",
-        "Cloak Dagger": "Cloak and Dagger",
-        "Cloak & Dagger": "Cloak and Dagger",
-        "Invisible Woman": "Invisible Woman",
-        "Adam Warlock": "Adam Warlock",
-        "Phoenix": "Phoenix",
-        "Blade": "Blade"
+       
     }
 
     converted_data = {}
@@ -240,40 +168,7 @@ def load_compositions_data(file_path="database/heroes_compositions.json"):
 
         # Конвертируем имена героев
         name_mapping = {
-            "Black Widow": "Widow",
-            "Iron Fist": "Fister",
-            "Jeff The Land Shark": "Jeff",
-            "Spider Man": "SpiderMan",
-            "Star Lord": "StarLord",
-            "Rocket Raccoon": "Rocket Racoon",
-            "Doctor Strange": "Doctor Strange",
-            "The Thing": "The Thing",
-            "Human Torch": "Human Torch",
-            "Mister Fantastic": "Mister Fantastic",
-            "Winter Soldier": "Winter Soldier",
-            "Squirrel Girl": "Squirrel Girl",
-            "Scarlet Witch": "Witch",
-            "Black Panther": "Black Panther",
-            "Iron Man": "Iron Man",
-            "Captain America": "Captain America",
-            "Hawkeye": "Hawkeye",
-            "The Punisher": "Punisher",
-            "Moon Knight": "Moon Knight",
-            "Ultron": "Ultron",
-            "Adam Warlock": "Adam Warlock",
-            "Wolverine": "Wolverine",
-            "Magik": "Magik",
-            "Loki": "Loki",
-            "Cloak and Dagger": "Cloak and Dagger",
-            "Mantis": "Mantis",
-            "Luna Snow": "Luna Snow",
-            "Invisible Woman": "Invisible Woman",
-            "Storm": "Storm",
-            "Namor": "Namor",
-            "Psylocke": "Psylocke",
-            "Venom": "Venom",
-            "Blade": "Blade",
-            "Phoenix": "Phoenix"
+          
         }
 
         compositions_converted = {}
@@ -561,7 +456,7 @@ if not matchups_data:
         "Adam Warlock", "Blade", "Captain America", "Captain Marvel", "Cloak and Dagger",
         "Doctor Strange", "Emma Frost", "Groot", "Hawk", "Hawkeye", "Hela", "Hulk", "Human Torch",
         "Invisible Woman", "Iron Fist", "Iron Man", "Loki", "Luna Snow", "Magneto", "Mantis",
-        "Moon Knight", "Namor", "Penelope Parker", "Phoenix", "Psylocke", "Rocket Racoon",
+        "Moon Knight", "Namor", "Penelope Parker", "Phoenix", "Psylocke", "Rocket Raccoon",
         "Scarlet Witch", "Spider-Man", "Squirrel Girl", "Star-Lord", "Storm", "The Punisher",
         "The Thing", "Thor", "Venom", "Win", "Wolverine"
     ]
