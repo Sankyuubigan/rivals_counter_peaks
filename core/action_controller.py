@@ -166,6 +166,23 @@ class ActionController:
                try:
                    self.mw.move(new_pos)
                    logging.debug("Window move() called successfully")
+   
+                   # Сохраняем новую позицию в настройки
+                   try:
+                       current_geometry = self.mw.geometry()
+                       geometry_dict = {
+                           'x': current_geometry.x(),
+                           'y': current_geometry.y(),
+                           'width': current_geometry.width(),
+                           'height': current_geometry.height()
+                       }
+                       # Сохраняем геометрию в настройки без немедленной записи на диск для производительности
+                       if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
+                           self.mw.app_settings_manager.set_tab_window_geometry(geometry_dict, save=False)
+                           logging.info(f"Tab window position saved after move: {geometry_dict}")
+                   except Exception as save_error:
+                       logging.warning(f"Failed to save tab window geometry after move: {save_error}")
+   
                except Exception as move_error:
                    logging.error(f"Error calling move(): {move_error}")
            else:

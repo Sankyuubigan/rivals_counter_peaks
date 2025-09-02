@@ -152,6 +152,13 @@ class AppSettingsManager:
     
     def get_tab_geometry(self) -> Dict[str, int]:
         return self.get_setting(TAB_WINDOW_GEOMETRY_KEY, DEFAULT_TAB_GEOMETRY).copy()
-    
+
     def set_tab_geometry(self, geometry: Dict[str, int], save: bool = True):
         self.set_setting(TAB_WINDOW_GEOMETRY_KEY, geometry.copy(), save)
+
+    # Алиасы для поддержки существующего кода
+    def get_tab_window_geometry(self) -> Dict[str, int]:
+        return self.get_tab_geometry()
+
+    def set_tab_window_geometry(self, geometry: Dict[str, int], save: bool = True):
+        self.set_tab_geometry(geometry, save)

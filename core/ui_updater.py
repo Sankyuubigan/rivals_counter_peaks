@@ -33,13 +33,22 @@ class UiUpdater:
         current_mode = new_mode
         t0 = time.perf_counter()
         logging.info(f"--> UiUpdater: update_interface_for_mode for mode '{current_mode}' START")
-        if not self.mw: 
+        if not self.mw:
             logging.error("UiUpdater: MainWindow reference is None!")
             return
-        
-        if hasattr(self.mw, 'flags_manager') and self.mw.flags_manager._is_applying_flags_operation: 
+
+        if hasattr(self.mw, 'flags_manager') and self.mw.flags_manager._is_applying_flags_operation:
             logging.warning(f"    UiUpdater: update_interface_for_mode skipped due to _is_applying_flags_operation flag. Mode: {current_mode}")
-            return 
+            return
+
+        # ПРОВЕРКА ДЛЯ ПРЕДТВРАЩЕНИЯ НЕЖЕЛАТЕЛЬНОГО ПЕРЕСОЗДАНИЯ ВИДЖЕТОВ В ТАБ РЕЖИМЕ
+        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
+        if is_tab_mode and hasattr(self, '_tab_widgets_already_created') and self._tab_widgets_already_created:
+            logging.info("    UiUpdater: TAB MODE - Skipping widget recreation, only updating visibility")
+            # В таб режиме просто обновляем видимость виджетов вместо их пересоздания
+            self._update_tab_mode_ui_visibility(current_mode)
+            logging.info(f"<-- UiUpdater: Update interface for tab mode '{current_mode}' finished (no recreation) in {(time.perf_counter() - t0)*1000:.2f} ms")
+            return
 
         t_delete_start = time.perf_counter()
         widgets_to_delete = []
@@ -226,6 +235,10 @@ class UiUpdater:
             self.mw.flags_manager.apply_mouse_invisible_mode(f"ui_update_for_mode_{current_mode}")
         else:
             logging.error("UiUpdater: flags_manager not found in MainWindow.")
+
+        # Устанавливаем флаг, что виджеты созданы для таб режима (чтобы избежать повторного создания)
+        if is_tab_mode:
+            self._tab_widgets_already_created = True
 
         logging.info(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {(time.perf_counter() - t0)*1000:.2f} ms")
 
@@ -561,3 +574,47 @@ class UiUpdater:
             logging.error(f"UiUpdater: Error in _fix_tab_widget_visibility: {e}")
 
         logging.info("UiUpdater: _fix_tab_widget_visibility completed")
+
+    def _update_tab_mode_ui_visibility(self, current_mode):
+        """Обновление только видимости виджетов для таб режима без их пересоздания"""
+        logging.info(f"UiUpdater: Optimizing tab mode UI visibility for mode '{current_mode}'")
+
+        # Устанавливаем видимость для таб режима
+        is_min_mode = (current_mode == "min")
+        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
+
+        # Обновляем видимость панелей в зависимости от режима
+        if self.mw.left_panel_widget:
+            self.mw.left_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
+        if self.mw.right_panel_widget:
+            self.mw.right_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
+
+        # Устанавливаем видимость таб контейнеров
+        if self.mw.tab_enemies_container:
+            self.mw.tab_enemies_container.setVisible(is_tab_mode)
+        if self.mw.tab_counters_container:
+            self.mw.tab_counters_container.setVisible(is_tab_mode)
+
+        # Устанавливаем видимость топ панели
+        if self.mw.top_frame:
+            self.mw.top_frame.setVisible(not is_tab_mode)
+
+        # Обновляем скролл эрию для таб режима
+        if self.mw.icons_scroll_area:
+            self.mw.icons_scroll_area.show()
+
+            if is_tab_mode:
+                icons_h = self.mw.tab_mode_manager._calculate_tab_mode_height()
+                self.mw.icons_scroll_area.setFixedHeight(icons_h)
+
+        # Обновляем геометрию
+        if self.mw. icons_scroll_area and self.mw. icons_scroll_content:
+            self.mw.icons_scroll_area.updateGeometry()
+            self.mw.icons_scroll_content.adjustSize()
+
+        # Принудительное обновление визуального отображения
+        if self.mw:
+            self.mw.updateGeometry()
+            self.mw.update()
+
+        logging.info("UiUpdater: Tab mode UI visibility updated without widget recreation")

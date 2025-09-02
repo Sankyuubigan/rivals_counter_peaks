@@ -67,14 +67,60 @@ class TabModeManager:
         if hasattr(self.mw, 'flags_manager'):
             self.mw.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
 
-        # Устанавливаем геометрию и показываем окно для гладкого перехода
-        self.mw.setGeometry(tab_x, tab_y, tab_window_width, tab_window_height)
-        self.mw.show()
-        logging.info("[TAB MODE] Window geometry set and shown: ({},{}), size=({},{})".format(tab_x, tab_y, tab_window_width, tab_window_height))
+        # НОВЫЙ ПОДХОД: Полностью скрываем процесс инициализации от пользователя
+        # 1. Делаем всё необходимое ДО показа
+        self._perform_full_initialization(tab_x, tab_y, tab_window_width, tab_window_height)
 
-        # Оптимизация: Уменьшаем задержки таймеров для более быстрого отклика
-        QTimer.singleShot(50, self._start_ui_updates_async)
-        QTimer.singleShot(100, self._finalize_and_process_events)
+        logging.info("[TAB MODE] Tab mode initialization completed - showing final result")
+
+        # ПОКАЗЫВАЕМ ЗАВЕРШЕННЫЙ РЕЗУЛЬТАТ - окно с ОКОНЧАТЕЛЬНОЙ конфигурацией
+        self.mw.show()
+
+        # УСТАНАВЛИВАЕМ ФЛАГ ГОТОВНОСТИ ПОСЛЕ ВСЕГО
+        self.mw._tab_mode_initialization_complete = True
+
+    def _perform_full_initialization(self, tab_x, tab_y, tab_window_width, tab_window_height):
+        """Выполняет полную инициализацию таб-режима перед показом окна"""
+        logging.info("[TAB MODE] Starting full initialization")
+
+        # Устанавливаем геометрию окна
+        self.mw.setGeometry(tab_x, tab_y, tab_window_width, tab_window_height)
+        logging.info(f"[TAB MODE] Window geometry set to final position")
+
+        # ВНИМАНИЕ: устанавливаем флаг ранней инициализации до любых обновлений UI
+        self.mw._is_tab_mode_initializing = True
+        logging.info("[TAB FIX] Флаг ранней инициализации: _is_tab_mode_initializing = True")
+
+        # УСТАНАВЛИВАЕМ ВИДИМОСТЬ КОНТЕЙНЕРОВ
+        self._set_tab_mode_ui_visible(True)
+        logging.info("[TAB MODE] UI visibility set")
+
+        # ВЫПОЛНЯЕМ ПОЛНОЕ ОБНОВЛЕНИЕ ИНТЕРФЕЙСА
+        logging.info("[TAB MODE] Starting heavy UI update process")
+        self.mw.ui_updater.update_interface_for_mode()
+        logging.info("[TAB MODE] Heavy UI update completed")
+
+        # ОБНОВЛЯЕМ ГОРИЗОНТАЛЬНЫЕ СПИСКИ
+        self.mw.ui_updater._update_horizontal_lists()
+        logging.info("[TAB MODE] Horizontal lists updated")
+
+        # УСТАНАВЛИВАЕМ ФИНАЛЬНУЮ ГЕОМЕТРИЮ
+        self._adapt_window_to_content()
+        self.mw.updateGeometry()
+        logging.info("[TAB MODE] Final geometry adaptation completed")
+
+        # СБРАСЫВАЕМ ФЛАГ ПОСЛЕ ВСЕЙ РАБОТЫ
+        self.mw._is_tab_mode_initializing = False
+        logging.info("[TAB FIX] Сброшен флаг ранней инициализации")
+
+        logging.info("[TAB MODE] Full initialization process finished")
+
+    def _finalize_tab_mode_complete(self):
+        """Финализация состояния таб-режима после показа окна"""
+        if not self.is_active():
+            return
+
+        logging.info("[TAB MODE] Tab mode finalization completed")
 
     def disable(self):
         """Выключает режим 'Таба' и восстанавливает предыдущее состояние."""
@@ -217,6 +263,11 @@ class TabModeManager:
         # Принудительное обновление без processEvents чтобы избежать визуального мерцания
         self.mw.update()
         # QApplication.processEvents() убран для предотвращения визуального мерцания
+
+        # ВНИМАНИЕ: сбрасываем флаг инициализации после завершения
+        if hasattr(self.mw, '_is_tab_mode_initializing'):
+            self.mw._is_tab_mode_initializing = False
+            logging.info("[TAB FIX] Сброшен флаг _is_tab_mode_initializing = False после завершения инициализации")
 
         logging.info("[TAB MODE] Tab mode activation completed")
 

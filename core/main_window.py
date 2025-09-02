@@ -120,6 +120,8 @@ class MainWindow(QMainWindow):
 
         self._connect_signals()
         self._initial_ui_update_done = False
+        # ВНИМАНИЕ: исправление бага двойного обновления в таб-режиме
+        self._is_tab_mode_initializing = False
 
         self.setWindowOpacity(1.0)
 
@@ -474,11 +476,18 @@ class MainWindow(QMainWindow):
 
             self.mode_positions[self.mode] = self.pos()
 
-            if hasattr(self, 'ui_updater') and self.ui_updater:
-                self.ui_updater.update_interface_for_mode(new_mode=self.mode)
-            else:
+            # ВНИМАНИЕ: исправление бага двойного обновления - проверяем инициализацию таб-режима
+            if self._is_tab_mode_initializing:
+                logging.info("    [TAB FIX] Пропускаем update_interface_for_mode - инициализация таб-режима уже активна")
+                # Простейший case: просто устанавливаем флаги без полного обновления
                 if hasattr(self, 'flags_manager'):
-                    self.flags_manager.apply_mouse_invisible_mode("initial_show_no_ui_updater")
+                    self.flags_manager.apply_mouse_invisible_mode("initial_show_skip_tab_mode")
+            else:
+                if hasattr(self, 'ui_updater') and self.ui_updater:
+                    self.ui_updater.update_interface_for_mode(new_mode=self.mode)
+                else:
+                    if hasattr(self, 'flags_manager'):
+                        self.flags_manager.apply_mouse_invisible_mode("initial_show_no_ui_updater")
 
             if hasattr(self, 'hotkey_manager_global'):
                 logging.info("    showEvent: HotkeyManagerGlobal запущен и готов.")
