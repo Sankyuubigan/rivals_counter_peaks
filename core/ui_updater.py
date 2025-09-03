@@ -41,14 +41,8 @@ class UiUpdater:
             logging.warning(f"    UiUpdater: update_interface_for_mode skipped due to _is_applying_flags_operation flag. Mode: {current_mode}")
             return
 
-        # ПРОВЕРКА ДЛЯ ПРЕДТВРАЩЕНИЯ НЕЖЕЛАТЕЛЬНОГО ПЕРЕСОЗДАНИЯ ВИДЖЕТОВ В ТАБ РЕЖИМЕ
-        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
-        if is_tab_mode and hasattr(self, '_tab_widgets_already_created') and self._tab_widgets_already_created:
-            logging.info("    UiUpdater: TAB MODE - Skipping widget recreation, only updating visibility")
-            # В таб режиме просто обновляем видимость виджетов вместо их пересоздания
-            self._update_tab_mode_ui_visibility(current_mode)
-            logging.info(f"<-- UiUpdater: Update interface for tab mode '{current_mode}' finished (no recreation) in {(time.perf_counter() - t0)*1000:.2f} ms")
-            return
+        # В новой архитектуре с TrayWindow, таб-режим не влияет на main window UI
+        # Всегда выполняем полное обновление интерфейса
 
         t_delete_start = time.perf_counter()
         widgets_to_delete = []
@@ -160,7 +154,6 @@ class UiUpdater:
         
         t_height_vis_start = time.perf_counter()
         is_min_mode = (current_mode == "min")
-        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
 
         if self.mw.top_panel_instance:
             tp = self.mw.top_panel_instance
@@ -168,33 +161,28 @@ class UiUpdater:
             tp.min_button.setVisible(True)
             tp.middle_button.setVisible(True)
             tp.max_button.setVisible(True)
-            
-            tp.version_label.setVisible(not is_min_mode and not is_tab_mode)
-            tp.menu_button.setVisible(not is_min_mode and not is_tab_mode) 
-            if hasattr(tp, 'close_button_min_mode') and tp.close_button_min_mode:
-                 tp.close_button_min_mode.setVisible(is_min_mode and not is_tab_mode)
-            tp.update_language() 
 
-        if self.mw.left_panel_widget: self.mw.left_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
-        if self.mw.right_panel_widget: self.mw.right_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
+            tp.version_label.setVisible(not is_min_mode)
+            tp.menu_button.setVisible(not is_min_mode)
+            if hasattr(tp, 'close_button_min_mode') and tp.close_button_min_mode:
+                 tp.close_button_min_mode.setVisible(is_min_mode)
+            tp.update_language()
+
+        if self.mw.left_panel_widget: self.mw.left_panel_widget.setVisible(not is_min_mode)
+        if self.mw.right_panel_widget: self.mw.right_panel_widget.setVisible(not is_min_mode)
         if self.mw.icons_scroll_area: self.mw.icons_scroll_area.show()
 
-        self.mw.tab_mode_manager._set_tab_mode_ui_visible(is_tab_mode)
-
-        self.mw.setMinimumHeight(0); self.mw.setMaximumHeight(16777215) 
+        self.mw.setMinimumHeight(0); self.mw.setMaximumHeight(16777215)
         
         top_h = self.mw.top_frame.sizeHint().height() if self.mw.top_frame and self.mw.top_frame.isVisible() else 0
-        
-        if is_tab_mode:
-            icons_h = self.mw.tab_mode_manager._calculate_tab_mode_height()
-        else:
-            _, h_icon_h = SIZES.get(current_mode, {}).get('horizontal', (35,35)) 
-            icons_h = h_icon_h + 12 
+
+        _, h_icon_h = SIZES.get(current_mode, {}).get('horizontal', (35,35))
+        icons_h = h_icon_h + 12
         
         if self.mw.icons_scroll_area:
             self.mw.icons_scroll_area.setFixedHeight(icons_h)
         
-        if is_min_mode and not is_tab_mode:
+        if is_min_mode:
             self.mw.setWindowTitle("") 
             spacing = self.mw.main_layout.spacing() if self.mw.main_layout else 0
             calculated_fixed_min_height = top_h + icons_h + (spacing if top_h > 0 and icons_h > 0 else 0) + 5 
@@ -203,7 +191,7 @@ class UiUpdater:
             self.mw.setMaximumHeight(calculated_fixed_min_height)
             self.mw.resize(MODE_DEFAULT_WINDOW_SIZES['min']['width'], calculated_fixed_min_height) 
             logging.info(f"    UiUpdater: Min mode. Fixed height: {calculated_fixed_min_height}, Width: {MODE_DEFAULT_WINDOW_SIZES['min']['width']}")
-        elif not is_tab_mode: 
+        else:
             self.mw.setWindowTitle(f"{get_text('title')} v{self.mw.app_version}")
             min_h_val = top_h + icons_h + (200 if current_mode == "middle" else 300) 
             self.mw.setMinimumHeight(min_h_val) 
@@ -215,19 +203,10 @@ class UiUpdater:
             self.mw.resize(final_w, final_h)
             logging.info(f"    UiUpdater: Mode '{current_mode}'. Resized to {final_w}x{final_h}")
             
-        self.mw.updateGeometry() 
+        self.mw.updateGeometry()
         logging.debug(f"    UiUpdater: Height/Visibility updates took {(time.perf_counter() - t_height_vis_start)*1000:.2f} ms")
-        
-        logging.info("[TAB MODE] Calling update_ui_after_logic_change")
+
         self.update_ui_after_logic_change()
-        logging.info("[TAB MODE] Finished update_ui_after_logic_change")
-
-        # Обновляем геометрию окна после изменений контента в таб режиме
-        if self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active():
-            self.mw.tab_mode_manager._adapt_window_to_content()
-
-        logging.info("[TAB MODE] Window geometry after adaptation: position={}, size={}".format(
-            self.mw.pos(), self.mw.size()))
         if self.mw.right_list_widget:
               self.update_list_item_selection_states(force_update=True)
 
@@ -236,15 +215,11 @@ class UiUpdater:
         else:
             logging.error("UiUpdater: flags_manager not found in MainWindow.")
 
-        # Устанавливаем флаг, что виджеты созданы для таб режима (чтобы избежать повторного создания)
-        if is_tab_mode:
-            self._tab_widgets_already_created = True
-
         logging.info(f"<-- UiUpdater: Update interface for mode '{current_mode}' finished in {(time.perf_counter() - t0)*1000:.2f} ms")
 
 
     def update_ui_after_logic_change(self, force_update=False):
-        """Оптимизированный update_ui_after_logic_change с предотвращением дублирующих вызовов"""
+        """Оптимизированный update_ui_after_logic_change с предотвращением дублирующих вызовов и кэшированием расчетов"""
         current_time = time.perf_counter()
 
         # Предотвращение слишком частых обновлений (менее 100ms между вызовами)
@@ -263,11 +238,18 @@ class UiUpdater:
         t_start_logic_update = time.perf_counter()
         logging.info("    UiUpdater: update_ui_after_logic_change START")
 
+        # Кэширование расчетов для предотвращения двойных вызовов
+        counter_scores = {}
+        effective_team = []
+        if self.mw.logic.selected_heroes:
+            counter_scores = self.mw.logic.calculate_counter_scores()
+            effective_team = self.mw.logic.calculate_effective_team(counter_scores)
+
         try:
             self._update_selected_label()
-            self._update_counterpick_display()
+            self._update_counterpick_display(counter_scores, effective_team)
             logging.info("    UiUpdater: Calling _update_horizontal_lists")
-            self._update_horizontal_lists()
+            self._update_horizontal_lists(counter_scores, effective_team)
             logging.info("    UiUpdater: Finished _update_horizontal_lists")
             self.update_list_item_selection_states()
             self._update_priority_labels()
@@ -292,124 +274,94 @@ class UiUpdater:
              label_to_update.setText(label_text)
 
 
-    def _update_counterpick_display(self):
-        if self.mw.mode == "min": 
+    def _update_counterpick_display(self, counter_scores=None, effective_team=None):
+        if self.mw.mode == "min":
             logging.debug("    UiUpdater: Skipping _update_counterpick_display for min mode.")
             return
-            
+
         if not (self.mw.result_frame and self.mw.canvas and self.mw.left_images and self.mw.small_images):
             logging.debug("    UiUpdater: Skipping _update_counterpick_display due to missing elements (result_frame, canvas, or images).")
             return
 
-        display.generate_counterpick_display(self.mw.logic, self.mw.result_frame, self.mw.left_images, self.mw.small_images)
+        display.generate_counterpick_display(self.mw.logic, self.mw.result_frame, self.mw.left_images, self.mw.small_images, counter_scores, effective_team)
         if self.mw.update_scrollregion_callback:
             self.mw.update_scrollregion_callback()
 
 
-    def _update_horizontal_lists(self):
-        """Оптимизированный _update_horizontal_lists с кэшированием для таб режима"""
-        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
-
-        if is_tab_mode:
-            # Проверка наличия контейнеров
-            if not (self.mw.tab_enemies_layout and self.mw.tab_counters_layout):
-                return
-
-            # КЭШИРОВАНИЕ: проверяем, не изменились ли данные с последнего обновления
-            current_selection = list(self.mw.logic.selected_heroes) if self.mw.logic.selected_heroes else []
-            cache_key = f"tab_{len(current_selection)}_{hash(str(current_selection))}"
-
-            if hasattr(self, '_last_tab_update_cache') and self._last_tab_update_cache == cache_key:
-                logging.debug("[TAB MODE] Skipping horizontal lists update - data unchanged")
-                return
-
-            # Добавляем логирование для отладки
-            logging.info(f"[TAB MODE] Updating horizontal lists. Selected heroes: {current_selection}")
-
-            # Очистка и обновление списков с логированием
-            clear_layout_util(self.mw.tab_enemies_layout)
-            clear_layout_util(self.mw.tab_counters_layout)
-            logging.debug("[TAB MODE] Layouts cleared")
-
-            # Вызываем обновление списков с логированием
-            enemy_count = horizontal_list.update_enemy_horizontal_list(self.mw, self.mw.tab_enemies_layout)
-            counter_count = horizontal_list.update_horizontal_icon_list(self.mw, self.mw.tab_counters_layout)
-
-            # Сохраняем кэш для следующего вызова
-            self._last_tab_update_cache = cache_key
-
-            # Логируем результаты
-            logging.info(f"[TAB MODE] Count from enemies update: {enemy_count}")
-            logging.info(f"[TAB MODE] Count from counters update: {counter_count}")
-
-            # Оптимизированная проверка видимости без детального логирования
-            if self.mw.tab_enemies_layout.count() > 0:
-                first_item = self.mw.tab_enemies_layout.itemAt(0)
-                if first_item and first_item.widget():
-                    widget = first_item.widget()
-                    if not widget.isVisible():
-                        widget.setVisible(True)
-
-            if self.mw.tab_counters_layout.count() > 0:
-                first_item = self.mw.tab_counters_layout.itemAt(0)
-                if first_item and first_item.widget():
-                    widget = first_item.widget()
-                    if not widget.isVisible():
-                        widget.setVisible(True)
-                    if widget.parentWidget():
-                        parent_visible = widget.parentWidget().isVisible()
-                        if not parent_visible:
-                            widget.parentWidget().setVisible(True)
-                    else:
-                        # Попробуем установить корректного родителя
-                        widget.setParent(self.mw.tab_counters_container)
-                        widget.setVisible(True)
-
-            # Оптимизированные синхронные вызовы
-            self._fix_scroll_area_size_hint()
-            self._force_visual_update()
-
-            # Принудительное исправление видимости виджетов (оптимизированное)
-            self._fix_tab_widget_visibility()
-
-            # Адаптируем размер окна под новое содержимое
-            if self.mw.tab_mode_manager:
-                self.mw.tab_mode_manager._adapt_window_to_content()
+    def _update_horizontal_lists(self, counter_scores=None, effective_team=None):
+        """Обновляет горизонтальные списки - нормальные или таб-контейнеры в зависимости от режима"""
+        # Определяем, работаем ли мы с таб-контейнерами или нормальными
+        has_tab_manager = hasattr(self.mw, 'tab_mode_manager')
+        logging.info(f"ROO DEBUG: hasattr(self.mw, 'tab_mode_manager') = {has_tab_manager}")
+        if has_tab_manager:
+            tab_manager_not_none = self.mw.tab_mode_manager is not None
+            logging.info(f"ROO DEBUG: self.mw.tab_mode_manager is not None = {tab_manager_not_none}")
+            tab_manager_active = self.mw.tab_mode_manager.is_active()
+            logging.info(f"ROO DEBUG: self.mw.tab_mode_manager.is_active() = {tab_manager_active}")
+            tab_manager_internal_active = self.mw.tab_mode_manager._is_active
+            logging.info(f"ROO DEBUG: self.mw.tab_mode_manager._is_active = {tab_manager_internal_active}")
         else:
-            if not (self.mw.counters_layout and self.mw.enemies_layout and self.mw.horizontal_info_label):
-                logging.warning("UiUpdater: Пропуск обновления списков обычного режима (нет элементов).")
-                return
+            logging.info("ROO DEBUG: tab_mode_manager not hasattr, skipping is_active checks")
 
-            if self.mw.horizontal_info_label.parentWidget():
-                parent_layout = self.mw.horizontal_info_label.parentWidget().layout()
-                if parent_layout:
-                    parent_layout.removeWidget(self.mw.horizontal_info_label)
-                self.mw.horizontal_info_label.setParent(None)
-            self.mw.horizontal_info_label.hide()
+        is_tab_mode = hasattr(self.mw, 'tab_mode_manager') and self.mw.tab_mode_manager.is_active()
+        logging.info(f"ROO DEBUG: UiUpdater._update_horizontal_lists - is_tab_mode = {is_tab_mode}")
 
-            clear_layout_util(self.mw.counters_layout)
-            clear_layout_util(self.mw.enemies_layout)
+        if is_tab_mode and hasattr(self.mw, 'tab_counters_layout') and hasattr(self.mw, 'tab_enemies_layout'):
+            # Используем таб-контейнеры
+            counters_layout = self.mw.tab_counters_layout
+            enemies_layout = self.mw.tab_enemies_layout
+            logging.info("ROO DEBUG: UiUpdater: Используем таб-контейнеры для обновления")
+        elif self.mw.counters_layout and self.mw.enemies_layout:
+            # Используем нормальные контейнеры
+            counters_layout = self.mw.counters_layout
+            enemies_layout = self.mw.enemies_layout
+            logging.info("ROO DEBUG: UiUpdater: Используем нормальные контейнеры для обновления")
+        else:
+            logging.warning("ROO DEBUG: UiUpdater: Пропуск обновления списков (нет элементов).")
+            return
 
-            if not self.mw.logic.selected_heroes:
-                self.mw.horizontal_info_label.setText(get_text("select_enemies_for_recommendations"))
-                self.mw.counters_layout.addWidget(self.mw.horizontal_info_label)
-                self.mw.horizontal_info_label.show()
-                self.mw.counters_layout.addStretch(1)
-                self.mw.enemies_layout.addStretch(1)
+        if not self.mw.horizontal_info_label:
+            logging.warning("UiUpdater: horizontal_info_label отсутствует.")
+            return
+
+        # Удаляем info_label из предыдущего layout если нужно
+        if self.mw.horizontal_info_label.parentWidget():
+            parent_layout = self.mw.horizontal_info_label.parentWidget().layout()
+            if parent_layout and parent_layout != counters_layout and parent_layout != enemies_layout:
+                parent_layout.removeWidget(self.mw.horizontal_info_label)
+            self.mw.horizontal_info_label.setParent(None)
+        self.mw.horizontal_info_label.hide()
+
+        clear_layout_util(counters_layout)
+        clear_layout_util(enemies_layout)
+
+        if not self.mw.logic.selected_heroes:
+            self.mw.horizontal_info_label.setText(get_text("select_enemies_for_recommendations"))
+            counters_layout.addWidget(self.mw.horizontal_info_label)
+            self.mw.horizontal_info_label.show()
+            counters_layout.addStretch(1)
+            enemies_layout.addStretch(1)
+        else:
+            horizontal_list.update_horizontal_icon_list(self.mw, counters_layout, counter_scores, effective_team)
+
+            # В таб режиме всегда показываем enemies, в нормальном - только в min режиме
+            logging.info(f"ROO DEBUG: UiUpdater: About to call update_enemy_horizontal_list in tab mode: {is_tab_mode}")
+            if is_tab_mode or self.mw.mode == "min":
+                logging.info("ROO DEBUG: UiUpdater: Calling update_enemy_horizontal_list")
+                horizontal_list.update_enemy_horizontal_list(self.mw, enemies_layout)
+                logging.info("ROO DEBUG: UiUpdater: update_enemy_horizontal_list returned")
             else:
-                horizontal_list.update_horizontal_icon_list(self.mw, self.mw.counters_layout)
-                if self.mw.mode == "min":
-                    horizontal_list.update_enemy_horizontal_list(self.mw, self.mw.enemies_layout)
-                else:
-                    self.mw.enemies_layout.addStretch(1)
+                enemies_layout.addStretch(1)
+                logging.info("ROO DEBUG: UiUpdater: Added stretch instead of enemy list")
 
-                has_counters = any(self.mw.counters_layout.itemAt(i).widget() for i in range(self.mw.counters_layout.count()) if self.mw.counters_layout.itemAt(i).widget() is not None)
-                if not has_counters:
-                    self.mw.horizontal_info_label.setText(get_text("no_recommendations"))
-                    self.mw.counters_layout.addWidget(self.mw.horizontal_info_label)
-                    self.mw.horizontal_info_label.show()
-                    self.mw.counters_layout.addStretch(1)
+            has_counters = any(counters_layout.itemAt(i).widget() for i in range(counters_layout.count()) if counters_layout.itemAt(i).widget() is not None)
+            if not has_counters:
+                self.mw.horizontal_info_label.setText(get_text("no_recommendations"))
+                counters_layout.addWidget(self.mw.horizontal_info_label)
+                self.mw.horizontal_info_label.show()
+                counters_layout.addStretch(1)
 
+        # Обновляем геометрию scroll area
         if self.mw.icons_scroll_area and self.mw.icons_scroll_content:
             self.mw.icons_scroll_area.updateGeometry()
             self.mw.icons_scroll_content.adjustSize()
@@ -471,22 +423,33 @@ class UiUpdater:
                      item.setBackground(target_brush)
 
     def update_hotkey_highlight(self, old_index=None):
+        # Проверяем, активен ли таб-режим
+        is_tab_mode = hasattr(self.mw, 'tab_mode_manager') and self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active()
+
+        if is_tab_mode:
+            # В таб-режиме используем update_tab_highlight через ActionController
+            logging.debug("UiUpdater: update_hotkey_highlight called in tab mode, using tab cursor logic")
+            # Обновляем highlight через метод TabCursorController
+            self.update_tab_highlight()
+            return
+
+        # Стандартная логика для нормального режима
         list_widget = self.mw.right_list_widget
         if not (list_widget and list_widget.isVisible() and self.mw.mode != 'min' and list_widget.count() > 0):
             return
-        
+
         new_index = self.mw.hotkey_cursor_index
         needs_viewport_update = False
-        
+
         if old_index is not None and old_index != new_index and 0 <= old_index < list_widget.count():
             old_item = list_widget.item(old_index)
             if old_item:
-                hero_name_old = old_item.data(HERO_NAME_ROLE) 
+                hero_name_old = old_item.data(HERO_NAME_ROLE)
                 current_tooltip_old = old_item.toolTip()
                 if hero_name_old and current_tooltip_old and current_tooltip_old.startswith(">>>"):
                     old_item.setToolTip(hero_name_old)
                 needs_viewport_update = True
-        
+
         if 0 <= new_index < list_widget.count():
             new_item = list_widget.item(new_index)
             if new_item:
@@ -496,11 +459,72 @@ class UiUpdater:
                     new_item.setToolTip(focus_tooltip)
                 list_widget.scrollToItem(new_item, QAbstractItemView.ScrollHint.EnsureVisible)
                 needs_viewport_update = True
-        
+
         if needs_viewport_update:
               self._update_priority_labels()
               if list_widget.viewport():
                   QMetaObject.invokeMethod(list_widget.viewport(), "update", Qt.ConnectionType.QueuedConnection)
+
+    def update_tab_highlight(self, container_name=None, old_index=-1, new_index=-1):
+        """Обновляет выделение в таб-контейнерах для указанного контейнера и индексов"""
+        logging.debug(f"UiUpdater: update_tab_highlight({container_name}, {old_index} -> {new_index})")
+
+        # Определяем целевой контейнер
+        if container_name == 'enemies':
+            target_layout = getattr(self.mw, 'tab_enemies_layout', None)
+        elif container_name == 'counters':
+            target_layout = getattr(self.mw, 'tab_counters_layout', None)
+        else:
+            # Если контейнер не указан, обновляем highlight для ActionController
+            if hasattr(self.mw, 'action_controller'):
+                if hasattr(self.mw.action_controller, 'tab_cursor_controller'):
+                    current_container = self.mw.action_controller.tab_cursor_controller.current_container
+                    current_index = self.mw.action_controller.tab_cursor_controller.get_current_index()
+                    logging.debug(f"UiUpdater: Using ActionController state: container={current_container}, index={current_index}")
+                    return self.update_tab_highlight(current_container, -1, current_index)
+                else:
+                    logging.debug("UiUpdater: ActionController exists but no tab_cursor_controller - normal mode, skipping tab highlight")
+                    return
+            else:
+                logging.debug("UiUpdater: No ActionController available for tab highlight update")
+                return
+
+        if not target_layout:
+            logging.debug(f"UiUpdater: Target layout not found for container {container_name} - tab mode layout not initialized")
+            return
+
+        # Снимаем старое выделение
+        if old_index >= 0:
+            old_item = self._get_layout_item(target_layout, old_index)
+            if old_item and hasattr(old_item, 'setStyleSheet'):
+                # Убираем выделение
+                old_item.setStyleSheet("")
+
+        # Применяем новое выделение
+        if new_index >= 0:
+            new_item = self._get_layout_item(target_layout, new_index)
+            if new_item and hasattr(new_item, 'setStyleSheet'):
+                # Применяем желтое выделение для таб-контейнеров
+                highlight_style = """
+                    QWidget {
+                        border: 3px solid yellow;
+                        border-radius: 6px;
+                        background-color: rgba(255, 255, 0, 0.3);
+                    }
+                """
+                new_item.setStyleSheet(highlight_style)
+                logging.debug(f"UiUpdater: Applied highlight to {container_name} item at index {new_index}")
+
+        # Принудительное обновление отображения
+        if self.mw:
+            QMetaObject.invokeMethod(self.mw, "repaint", Qt.ConnectionType.QueuedConnection)
+
+    def _get_layout_item(self, layout, index):
+        """Получает виджет из QHBoxLayout по индексу"""
+        if not layout or index < 0 or index >= layout.count():
+            return None
+        item = layout.itemAt(index)
+        return item.widget() if item else None
 
     def _force_visual_update(self):
         """Оптимизированное принудительное обновление визуального дисплея для таб-режима"""
@@ -508,113 +532,3 @@ class UiUpdater:
         # Оставлен только один финальный repaint() основного окна - достаточно эффективно
         if self.mw:
             self.mw.repaint()
-
-    def _fix_scroll_area_size_hint(self):
-        """Исправляет sizeHint ScrollArea после наполнения контентом в таб режиме."""
-        if not self.mw.icons_scroll_area or not self.mw.icons_scroll_content:
-            return
-
-        try:
-            # Упрощенная оптимизация scroll area - только необходимый расчет размеров
-            if self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active():
-                container_height = getattr(self.mw, 'container_height_for_tab_mode', 48)
-                min_height = max(container_height * 2 + 6, self.mw.icons_scroll_area.minimumHeight())
-                new_scroll_size_hint = self.mw.icons_scroll_area.sizeHint()
-                min_width = max(new_scroll_size_hint.width(), self.mw.icons_scroll_area.minimumWidth())
-                self.mw.icons_scroll_area.setMinimumSize(min_width, min_height)
-            # updateGeometry() достаточно для пересчета размеров без избыточных операций
-            self.mw.icons_scroll_area.updateGeometry()
-
-        except Exception as e:
-            logging.error(f"UiUpdater: Error in _fix_scroll_area_size_hint: {e}")
-
-    def _fix_tab_widget_visibility(self):
-        """
-        Проверяет и исправляет видимость всех виджетов в таб режиме после полного рендеринга.
-        Выполняется через QTimer чтобы дать Qt время завершить все layout updates.
-        Добавлено детальное логирование для диагностики проблемы видимости.
-        """
-        if not (self.mw.tab_mode_manager and self.mw.tab_mode_manager.is_active()):
-            return
-
-        try:
-            # Исправляем видимость контейнеров без лишнего логирования
-            if self.mw.tab_counters_container and not self.mw.tab_counters_container.isVisible():
-                self.mw.tab_counters_container.setVisible(True)
-                self.mw.tab_counters_container.update()
-
-            if self.mw.tab_enemies_container and not self.mw.tab_enemies_container.isVisible():
-                self.mw.tab_enemies_container.setVisible(True)
-                self.mw.tab_enemies_container.update()
-
-            # Простой цикл исправления видимости виджетов без детального логирования
-            def fix_layout_visibility(layout):
-                if not layout:
-                    return 0
-                fixed_count = 0
-                for i in range(layout.count()):
-                    item = layout.itemAt(i)
-                    if item and item.widget() and not item.widget().isVisible():
-                        item.widget().setVisible(True)
-                        item.widget().update()
-                        fixed_count += 1
-                return fixed_count
-
-            counters_fixed = fix_layout_visibility(self.mw.tab_counters_layout)
-            enemies_fixed = fix_layout_visibility(self.mw.tab_enemies_layout)
-
-            if counters_fixed > 0 or enemies_fixed > 0:
-                logging.info(f"SUMMARY: Fixed visibility for {counters_fixed} counter widgets and {enemies_fixed} enemy widgets")
-
-            # Принудительное обновление scroll area
-            if self.mw.icons_scroll_area:
-                self.mw.icons_scroll_area.repaint()
-
-        except Exception as e:
-            logging.error(f"UiUpdater: Error in _fix_tab_widget_visibility: {e}")
-
-        logging.info("UiUpdater: _fix_tab_widget_visibility completed")
-
-    def _update_tab_mode_ui_visibility(self, current_mode):
-        """Обновление только видимости виджетов для таб режима без их пересоздания"""
-        logging.info(f"UiUpdater: Optimizing tab mode UI visibility for mode '{current_mode}'")
-
-        # Устанавливаем видимость для таб режима
-        is_min_mode = (current_mode == "min")
-        is_tab_mode = self.mw.tab_mode_manager.is_active() if self.mw.tab_mode_manager else False
-
-        # Обновляем видимость панелей в зависимости от режима
-        if self.mw.left_panel_widget:
-            self.mw.left_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
-        if self.mw.right_panel_widget:
-            self.mw.right_panel_widget.setVisible(not is_min_mode and not is_tab_mode)
-
-        # Устанавливаем видимость таб контейнеров
-        if self.mw.tab_enemies_container:
-            self.mw.tab_enemies_container.setVisible(is_tab_mode)
-        if self.mw.tab_counters_container:
-            self.mw.tab_counters_container.setVisible(is_tab_mode)
-
-        # Устанавливаем видимость топ панели
-        if self.mw.top_frame:
-            self.mw.top_frame.setVisible(not is_tab_mode)
-
-        # Обновляем скролл эрию для таб режима
-        if self.mw.icons_scroll_area:
-            self.mw.icons_scroll_area.show()
-
-            if is_tab_mode:
-                icons_h = self.mw.tab_mode_manager._calculate_tab_mode_height()
-                self.mw.icons_scroll_area.setFixedHeight(icons_h)
-
-        # Обновляем геометрию
-        if self.mw. icons_scroll_area and self.mw. icons_scroll_content:
-            self.mw.icons_scroll_area.updateGeometry()
-            self.mw.icons_scroll_content.adjustSize()
-
-        # Принудительное обновление визуального отображения
-        if self.mw:
-            self.mw.updateGeometry()
-            self.mw.update()
-
-        logging.info("UiUpdater: Tab mode UI visibility updated without widget recreation")

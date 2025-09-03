@@ -227,9 +227,8 @@ class AppearanceManager:
             QWidget#enemies_widget { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: #ffeeee; }
             QLabel#horizontal_info_label { color: #666666; }
             HotkeyCaptureLineEdit { color: black; background-color: white; }
-            QFrame#result_frame QLabel { color: black !important; } 
+            QFrame#result_frame QLabel { color: black !important; }
             QFrame#result_frame QFrame QLabel { color: black !important; }
-            QWidget#tab_enemies_container { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: transparent; }
         """
         dark_qss = """
             QMainWindow, QDialog { background-color: #2e2e2e; }
@@ -287,9 +286,8 @@ class AppearanceManager:
             QWidget#enemies_widget { border: 2px solid #CC0000; border-radius: 4px; padding: 2px; background-color: #402020; }
             QLabel#horizontal_info_label { color: #999999; }
             HotkeyCaptureLineEdit { color: #e0e0e0; background-color: #3c3c3c; }
-            QFrame#result_frame QLabel { color: #e0e0e0 !important; } 
+            QFrame#result_frame QLabel { color: #e0e0e0 !important; }
             QFrame#result_frame QFrame QLabel { color: #e0e0e0 !important; }
-            QWidget#tab_enemies_container { border: 2px solid #CC0000; border-radius: 4px; padding: 2px; background-color: transparent; }
         """
         qss = light_qss if theme_name == "light" else dark_qss
         

@@ -5,14 +5,14 @@ import time
 from PySide6.QtCore import Slot, QMetaObject, Qt # Добавлен QMetaObject, Qt
 from PySide6.QtWidgets import QAbstractItemView, QMessageBox, QApplication
 from PySide6.QtCore import QPoint
-import utils # для capture_screen_area
+from core import utils # для capture_screen_area
 import cv2 # для imwrite
 import os # для path.join
-import utils_gui # для copy_to_clipboard
+from core import utils_gui # для copy_to_clipboard
 from info.translations import get_text
 # HERO_NAME_ROLE теперь будет доступен через self.mw.right_panel_instance.HERO_NAME_ROLE
 # или нужно импортировать его из right_panel, если right_panel_instance может быть None в момент вызова
-from right_panel import HERO_NAME_ROLE
+from core.right_panel import HERO_NAME_ROLE
 
 
 class ActionController:
@@ -25,12 +25,49 @@ class ActionController:
         # ИЗМЕНЕНО: Логирование на DEBUG
         logging.debug(f"ActionController: handle_move_cursor received direction: {direction}")
 
+        # ROO DEBUG: Дополнительные логи для диагностики проблемы TAB+стрелки
+        mw_has_tab_manager = hasattr(self.mw, 'tab_mode_manager')
+        logging.debug(f"ROO DEBUG: MainWindow has tab_mode_manager attr: {mw_has_tab_manager}")
+        if not mw_has_tab_manager:
+            tab_manager = None
+        else:
+            tab_manager = getattr(self.mw, 'tab_mode_manager')
+            logging.debug(f"ROO DEBUG: tab_mode_manager is None: {tab_manager is None}")
+            if tab_manager is not None:
+                logging.debug(f"ROO DEBUG: tab_manager type: {type(tab_manager)}")
+                logging.debug(f"ROO DEBUG: tab_mode_manager._is_active: {getattr(tab_manager, '_is_active', 'NO _is_active attr')}")
+                logging.debug(f"ROO DEBUG: hotkey_manager_global.tab_pressed: {getattr(getattr(self.mw, 'hotkey_manager_global', None), 'tab_pressed', 'NO hotkey_manager_global or tab_pressed')}")
+
         # Проверяем, активен ли режим таба
         is_tab_mode_active = getattr(self.mw, 'tab_mode_manager', None) and self.mw.tab_mode_manager.is_active()
+        logging.debug(f"ROO DEBUG: is_tab_mode_active = {is_tab_mode_active}")
 
         if is_tab_mode_active:
-            # В режиме таба перемещаем окно вместо курсора
-            logging.debug("Tab mode active - moving window instead of cursor")
+            # ROO DEBUG: Добавлено логирование для проверки _tray_window
+            logging.debug("ROO DEBUG: Tab mode active - checking tab_mode_manager._tray_window")
+            tab_mgr = getattr(self.mw, 'tab_mode_manager', None)
+            if tab_mgr:
+                tray_window_exists = hasattr(tab_mgr, '_tray_window')
+                logging.debug(f"ROO DEBUG: tab_mode_manager has _tray_window attr: {tray_window_exists}")
+                if tray_window_exists:
+                    tray_obj = getattr(tab_mgr, '_tray_window', None)
+                    logging.debug(f"ROO DEBUG: _tray_window is None: {tray_obj is None}")
+                    if tray_obj:
+                        logging.debug(f"ROO DEBUG: _tray_window type: {type(tray_obj)}")
+                        logging.debug(f"ROO DEBUG: _tray_window.isVisible(): {tray_obj.isVisible()}")
+                        logging.debug(f"ROO DEBUG: _tray_window.pos(): {tray_obj.pos()}")
+
+            # ROO DEBUG: Добавлено логирование для проверки self.mw.tray_window
+            mw_tray_exists = hasattr(self.mw, 'tray_window')
+            logging.debug(f"ROO DEBUG: MainWindow has tray_window attr: {mw_tray_exists}")
+            if mw_tray_exists:
+                mw_tray_obj = getattr(self.mw, 'tray_window', None)
+                logging.debug(f"ROO DEBUG: mw.tray_window is None: {mw_tray_obj is None}")
+                if mw_tray_obj:
+                    logging.debug("ROO DEBUG: mw.tray_window exists and not None")
+
+            # В режиме таба перемещаем TrayWindow по экрану
+            logging.debug("ActionController: Tab mode active - moving TrayWindow")
             self._move_window_in_tab_mode(direction)
             return
 
@@ -99,115 +136,77 @@ class ActionController:
                 list_widget.scrollToItem(current_item, QAbstractItemView.ScrollHint.EnsureVisible)
 
     def _move_window_in_tab_mode(self, direction):
-       """Перемещает окно в режиме таба, проверяя границы экрана"""
-       logging.info(f"ActionController: _move_window_in_tab_mode called for direction='{direction}'")
-       step = 10  # шаг перемещения в пикселях
+        """Перемещает TrayWindow на 10 пикселей в указанном направлении."""
+        logging.debug(f"ActionController: _move_window_in_tab_mode called with direction: {direction}")
 
-       # Получаем текущую позицию окна
-       current_pos = self.mw.pos()
-       logging.debug(f"Current window position: {current_pos} (x={current_pos.x()}, y={current_pos.y()})")
-       new_x = current_pos.x()
-       new_y = current_pos.y()
+        # Проверим, есть ли tab_mode_manager и _tray_window
+        if not hasattr(self.mw, 'tab_mode_manager') or self.mw.tab_mode_manager is None:
+            logging.debug("ActionController: tab_mode_manager not found or None - returning")
+            return
 
-       # Вычисляем новую позицию
-       if direction == 'right':
-           new_x += step
-           logging.debug(f"Direction right: new_x = {new_x} (was {current_pos.x()})")
-       elif direction == 'left':
-           new_x -= step
-           logging.debug(f"Direction left: new_x = {new_x} (was {current_pos.x()})")
-       elif direction == 'up':
-           new_y -= step
-           logging.debug(f"Direction up: new_y = {new_y} (was {current_pos.y()})")
-       elif direction == 'down':
-           new_y += step
-           logging.debug(f"Direction down: new_y = {new_y} (was {current_pos.y()})")
-       else:
-           logging.warning(f"Unknown direction: {direction}")
-           return
+        tray_window_obj = self.mw.tab_mode_manager._tray_window
+        if tray_window_obj is None:
+            logging.debug("ActionController: tab_mode_manager._tray_window is None - returning")
+            return
 
-       # Получаем геометрию экрана для проверки границ
-       try:
-           screen = QApplication.primaryScreen()
-           if not screen:
-               logging.error("Could not get primary screen")
-               return
+        if not tray_window_obj.isVisible():
+            logging.debug("ActionController: TrayWindow not visible - returning")
+            return
 
-           screen_geom = screen.availableGeometry()
-           logging.debug(f"Screen geometry: width={screen_geom.width()}, height={screen_geom.height()}")
+        pos = tray_window_obj.pos()
+        original_x, original_y = pos.x(), pos.y()
+        logging.debug(f"ActionController: original pos = ({original_x}, {original_y})")
 
-           window_width = self.mw.width()
-           window_height = self.mw.height()
-           logging.debug(f"Window size: width={window_width}, height={window_height}")
+        # Вычисляем новую позицию
+        x, y = original_x, original_y
+        if direction == 'left':
+            x -= 50
+        elif direction == 'right':
+            x += 50
+        elif direction == 'up':
+            y -= 50
+        elif direction == 'down':
+            y += 50
+        else:
+            logging.debug(f"ActionController: unknown direction: {direction}")
+            return
 
-           # Проверяем границы: окно не должно выходить в правую половину экрана
-           max_left = screen_geom.width() // 2 - window_width
-           logging.debug(f"Max left position allowed: {max_left} (screen_width//2 - window_width = {screen_geom.width()//2} - {window_width})")
-
-           # ДОБАВИТЬ ДЕМОНСТРАЦИОННУЮ ШИРИНУ: показать как должно быть для этого экрана
-           demo_max_left = screen_geom.width() // 2
-           logging.debug(f"Demo: if window_width was 0, max_left would be: {demo_max_left} (middle of screen)")
-           logging.debug(f"Demo: actual left boundary = {demo_max_left} - {window_width} = {max_left}")
-
-           # Ограничиваем по горизонтали
-           if new_x > max_left:
-               new_x = max_left
-               logging.info(f"Right boundary limit reached, x clamped to {new_x} (trying to go beyond {max_left})")
-           new_x = max(0, new_x)  # Не выходим за левый край экрана
-
-           # Для вертикали - просто ограничиваем сверху и снизу экрана
-           screen_height = screen_geom.height()
-           new_y = max(0, min(new_y, screen_height - window_height))
-
-           # Применяем новую позицию, если она изменилась
-           new_pos = QPoint(new_x, new_y)
-           if new_pos != current_pos:
-               logging.info(f"Moving window from {current_pos} to {new_pos} (direction: {direction})")
-               try:
-                   self.mw.move(new_pos)
-                   logging.debug("Window move() called successfully")
-   
-                   # Сохраняем новую позицию в настройки
-                   try:
-                       current_geometry = self.mw.geometry()
-                       geometry_dict = {
-                           'x': current_geometry.x(),
-                           'y': current_geometry.y(),
-                           'width': current_geometry.width(),
-                           'height': current_geometry.height()
-                       }
-                       # Сохраняем геометрию в настройки без немедленной записи на диск для производительности
-                       if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
-                           self.mw.app_settings_manager.set_tab_window_geometry(geometry_dict, save=False)
-                           logging.info(f"Tab window position saved after move: {geometry_dict}")
-                   except Exception as save_error:
-                       logging.warning(f"Failed to save tab window geometry after move: {save_error}")
-   
-               except Exception as move_error:
-                   logging.error(f"Error calling move(): {move_error}")
-           else:
-               logging.debug(f"Window position not changed (already at boundary for direction {direction})")
-
-       except Exception as e:
-           logging.error(f"Error moving window in tab mode: {e}", exc_info=True)
+        tray_window_obj.move(x, y)
+        logging.debug(f"ActionController: Moved TrayWindow to ({x}, {y})")
 
 
     @Slot()
     def handle_toggle_selection(self):
         # ИЗМЕНЕНО: Логирование на DEBUG
         logging.debug("ActionController: handle_toggle_selection triggered")
+
+        # Проверяем, активен ли таб режим
+        is_tab_mode_active = getattr(self.mw, 'tab_mode_manager', None) and self.mw.tab_mode_manager.is_active()
+
+        if is_tab_mode_active:
+            # В таб режиме выбираем героя в TrayWindow
+            logging.debug("ActionController: Tab mode active - selecting current hero in TrayWindow")
+            tray_window = self.mw.tab_mode_manager._tray_window
+            if tray_window and hasattr(tray_window, 'select_current_hero'):
+                tray_window.select_current_hero()
+                logging.debug("ActionController: Selected current hero in TrayWindow")
+            else:
+                logging.debug("ActionController: TrayWindow does not have select_current_hero method")
+            return
+
+        # Обычная логика для режима не-таба
         list_widget = self.mw.right_list_widget
         if not list_widget or not list_widget.isVisible() or self.mw.mode == 'min' or \
            self.mw.hotkey_cursor_index < 0 or not self.mw.right_panel_instance:
             logging.warning(f"Toggle selection ignored (list/visibility/mode/index/panel_instance issues)")
             return
-            
+
         if 0 <= self.mw.hotkey_cursor_index < list_widget.count():
             item = list_widget.item(self.mw.hotkey_cursor_index)
             if item:
                 try:
                     is_selected = item.isSelected(); new_state = not is_selected
-                    hero_name_data = item.data(HERO_NAME_ROLE) 
+                    hero_name_data = item.data(HERO_NAME_ROLE)
                     logging.debug(f"Toggling selection for item {self.mw.hotkey_cursor_index} ('{hero_name_data}'). State: {is_selected} -> {new_state}")
                     item.setSelected(new_state)
                 except RuntimeError:

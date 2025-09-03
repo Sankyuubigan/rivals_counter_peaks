@@ -36,7 +36,7 @@ from core.window_flags_manager import WindowFlagsManager
 from core.app_settings_manager import AppSettingsManager
 from core.settings_window import SettingsWindow
 # --- НОВЫЙ ИМПОРТ ДЛЯ РЕФАКТОРИНГА ---
-from core.tab_mode_manager import TabModeManager
+from core.tab_mode_manager import TrayModeManager
 # ------------------------------------
 
 from info.translations import get_text
@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
         self.win_api_manager = WinApiManager(self)
         self.mode_manager = ModeManager(self)
         # --- НОВЫЙ МЕНЕДЖЕР РЕЖИМА ТАБА ---
-        self.tab_mode_manager = TabModeManager(self)
+        self.tab_mode_manager = TrayModeManager(self)
         # ------------------------------------
 
         self.rec_manager = RecognitionManager(self, self.logic, self.win_api_manager)
@@ -231,10 +231,13 @@ class MainWindow(QMainWindow):
         self.enemies_layout: QHBoxLayout | None = None
         self.horizontal_info_label: QLabel | None = None
 
+        # Таб-контейнеры для таб-режима (замена для TrayWindow)
         self.tab_enemies_container: QWidget | None = None
         self.tab_enemies_layout: QHBoxLayout | None = None
         self.tab_counters_container: QWidget | None = None
         self.tab_counters_layout: QHBoxLayout | None = None
+        self.tab_mode_container: QWidget | None = None
+        self.tab_mode_layout: QVBoxLayout | None = None
 
         self.result_label: QLabel | None = None
 
@@ -344,53 +347,51 @@ class MainWindow(QMainWindow):
         self.horizontal_info_label.hide()
         self.counters_layout.addWidget(self.horizontal_info_label)
 
-        # --- Контейнеры для Tab режима ---
-        tab_window_width = get_tab_window_width()
-        # Адаптивное распределение ширины - контейнеры сами подстраиваются под контент
-        icon_width = SIZES.get('min', {}).get('horizontal', (40, 40))[0] + 4  # ширина иконки + spacing
-
-        # Максимальное количество иконок для каждого списка (для справки, ширина теперь динамическая)
-        max_enemies = 8  # гибко для 2-8 героев
-        # max_counters - больше нет ограничения, все вмещается
-
+        # --- Создание таб-контейнеров для таб-режима ---
         self.tab_enemies_container = QWidget(); self.tab_enemies_container.setObjectName("tab_enemies_container")
-        self.tab_enemies_layout = QHBoxLayout(self.tab_enemies_container)
-        self.tab_enemies_layout.setContentsMargins(2, 2, 2, 2); self.tab_enemies_layout.setSpacing(4)
-        self.tab_enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.tab_enemies_container.setFixedHeight(self.container_height_for_tab_mode)
-        self.tab_enemies_container.setMinimumWidth(200)  # минимальная ширина для гибкости
-        # Убрана максимальная ширина - контейнер адаптируется под контент
-        logging.info(f"MainWindow: Created tab_enemies_container with fixedHeight: {self.container_height_for_tab_mode}, adaptive width, margins: {self.tab_enemies_layout.contentsMargins()}")
 
-        # Обернем контейнер контрпиков в QScrollArea для горизонтального скролла (скрытый scroll)
-        self.tab_counters_scroll = QScrollArea()
-        self.tab_counters_scroll.setObjectName("tab_counters_scroll")
-        self.tab_counters_scroll.setWidgetResizable(True)
-        self.tab_counters_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.tab_counters_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.tab_counters_scroll.setFixedHeight(self.container_height_for_tab_mode)
-        self.tab_counters_scroll.setMinimumWidth(300)
-        self.tab_counters_scroll.setMaximumHeight(self.container_height_for_tab_mode)
+        # Красная рамка вокруг врагов
+        self.tab_enemies_container.setStyleSheet(
+            "QWidget#tab_enemies_container { border: 2px solid red; border-radius: 4px; padding: 2px; background-color: rgba(255, 255, 255, 0.1); }"
+        )
+
+        self.tab_enemies_layout = QHBoxLayout(self.tab_enemies_container)
+        self.tab_enemies_layout.setContentsMargins(2, 2, 2, 2)
+        self.tab_enemies_layout.setSpacing(4)
+        # Враги выравниваются вправо
+        self.tab_enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.tab_enemies_container.setMaximumHeight(65)
 
         self.tab_counters_container = QWidget(); self.tab_counters_container.setObjectName("tab_counters_container")
+        # Без рамки для нижней панели
+        self.tab_counters_container.setStyleSheet(
+            "QWidget#tab_counters_container { border: none; padding: 0px; background-color: rgba(255, 255, 255, 0.05); }"
+        )
+
         self.tab_counters_layout = QHBoxLayout(self.tab_counters_container)
-        self.tab_counters_layout.setContentsMargins(0, 0, 0, 0); self.tab_counters_layout.setSpacing(4)
-        self.tab_counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.tab_counters_scroll.setWidget(self.tab_counters_container)
-        logging.info(f"MainWindow: Created tab_counters with ScrollArea, fixedHeight: {self.container_height_for_tab_mode}, adaptive width with scroll")
+        self.tab_counters_layout.setContentsMargins(2, 2, 2, 2)
+        self.tab_counters_layout.setSpacing(4)
+        # Герои выравниваются влево
+        self.tab_counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.tab_counters_container.setMaximumHeight(65)
 
-        # Ширины адаптивные - данные о фиксированных ширинах больше не нужны для логирования
+        # Основной контейнер для таб-режима
+        self.tab_mode_container = QWidget(); self.tab_mode_container.setObjectName("tab_mode_container")
+        self.tab_mode_layout = QVBoxLayout(self.tab_mode_container)
+        self.tab_mode_layout.setContentsMargins(5, 2, 5, 2); self.tab_mode_layout.setSpacing(4)
 
-        # --- Добавление всех контейнеров в главный вертикальный layout ---
+        # Добавление таб-контейнеров в основной таб-контейнер
+        self.tab_mode_layout.addWidget(self.tab_enemies_container)
+        self.tab_mode_layout.addWidget(self.tab_counters_container)
+
+        # --- Добавление контейнера для обычного режима ---
         self.icons_main_layout.addWidget(self.normal_mode_container)
-        self.icons_main_layout.addWidget(self.tab_enemies_container)
-        self.icons_main_layout.addWidget(self.tab_counters_scroll)
+        self.icons_main_layout.addWidget(self.tab_mode_container)
         self.icons_main_layout.addStretch(1)
 
         # --- Начальная настройка видимости ---
-        self.tab_enemies_container.hide()
-        self.tab_counters_container.hide()
         self.normal_mode_container.show()
+        self.tab_mode_container.hide()  # Таб контейнеры скрыты изначально
 
         self.icons_scroll_area.setWidget(self.icons_scroll_content)
         logging.debug("    MainWindow: _create_icons_scroll_area_structure END")
@@ -520,11 +521,13 @@ class MainWindow(QMainWindow):
     # --- МЕТОДЫ TAB РЕЖИМА ПЕРЕНЕСЕНЫ В TabModeManager ---
     @Slot()
     def enable_tab_mode(self):
-        self.tab_mode_manager.enable()
+        self.tab_mode_manager.show_tray()
+        self._switch_to_tab_layout()
 
     @Slot()
     def disable_tab_mode(self):
         self.tab_mode_manager.disable()
+        self._switch_to_normal_layout()
 
     @Slot()
     def trigger_tab_recognition(self):
@@ -535,6 +538,23 @@ class MainWindow(QMainWindow):
             logging.info("Запущено распознавание героев из режима таба")
         else:
             logging.error("RecognitionManager не доступен для запуска распознавания")
+
+    def _switch_to_tab_layout(self):
+        """Переключает layout на таб-режим"""
+        logging.debug("MainWindow: _switch_to_tab_layout")
+        if self.normal_mode_container and self.tab_mode_container:
+            self.normal_mode_container.hide()
+            self.tab_mode_container.show()
+            # Обновляем UI чтобы показать таб-контейнеры
+            if hasattr(self, 'ui_updater') and self.ui_updater:
+                self.ui_updater._update_horizontal_lists()
+
+    def _switch_to_normal_layout(self):
+        """Переключает layout на обычный режим"""
+        logging.debug("MainWindow: _switch_to_normal_layout")
+        if self.normal_mode_container and self.tab_mode_container:
+            self.tab_mode_container.hide()
+            self.normal_mode_container.show()
     # ----------------------------------------------------
 
     def change_mode(self, mode_name: str):
@@ -621,9 +641,52 @@ class MainWindow(QMainWindow):
             self.logic.set_selection(set(recognized_heroes_normalized_names))
             if hasattr(self, 'ui_updater') and self.ui_updater:
                 self.ui_updater.update_ui_after_logic_change()
+            # Обновление tray content для таб-режима после обновления логики
+            if hasattr(self, 'tab_mode_manager') and self.tab_mode_manager and self.tab_mode_manager.is_active():
+                if hasattr(self.tab_mode_manager, '_tray_window') and self.tab_mode_manager._tray_window:
+                    self.tab_mode_manager._tray_window._update_content()
             self._reset_hotkey_cursor_after_clear()
         elif not recognized_heroes_normalized_names:
             logging.info("Герои не распознаны или список пуст после нормализации.")
+
+        # Обновляем TrayWindow если он видим после распознавания
+        logging.debug("MainWindow: Checking if TrayWindow needs to be updated after recognition")
+        tray_window_exists = hasattr(self, 'tab_mode_manager') and self.tab_mode_manager
+        logging.debug(f"  tab_mode_manager exists: {tray_window_exists}")
+
+        if tray_window_exists:
+            tray_window_attr = hasattr(self.tab_mode_manager, '_tray_window')
+            logging.debug(f"  _tray_window attribute exists: {tray_window_attr}")
+
+            if tray_window_attr:
+                tray_window = self.tab_mode_manager._tray_window
+                tray_window_is_valid = tray_window is not None
+                logging.debug(f"  _tray_window is not None: {tray_window_is_valid}")
+
+                if tray_window_is_valid:
+                    tray_window_visible = tray_window.isVisible()
+                    logging.debug(f"  _tray_window is visible: {tray_window_visible}")
+
+                    # Убедимся что TrayModeManager инициализирован
+                    tray_mode_active = self.tab_mode_manager.is_active()
+                    logging.debug(f"  tab_mode_manager is active: {tray_mode_active}")
+
+                    update_needed = tray_window_visible and tray_mode_active
+                    if update_needed:
+                        logging.info("MainWindow: Updating TrayWindow content after recognition")
+                        try:
+                            self.tab_mode_manager._tray_window._update_content()
+                            logging.debug("MainWindow: TrayWindow update completed successfully")
+                        except Exception as e:
+                            logging.error("MainWindow: Error updating TrayWindow: {e}", exc_info=True)
+                    else:
+                        logging.debug(f"MainWindow: TrayWindow update not needed - visible: {tray_window_visible}, active: {tray_mode_active}")
+                else:
+                    logging.warning("MainWindow: TrayWindow exists but is None")
+            else:
+                logging.debug("MainWindow: tab_mode_manager exists but no _tray_window attribute")
+        else:
+            logging.debug("MainWindow: No tab_mode_manager or it's None")
 
     def _save_debug_screenshot_internal(self, reason="manual", recognized_heroes_for_filename: list | None = None):
         logging.info(f"Запрос на сохранение скриншота. Причина: {reason}")
@@ -964,6 +1027,7 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _emit_action_signal_slot(self, action_id: str):
         logging.debug(f"MainWindow: _emit_action_signal_slot для action_id: '{action_id}'")
+        logging.info("ROO DEBUG: main_window _emit_action_signal_slot - called")
         action_config = HOTKEY_ACTIONS_CONFIG.get(action_id)
         if action_config:
             signal_name = action_config.get('signal_name')
@@ -971,10 +1035,32 @@ class MainWindow(QMainWindow):
                 signal_instance = getattr(self, signal_name)
                 if isinstance(signal_instance, Signal):
                     logging.info(f"MainWindow: Эмитирование сигнала '{signal_name}' для действия '{action_id}'.")
-                    signal_instance.emit()
+                    logging.info(f"ROO DEBUG: main_window - signal '{signal_name}' will be emitted for '{action_id}'")
+                    logging.info(f"ROO DEBUG: action_controller exists: {hasattr(self, 'action_controller') and self.action_controller is not None}")
+                    if hasattr(self, 'action_controller') and self.action_controller:
+                        logging.info(f"ROO DEBUG: action_controller has handle_move_cursor: {hasattr(self.action_controller, 'handle_move_cursor')}")
+
+                    # TEST DIRECT CALL
+                    direction = 'up' if action_id == 'move_cursor_up' else 'down' if action_id == 'move_cursor_down' else 'left' if action_id == 'move_cursor_left' else 'right'
+                    logging.info(f"ROO DEBUG: Testing direct call to action_controller.handle_move_cursor('{direction}')...")
+                    try:
+                        if hasattr(self, 'action_controller') and self.action_controller and hasattr(self.action_controller, 'handle_move_cursor'):
+                            self.action_controller.handle_move_cursor(direction)
+                            logging.info("ROO DEBUG: Direct call to action_controller worked!")
+                        else:
+                            logging.error("ROO DEBUG: Cannot call action_controller directly - missing attributes")
+                    except Exception as e:
+                        logging.error(f"ROO DEBUG: Direct call failed: {e}", exc_info=True)
+
+                    try:
+                        signal_instance.emit()
+                        logging.info("ROO DEBUG: main_window - signal emission completed")
+                    except Exception as e:
+                        logging.error(f"ROO DEBUG: Signal emission failed: {e}", exc_info=True)
                 else:
                     logging.error(f"MainWindow: Атрибут '{signal_name}' не является сигналом Qt для действия '{action_id}'.")
             else:
                 logging.error(f"MainWindow: Сигнал для действия '{action_id}' (имя: {signal_name}) не найден.")
         else:
             logging.error(f"MainWindow: Конфигурация для действия '{action_id}' не найдена.")
+            logging.info("ROO DEBUG: main_window - no action config found, no signal emitted")

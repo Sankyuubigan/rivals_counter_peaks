@@ -126,7 +126,7 @@ def convert_hero_names_opponents(data):
         dict: Конвертированные данные
     """
     name_mapping = {
-       
+        "Cloak Dagger": "Cloak & Dagger"
     }
 
     converted_data = {}
@@ -168,7 +168,7 @@ def load_compositions_data(file_path="database/heroes_compositions.json"):
 
         # Конвертируем имена героев
         name_mapping = {
-          
+            "Cloak Dagger": "Cloak & Dagger"
         }
 
         compositions_converted = {}
@@ -453,12 +453,7 @@ if not matchups_data:
     logging.warning("Файлы статистики не найдены. Используем базовый набор героев.")
     # Базовый список основных героев Marvel Rivals
     fallback_heroes = [
-        "Adam Warlock", "Blade", "Captain America", "Captain Marvel", "Cloak and Dagger",
-        "Doctor Strange", "Emma Frost", "Groot", "Hawk", "Hawkeye", "Hela", "Hulk", "Human Torch",
-        "Invisible Woman", "Iron Fist", "Iron Man", "Loki", "Luna Snow", "Magneto", "Mantis",
-        "Moon Knight", "Namor", "Penelope Parker", "Phoenix", "Psylocke", "Rocket Raccoon",
-        "Scarlet Witch", "Spider-Man", "Squirrel Girl", "Star-Lord", "Storm", "The Punisher",
-        "The Thing", "Thor", "Venom", "Win", "Wolverine"
+
     ]
 
     # Создаем базовые матчап данные с пустыми оппонентами

@@ -28,10 +28,31 @@ class IconWithRatingWidget(QWidget):
         self.fm = QFontMetrics(self.font); self.border_pen = QPen(Qt.PenStyle.NoPen); self.border_width = 1
 
     def set_border(self, color_name: str, width: int):
-        try: color = QColor(color_name); valid = color.isValid()
-        except Exception as e: logging.error(f"Error setting border color '{color_name}' for {self.hero_name}: {e}"); color = QColor("gray"); valid = False
-        if not valid: logging.warning(f"Invalid color '{color_name}' for {self.hero_name}. Using gray."); color = QColor("gray")
-        self.border_pen = QPen(color, width); self.border_width = width; self.update()
+        logging.debug(f"[DEBUG] set_border called for {self.hero_name} with color='{color_name}', width={width}")
+
+        if color_name == "" and width == 0:
+            # Убираем рамку полностью для врагов
+            self.border_pen = QPen(Qt.PenStyle.NoPen)
+            self.border_width = 0
+            logging.debug(f"[DEBUG] Border removed completely for {self.hero_name}")
+        else:
+            try:
+                color = QColor(color_name)
+                valid = color.isValid()
+                logging.debug(f"[DEBUG] QColor created: valid={valid}, rgba={color.rgba() if valid else 'invalid'}")
+            except Exception as e:
+                logging.error(f"Error setting border color '{color_name}' for {self.hero_name}: {e}")
+                color = QColor("gray")
+                valid = False
+
+            if not valid:
+                logging.warning(f"[WARNING] Invalid color '{color_name}' for {self.hero_name}. Using gray.")
+                color = QColor("gray")
+
+            self.border_pen = QPen(color, width)
+            self.border_width = width
+            logging.debug(f"[DEBUG] Border applied: pen={self.border_pen.style()}, color={self.border_pen.color().name()}, width={width}")
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self); painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -68,7 +89,7 @@ class IconWithRatingWidget(QWidget):
                 painter.drawText(text_x, text_y, self.rating_text)
         painter.end()
 
-def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> int:
+def update_horizontal_icon_list(window, target_layout: QHBoxLayout, counter_scores=None, effective_team=None) -> int:
     """
     Обновляет горизонтальный список иконок КОНТРПИКОВ.
     Добавляет виджеты в переданный target_layout.
@@ -83,19 +104,29 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> int:
 
     # clear_layout(target_layout) # ИЗМЕНЕНО: Очистка layout'а теперь выполняется вызывающей функцией (ui_updater)
 
-    counter_scores = {}; effective_team_set = set(); selected_heroes_set = set(logic.selected_heroes)
+    selected_heroes_set = set(logic.selected_heroes)
 
     if not selected_heroes_set:
         target_layout.addStretch(1)
         return
 
-    counter_scores = logic.calculate_counter_scores()
+    # Используем переданные параметры или рассчитываем если None
+    cached_scores = counter_scores is not None
+    cached_team = effective_team is not None
+
+    if counter_scores is None:
+        counter_scores = logic.calculate_counter_scores()
+        cached_scores = False
     if counter_scores:
-        logging.info(f"[TAB MODE] Counter scores calculated for {len(counter_scores)} heroes")
-        effective_team = logic.calculate_effective_team(counter_scores)
-        effective_team_set = set(effective_team)
+        if not cached_scores:
+            logging.info(f"[TAB MODE] Counter scores calculated for {len(counter_scores)} heroes")
+        if effective_team is None:
+            effective_team = logic.calculate_effective_team(counter_scores)
+            cached_team = False
+        if not cached_team:
+            logging.info(f"[TAB MODE] Effective team calculated size: {len(effective_team) if effective_team else 0}")
+        effective_team_set = set(effective_team) if effective_team else set()
         logic.effective_team = effective_team
-        logging.info(f"[TAB MODE] Effective team size: {len(effective_team) if effective_team else 0}")
     else:
         logging.warning(f"[TAB MODE] Counter scores calculation returned empty (selected_heroes: {selected_heroes_set})")
         target_layout.addStretch(1)
@@ -153,16 +184,15 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> int:
                 is_in_effective_team = hero in effective_team_set
                 tooltip = f"{hero}\nRating: {rating:.1f}"
 
+                # В таб-режиме и обычном режиме используем IconWithRatingWidget для consistent API
+                display_rating = 0.0 if is_tab_mode else rating
+                icon_widget = IconWithRatingWidget(pixmap, display_rating, is_in_effective_team, False, tooltip, parent=window)
+
                 if is_tab_mode:
-                    # В таб-режиме просто QLabel
-                    icon_widget = QLabel()
-                    icon_widget.setPixmap(pixmap)
-                    icon_widget.setFixedSize(pixmap.size())
-                    icon_widget.setToolTip(tooltip)
-                    icon_widget.setVisible(True)
+                    # В таб-режиме без рамки и рейтинга
+                    icon_widget.set_border("", 0)
                 else:
-                    # В обычном режиме виджет с рейтингом
-                    icon_widget = IconWithRatingWidget(pixmap, rating, is_in_effective_team, False, tooltip, parent=window)
+                    # В обычном режиме с рамкой
                     border_color = "gray"; border_width = 1
                     if is_in_effective_team:
                         border_color = "blue"; border_width = 2
@@ -175,8 +205,12 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout) -> int:
 
 def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
     """Обновляет горизонтальный список иконок ВРАГОВ."""
+    logging.info("ROO DEBUG: update_enemy_horizontal_list called")
     logic = window.logic
-    if not target_layout: logging.error("Target layout for enemies not provided."); return
+    if not target_layout:
+        logging.error("ROO DEBUG: Target layout for enemies not provided.")
+        return
+    logging.info(f"ROO DEBUG: update_enemy_horizontal_list proceeding, selected_heroes: {logic.selected_heroes}")
 
     is_tab_mode = window.tab_mode_manager.is_active() if hasattr(window, 'tab_mode_manager') else False
 
@@ -228,15 +262,11 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
             placeholder.setToolTip(f"{hero}\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})")
             target_layout.addWidget(placeholder); items_added += 1
         else:
-            icon_label = QLabel()
-            icon_label.setPixmap(pixmap)
-            icon_label.setFixedSize(pixmap.size())
-            # Рамка не нужна, т.к. она на родительском виджете
-            icon_label.setStyleSheet("border: none; border-radius: 3px; padding: 0px;")
-            icon_label.setToolTip(f"{hero}\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})")
-            if is_tab_mode:
-                icon_label.setVisible(True)  # Эксплицитно устанавливаем видимость для QLabel в таб-режиме
-            target_layout.addWidget(icon_label); items_added += 1
+            # В таб-режиме и обычном режиме используем IconWithRatingWidget для consistent API
+            icon_widget = IconWithRatingWidget(pixmap, 0.0, False, True, f"{hero}\n({get_text('enemy_selected_tooltip', language=logic.DEFAULT_LANGUAGE)})", parent=window)
+            icon_widget.set_border("", 0)  # Без рамки
+            logging.debug(f"[TAB MODE] Created enemy widget for '{hero}' with empty border")
+            target_layout.addWidget(icon_widget); items_added += 1
 
     logging.info(f"[TAB MODE] Enemies: added {items_added} heroes to layout")
     return items_added

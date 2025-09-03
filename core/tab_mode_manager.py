@@ -1,325 +1,77 @@
 # File: core/tab_mode_manager.py
 import logging
 from typing import TYPE_CHECKING
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QRect, QTimer
-
-from core.mode_manager import MODE_DEFAULT_WINDOW_SIZES
-from core.images_load import SIZES
+from core.tray_window import TrayWindow
 
 if TYPE_CHECKING:
     from main_window import MainWindow
 
-class TabModeManager:
-    """Управляет входом, выходом и состоянием режима 'Таба'."""
+class TrayModeManager:
+    """Управляет отдельным tray окном для таб-режима."""
     def __init__(self, main_window: 'MainWindow'):
         self.mw = main_window
+        self._tray_window: TrayWindow | None = None
         self._is_active = False
-        self._geometry_before_tab: QRect | None = None
 
     def is_active(self) -> bool:
-        """Возвращает, активен ли в данный момент режим 'Таба'."""
+        """Возвращает, активно ли tray окно."""
         return self._is_active
 
     def enable(self):
-        """Включает режим 'Таба'."""
-        logging.info("TabModeManager: enable() called.")
+        """Включает tray окно."""
+        logging.info("TrayModeManager: enable() called.")
+        logging.info(f"ROO DEBUG: tab_mode_manager enable - previous _is_active: {self._is_active}")
+
         if self._is_active:
-            logging.warning("TabModeManager: enable() called, but already active.")
+            logging.warning("TrayModeManager: enable() called, but already active.")
             return
+
+        # Создаем tray window один раз, если не существует
+        if not self._tray_window:
+            logging.info("[TrayModeManager] Creating new TrayWindow")
+            self._tray_window = TrayWindow(self.mw)
 
         self._is_active = True
-        self._geometry_before_tab = self.mw.geometry()
+        logging.info("ROO DEBUG: tab_mode_manager enable - set _is_active = True")
 
-        screen = QApplication.primaryScreen()
-        if not screen:
-            logging.error("TabModeManager: Не удалось получить главный экран.")
-            return
-        screen_geom = screen.availableGeometry()
+        # Показываем tray окно
+        if self._tray_window:
+            self._tray_window._skip_content_update = True
+            logging.info("ROO DEBUG: tray_window.show_tray() called")
+            self._tray_window.show_tray()
+            self._tray_window._skip_content_update = False
+            logging.info("ROO DEBUG: tray_window.show_tray() called")
 
-        # Проверяем сохраненную геометрию и используем её, если она существует
-        saved_geometry = None
-        if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
-            try:
-                saved_geometry = self.mw.app_settings_manager.get_tab_window_geometry()
-                logging.info(f"[TAB MODE] Loaded saved tab geometry: {saved_geometry}")
-            except Exception as e:
-                logging.warning(f"[TAB MODE] Failed to load saved geometry: {e}")
-                saved_geometry = None
+        logging.info("[TrayModeManager] Tray mode enabled")
 
-        tab_window_width = int(screen_geom.width() * 0.4)
-        tab_window_height = self._calculate_tab_mode_height()
-
-        # Используем сохраненную позицию или рассчитываем новую
-        if saved_geometry and saved_geometry.get('x') is not None and saved_geometry.get('y') is not None:
-            tab_x = saved_geometry['x']
-            tab_y = saved_geometry['y']
-            tab_window_width = saved_geometry.get('width', tab_window_width)  # Используем сохраненную ширину, если есть
-            tab_window_height = saved_geometry.get('height', tab_window_height)  # Используем сохраненную высоту, если есть
-            logging.info(f"[TAB MODE] Using saved position: ({tab_x},{tab_y}), size=({tab_window_width},{tab_window_height})")
-        else:
-            tab_x = (screen_geom.width() - tab_window_width) // 2
-            tab_y = screen_geom.y()
-            logging.info("[TAB MODE] Using default centered position")
-
-        # Устанавливаем флаги окна перед показом для уменьшения мелькания
-        self.mw._is_win_topmost = True
-        if hasattr(self.mw, 'flags_manager'):
-            self.mw.flags_manager.apply_mouse_invisible_mode("enable_tab_mode")
-
-        # НОВЫЙ ПОДХОД: Полностью скрываем процесс инициализации от пользователя
-        # 1. Делаем всё необходимое ДО показа
-        self._perform_full_initialization(tab_x, tab_y, tab_window_width, tab_window_height)
-
-        logging.info("[TAB MODE] Tab mode initialization completed - showing final result")
-
-        # ПОКАЗЫВАЕМ ЗАВЕРШЕННЫЙ РЕЗУЛЬТАТ - окно с ОКОНЧАТЕЛЬНОЙ конфигурацией
-        self.mw.show()
-
-        # УСТАНАВЛИВАЕМ ФЛАГ ГОТОВНОСТИ ПОСЛЕ ВСЕГО
-        self.mw._tab_mode_initialization_complete = True
-
-    def _perform_full_initialization(self, tab_x, tab_y, tab_window_width, tab_window_height):
-        """Выполняет полную инициализацию таб-режима перед показом окна"""
-        logging.info("[TAB MODE] Starting full initialization")
-
-        # Устанавливаем геометрию окна
-        self.mw.setGeometry(tab_x, tab_y, tab_window_width, tab_window_height)
-        logging.info(f"[TAB MODE] Window geometry set to final position")
-
-        # ВНИМАНИЕ: устанавливаем флаг ранней инициализации до любых обновлений UI
-        self.mw._is_tab_mode_initializing = True
-        logging.info("[TAB FIX] Флаг ранней инициализации: _is_tab_mode_initializing = True")
-
-        # УСТАНАВЛИВАЕМ ВИДИМОСТЬ КОНТЕЙНЕРОВ
-        self._set_tab_mode_ui_visible(True)
-        logging.info("[TAB MODE] UI visibility set")
-
-        # ВЫПОЛНЯЕМ ПОЛНОЕ ОБНОВЛЕНИЕ ИНТЕРФЕЙСА
-        logging.info("[TAB MODE] Starting heavy UI update process")
-        self.mw.ui_updater.update_interface_for_mode()
-        logging.info("[TAB MODE] Heavy UI update completed")
-
-        # ОБНОВЛЯЕМ ГОРИЗОНТАЛЬНЫЕ СПИСКИ
-        self.mw.ui_updater._update_horizontal_lists()
-        logging.info("[TAB MODE] Horizontal lists updated")
-
-        # УСТАНАВЛИВАЕМ ФИНАЛЬНУЮ ГЕОМЕТРИЮ
-        self._adapt_window_to_content()
-        self.mw.updateGeometry()
-        logging.info("[TAB MODE] Final geometry adaptation completed")
-
-        # СБРАСЫВАЕМ ФЛАГ ПОСЛЕ ВСЕЙ РАБОТЫ
-        self.mw._is_tab_mode_initializing = False
-        logging.info("[TAB FIX] Сброшен флаг ранней инициализации")
-
-        logging.info("[TAB MODE] Full initialization process finished")
-
-    def _finalize_tab_mode_complete(self):
-        """Финализация состояния таб-режима после показа окна"""
-        if not self.is_active():
-            return
-
-        logging.info("[TAB MODE] Tab mode finalization completed")
 
     def disable(self):
-        """Выключает режим 'Таба' и восстанавливает предыдущее состояние."""
-        logging.info("TabModeManager: disable() called.")
-        if not self._is_active:
-            logging.warning("TabModeManager: disable() called, but not active.")
-            return
+        """Скрывает tray окно."""
+        logging.info("TrayModeManager: disable() called.")
+        was_active = self._is_active  # Запоминаем предыдущее состояние
 
-        # Сохраняем текущую геометрию окна таб-режима в настройки перед выходом
-        if hasattr(self.mw, 'app_settings_manager') and self.mw.app_settings_manager:
-            try:
-                current_geometry = self.mw.geometry()
-                geometry_dict = {
-                    'x': current_geometry.x(),
-                    'y': current_geometry.y(),
-                    'width': current_geometry.width(),
-                    'height': current_geometry.height()
-                }
-                self.mw.app_settings_manager.set_tab_window_geometry(geometry_dict)
-                logging.info(f"[TAB MODE] Saved tab geometry: {geometry_dict}")
-            except Exception as e:
-                logging.warning(f"[TAB MODE] Failed to save tab geometry: {e}")
+        # Скрываем tray окно, если оно видимо
+        if self._tray_window and self._tray_window.isVisible():
+            self._tray_window.hide_tray()
 
-        # ДОСТАТОЧНОЕ СНЯТИЕ ALWAYS-ON-TOP: Не убираем все операции для надежности
-        logging.info("[TAB MODE] Disabling: Sufficient always-on-top removal")
-        self.mw._is_win_topmost = False
+        self._is_active = False  # Обновляем флаг, независимо от предыдущего состояния
 
-        if hasattr(self.mw, 'flags_manager') and self.mw.flags_manager:
-            # Используем проверенный метод с ограниченными processEvents
-            self.mw.flags_manager.force_always_on_top_reset(False, "tab_mode_disable_optimized")
-
-        self._is_active = False
-        self.mw.setMinimumSize(300, 70)
-        self.mw.setMaximumSize(16777215, 16777215)
-
-        # Отложенное обновление видимости для предотвращения мелькания
-        QTimer.singleShot(50, lambda: self._set_tab_mode_ui_visible(False))
-
-        previous_mode = self.mw.mode_manager.current_mode if hasattr(self.mw, 'mode_manager') else "middle"
-        logging.info(f"[TAB MODE] Switching to previous mode: {previous_mode}")
-        self.mw.change_mode(previous_mode)
-
-        # Отложенное восстановление геометрии для устранения мелькания
-        if self._geometry_before_tab and self._geometry_before_tab.isValid():
-            QTimer.singleShot(100, lambda: self._restore_geometry_and_show())
+        # Логируем в зависимости от предыдущего состояния
+        if not was_active:
+            logging.warning("TrayModeManager: disable() called, but not active.")
         else:
-            QTimer.singleShot(100, lambda: self.mw.show())
+            logging.info("[TrayModeManager] Tray mode disabled")
 
-
-    def _restore_geometry_and_show(self):
-        """Отложенное восстановление геометрии и показ окна"""
-        if self._geometry_before_tab and self._geometry_before_tab.isValid():
-            self.mw.setGeometry(self._geometry_before_tab)
-        self.mw.show()
-        logging.info("[TAB MODE] Geometry restored and window shown")
-
-    def _set_tab_mode_ui_visible(self, tab_mode_active: bool):
-        """Управляет видимостью контейнеров для разных режимов."""
-        logging.info(f"TabModeManager: _set_tab_mode_ui_visible(tab_mode_active={tab_mode_active})")
-
-        if self.mw.normal_mode_container:
-            self.mw.normal_mode_container.setVisible(not tab_mode_active)
-
-        if self.mw.tab_enemies_container:
-            self.mw.tab_enemies_container.setVisible(tab_mode_active)
-            self.mw.tab_enemies_container.repaint()  # FIX: Force repaint для корректного визуального обновления
-
-        if self.mw.tab_counters_container:
-            self.mw.tab_counters_container.setVisible(tab_mode_active)
-            self.mw.tab_counters_container.repaint()  # FIX: Force repaint для корректного визуального обновления
-
-        if self.mw.left_panel_widget:
-            self.mw.left_panel_widget.setVisible(not tab_mode_active)
-
-        if self.mw.right_panel_widget:
-            self.mw.right_panel_widget.setVisible(not tab_mode_active)
-
-        if self.mw.top_frame:
-            self.mw.top_frame.setVisible(not tab_mode_active)
-
-    def _calculate_tab_mode_height(self) -> int:
-        """Рассчитывает высоту окна для таб-режима на основе высоты контейнеров."""
-        container_height = getattr(self.mw, 'container_height_for_tab_mode', 48) # Default to 48 if not set
-
-        if self.mw.icons_main_layout:
-            margins = self.mw.icons_main_layout.contentsMargins()
-            spacing = self.mw.icons_main_layout.spacing()
-            # Height is two containers + spacing between them + top/bottom margins
-            total_height = (container_height * 2) + spacing + margins.top() + margins.bottom()
+    def show_tray(self):
+        """Показывает tray окно (используется для внешнего доступа)."""
+        logging.info("TrayModeManager: show_tray() called.")
+        if self._tray_window:
+            self._tray_window.show_tray()
         else:
-            # Fallback calculation
-            total_height = (container_height * 2) + 10
+            self.enable()
 
-        return max(70, total_height)
-
-    def _start_ui_updates_async(self):
-        """Запуск тяжелых UI обновлений асинхронно после позиционирования окна"""
-        if not self.is_active():
-            return
-
-        logging.info("[TAB MODE] Starting UI updates asynchronously")
-
-        # Сначала просто сделать контейнеры видимыми (быстро)
-        self._set_tab_mode_ui_visible(True)
-        logging.info("[TAB MODE] UI visibility set")
-
-        # ПРОВЕРКА: Избегать дублирующего вызова update_interface_for_mode
-        # update_interface_for_mode уже вызывается в enable() через QMetaObject?
-        # Анализируем флаги для предотвращения дублирующего обновления
-
-        # Смотрим, был ли уже вызван update_interface_for_mode для этот режима
-        current_mode = self.mw.mode if hasattr(self.mw, 'mode') else "middle"
-        is_tab_mode_already_initialized = getattr(self.mw.ui_updater, '_last_updated_mode', None) == current_mode + "_tab"
-
-        if not is_tab_mode_already_initialized and hasattr(self, 'mw') and hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
-            logging.info("[TAB MODE] Starting heavy UI update process")
-            self.mw.ui_updater.update_interface_for_mode()
-            # Устанавливаем флаг, что обновление для этого режима уже выполнено
-            if hasattr(self.mw.ui_updater, '_last_updated_mode'):
-                self.mw.ui_updater._last_updated_mode = current_mode + "_tab"
-            logging.info("[TAB MODE] UI updates completed")
-        else:
-            logging.info("[TAB MODE] UI update skipped - already initialized for this mode")
-            # Даже без полного обновления, обновим горизонтальные списки
-            if hasattr(self.mw.ui_updater, '_update_horizontal_lists'):
-                self.mw.ui_updater._update_horizontal_lists()
-
-    def _finalize_and_process_events(self):
-        """Финализация и обработка всех отложенных событий"""
-        if not self.is_active():
-            return
-
-        current_pos = self.mw.pos()
-        current_size = self.mw.size()
-        logging.info(f"[TAB MODE] Final position and size: pos={current_pos}, size={current_size}")
-
-        # Автоматически адаптируем размер окна под содержимое после UI обновлений
-        self._adapt_window_to_content()
-
-        # Принудительное обновление без processEvents чтобы избежать визуального мерцания
-        self.mw.update()
-        # QApplication.processEvents() убран для предотвращения визуального мерцания
-
-        # ВНИМАНИЕ: сбрасываем флаг инициализации после завершения
-        if hasattr(self.mw, '_is_tab_mode_initializing'):
-            self.mw._is_tab_mode_initializing = False
-            logging.info("[TAB FIX] Сброшен флаг _is_tab_mode_initializing = False после завершения инициализации")
-
-        logging.info("[TAB MODE] Tab mode activation completed")
-
-    def _adapt_window_to_content(self):
-        """Адаптирует размер окна под текущее содержимое контейнеров в таб режиме"""
-        if not self.is_active():
-            return
-
-        try:
-            content_height = 0
-
-            # Рассчитываем новую высоту на основе текущего содержимого контейнеров
-            if self.mw.tab_enemies_container and self.mw.tab_enemies_container.isVisible():
-                enemies_size_hint = self.mw.tab_enemies_container.sizeHint()
-                content_height += enemies_size_hint.height()
-
-            if self.mw.tab_counters_container and self.mw.tab_counters_container.isVisible():
-                counters_size_hint = self.mw.tab_counters_container.sizeHint()
-                content_height += counters_size_hint.height()
-
-            # Добавляем отступы и границы
-            if self.mw.icons_main_layout:
-                margins = self.mw.icons_main_layout.contentsMargins()
-                spacing = self.mw.icons_main_layout.spacing()
-                content_height += margins.top() + margins.bottom() + spacing
-
-            # Минимальная и максимальная высота
-            new_height = max(100, content_height)
-
-            # Получаем информацию об экране для фиксации ширины на 40%
-            screen = QApplication.primaryScreen()
-            if screen:
-                screen_geom = screen.availableGeometry()
-                new_width = int(screen_geom.width() * 0.4)
-                new_x = max(0, self.mw.geometry().x())  # сохраняем текущую позицию по X, но не меньше 0
-                if new_x + new_width > screen_geom.width():
-                    new_x = screen_geom.width() - new_width
-            else:
-                new_width = 1000  # fallback
-                new_x = self.mw.geometry().x()
-
-            current_geom = self.mw.geometry()
-
-            # Устанавливаем новый размер с фиксированной шириной 40%, но адаптированной высотой
-            self.mw.setGeometry(new_x, current_geom.y(), new_width, new_height)
-            logging.info(f"[TAB MODE] Window adapted: pos=({new_x}, {current_geom.y()}), size=({new_width}, {new_height}) - fixed width 40%, adaptive height")
-
-        except Exception as e:
-            logging.warning(f"[TAB MODE] Error adapting window to content: {e}")
-
-    def _finalize_window_position(self):
-        """Финализация позиции окна после первого рендеринга для устранения задержек"""
-        # Этот метод может быть вызван из старого кода, но теперь основная логика в finalize_and_process_events
-        if self.is_active():
-            QApplication.processEvents()
+    def close_tray(self):
+        """Закрывает tray окно."""
+        logging.info("TrayModeManager: close_tray() called.")
+        if self._is_active:
+            self.disable()

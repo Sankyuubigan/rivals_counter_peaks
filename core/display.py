@@ -22,14 +22,14 @@ def clear_layout(layout):
                     layout.removeItem(item)
 
 
-def generate_counterpick_display(logic, result_frame, left_images, small_images):
+def generate_counterpick_display(logic, result_frame, left_images, small_images, counter_scores=None, effective_team=None):
     layout = result_frame.layout()
-    if not layout: 
-        layout = QVBoxLayout(result_frame); 
-        layout.setObjectName("result_layout"); 
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop); 
-        layout.setContentsMargins(2, 2, 2, 2); 
-        layout.setSpacing(1); 
+    if not layout:
+        layout = QVBoxLayout(result_frame);
+        layout.setObjectName("result_layout");
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop);
+        layout.setContentsMargins(2, 2, 2, 2);
+        layout.setSpacing(1);
         result_frame.setLayout(layout)
     clear_layout(layout)
 
@@ -41,14 +41,14 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
     # Пока оставим поиск в родителях result_frame, но это не очень надежно.
     # Наиболее вероятно, что result_label является прямым потомком result_frame,
     # если он добавляется в `create_left_panel`.
-    
+
     # Попробуем найти result_label как прямой потомок MainWindow
     if hasattr(logic, 'main_window') and logic.main_window:
         result_label_found = logic.main_window.findChild(QLabel, "result_label")
 
     if not logic.selected_heroes:
-        if result_label_found: 
-            result_label_found.setText(get_text('no_heroes_selected', language=logic.DEFAULT_LANGUAGE)); 
+        if result_label_found:
+            result_label_found.setText(get_text('no_heroes_selected', language=logic.DEFAULT_LANGUAGE));
             result_label_found.show()
             # Убедимся, что result_label в layout, если он еще не там
             if layout and layout.indexOf(result_label_found) == -1:
@@ -58,8 +58,10 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
 
     if result_label_found: result_label_found.hide()
 
-    counter_scores = logic.calculate_counter_scores()
-    logging.debug(f"[Display] Counter scores received: {len(counter_scores)} items")
+    # Используем переданные параметры или рассчитываем если None
+    if counter_scores is None and logic.selected_heroes:
+        counter_scores = logic.calculate_counter_scores()
+        logging.debug(f"[Display] Counter scores calculated: {len(counter_scores) if counter_scores else 0} items")
     if counter_scores:
         random_items = list(counter_scores.items())[:5]  # Показываем первых 5 героев для отладки
         for hero, score in random_items:
@@ -75,7 +77,12 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images)
 
     sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
     logging.debug(f"[Display] Sorted counters (first 10): {sorted_counters[:10]}")
-    effective_team = logic.calculate_effective_team(counter_scores) 
+
+    # Используем переданный effective_team или рассчитываем если None
+    if effective_team is None and counter_scores:
+        effective_team = logic.calculate_effective_team(counter_scores)
+        logging.debug(f"[Display] Effective team calculated: {len(effective_team) if effective_team else 0} heroes")
+
     selected_heroes_set = set(logic.selected_heroes)
     items_added = 0
 

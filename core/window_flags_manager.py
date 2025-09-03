@@ -24,26 +24,30 @@ class WindowFlagsManager:
             base_flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
         else:
             base_flags = Qt.WindowType.Window | Qt.WindowType.WindowSystemMenuHint | \
-                           Qt.WindowType.WindowMinimizeButtonHint | Qt.WindowType.WindowCloseButtonHint
+                            Qt.WindowType.WindowMinimizeButtonHint | Qt.WindowType.WindowCloseButtonHint
             if self.mw.mode == 'max' or self.mw.mode == 'middle':
-                   base_flags |= Qt.WindowType.WindowMaximizeButtonHint
+                    base_flags |= Qt.WindowType.WindowMaximizeButtonHint
 
         # ИСПРАВЛЕНИЕ: Используем _is_win_topmost напрямую вместо проверки на таб режим
-        # это предотвращает проблему когда таб режим активен, но _is_win_topmost уже False
+        # это предásотвращает проблему когда таб режим активен, но _is_win_topmost уже False
         topmost_flag_to_add = Qt.WindowType.WindowStaysOnTopHint if self.mw._is_win_topmost else Qt.WindowType(0)
         transparent_flag_to_add = Qt.WindowType.WindowTransparentForInput if getattr(self.mw, 'mouse_invisible_mode_enabled', False) else Qt.WindowType(0)
 
         logging.debug(f"[WindowFlags] Calculating flags - mode={self.mw.mode}, is_tab_active={is_tab_mode}, _is_win_topmost={self.mw._is_win_topmost}, topmost_flag={bool(self.mw._is_win_topmost)}")
+        logging.debug(f"[WindowFlags] Base flags: {base_flags:#x}, topmost_add: {topmost_flag_to_add:#x}, transparent_add: {transparent_flag_to_add:#x}")
 
-        return base_flags | topmost_flag_to_add | transparent_flag_to_add
+        result_flags = base_flags | topmost_flag_to_add | transparent_flag_to_add
+        logging.debug(f"[WindowFlags] Final calculated flags: {result_flags:#x}")
 
-    def apply_window_flags_and_show(self, new_target_flags: Qt.WindowFlags, reason: str):
+        return result_flags
+
+    def apply_window_flags_and_show(self, new_target_flags: Qt.WindowFlags, reason: str, show_present: bool = True):
         current_actual_flags = self.mw.windowFlags()
         # ИЗМЕНЕНИЕ: Если флаги уже такие, как надо, И окно видимо (если не свернуто), И НЕ в процессе другой операции - выходим.
         # Это должно предотвратить ненужные операции, если состояние уже корректно.
         if not self._is_applying_flags_operation and \
-           current_actual_flags == new_target_flags and \
-           (self.mw.isVisible() or self.mw.isMinimized()): # Если свернуто, isVisible()=False, но это ОК
+            current_actual_flags == new_target_flags and \
+            (self.mw.isVisible() or self.mw.isMinimized()): # Если свернуто, isVisible()=False, но это ОК
             logging.debug(f"    [ApplyFlags] Пропущено: флаги уже соответствуют и окно в ожидаемом состоянии видимости/свернутости. Причина: {reason}")
             self._last_applied_target_flags = new_target_flags
             return
@@ -80,6 +84,10 @@ class WindowFlagsManager:
                     logging.debug(f"    [ApplyFlags] Скрытие окна перед setWindowFlags (структурные изменения). Причина: {reason}")
                     self.mw.hide()
 
+                # DEBUG: Analyze flags before setting
+                logging.debug(f"[DEBUG] Перед setWindowFlags: current={current_actual_flags:#x}, target={new_target_flags:#x}")
+                logging.debug(f"[DEBUG] Окно скрыто для setWindowFlags: {not self.mw.isVisible()}")
+
                 self.mw.setWindowFlags(new_target_flags)
                 self._last_applied_target_flags = new_target_flags # Важно обновить это ЗДЕСЬ
 
@@ -87,14 +95,21 @@ class WindowFlagsManager:
                 logging.debug(f"    [ApplyFlags] После setWindowFlags. Целевые были: {new_target_flags:#x}, Фактические стали: {current_actual_flags_after_set:#x}. Видимо: {self.mw.isVisible()}, Геометрия: {self.mw.geometry()}")
                 if current_actual_flags_after_set != new_target_flags:
                     logging.warning(f"    [ApplyFlags] ВНИМАНИЕ: Фактические флаги ({current_actual_flags_after_set:#x}) отличаются от целевых ({new_target_flags:#x}) после setWindowFlags!")
+                    # DEBUG: Analyze difference
+                    diff = current_actual_flags_after_set ^ new_target_flags
+                    logging.warning(f"[DEBUG] Расхождение: {diff:#x} (XOR)")
+                    logging.warning(f"[DEBUG] В actual есть, но должно быть в target: {(current_actual_flags_after_set & ~new_target_flags):#x}")
+                    logging.warning(f"[DEBUG] В target есть, но nincs в actual: {(new_target_flags & ~current_actual_flags_after_set):#x}")
 
-            # Показываем окно, если оно должно быть видимым и не является таковым
+            # Показываем окно, если оно должно быть видимым и не является таковым и параметр show_present=True
             should_be_visible_after_ops = not minimized_before_operation
-            if should_be_visible_after_ops and not self.mw.isVisible():
-                logging.debug(f"    [ApplyFlags] Показ окна после операций. Причина: {reason}")
+            if should_be_visible_after_ops and not self.mw.isVisible() and show_present:
+                logging.debug(f"    [ApplyFlags] Showing window after operations. Reason: {reason}")
                 self.mw.show() # Qt сама должна решить, нужно ли showNormal, showMaximized и т.д.
                 # Важно: после show() геометрия может снова измениться
                 logging.debug(f"        После show(): Видимо={self.mw.isVisible()}, Геометрия={self.mw.geometry()}")
+            elif show_present is False:
+                logging.debug(f"    [ApplyFlags] Skipping window show due to show_present=False. Reason: {reason}")
 
 
             # Восстанавливаем геометрию, если она изменилась и окно видимо
@@ -123,33 +138,46 @@ class WindowFlagsManager:
         logging.debug(f"<-- apply_mouse_invisible_mode завершена. Причина: '{reason}'. Время: {(time.perf_counter() - t_start_apply_mouse)*1000:.2f} ms")
 
 
-    def force_always_on_top_reset(self, target_topmost: bool, reason: str):
+    def force_always_on_top_reset(self, target_topmost: bool, reason: str, show_present: bool = True):
         """Принудительно сбрасывает состояние always-on-top окна"""
-        logging.info(f"[ForceTopmostReset] START. Target: {target_topmost}, Reason: {reason}")
+        logging.info(f"[ForceTopmostReset] START. Target: {target_topmost}, Reason: {reason}, show_present: {show_present}")
         t_start_reset = time.perf_counter()
 
         # Синхронизируем внутреннее состояние
+        logging.debug(f"[ForceTopmostReset] Before: _is_win_topmost={self.mw._is_win_topmost}")
         if self.mw._is_win_topmost != target_topmost:
             self.mw._is_win_topmost = target_topmost
             logging.debug(f"[ForceTopmostReset] Синхронизировано _is_win_topmost={target_topmost}")
+        else:
+            logging.debug(f"[ForceTopmostReset] _is_win_topmost уже равен {target_topmost}")
 
         # Принудительно пересчитываем и применяем флаги
         target_flags = self._calculate_target_flags()
-        self.apply_window_flags_and_show(target_flags, f"force_topmost_reset_{reason}")
+        logging.debug(f"[ForceTopmostReset] Target flags calculated: {target_flags:#x}")
+        self.apply_window_flags_and_show(target_flags, f"force_topmost_reset_{reason}", show_present)
 
         # Дополнительная синхронизация с WinAPI если доступно
-        if sys.platform == 'win32' and hasattr(self.mw, 'win_api_manager') and self.mw.win_api_manager:
-            try:
-                # ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД С УПРАВЛЕНИЕМ Z-ORDER для снятия always-on-top
-                if not target_topmost and hasattr(self.mw.win_api_manager, 'set_topmost_winapi_with_zorder_management'):
-                    self.mw.win_api_manager.set_topmost_winapi_with_zorder_management(target_topmost)
-                    logging.info("[ForceTopmostReset] WinAPI с Z-order синхронизирован для снятия always-on-top")
-                else:
-                    # Для установки или fallback используем обычный метод
-                    self.mw.win_api_manager.set_topmost_winapi(target_topmost)
-                    logging.debug(f"[ForceTopmostReset] WinAPI синхронизирован (fallback): topmost={target_topmost}")
-            except Exception as e:
-                logging.warning(f"[ForceTopmostReset] Ошибка WinAPI синхронизации: {e}")
+        if sys.platform == 'win32':
+            logging.debug("[ForceTopmostReset] Win32 platform detected")
+            if hasattr(self.mw, 'win_api_manager') and self.mw.win_api_manager:
+                try:
+                    logging.debug(f"[ForceTopmostReset] win_api_manager present, target_topmost={target_topmost}")
+                    # ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД С УПРАВЛЕНИЕМ Z-ORDER для снятия always-on-top
+                    if not target_topmost and hasattr(self.mw.win_api_manager, 'set_topmost_winapi_with_zorder_management'):
+                        logging.info("[ForceTopmostReset] Calling set_topmost_winapi_with_zorder_management")
+                        self.mw.win_api_manager.set_topmost_winapi_with_zorder_management(target_topmost)
+                        logging.info("[ForceTopmostReset] WinAPI с Z-order синхронизирован для снятия always-on-top")
+                    else:
+                        # Для установки или fallback используем обычный метод
+                        logging.debug("[ForceTopmostReset] Using fallback WinAPI method")
+                        self.mw.win_api_manager.set_topmost_winapi(target_topmost)
+                        logging.debug(f"[ForceTopmostReset] WinAPI синхронизирован (fallback): topmost={target_topmost}")
+                except Exception as e:
+                    logging.warning(f"[ForceTopmostReset] Ошибка WinAPI синхронизации: {e}")
+            else:
+                logging.warning("[ForceTopmostReset] win_api_manager not available or None")
+        else:
+            logging.debug(f"[ForceTopmostReset] Platform {sys.platform}, skipping WinAPI")
 
         # ДОПОЛНИТЕЛЬНАЯ ДОСТОВЕРНОСТЬ: Минимальные операции с Qt для управления позицией окна
         if not target_topmost and self.mw.isVisible():
@@ -157,6 +185,8 @@ class WindowFlagsManager:
             logging.debug("[ForceTopmostReset] Applying minimal Qt Z-order adjustments")
             QTimer.singleShot(10, lambda: self.mw.lower() if self.mw.isVisible() else None)
             # УБРАН processEvents() для предотвращения мелькания
+        else:
+            logging.debug(f"[ForceTopmostReset] Skipping Z-order adjustments: target_topmost={target_topmost}, isVisible={self.mw.isVisible()}")
 
         logging.info(f"[ForceTopmostReset] END. Время: {(time.perf_counter() - t_start_reset)*1000:.2f} ms, Topmost={target_topmost}")
 

@@ -180,6 +180,7 @@ class HotkeyManagerGlobal(QObject):
         logging.debug(f"TAB+Up callback called, tab_pressed={self.tab_pressed}")
         if self.tab_pressed:
             logging.info("TAB+Up нажат - перемещение окна вверх")
+            logging.info("ROO DEBUG: hotkey_manager_global on_arrow_up_press - TAB is pressed, emitting move_cursor_up")
 
             logging.debug("TAB+Up: invoking _emit_action_signal_slot for move_cursor_up")
             try:
@@ -187,11 +188,13 @@ class HotkeyManagerGlobal(QObject):
                                         Qt.ConnectionType.QueuedConnection,
                                         Q_ARG(str, "move_cursor_up"))
                 logging.debug("TAB+Up: QMetaObject.invokeMethod called successfully")
+                logging.info("ROO DEBUG: hotkey_manager_global on_arrow_up_press - invokeMethod completed")
             except Exception as e:
                 logging.error(f"TAB+Up: Error in QMetaObject.invokeMethod: {e}")
         else:
             # TAB не зажат - игнорируем
             logging.debug("TAB+Up ignored - TAB not pressed")
+            logging.debug("ROO DEBUG: hotkey_manager_global on_arrow_up_press - TAB not pressed, ignoring")
             pass
 
     def on_arrow_down_press(self):
