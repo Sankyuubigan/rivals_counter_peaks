@@ -130,7 +130,7 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
 exe = EXE(
     pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [],
-    name='rivals_counter_peaks_25.09.01',
+    name='rivals_counter_peaks_25.09.03',
     icon=r'd:\Projects\rivals_counter_peaks\resources\logo.ico',
     debug=False,         # <--- ИЗМЕНЕНО НА False
     console=False,       # <--- ИЗМЕНЕНО НА False

@@ -151,8 +151,8 @@ class CounterpickLogic:
             self.effective_team = []
             return []
 
-        # Фильтруем кандидатов - только с положительной оценкой, не выбранные
-        candidates = {h: s for h, s in counter_scores.items() if s > 0 and h not in self.selected_heroes}
+        # Фильтруем кандидатов - только с положительной оценкой
+        candidates = {h: s for h, s in counter_scores.items() if s > 0}
         if not candidates:
             self.effective_team = []
             return []

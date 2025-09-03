@@ -13,3 +13,4 @@ __pycache__
 /env
 /roo_tests
 /vision_models
+/build_cache

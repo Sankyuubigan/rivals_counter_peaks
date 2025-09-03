@@ -137,7 +137,7 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout, counter_scor
         for hero in effective_team_set:
             if hero not in heroes_to_display_map: heroes_to_display_map[hero] = counter_scores.get(hero, -99)
         for hero, score in counter_scores.items():
-            if score >= 1.0 and hero not in selected_heroes_set and hero not in effective_team_set:
+            if score >= 1.0 and hero not in effective_team_set:
                 heroes_to_display_map[hero] = score
 
     sorted_heroes = sorted(heroes_to_display_map.keys(), key=lambda h: heroes_to_display_map.get(h, -99), reverse=True)
