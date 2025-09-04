@@ -10,7 +10,7 @@ import shutil
 
 from PySide6.QtWidgets import (QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QFrame, QScrollArea,
                                QLabel, QPushButton, QListWidget, QListWidgetItem, QAbstractItemView,
-                               QMenu, QApplication, QMessageBox, QSlider)
+                               QMenu, QApplication, QMessageBox, QSlider, QSizePolicy)
 from PySide6.QtCore import Qt, Signal, Slot, QTimer, QPoint, QMetaObject, QEvent, QRect, QObject
 from PySide6.QtGui import QIcon, QMouseEvent, QPixmap, QShowEvent, QHideEvent, QCloseEvent, QKeySequence, QKeyEvent
 
@@ -349,6 +349,7 @@ class MainWindow(QMainWindow):
 
         # --- Создание таб-контейнеров для таб-режима ---
         self.tab_enemies_container = QWidget(); self.tab_enemies_container.setObjectName("tab_enemies_container")
+        self.tab_enemies_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Красная рамка вокруг врагов
         self.tab_enemies_container.setStyleSheet(
@@ -360,7 +361,6 @@ class MainWindow(QMainWindow):
         self.tab_enemies_layout.setSpacing(4)
         # Враги выравниваются вправо
         self.tab_enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.tab_enemies_container.setMaximumHeight(65)
 
         self.tab_counters_container = QWidget(); self.tab_counters_container.setObjectName("tab_counters_container")
         # Без рамки для нижней панели
@@ -373,7 +373,6 @@ class MainWindow(QMainWindow):
         self.tab_counters_layout.setSpacing(4)
         # Герои выравниваются влево
         self.tab_counters_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.tab_counters_container.setMaximumHeight(65)
 
         # Основной контейнер для таб-режима
         self.tab_mode_container = QWidget(); self.tab_mode_container.setObjectName("tab_mode_container")
@@ -510,6 +509,8 @@ class MainWindow(QMainWindow):
             if current_icon.isNull():
                 self._set_application_icon()
 
+        logging.debug(f"MainWindow: Actual window geometry: {self.geometry()}")
+        logging.debug(f"MainWindow: Top panel actual size: {self.top_frame.size() if self.top_frame else 'None'}")
         logging.debug(f"<<< showEvent END. Финальная геометрия: {self.geometry()}")
 
 
@@ -523,6 +524,16 @@ class MainWindow(QMainWindow):
     def enable_tab_mode(self):
         self.tab_mode_manager.show_tray()
         self._switch_to_tab_layout()
+
+        # Автоматический запуск распознавания при входе в таб-режим
+        if hasattr(self, 'rec_manager') and self.rec_manager:
+            if not getattr(self.rec_manager, 'is_recognizing', False):
+                logging.info("MainWindow: Автоматический запуск распознавания в таб-режиме")
+                self.action_recognize_heroes.emit()
+            else:
+                logging.info("MainWindow: Распознавание уже выполняется, пропуск автоматического запуска")
+        else:
+            logging.warning("MainWindow: RecognitionManager не доступен для автоматического запуска")
 
     @Slot()
     def disable_tab_mode(self):
@@ -709,7 +720,7 @@ class MainWindow(QMainWindow):
 
             if screenshot_cv2 is not None:
                 logging.debug("Скриншот успешно захвачен.")
-                save_path_str = self.app_settings_manager.get_screenshot_save_path()
+                save_path_str = self.app_settings_manager.get_screenshot_path()
                 logging.debug(f"Путь из настроек: '{save_path_str}'")
 
                 save_dir: Path

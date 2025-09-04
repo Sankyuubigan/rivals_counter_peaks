@@ -134,6 +134,11 @@ class RightPanel:
         except Exception as e:
             logging.error(f"[RightPanel] ERROR: Exception occurred during list population: {e}", exc_info=True)
 
+        viewport = self.list_widget.viewport()
+        if viewport:
+            logging.debug(f"RightPanel: List widget viewport size: {viewport.size()}")
+        logging.debug(f"RightPanel: Grid size applied: {self.list_widget.gridSize()}, target columns: {TARGET_COLUMN_COUNT}")
+
     def _setup_layout(self):
         self.layout = QVBoxLayout(self.frame); self.layout.setObjectName("right_panel_layout")
         self.layout.setContentsMargins(5, 5, 5, 5); self.layout.setSpacing(5)

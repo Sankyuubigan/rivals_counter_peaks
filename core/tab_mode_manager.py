@@ -31,6 +31,14 @@ class TrayModeManager:
             logging.info("[TrayModeManager] Creating new TrayWindow")
             self._tray_window = TrayWindow(self.mw)
 
+            # Подключаем сигналы распознавания к прогресс бару
+            if hasattr(self.mw, 'rec_manager') and self.mw.rec_manager:
+                if hasattr(self.mw.rec_manager, 'recognition_started'):
+                    self.mw.rec_manager.recognition_started.connect(self._tray_window.start_recognition_progress)
+                if hasattr(self.mw.rec_manager, 'recognition_stopped'):
+                    self.mw.rec_manager.recognition_stopped.connect(self._tray_window.stop_recognition_progress)
+                logging.info("[TrayModeManager] Connected recognition signals to progress bar")
+
         self._is_active = True
         logging.info("ROO DEBUG: tab_mode_manager enable - set _is_active = True")
 

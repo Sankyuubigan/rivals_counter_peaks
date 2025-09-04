@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QApplication, QHBoxLayout, QScrollArea, QSizePolicy
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QApplication, QHBoxLayout, QScrollArea, QSizePolicy, QProgressBar
+from PySide6.QtCore import QRect, Qt, Signal
 from PySide6.QtGui import QCloseEvent
 
 from core.mode_manager import MODE_DEFAULT_WINDOW_SIZES
@@ -21,6 +21,8 @@ class TrayWindow(QMainWindow):
         # Добавляем поддержку выделения для перехода по героям
         self.cursor_index = -1  # Индекс выделенного героя
         self.last_highlighted_item = None  # Последний выделенный виджет
+        # Прогресс бар для распознавания
+        self.recognition_progress_bar: QProgressBar | None = None
 
         self._setup_geometry()
         self._create_ui()
@@ -44,7 +46,7 @@ class TrayWindow(QMainWindow):
         except Exception as e:
             logging.warning(f"[TrayWindow] Failed to load saved geometry: {e}")
 
-        tab_window_width = int(screen_geom.width() * 0.4)
+        tab_window_width = self._calculate_tab_mode_width()
         tab_window_height = self._calculate_tab_mode_height()
 
         # Используем сохраненную позицию или рассчитываем новую
@@ -59,19 +61,72 @@ class TrayWindow(QMainWindow):
 
         self.setGeometry(tab_x, tab_y, tab_window_width, tab_window_height)
 
+    def _calculate_tab_mode_width(self) -> int:
+        """Рассчитывает ширину окна для таб-режима на основе количества контрпиков."""
+        try:
+            if self.main_window and hasattr(self.main_window, 'logic') and self.main_window.logic.selected_heroes:
+                counter_scores = self.main_window.logic.calculate_counter_scores()
+                counter_heroes_count = len([h for h in counter_scores if counter_scores.get(h, 0) >= 1.0])
+                icon_width = 40  # approximate icon width
+                spacing = 4   # spacing between icons
+                margins = 20  # total margins (approximate)
+                calculated_width = max(800, icon_width * min(counter_heroes_count, 25) + (min(counter_heroes_count, 25) - 1) * spacing + margins)
+                optimal_width = min(calculated_width, 1200)  # max 1200px
+                logging.debug(f"[TrayWindow] Calculated adaptive width: {optimal_width} (counters: {counter_heroes_count})")
+                return optimal_width
+        except Exception as e:
+            logging.warning(f"[TrayWindow] Failed to calculate dynamic width: {e}")
+
+        # Fallback to default 40%
+        screen = QApplication.primaryScreen()
+        if screen:
+            screen_geom = screen.availableGeometry()
+            return int(screen_geom.width() * 0.4)
+        return 1000
+
     def _calculate_tab_mode_height(self) -> int:
-        """Рассчитывает высоту окна для таб-режима на основе высоты контейнеров."""
-        container_height = getattr(self.main_window, 'container_height_for_tab_mode', 48)
+        """Рассчитывает высоту окна для таб-режима на основе реального контента контейнеров."""
+        # Высота прогресс бара
+        progress_bar_height = 8 if self.recognition_progress_bar else 0
 
-        if hasattr(self.main_window, 'icons_main_layout') and self.main_window.icons_main_layout:
-            margins = self.main_window.icons_main_layout.contentsMargins()
-            spacing = self.main_window.icons_main_layout.spacing()
-            # Height is two containers + spacing between them + top/bottom margins
-            total_height = (container_height * 2) + spacing + margins.top() + margins.bottom()
-        else:
-            total_height = (container_height * 2) + 10
+        # Рассчитываем высоту на основе реального содержимого
+        containers_height = 0
+        spacing_between_containers = 10  # spacing между контейнерами
+        margins_top_bottom = 5 * 2  # margins (5,5,5,5) top + bottom = 10
+        progress_spacing = 5  # spacing для progress бара
 
-        return max(70, total_height)
+        # Фиксированная высота контейнеров вместо sizeHint()
+        container_fixed_height = 48  # на основе icon_height + 8 как в main_window.py
+
+        # Получаем высоту tab_enemies_layout - используем фиксированную
+        if hasattr(self.main_window, 'tab_enemies_layout') and self.main_window.tab_enemies_layout:
+            containers_height += container_fixed_height
+            logging.debug(f"[TrayWindow] Using fixed height {container_fixed_height} for enemies layout")
+
+        # Получаем высоту tab_counters_layout - используем фиксированную
+        if hasattr(self.main_window, 'tab_counters_layout') and self.main_window.tab_counters_layout:
+            containers_height += container_fixed_height
+            logging.debug(f"[TrayWindow] Using fixed height {container_fixed_height} for counters layout")
+
+        # Добавляем spacing между layout'ами, если оба существуют
+        if (hasattr(self.main_window, 'tab_enemies_layout') and self.main_window.tab_enemies_layout and
+            hasattr(self.main_window, 'tab_counters_layout') and self.main_window.tab_counters_layout):
+            containers_height += spacing_between_containers
+
+        # Добавляем прогресс бар (только если layout enemies существует) с spacing
+        if hasattr(self.main_window, 'tab_enemies_layout') and self.main_window.tab_enemies_layout:
+            containers_height += progress_spacing + progress_bar_height
+
+        # Добавляем margins
+        total_height = containers_height + margins_top_bottom
+
+        # Минимальная высота увеличена
+        min_height = 70
+
+        final_height = max(min_height, total_height)
+        logging.debug(f"TrayWindow: Final height calculations: containers_h={containers_height}, margins={margins_top_bottom}, total_calc={final_height}")
+        logging.debug(f"[TrayWindow] Calculated adaptive height: {final_height} (fixed containers: {container_fixed_height}, spacing: {spacing_between_containers}, progress: {progress_spacing + progress_bar_height})")
+        return final_height
 
     def _create_ui(self):
         """Создает UI для tray window."""
@@ -87,15 +142,13 @@ class TrayWindow(QMainWindow):
         enemies_scroll.setWidgetResizable(True)
         enemies_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         enemies_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        enemies_scroll.setMinimumHeight(65)
-        enemies_scroll.setMaximumHeight(65)
 
-        # Добавляем таб-контейнер enemies в scroll area
-        if hasattr(self.main_window, 'tab_enemies_container') and self.main_window.tab_enemies_container:
-            self.main_window.tab_enemies_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            self.main_window.tab_enemies_container.setMinimumHeight(60)
-            self.main_window.tab_enemies_container.setMaximumHeight(60)
-            enemies_scroll.setWidget(self.main_window.tab_enemies_container)
+        # Добавляем enemies layout напрямую в scroll area
+        if hasattr(self.main_window, 'tab_enemies_layout') and self.main_window.tab_enemies_layout:
+            # Создаем новый виджет и устанавливаем layout
+            enemies_widget = QWidget()
+            enemies_widget.setLayout(self.main_window.tab_enemies_layout)
+            enemies_scroll.setWidget(enemies_widget)
             layout.addWidget(enemies_scroll)
 
         # Создаем scroll area для counters с horizontal scroll
@@ -103,33 +156,42 @@ class TrayWindow(QMainWindow):
         counters_scroll.setWidgetResizable(True)
         counters_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         counters_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        counters_scroll.setMinimumHeight(65)
-        counters_scroll.setMaximumHeight(65)
 
-        # Добавляем таб-контейнер counters в scroll area
-        if hasattr(self.main_window, 'tab_counters_container') and self.main_window.tab_counters_container:
-            self.main_window.tab_counters_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            self.main_window.tab_counters_container.setMinimumHeight(60)
-            self.main_window.tab_counters_container.setMaximumHeight(60)
-            counters_scroll.setWidget(self.main_window.tab_counters_container)
+        # Добавляем counters layout напрямую в scroll area
+        if hasattr(self.main_window, 'tab_counters_layout') and self.main_window.tab_counters_layout:
+            # Создаем новый виджет и устанавливаем layout
+            counters_widget = QWidget()
+            counters_widget.setLayout(self.main_window.tab_counters_layout)
+            counters_scroll.setWidget(counters_widget)
             layout.addWidget(counters_scroll)
+
+        # Создаем прогресс бар для распознавания
+        self.recognition_progress_bar = QProgressBar()
+        self.recognition_progress_bar.setFixedHeight(8)
+        self.recognition_progress_bar.setRange(0, 100)
+        self.recognition_progress_bar.setValue(0)
+        self.recognition_progress_bar.setVisible(False)
+        self.recognition_progress_bar.setTextVisible(False)
+
+        # Добавляем прогресс бар после counters_scroll
+        layout.addWidget(self.recognition_progress_bar)
 
     def _setup_window_properties(self):
         """Настраивает свойства окна."""
         self.setWindowTitle("Rivals Counter Peaks - TAB Mode")
-        self.setMinimumSize(800, 70)
-        self.setMaximumSize(16777215, 16777215)
+        self.setMinimumSize(800, 70)  # Минимальная площадь увеличена
+        self.setMaximumSize(1200, 16777215)  # Ограничение максимальной ширины до 1200px
 
         # Настраиваем флаги окна для overlay поведения
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.FramelessWindowHint)
 
     def _get_all_hero_widgets(self):
-        """Получить все виджеты героев из обоих контейнеров."""
+        """Получить все виджеты героев из обоих layout'ов."""
         hero_widgets = []
 
         # Добавляем виджеты врагов
-        if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_container'):
-            enemies_layout = self.main_window.tab_enemies_container.layout()
+        if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_layout'):
+            enemies_layout = self.main_window.tab_enemies_layout
             if enemies_layout:
                 for i in range(enemies_layout.count()):
                     item = enemies_layout.itemAt(i)
@@ -137,8 +199,8 @@ class TrayWindow(QMainWindow):
                         hero_widgets.append(item.widget())
 
         # Добавляем виджеты контрпиков
-        if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_counters_container'):
-            counters_layout = self.main_window.tab_counters_container.layout()
+        if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_counters_layout'):
+            counters_layout = self.main_window.tab_counters_layout
             if counters_layout:
                 for i in range(counters_layout.count()):
                     item = counters_layout.itemAt(i)
@@ -218,8 +280,8 @@ class TrayWindow(QMainWindow):
                 new_index = max_index
         elif direction == 'up':
             # Для up/down можно переключать между врагами и контрпиками
-            if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_container'):
-                enemies_layout = self.main_window.tab_enemies_container.layout()
+            if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_layout'):
+                enemies_layout = self.main_window.tab_enemies_layout
                 enemies_count = enemies_layout.count() if enemies_layout else 0
 
                 if self.cursor_index < enemies_count and direction == 'down':
@@ -230,8 +292,8 @@ class TrayWindow(QMainWindow):
                     new_index = 0
         elif direction == 'down':
             # Аналогично как для up
-            if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_container'):
-                enemies_layout = self.main_window.tab_enemies_container.layout()
+            if hasattr(self, 'main_window') and hasattr(self.main_window, 'tab_enemies_layout'):
+                enemies_layout = self.main_window.tab_enemies_layout
                 enemies_count = enemies_layout.count() if enemies_layout else 0
 
                 if self.cursor_index >= enemies_count and direction == 'down':
@@ -335,9 +397,17 @@ class TrayWindow(QMainWindow):
         if is_tab_active:
             logging.info("ROO DEBUG: TrayWindow._update_content proceeding even though tab mode is active")
 
-        # Обновляем горизонтальные списки в таб-режиме
-        logging.info("ROO DEBUG: TrayWindow calling ui_updater._update_horizontal_lists()")
-        self.main_window.ui_updater._update_horizontal_lists()
+        # Рассчитываем counter_scores и effective_team для правильной работы обновления списков
+        counter_scores = None
+        effective_team = None
+        if self.main_window.logic.selected_heroes:
+            counter_scores = self.main_window.logic.calculate_counter_scores()
+            effective_team = self.main_window.logic.calculate_effective_team(counter_scores)
+            logging.info("ROO DEBUG: TrayWindow._update_content calculated counter_scores and effective_team")
+
+        # Обновляем горизонтальные списки в таб-режиме с параметрами
+        logging.info("ROO DEBUG: TrayWindow calling ui_updater._update_horizontal_lists() with arguments")
+        self.main_window.ui_updater._update_horizontal_lists(counter_scores, effective_team)
         logging.info("ROO DEBUG: TrayWindow._update_content completed")
 
     def _save_geometry(self):
@@ -389,3 +459,42 @@ class TrayWindow(QMainWindow):
         # Адаптируем содержимое под новый размер
         if hasattr(self.main_window, 'tab_mode_manager') and self.main_window.tab_mode_manager:
             self.main_window.tab_mode_manager._adapt_window_to_content()
+
+        # Адаптируем высоту окна под содержимое, если не слишком маленький resize
+        if self._initialized and event.size().width() > 800:  # Избегаем рекурсии в маленьких размерах
+            self._adapt_window_height_to_content()
+
+    def _adapt_window_height_to_content(self):
+        """Адаптирует высоту окна под текущее содержимое контейнеров."""
+        try:
+            current_height = self.height()
+            optimal_height = self._calculate_tab_mode_height()
+
+            # Не изменяем высоту, если разница слишком маленькая (для избежания мигания)
+            height_difference = abs(current_height - optimal_height)
+            if height_difference > 5:  # Минимальный порог изменения
+                new_width = self.width()
+                self.resize(new_width, optimal_height)
+                logging.debug(f"[TrayWindow] Adjusted height from {current_height} to {optimal_height}")
+
+        except Exception as e:
+            logging.warning(f"[TrayWindow] Failed to adapt height to content: {e}")
+
+    def start_recognition_progress(self):
+        """Запустить прогресс бар распознавания"""
+        if self.recognition_progress_bar:
+            self.recognition_progress_bar.setRange(0, 0)  # Неопределенный прогресс
+            self.recognition_progress_bar.setVisible(True)
+            logging.info("[TrayWindow] Recognition progress started")
+            logging.info("ROO DEBUG: Progress bar signal start_recognition_progress activated")
+
+    def stop_recognition_progress(self):
+        """Остановить прогресс бар распознавания"""
+        if self.recognition_progress_bar:
+            self.recognition_progress_bar.setRange(0, 100)
+            self.recognition_progress_bar.setValue(100)
+            # Скрыть через небольшую задержку для визуального эффекта
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(300, lambda: self.recognition_progress_bar.setVisible(False))
+            logging.info("[TrayWindow] Recognition progress stopped")
+            logging.info("ROO DEBUG: Progress bar signal stop_recognition_progress activated")

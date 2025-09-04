@@ -9,7 +9,7 @@ import os
 import logging 
 import datetime
 import time 
-logging.basicConfig(level=logging.INFO, # Уровень логирования INFO для оптимального баланса информации и производительности
+logging.basicConfig(level=logging.DEBUG, # Уровень логирования DEBUG для подробного диагностирования размеров виджетов
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
                     datefmt='%H:%M:%S')
 logging.info("[Main] Начало работы main.py (после отладочного блока)")

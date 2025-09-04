@@ -1,5 +1,5 @@
 # File: core/horizontal_list.py
-from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
+from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout, QApplication, QSizePolicy
 from PySide6.QtCore import QSize, Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QBrush, QPixmap
 from info.translations import get_text
@@ -17,15 +17,19 @@ class IconWithRatingWidget(QWidget):
         self.is_in_effective_team = is_in_effective_team; self.is_enemy = is_enemy
         self.setToolTip(tooltip)
         if is_invalid_pixmap(self.pixmap):
-             logging.warning(f"IconWithRatingWidget '{self.hero_name}' initialized with invalid pixmap. Using default size.")
-             default_size = (35, 35)
-             parent_window = getattr(parent, 'window', parent)
-             current_mode = getattr(parent_window, 'mode', 'middle')
-             h_size = IMG_SIZES.get(current_mode, {}).get('horizontal', default_size)
-             self.setFixedSize(QSize(*h_size))
-        else: self.setFixedSize(pixmap.size())
+              logging.warning(f"IconWithRatingWidget '{self.hero_name}' initialized with invalid pixmap. Using default size.")
+              default_size = (35, 35)
+              parent_window = getattr(parent, 'window', parent)
+              current_mode = getattr(parent_window, 'mode', 'middle')
+              h_size = IMG_SIZES.get(current_mode, {}).get('horizontal', default_size)
+              self.setMinimumSize(QSize(*h_size))
+              self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
+        else:
+            self.setMinimumSize(pixmap.size())
+            self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
         self.font = QFont(); self.font.setPointSize(10); self.font.setBold(True)
         self.fm = QFontMetrics(self.font); self.border_pen = QPen(Qt.PenStyle.NoPen); self.border_width = 1
+        logging.debug(f"IconWithRatingWidget: Final size: {self.size()}, pixmap size: {self.pixmap.size() if 'invalid' not in str(self.pixmap) else 'invalid'}")
 
     def set_border(self, color_name: str, width: int):
         logging.debug(f"[DEBUG] set_border called for {self.hero_name} with color='{color_name}', width={width}")
@@ -90,6 +94,7 @@ class IconWithRatingWidget(QWidget):
         painter.end()
 
 def update_horizontal_icon_list(window, target_layout: QHBoxLayout, counter_scores=None, effective_team=None) -> int:
+    """Обновляет список иконок КОНТРПИКОВ с адаптацией ширины контейнера для таб-режима при большом количестве."""
     """
     Обновляет горизонтальный список иконок КОНТРПИКОВ.
     Добавляет виджеты в переданный target_layout.
@@ -202,9 +207,18 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout, counter_scor
 
     target_layout.addStretch(1)
 
+    # Адаптация ширины контейнера для таб-режима при большом количестве контрпиков (>20)
+    if is_tab_mode and hasattr(window, 'tab_counters_container') and len(sorted_heroes) > 20:
+        icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal', [35, 35])[0]
+        spacing = 4  # spacing между иконками
+        margin = 4   # margins контейнера
+        optimal_width = min(icon_width * len(sorted_heroes) + (len(sorted_heroes) - 1) * spacing + 2 * margin, 1200)
+        window.tab_counters_container.setMinimumWidth(optimal_width)
+        logging.debug(f"[TAB MODE] Counters container adapted to width: {optimal_width}, heroes count: {len(sorted_heroes)}")
+
 
 def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
-    """Обновляет горизонтальный список иконок ВРАГОВ."""
+    """Обновляет горизонтальный список иконок ВРАГОВ с адаптивной шириной."""
     logging.info("ROO DEBUG: update_enemy_horizontal_list called")
     logic = window.logic
     if not target_layout:
@@ -226,21 +240,38 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
         elif enemies_widget:
             enemies_widget.setStyleSheet("QWidget#enemies_widget { border: none; }")
 
-    MAX_ENEMIES_IN_TAB = 8  # Увеличено для гибкости
+    # Адаптация ширины контейнера для таб-режима
+    if is_tab_mode and hasattr(window, 'tab_enemies_container'):
+        selected_heroes_count = len(logic.selected_heroes)
+        if selected_heroes_count > 0:
+            # Рассчитываем оптимальную ширину на основе количества врагов
+            icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal', [35, 35])[0]
+            spacing = 4  # spacing между иконками
+            margin = 4   # margins контейнера
+            min_width = icon_width + 2 * margin  # Минимальная ширина для одного героя
 
-    # Оптимизированное выравнивание по правому краю для таб-режима
-    target_layout.addStretch(1)
+            # Находим оптимальную ширину: не менее min_width, не более 70% от экрана
+            screen = QApplication.primaryScreen()
+            max_width = int(screen.availableGeometry().width() * 0.7) if screen else 800
+            optimal_width = min(icon_width * selected_heroes_count + (selected_heroes_count - 1) * spacing + 2 * margin, max_width)
+
+            # Устанавливаем минимальную ширину чтобы не сжималось
+            window.tab_enemies_container.setMinimumWidth(optimal_width)
+            logging.debug(f"[TAB MODE] Enemy container adapted to width: {optimal_width}, heroes count: {selected_heroes_count}")
+        else:
+            window.tab_enemies_container.setMinimumWidth(100)  # Минимальная ширина при отсутствии врагов
+
     selected_heroes = list(logic.selected_heroes)
 
-    if is_tab_mode and len(selected_heroes) > MAX_ENEMIES_IN_TAB:
-        # В таб-режиме показываем только первых 6 врагов
-        selected_heroes = selected_heroes[:MAX_ENEMIES_IN_TAB]
-        logging.debug(f"Limited enemies list to {MAX_ENEMIES_IN_TAB} heroes for tab mode")
-    
-        if not selected_heroes:
-            logging.info(f"[TAB MODE] No selected heroes to display in enemy list")
-            return 0
-        logging.debug(f"[TAB MODE] Displaying {len(selected_heroes)} enemies")
+    if is_tab_mode and len(selected_heroes) > 12:  # Более гибкое ограничение для прокрутки
+        # Даем возможность прокрутки при > 12 героях
+        logging.debug(f"Many enemies ({len(selected_heroes)}), enable scrolling")
+
+    if not selected_heroes:
+        logging.info(f"[TAB MODE] No selected heroes to display in enemy list")
+        return 0
+
+    logging.debug(f"[TAB MODE] Displaying {len(selected_heroes)} enemies")
 
     horizontal_images = getattr(window, 'horizontal_images', {})
     if not horizontal_images:
@@ -249,6 +280,13 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
         label.setStyleSheet("color: red;")
         target_layout.addWidget(label)
         return
+
+    # Оптимизированное выравнивание по правому краю для таб-режима с учетом прокрутки
+    if is_tab_mode:
+        # В таб режиме без левой растяжки для правильного выравнивания при прокрутке
+        pass
+    else:
+        target_layout.addStretch(1)
 
     items_added = 0
     for hero in selected_heroes:
@@ -268,7 +306,11 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
             logging.debug(f"[TAB MODE] Created enemy widget for '{hero}' with empty border")
             target_layout.addWidget(icon_widget); items_added += 1
 
-    logging.info(f"[TAB MODE] Enemies: added {items_added} heroes to layout")
+    # Не добавляем правую растяжку в таб режиме для правильного выравнивания
+    if not is_tab_mode:
+        target_layout.addStretch(1)
+
+    logging.info(f"[TAB MODE] Enemies: added {items_added} heroes to layout (adaptive width)")
     return items_added
 
 def clear_layout(layout):

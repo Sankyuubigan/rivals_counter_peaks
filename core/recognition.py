@@ -72,20 +72,23 @@ class RecognitionWorker(QObject):
 
 
 class RecognitionManager(QObject):
-    recognition_complete_signal = Signal(list) 
+    recognition_complete_signal = Signal(list)
     error = Signal(str)
     recognize_heroes_signal = Signal()
     models_ready_signal = Signal(bool) # Новый сигнал о готовности моделей
+    recognition_started = Signal() # Сигнал для запуска прогресс бара
+    recognition_stopped = Signal() # Сигнал для остановки прогресс бара
 
     def __init__(self, main_window, logic, win_api_manager):
         super().__init__()
         logging.info("[RecognitionManager] Initializing...")
         self.main_window = main_window
-        self.logic_for_lang = logic 
+        self.logic_for_lang = logic
         self.win_api_manager = win_api_manager
         self._recognition_thread: QThread | None = None
         self._recognition_worker: RecognitionWorker | None = None
         self._models_are_actually_ready = False # Новый флаг состояния
+        self.is_recognizing = False # Флаг для защиты от множественных вызовов
         
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             project_root_for_adv_rec = sys._MEIPASS
@@ -136,6 +139,12 @@ class RecognitionManager(QObject):
     @Slot()
     def _handle_recognize_heroes(self):
         logging.info("[ACTION][RecognitionManager] Recognition requested...")
+
+        # Защита от множественных вызовов с использованием флага
+        if self.is_recognizing:
+            logging.warning("[WARN][RecognitionManager] Recognition already in progress, ignoring duplicate request.")
+            return
+
         if self._recognition_thread and self._recognition_thread.isRunning():
             logging.warning("[WARN][RecognitionManager] Recognition process already running.")
             return
@@ -146,6 +155,12 @@ class RecognitionManager(QObject):
             logging.error(f"[ERROR][RecognitionManager] {error_msg}")
             if hasattr(self, 'error') and self.error is not None: self.error.emit(error_msg)
             return
+
+        # Устанавливаем флаг и эмитируем сигнал запуска
+        self.is_recognizing = True
+        if hasattr(self, 'recognition_started'):
+            self.recognition_started.emit()
+        logging.info("[ACTION][RecognitionManager] Recognition started, is_recognizing=True")
         
         self._recognition_worker = RecognitionWorker(self.advanced_recognizer, RECOGNITION_AREA)
         if self._recognition_worker : 
@@ -174,6 +189,10 @@ class RecognitionManager(QObject):
             logging.info("[INFO][RecognitionManager] Recognition thread started.")
         else:
             logging.error("[ERROR][RecognitionManager] Не удалось создать воркер или поток для распознавания.")
+            # Сброс флага при ошибке создания
+            self.is_recognizing = False
+            if hasattr(self, 'recognition_stopped'):
+                self.recognition_stopped.emit()
 
 
     @Slot()
@@ -183,7 +202,11 @@ class RecognitionManager(QObject):
         # Worker и Thread должны удаляться через deleteLater, так что здесь просто None
         self._recognition_thread = None
         self._recognition_worker = None
-        logging.info("[INFO][RecognitionManager] Recognition thread state reset complete.")
+        # Сброс флага и сигнал завершения
+        self.is_recognizing = False
+        if hasattr(self, 'recognition_stopped'):
+            self.recognition_stopped.emit()
+        logging.info("[INFO][RecognitionManager] Recognition thread state reset complete (is_recognizing=False).")
 
     def stop_recognition(self):
          logging.info("[INFO][RecognitionManager] Stop recognition requested.")

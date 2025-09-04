@@ -41,7 +41,7 @@ class SettingsWindow(QDialog):
         
         self.temp_hotkeys = self.app_settings_manager.get_hotkeys() 
         self.temp_save_screenshot_flag = self.app_settings_manager.get_save_screenshot_flag()
-        self.temp_screenshot_path = self.app_settings_manager.get_screenshot_save_path()
+        self.temp_screenshot_path = self.app_settings_manager.get_screenshot_path()
         
         logging.debug(f"  Loaded temp_hotkeys (internal format): {len(self.temp_hotkeys)} items")
         logging.debug(f"  Loaded temp_save_screenshot_flag: {self.temp_save_screenshot_flag}")
@@ -380,7 +380,7 @@ class SettingsWindow(QDialog):
             return False 
         self.app_settings_manager.set_hotkeys(self.temp_hotkeys, auto_save=False)
         self.app_settings_manager.set_save_screenshot_flag(self.temp_save_screenshot_flag, auto_save=False)
-        self.app_settings_manager.set_screenshot_save_path(self.temp_screenshot_path, auto_save=False)
+        self.app_settings_manager.set_screenshot_path(self.temp_screenshot_path, auto_save=False)
         self.app_settings_manager.save_settings_to_file() 
         logging.info("  Настройки сохранены в AppSettingsManager и записаны в файл.")
         self.settings_applied_signal.emit() 
