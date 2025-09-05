@@ -61,7 +61,7 @@ def find_dist_info_path(package_name, search_path):
 datas_list = []
 # Список зависимостей, для которых нужно включить метаданные
 dependencies_metadata = [
-    'tqdm', 'transformers', 'regex', 'requests', 'packaging', 'filelock', 
+    'tqdm', 'regex', 'requests', 'packaging', 'filelock',
     'safetensors', 'pyyaml', 'huggingface-hub', 'tokenizers', 'numpy'
 ]
 for dep_name in dependencies_metadata:
@@ -71,18 +71,11 @@ for dep_name in dependencies_metadata:
         print(f"INFO (.spec): Добавлены метаданные для {dep_name}: '{os.path.basename(dist_info)}'")
     else:
         # Для критичных пакетов выводим более серьезное предупреждение
-        if dep_name in ['tqdm', 'transformers', 'numpy', 'huggingface-hub']:
+        if dep_name in ['tqdm', 'numpy', 'huggingface-hub']:
             print(f"CRITICAL WARNING (.spec): Метаданные для '{dep_name}' НЕ НАЙДЕНЫ!")
         else:
             print(f"WARNING (.spec): Метаданные для '{dep_name}' не найдены.")
 
-# ИСПРАВЛЕНИЕ: Принудительно включаем всю директорию transformers
-transformers_path = os.path.join(site_packages_path, 'transformers')
-if os.path.isdir(transformers_path):
-    datas_list.append((transformers_path, 'transformers'))
-    print(f"INFO (.spec): Принудительно добавлена вся директория 'transformers'.")
-else:
-    print(f"CRITICAL WARNING (.spec): Директория 'transformers' не найдена по пути {transformers_path}!")
 
 
 # Добавление ресурсов приложения
@@ -107,16 +100,9 @@ a = Analysis(
     datas=datas_list,
     hiddenimports=[
         'pynput', 'mss', 'cv2', 'numpy', 'pyperclip', 'ctypes', 'markdown',
-        'onnxruntime', 'tqdm', 'transformers', 'tokenizers', 'huggingface_hub',
+        'onnxruntime', 'tqdm', 'tokenizers', 'huggingface_hub',
         'safetensors', 'filelock', 'requests', 'packaging', 'regex', 'yaml',
         'PySide6.QtNetwork', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'shiboken6',
-        'transformers.models',
-        'transformers.models.auto',
-        'transformers.modeling_utils',
-        'transformers.configuration_utils',
-        'transformers.models.dinov2',
-        'transformers.models.dinov2.modeling_dinov2',
-        'transformers.models.dinov2.configuration_dinov2',
     ],
     hookspath=[os.path.join(project_root, 'build_scripts')],
     hooksconfig={},

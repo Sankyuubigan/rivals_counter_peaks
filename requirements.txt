@@ -8,5 +8,5 @@ onnxruntime
 opencv-python
 pyinstaller
 pyperclip
-transformers
 numba
+psutil

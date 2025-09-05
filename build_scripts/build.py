@@ -80,7 +80,31 @@ if __name__ == "__main__":
     if os.path.exists(build_cache_dir):
         shutil.rmtree(build_cache_dir)
     # Папку dist лучше чистить вручную или с явным флагом, чтобы не потерять результаты
-    
+
+    # Создание подпапки для работы PyInstaller
+    os.makedirs(os.path.join(build_cache_dir, app_name_with_version), exist_ok=True)
+
+    # 4.5. Завершение работающих экземпляров приложения перед сборкой
+    logging.info("Проверка и завершение работающих экземпляров 'rivals_counter_peaks_*.exe'...")
+    try:
+        # Используем taskkill для завершения процессов
+        result = subprocess.run(
+            ['taskkill', '/F', '/IM', 'rivals_counter_peaks_*.exe', '/T'],
+            capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0:
+            logging.info("Работающие экземпляры приложения успешно завершены.")
+            # Выводим подробности о завершенных процессах из stderr
+            if result.stderr:
+                logging.info(f"Детали завершения: {result.stderr.strip()}")
+        elif result.returncode == 128:  # Нет процессов для завершения
+            logging.info("Нет работающих экземпляров приложения для завершения.")
+        else:
+            logging.warning(f"Ошибка при завершении процессов (код {result.returncode}): {result.stderr.strip()}")
+    except Exception as e:
+        logging.error(f"Не удалось выполнить taskkill: {e}")
+        logging.error("Продолжаем сборку без завершения процессов.")
+
     # 5. Сборка с помощью PyInstaller
     python_exe = sys.executable
     command = [

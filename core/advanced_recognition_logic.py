@@ -38,8 +38,8 @@ MIN_HEROES_FOR_COLUMN_DETECTION = 2
 ROI_X_JITTER_VALUES_DINO = [-3, 0, 3]
 MAX_NOT_PASSED_AKAZE_TO_LOG = 15
 
-DINOV2_LOGGING_SIMILARITY_THRESHOLD = 0.10
-DINOV2_FINAL_DECISION_THRESHOLD = 0.70
+DINOv3_LOGGING_SIMILARITY_THRESHOLD = 0.10
+DINOv3_FINAL_DECISION_THRESHOLD = 0.70
 DINO_CONFIRMATION_THRESHOLD_FOR_AKAZE = 0.40
 TEAM_SIZE = 6
 Y_OVERLAP_THRESHOLD_RATIO = 0.5
@@ -158,7 +158,6 @@ class AdvancedRecognition(QObject):
         self.project_root_path = project_root_path
         self.ort_session_dino: Optional[onnxruntime.InferenceSession] = None
         self.input_name_dino: Optional[str] = None
-        self.image_processor_dino: Optional[Any] = None
         self.target_h_model_dino: int = 224
         self.target_w_model_dino: int = 224
         self.dino_reference_embeddings: Dict[str, np.ndarray] = {}
@@ -202,19 +201,17 @@ class AdvancedRecognition(QObject):
 
         self._loader_thread.start()
 
-    @Slot(bool, object, object, dict, int, int)
+    @Slot(bool, object, dict, int, int)
     def _on_models_loaded_from_worker(self, success: bool,
-                                     ort_session: Optional[onnxruntime.InferenceSession],
-                                     image_processor: Optional[Any],
-                                     embeddings_dict: Dict[str, np.ndarray],
-                                     target_h: int, target_w: int):
+                                      ort_session: Optional[onnxruntime.InferenceSession],
+                                      embeddings_dict: Dict[str, np.ndarray],
+                                      target_h: int, target_w: int):
         logging.info(f"[AdvRec] Received models_loaded_signal from worker. Success: {success}")
         self._is_loading = False
-        if success and ort_session and image_processor:
+        if success and ort_session:
             self.ort_session_dino = ort_session
             if self.ort_session_dino: # Добавил проверку для mypy
                  self.input_name_dino = self.ort_session_dino.get_inputs()[0].name
-            self.image_processor_dino = image_processor
             self.dino_reference_embeddings = embeddings_dict
             self.target_h_model_dino = target_h
             self.target_w_model_dino = target_w
@@ -522,7 +519,7 @@ class AdvancedRecognition(QObject):
                             sorted_sims = sorted(all_sim_scores, key=lambda x: x[1], reverse=True)
                             top_5 = sorted_sims[:5]
                             logging.info(f"[DEBUG] Окно ({coord['x']}, {coord['y']}), лучшая conf: {best_sim_for_window:.3f} -> {best_ref_name_for_window}. Топ-5: " + ", ".join(f"{h}@{s:.3f}" for h, s in top_5))
-                        if best_ref_name_for_window is not None and best_sim_for_window >= DINOV2_FINAL_DECISION_THRESHOLD:
+                        if best_ref_name_for_window is not None and best_sim_for_window >= DINOv3_FINAL_DECISION_THRESHOLD:
                             all_dino_detections_from_roi.append({
                                 "hero": best_ref_name_for_window,
                                 "confidence": best_sim_for_window,

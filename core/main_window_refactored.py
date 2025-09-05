@@ -4,7 +4,7 @@
 import logging
 import sys
 import os
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTextBrowser, QStatusBar)
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTextBrowser, QStatusBar, QApplication)
 from PySide6.QtCore import Slot, Qt, QObject
 from PySide6.QtGui import QCloseEvent
 
@@ -217,5 +217,9 @@ class MainWindowRefactored(QMainWindow):
         self.hotkey_manager.stop()
         self.recognition_manager.stop_recognition()
         self.settings_manager.save_settings()
+        logging.info("About to call quit()")
         QApplication.instance().quit()
+        logging.info("After quit() called, about to os._exit(0)")
+        os._exit(0)
+        logging.info("After os._exit(0) - this should not be reached")
         super().closeEvent(event)
