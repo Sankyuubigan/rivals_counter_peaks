@@ -6,7 +6,7 @@ import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 import cv2
 import datetime
-from core.utils import RECOGNITION_AREA, capture_screen_area, capture_full_screen
+from core.utils import RECOGNITION_AREA, capture_screen_area
 from info.translations import get_text
 from core.advanced_recognition_logic import AdvancedRecognition 
 from core.app_settings_manager import AppSettingsManager
@@ -27,6 +27,7 @@ class RecognitionWorker(QObject):
         if not self._is_running:
             self.error.emit("Recognition cancelled before start.") 
             return
+        # Делаем ОДИН скриншот области распознавания
         screenshot = capture_screen_area(self.recognition_area_to_capture)
         if screenshot is None:
             logging.error(f"[THREAD] Failed to capture screen area: {self.recognition_area_to_capture}")
@@ -91,28 +92,47 @@ class RecognitionManager(QObject):
         if screenshot_cv2 is not None:
             save_flag = self.app_settings_manager.get_save_screenshot_flag()
             save_path = self.app_settings_manager.get_screenshot_path()
-            # ИЗМЕНЕНО: Сохраняем скриншот, если распознано от 1 до 5 героев включительно
+            # Сохраняем скриншот, если распознано от 1 до 5 героев включительно
             if save_flag and 1 <= len(heroes) <= 5 and save_path and os.path.isdir(save_path):
                 try:
                     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"rcp_recognition_{timestamp}_{len(heroes)}_heroes.png"
                     full_path = os.path.join(save_path, filename)
                     
-                    # ИЗМЕНЕНО: Сохраняем скриншот всего экрана, а не только области распознавания
-                    full_screen_screenshot = capture_full_screen()
-                    if full_screen_screenshot is not None:
-                        is_success, buffer = cv2.imencode(".png", full_screen_screenshot)
-                        if is_success:
-                            with open(full_path, "wb") as f: 
-                                f.write(buffer)
-                            logging.info(f"Full screen screenshot saved to {full_path}")
-                    else:
-                        # Если не удалось сделать скриншот всего экрана, сохраняем хотя бы область распознавания
-                        is_success, buffer = cv2.imencode(".png", screenshot_cv2)
-                        if is_success:
-                            with open(full_path, "wb") as f: 
-                                f.write(buffer)
-                            logging.info(f"Area screenshot saved to {full_path} (failed to capture full screen)")
+                    # Получаем размер всего экрана
+                    import mss
+                    with mss.mss() as sct:
+                        monitors = sct.monitors
+                        if monitors:
+                            monitor = monitors[1] if len(monitors) > 1 else monitors[0]
+                            screen_width, screen_height = monitor["width"], monitor["height"]
+                            
+                            # Создаем изображение размера всего экрана с СЕРЫМ фоном
+                            full_screen_img = np.full((screen_height, screen_width, 3), 128, dtype=np.uint8)
+                            
+                            # Вычисляем КОНКРЕТНУЮ позицию и размеры области распознавания на экране
+                            # используя ту же формулу, что и в capture_screen_area
+                            left = int(monitor["width"] * RECOGNITION_AREA['left_pct'] / 100)
+                            top = int(monitor["height"] * RECOGNITION_AREA['top_pct'] / 100)
+                            width = int(monitor["width"] * RECOGNITION_AREA['width_pct'] / 100)
+                            height = int(monitor["height"] * RECOGNITION_AREA['height_pct'] / 100)
+                            
+                            # Масштабируем изображение области распознавания до нужных размеров
+                            scaled_screenshot = cv2.resize(screenshot_cv2, (width, height), interpolation=cv2.INTER_NEAREST)
+                            
+                            # Размещаем в той же области, где был сделан скриншот
+                            full_screen_img[top:top+height, left:left+width] = scaled_screenshot
+                            
+                            # Сохраняем результат
+                            is_success, buffer = cv2.imencode(".png", full_screen_img)
+                            if is_success:
+                                with open(full_path, "wb") as f: 
+                                    f.write(buffer)
+                                logging.info(f"Recognition screenshot properly positioned and saved to {full_path}")
+                            else:
+                                logging.error("Failed to encode screenshot for saving")
+                        else:
+                            logging.error("No monitors found for screenshot scaling")
                 except Exception as e:
                     logging.error(f"Failed to save screenshot: {e}", exc_info=True)
         self.recognition_complete_signal.emit(heroes)
