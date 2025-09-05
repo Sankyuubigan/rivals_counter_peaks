@@ -5,14 +5,18 @@ import sys
 import numpy as np 
 from PySide6.QtCore import QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import QMessageBox
+import cv2
+import datetime
 
 from utils import RECOGNITION_AREA, capture_screen_area 
 from info.translations import get_text
 from core.advanced_recognition_logic import AdvancedRecognition 
 from core.images_load import load_hero_templates_cv2 
+from core.app_settings_manager import AppSettingsManager
 
 class RecognitionWorker(QObject):
-    finished = Signal(list) 
+    # Сигнал теперь передает и сам скриншот (или None)
+    finished = Signal(list, object) 
     error = Signal(str)
 
     def __init__(self, advanced_recognizer: AdvancedRecognition, recognition_area_dict: dict, parent=None):
@@ -27,6 +31,7 @@ class RecognitionWorker(QObject):
     def run(self):
         logging.info("[THREAD][RecognitionWorker] Worker started execution.")
         recognized_heroes_original_names = []
+        screenshot_to_recognize_cv2 = None # Инициализируем
         if not self._is_running:
             logging.warning("[THREAD][RecognitionWorker] Worker stopped before starting.")
             if hasattr(self, 'error') and self.error is not None : self.error.emit("Recognition cancelled before start.") 
@@ -38,6 +43,9 @@ class RecognitionWorker(QObject):
         if screenshot_to_recognize_cv2 is None:
             logging.error(f"[THREAD][RecognitionWorker] Failed to capture RECOGNITION_AREA: {self.recognition_area_to_capture}")
             if self._is_running and hasattr(self, 'error') and self.error is not None : self.error.emit(get_text('recognition_no_screenshot', language=self.current_language))
+            # Отправляем сигнал finished с пустыми данными
+            if hasattr(self, 'finished') and self.finished is not None:
+                self.finished.emit([], None)
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (RECOGNITION_AREA screenshot error).")
             return
         
@@ -47,11 +55,13 @@ class RecognitionWorker(QObject):
             logging.info("[THREAD][RecognitionWorker] Worker stopped after screenshot processing.")
             return
         
-        # Проверка готовности AdvancedRecognition ПЕРЕД вызовом
         if not self.advanced_recognizer.is_ready():
             error_msg = "Модели для расширенного распознавания не загружены или не готовы."
             logging.error(f"[THREAD][RecognitionWorker] {error_msg}")
             if self._is_running and hasattr(self, 'error') and self.error is not None : self.error.emit(error_msg)
+            # Отправляем сигнал finished с пустыми данными, но с изображением
+            if hasattr(self, 'finished') and self.finished is not None:
+                self.finished.emit([], screenshot_to_recognize_cv2)
             logging.info(f"[THREAD][RecognitionWorker] Worker run method finished (models not ready).")
             return
 
@@ -62,8 +72,9 @@ class RecognitionWorker(QObject):
             return
         
         if hasattr(self, 'finished') and self.finished is not None: 
-            self.finished.emit(recognized_heroes_original_names) 
-        logging.info(f"[THREAD][RecognitionWorker] Worker finished signal emitted with original names: {recognized_heroes_original_names}")
+            # Передаем и героев, и скриншот
+            self.finished.emit(recognized_heroes_original_names, screenshot_to_recognize_cv2) 
+        logging.info(f"[THREAD][RecognitionWorker] Worker finished signal emitted with {len(recognized_heroes_original_names)} heroes and screenshot.")
         logging.info(f"[THREAD][RecognitionWorker] Worker run method finished.")
 
     def stop(self):
@@ -75,20 +86,21 @@ class RecognitionManager(QObject):
     recognition_complete_signal = Signal(list)
     error = Signal(str)
     recognize_heroes_signal = Signal()
-    models_ready_signal = Signal(bool) # Новый сигнал о готовности моделей
-    recognition_started = Signal() # Сигнал для запуска прогресс бара
-    recognition_stopped = Signal() # Сигнал для остановки прогресс бара
+    models_ready_signal = Signal(bool)
+    recognition_started = Signal() 
+    recognition_stopped = Signal()
 
-    def __init__(self, main_window, logic, win_api_manager):
+    def __init__(self, main_window, logic, win_api_manager, app_settings_manager: AppSettingsManager):
         super().__init__()
         logging.info("[RecognitionManager] Initializing...")
         self.main_window = main_window
         self.logic_for_lang = logic
         self.win_api_manager = win_api_manager
+        self.app_settings_manager = app_settings_manager
         self._recognition_thread: QThread | None = None
         self._recognition_worker: RecognitionWorker | None = None
-        self._models_are_actually_ready = False # Новый флаг состояния
-        self.is_recognizing = False # Флаг для защиты от множественных вызовов
+        self._models_are_actually_ready = False
+        self.is_recognizing = False
         
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             project_root_for_adv_rec = sys._MEIPASS
@@ -104,14 +116,11 @@ class RecognitionManager(QObject):
         self.advanced_recognizer = AdvancedRecognition(
             akaze_hero_template_images_cv2_dict=akaze_cv2_templates,
             project_root_path=project_root_for_adv_rec,
-            parent=self # Устанавливаем родителя для AdvancedRecognition
+            parent=self
         )
         
-        # Подписываемся на сигналы загрузки моделей
         self.advanced_recognizer.load_started.connect(self._on_model_load_started)
         self.advanced_recognizer.load_finished.connect(self._on_model_load_finished)
-        
-        # Запускаем асинхронную загрузку моделей
         self.advanced_recognizer.start_async_load_models()
 
         self.recognize_heroes_signal.connect(self._handle_recognize_heroes)
@@ -120,43 +129,87 @@ class RecognitionManager(QObject):
     @Slot()
     def _on_model_load_started(self):
         logging.info("[RecognitionManager] Model loading has started...")
-        # Здесь можно, например, деактивировать кнопку распознавания в UI
 
     @Slot(bool)
     def _on_model_load_finished(self, success: bool):
         if success:
             self._models_are_actually_ready = True
             logging.info("[RecognitionManager] Model loading finished successfully.")
-            # Активировать кнопку распознавания
         else:
             self._models_are_actually_ready = False
             logging.error("[RecognitionManager] Model loading failed.")
-            # Показать ошибку пользователю, оставить кнопку неактивной
             self.error.emit("Ошибка загрузки моделей распознавания. Функция будет недоступна.")
         self.models_ready_signal.emit(self._models_are_actually_ready)
 
+    @Slot(list, object)
+    def _on_recognition_complete_with_screenshot(self, heroes: list, screenshot_cv2: np.ndarray | None):
+        """Слот, который обрабатывает результат от воркера, включая скриншот, с расширенным логированием."""
+        logging.info(f"Received recognition result: {len(heroes)} heroes.")
+        
+        # --- БЛОК СОХРАНЕНИЯ СКРИНШОТА С РАСШИРЕННЫМ ЛОГИРОВАНИЕМ ---
+        if screenshot_cv2 is None:
+            logging.warning("[SS_SAVE] Скриншот для сохранения не получен (None). Пропускаем логику сохранения.")
+        else:
+            logging.info("[SS_SAVE] --- Начало проверки сохранения скриншота ---")
+            save_flag = self.app_settings_manager.get_save_screenshot_flag()
+            save_path = self.app_settings_manager.get_screenshot_path()
+            num_heroes = len(heroes)
+            
+            logging.info(f"[SS_SAVE] Чтение настроек: save_flag = {save_flag}, save_path = '{save_path}'")
+            logging.info(f"[SS_SAVE] Данные распознавания: num_heroes = {num_heroes}")
+
+            # 1. Проверка флага и количества героев
+            if save_flag and num_heroes < 6:
+                logging.info(f"[SS_SAVE] УСЛОВИЕ 1 ПРОЙДЕНО: Флаг включен ({save_flag}) и героев ({num_heroes}) < 6.")
+                
+                # 2. Проверка пути
+                if save_path and os.path.isdir(save_path):
+                    logging.info(f"[SS_SAVE] УСЛОВИЕ 2 ПРОЙДЕНО: Путь '{save_path}' существует и является директорией.")
+                    try:
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        filename = f"rcp_recognition_{timestamp}_{num_heroes}_heroes.png"
+                        full_path = os.path.join(save_path, filename)
+                        logging.info(f"[SS_SAVE] Попытка сохранения файла: {full_path}")
+                        
+                        # ИСПРАВЛЕНИЕ: Используем imencode для корректной работы с non-ASCII путями
+                        is_success, buffer = cv2.imencode(".png", screenshot_cv2)
+                        if is_success:
+                            with open(full_path, "wb") as f:
+                                f.write(buffer)
+                            success = True
+                        else:
+                            success = False
+                        
+                        if success:
+                            logging.info(f"[SS_SAVE] УСПЕХ: Скриншот успешно сохранен в {full_path}")
+                        else:
+                            logging.error(f"[SS_SAVE] ОШИБКА: cv2.imencode или запись в файл вернули ошибку для пути {full_path}. Проверьте права доступа и целостность данных.")
+                    except Exception as e:
+                        logging.error(f"[SS_SAVE] ИСКЛЮЧЕНИЕ: Произошла ошибка при попытке сохранить скриншот: {e}", exc_info=True)
+                else:
+                    logging.warning(f"[SS_SAVE] УСЛОВИЕ 2 НЕ ПРОЙДЕНО: Путь для сохранения ('{save_path}') не указан или не является директорией. Сохранение отменено.")
+            else:
+                logging.info(f"[SS_SAVE] УСЛОВИЕ 1 НЕ ПРОЙДЕНО: Флаг выключен ({save_flag}) или количество героев ({num_heroes}) не меньше 6. Сохранение отменено.")
+            
+            logging.info("[SS_SAVE] --- Конец проверки сохранения скриншота ---")
+
+        # Передаем только список героев дальше в UI
+        self.recognition_complete_signal.emit(heroes)
 
     @Slot()
     def _handle_recognize_heroes(self):
         logging.info("[ACTION][RecognitionManager] Recognition requested...")
 
-        # Защита от множественных вызовов с использованием флага
         if self.is_recognizing:
             logging.warning("[WARN][RecognitionManager] Recognition already in progress, ignoring duplicate request.")
             return
 
-        if self._recognition_thread and self._recognition_thread.isRunning():
-            logging.warning("[WARN][RecognitionManager] Recognition process already running.")
-            return
-
-        if not self._models_are_actually_ready: # Используем новый флаг
-            error_msg_key = 'recognition_models_not_ready' # Нужен новый ключ для перевода
-            error_msg = get_text(error_msg_key, default_text="Модели распознавания еще не загружены. Пожалуйста, подождите.", language=self.logic_for_lang.DEFAULT_LANGUAGE)
+        if not self._models_are_actually_ready:
+            error_msg = get_text('recognition_models_not_ready', default_text="Модели распознавания еще не загружены. Пожалуйста, подождите.", language=self.logic_for_lang.DEFAULT_LANGUAGE)
             logging.error(f"[ERROR][RecognitionManager] {error_msg}")
             if hasattr(self, 'error') and self.error is not None: self.error.emit(error_msg)
             return
 
-        # Устанавливаем флаг и эмитируем сигнал запуска
         self.is_recognizing = True
         if hasattr(self, 'recognition_started'):
             self.recognition_started.emit()
@@ -166,59 +219,48 @@ class RecognitionManager(QObject):
         if self._recognition_worker : 
              self._recognition_worker.current_language = self.logic_for_lang.DEFAULT_LANGUAGE 
         
-        self._recognition_thread = QThread(self.main_window) # Родитель потока - MainWindow
+        self._recognition_thread = QThread(self.main_window)
         if self._recognition_worker and self._recognition_thread: 
             self._recognition_worker.moveToThread(self._recognition_thread)
             self._recognition_thread.started.connect(self._recognition_worker.run)
             if hasattr(self._recognition_worker, 'finished') and self._recognition_worker.finished is not None:
-                 self._recognition_worker.finished.connect(self.recognition_complete_signal.emit)
+                 self._recognition_worker.finished.connect(self._on_recognition_complete_with_screenshot)
             if hasattr(self._recognition_worker, 'error') and self._recognition_worker.error is not None:
                  self._recognition_worker.error.connect(self.error.emit)
             
-            # Связываем finished потока с его удалением и сбросом состояния
-            self._recognition_thread.finished.connect(self._reset_recognition_state) # Сначала сброс
-            self._recognition_thread.finished.connect(self._recognition_thread.deleteLater) # Затем удаление потока
+            self._recognition_thread.finished.connect(self._reset_recognition_state)
+            self._recognition_thread.finished.connect(self._recognition_thread.deleteLater)
             
-            # Удаление воркера после того, как он завершит работу и его сигналы будут обработаны
             if hasattr(self._recognition_worker, 'finished') and self._recognition_worker.finished is not None:
-                self._recognition_worker.finished.connect(self._recognition_thread.quit) # Сначала выходим из цикла событий потока
-                self._recognition_worker.finished.connect(self._recognition_worker.deleteLater) # Затем удаляем воркер
+                self._recognition_worker.finished.connect(self._recognition_thread.quit)
+                self._recognition_worker.finished.connect(self._recognition_worker.deleteLater)
             
-
             self._recognition_thread.start()
             logging.info("[INFO][RecognitionManager] Recognition thread started.")
         else:
             logging.error("[ERROR][RecognitionManager] Не удалось создать воркер или поток для распознавания.")
-            # Сброс флага при ошибке создания
             self.is_recognizing = False
             if hasattr(self, 'recognition_stopped'):
                 self.recognition_stopped.emit()
 
-
     @Slot()
     def _reset_recognition_state(self):
-        # Этот слот теперь вызывается по self._recognition_thread.finished
-        logging.info("[INFO][RecognitionManager] Resetting recognition thread state (called by thread.finished).")
-        # Worker и Thread должны удаляться через deleteLater, так что здесь просто None
+        logging.info("[INFO][RecognitionManager] Resetting recognition thread state.")
         self._recognition_thread = None
         self._recognition_worker = None
-        # Сброс флага и сигнал завершения
         self.is_recognizing = False
         if hasattr(self, 'recognition_stopped'):
             self.recognition_stopped.emit()
-        logging.info("[INFO][RecognitionManager] Recognition thread state reset complete (is_recognizing=False).")
+        logging.info("[INFO][RecognitionManager] Recognition thread state reset complete.")
 
     def stop_recognition(self):
          logging.info("[INFO][RecognitionManager] Stop recognition requested.")
          if self._recognition_worker:
-             self._recognition_worker.stop() # Говорим воркеру остановиться
+             self._recognition_worker.stop()
          if self._recognition_thread and self._recognition_thread.isRunning():
              logging.info("[INFO][RecognitionManager] Quitting recognition thread...")
              self._recognition_thread.quit()
-             if not self._recognition_thread.wait(1000): # Ждем до 1 секунды
+             if not self._recognition_thread.wait(1000):
                  logging.warning("[WARN][RecognitionManager] Recognition thread did not finish in time.")
-                 # Можно принудительно терминировать, но это менее безопасно
-                 # self._recognition_thread.terminate()
          else:
-             # Если поток не запущен, но воркер мог быть создан, сбрасываем
-             self._reset_recognition_state()
+             self._reset_recognition_state

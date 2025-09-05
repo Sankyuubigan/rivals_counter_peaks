@@ -29,6 +29,8 @@ from core.settings_window import SettingsWindow
 from core.dialogs import LogDialog
 from info.translations import get_text
 import markdown
+from core.tier_list_tab import TierListTab
+
 
 class InfoTab(QWidget):
     """Виджет-вкладка для отображения markdown контента."""
@@ -76,7 +78,8 @@ class MainWindowRefactored(QMainWindow):
         self.image_manager = ImageManager(project_root)
         self.hotkey_manager = HotkeyManager(self.settings_manager)
         self.mode_manager = ModeManager(self)
-        self.recognition_manager = RecognitionManager(self, self.logic, None)
+        # ИЗМЕНЕНИЕ: Передаем settings_manager в RecognitionManager
+        self.recognition_manager = RecognitionManager(self, self.logic, None, self.settings_manager)
         self.tab_mode_manager = TrayModeManager(self)
         
         self.action_controller = ActionController(self)
@@ -110,26 +113,29 @@ class MainWindowRefactored(QMainWindow):
         # 1. Вкладка "Контрпики"
         self._create_counter_pick_tab()
 
-        # 2. Вкладка "Настройки"
+        # 2. НОВАЯ ВКЛАДКА "Тир-лист"
+        self.tier_list_tab = TierListTab(self.logic, self.image_manager, self)
+        self.tab_widget.addTab(self.tier_list_tab, get_text("tier_list_tab_title", default_text="Тир-лист"))
+
+        # 3. Вкладка "Настройки"
         self.settings_tab = SettingsWindow(self.settings_manager, self)
         self.tab_widget.addTab(self.settings_tab, get_text("sw_settings_tab_title", default_text="Настройки"))
 
-        # 3. Вкладка "Логи"
+        # 4. Вкладка "Логи"
         self.log_tab = LogDialog(self)
         self.tab_widget.addTab(self.log_tab, get_text("logs_window_title"))
         
-        # ИСПРАВЛЕНИЕ БАГА С ЛОГАМИ: Подключаем переданный обработчик
         if self.log_handler and hasattr(self.log_handler, 'message_logged'):
             self.log_handler.message_logged.connect(self.log_tab.append_log)
             logging.info("Successfully connected QLogHandler to the log tab.")
         else:
             logging.warning("Log handler was not provided or is invalid.")
 
-        # 4. Вкладка "О программе"
+        # 5. Вкладка "О программе"
         self.about_tab = InfoTab("information")
         self.tab_widget.addTab(self.about_tab, get_text("about_program"))
 
-        # 5. Вкладка "Об авторе"
+        # 6. Вкладка "Об авторе"
         self.author_tab = InfoTab("author")
         self.tab_widget.addTab(self.author_tab, get_text("author_info_title"))
 
@@ -149,6 +155,7 @@ class MainWindowRefactored(QMainWindow):
     def _connect_signals(self):
         """Подключает все необходимые сигналы и слоты."""
         self.hotkey_manager.hotkey_triggered.connect(self._on_hotkey_pressed)
+        # ИЗМЕНЕНИЕ: Сигнал теперь передает и скриншот
         self.recognition_manager.recognition_complete_signal.connect(self._on_recognition_complete)
 
     def _load_initial_state(self):
@@ -181,8 +188,9 @@ class MainWindowRefactored(QMainWindow):
 
     @Slot(list)
     def _on_recognition_complete(self, recognized_heroes: list):
+        # Этот слот теперь вызывается из RecognitionManager после того,
+        # как он обработал скриншот. Он получает только список героев.
         logging.info(f"Recognition completed with heroes: {recognized_heroes}")
-        # ИСПРАВЛЕНИЕ: Нормализуем имена героев, полученные после распознавания
         normalized_heroes = {normalize_hero_name(h) for h in recognized_heroes if h}
         logging.info(f"Normalized recognized heroes to: {normalized_heroes}")
         self.logic.set_selection(normalized_heroes)

@@ -61,17 +61,23 @@ logging.info(f"База данных инициализирована. Загр�
 # --- Логика расчета ---
 SYNERGY_BONUS = 2.0  # Бонус за синергию
 
-def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, **kwargs) -> List[Tuple[str, float]]:
+def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
     """Рассчитывает рейтинг героев против указанной команды врагов."""
     if not enemy_team: return []
     
     hero_scores = {}
     for hero, matchups in matchups_data.items():
-        if hero in enemy_team: continue # Не рекомендуем врага против самого себя
+        # Пропускаем героя, только если это не расчет тир-листа
+        if not is_tier_list_calc and hero in enemy_team:
+            continue
         
         total_difference = 0
         found_matchups = 0
         for enemy in enemy_team:
+            # Для тир-листа не сравниваем героя с самим собой
+            if is_tier_list_calc and hero == enemy:
+                continue
+
             for matchup in matchups:
                 if matchup.get("opponent", "").lower() == enemy.lower():
                     try:
@@ -86,6 +92,7 @@ def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, **kwargs
         if found_matchups > 0:
             hero_scores[hero] = total_difference / found_matchups # Среднее преимущество
             
+    # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по всему кортежу - item
     return sorted(hero_scores.items(), key=lambda item: item, reverse=True)
 
 def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict) -> List[str]:
@@ -137,4 +144,5 @@ def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> 
         absolute_score = (100 + score) * context_factor
         absolute_scores.append((hero, absolute_score))
         
+    # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по всему кортежу - item
     return sorted(absolute_scores, key=lambda item: item, reverse=True)

@@ -1,7 +1,7 @@
 import json
 import importlib.util
 import os
-def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.json"):
+def load_matchups_data(file_path="database/marvel_rivals_stats_20250905-040756.json"):
     """Загружает данные из JSON файла в новом формате"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -19,7 +19,7 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250831-030213.j
     except json.JSONDecodeError:
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
-def load_hero_stats(file_path="database/marvel_rivals_stats_20250831-030213.json"):
+def load_hero_stats(file_path="database/marvel_rivals_stats_20250905-040756.json"):
     """Загружает общую статистику героев из JSON файла"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -179,8 +179,6 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
     # Проверяем корректность входных данных
     if not enemy_team:
         raise ValueError("Список вражеских героев не может быть пустым")
-    if len(enemy_team) > 6:
-        raise ValueError("Максимальное количество вражеских героев - 6")
     if method not in ['sum', 'avg']:
         raise ValueError("Метод агрегации должен быть 'sum' или 'avg'")
     if weighting not in ['equal', 'matches']:
@@ -251,7 +249,49 @@ if __name__ == "__main__":
     
     if matchups_data and hero_stats and hero_roles:
         print("=" * 50)
-        enemy_team = ["Loki"]
+        enemy_team = [
+        "Peni Parker",
+        "Rocket Raccoon",
+        "Magik",
+        "Mantis",
+        "Storm",
+        "Hulk",
+        "Ultron",
+        "Captain America",
+        "Mister Fantastic",
+        "Iron Man",
+        "Thor",
+        "Loki",
+        "Black Panther",
+        "Iron Fist",
+        "Namor",
+        "The Thing",
+        "Emma Frost",
+        "Doctor Strange",
+        "Psylocke",
+        "Wolverine",
+        "Human Torch",
+        "Adam Warlock",
+        "Magneto",
+        "Hela",
+        "Cloak & Dagger",
+        "Venom",
+        "Luna Snow",
+        "Scarlet Witch",
+        "Groot",
+        "Spider Man",
+        "Squirrel Girl",
+        "Star Lord",
+        "Invisible Woman",
+        "Phoenix",
+        "Winter Soldier",
+        "Moon Knight",
+        "Jeff The Land Shark",
+        "Hawkeye",
+        "The Punisher",
+        "Black Widow",
+        "Blade"
+    ]
         num_count=10
         print(f"Поиск оптимальной команды против {enemy_team}")
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)

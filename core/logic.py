@@ -75,57 +75,23 @@ class CounterpickLogic:
         if not heroes_list: return get_text('selected_none', language=lang, max_team_size=TEAM_SIZE)
         else: header = f"{get_text('selected_some', language=lang)} ({count}/{TEAM_SIZE}): "; return f"{header}{', '.join(heroes_list)}"
 
-    # def _calculate_hero_score(self, hero_to_evaluate, current_enemy_selection_set, priority_enemy_heroes):
-    #     score = 0.0
-
-    #     for enemy_hero in current_enemy_selection_set:
-    #         enemy_counters_data = heroes_counters.get(enemy_hero, {}) 
-    #         if isinstance(enemy_counters_data, dict):
-    #             multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
-    #             if hero_to_evaluate in enemy_counters_data.get("hard", []):
-    #                 score += HARD_COUNTER_SCORE_BONUS * multiplier
-    #             elif hero_to_evaluate in enemy_counters_data.get("soft", []):
-    #                 score += SOFT_COUNTER_SCORE_BONUS * multiplier
-        
-    #     if hero_to_evaluate in current_enemy_selection_set:
-    #         score -= 10.0 
-
-    #     hero_to_evaluate_data = heroes_counters.get(hero_to_evaluate, {}) 
-    #     if isinstance(hero_to_evaluate_data, dict):
-    #         hero_hard_countered_by = hero_to_evaluate_data.get("hard", [])
-    #         hero_soft_countered_by = hero_to_evaluate_data.get("soft", [])
-
-    #         for enemy_hero in current_enemy_selection_set:
-    #             multiplier = PRIORITY_MULTIPLIER if enemy_hero in priority_enemy_heroes else 1.0
-    #             if enemy_hero in hero_hard_countered_by:
-    #                 score += HARD_COUNTERED_BY_PENALTY * multiplier
-    #             elif enemy_hero in hero_soft_countered_by:
-    #                 score += SOFT_COUNTERED_BY_PENALTY * multiplier
-    #     return score
-
     def calculate_counter_scores(self):
         if not self.selected_heroes: return {}
 
-        # Конвертируем внутренние имена обратно в стандартный формат для матчапов
         enemy_team = list(self.selected_heroes)
-
-        # Получаем рейтинг героев против нашей команды (выбранной команды)
+        
         hero_scores = calculate_team_counters(
             enemy_team=enemy_team,
             matchups_data=matchups_data,
-            hero_roles=hero_roles,  # Используем реальные роли в новом формате
+            hero_roles=hero_roles,
             method="avg",
             weighting="equal"
         )
 
-        # Применяем абсолютный контекст
         hero_scores_with_context = absolute_with_context(hero_scores, hero_stats_data)
-        # hero_scores_with_context = hero_scores
-
-        # Конвертируем обратно в словарь {hero: score}
+        
         counter_scores = {hero: score for hero, score in hero_scores_with_context}
 
-        # Убедимся, что все герои из базы данных присутствуют
         for hero in heroes:
             if hero not in counter_scores:
                 counter_scores[hero] = 0.0
@@ -135,39 +101,46 @@ class CounterpickLogic:
     def calculate_effective_team(self, counter_scores):
         """
         Рассчитывает эффективную команду с использованием новой системы синергии.
-
-        Новая система:
-        - Использует новый формат ролей Vanguard/Duelist/Strategist
-        - Применяет бонус синергии 2.0 балла за каждую синергию
-        - Оптимизирует сочетание героев для максимального счета
-
-        Args:
-            counter_scores (dict): Словари оценок героев {hero_name: score}
-
-        Returns:
-            list: Оптимальный список героев с учётом синергии
         """
         if not counter_scores:
             self.effective_team = []
             return []
 
-        # Фильтруем кандидатов - только с положительной оценкой
         candidates = {h: s for h, s in counter_scores.items() if s > 0}
         if not candidates:
             self.effective_team = []
             return []
 
-        # Сортируем кандидатов по оценке (основание)
-        sorted_candidates_by_score = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
+        sorted_candidates_by_score = sorted(candidates.items(), key=lambda x: x, reverse=True)
 
-        # Используем новую функцию оптимизации команды с синергиями
         optimal_team = select_optimal_team(sorted_candidates_by_score, hero_roles)
-
-        # Исключаем героев которые уже выбраны (дополнительная проверка)
         optimal_team_filtered = [hero for hero in optimal_team if hero not in self.selected_heroes]
-
-        # Ограничиваем размер команды согласно константам
         self.effective_team = optimal_team_filtered[:TEAM_SIZE]
         return self.effective_team
 
-    # Метод recognize_heroes_from_image удален, т.к. логика перенесена в AdvancedRecognition
+    def calculate_tier_list_scores(self) -> dict[str, float]:
+        """
+        Рассчитывает "мета-рейтинг" (тир-лист) для каждого героя против всех остальных.
+        """
+        logging.info("[Logic] Calculating tier list scores...")
+        
+        all_heroes_as_enemies = heroes
+        
+        # ИСПРАВЛЕНИЕ: Передаем is_tier_list_calc=True, чтобы обойти проверку "герой против себя"
+        hero_scores_tuples = calculate_team_counters(
+            enemy_team=all_heroes_as_enemies,
+            matchups_data=matchups_data,
+            hero_roles=hero_roles,
+            method="avg",
+            weighting="equal",
+            is_tier_list_calc=True
+        )
+        
+        hero_scores_with_context = absolute_with_context(hero_scores_tuples, hero_stats_data)
+        
+        tier_list_scores = {hero: score for hero, score in hero_scores_with_context}
+        
+        top_hero = max(tier_list_scores, key=tier_list_scores.get, default='N/A')
+        logging.info(f"[Logic] Tier list calculation finished. Top hero: {top_hero}")
+        
+        return tier_list_scores
