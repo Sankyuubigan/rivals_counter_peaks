@@ -16,6 +16,8 @@ class IconWithRatingWidget(QWidget):
         self.rating_text = f"{math.ceil(rating) if rating > 0 else math.floor(rating)}"
         self.is_in_effective_team = is_in_effective_team; self.is_enemy = is_enemy
         self.setToolTip(tooltip)
+        
+        # ИСПРАВЛЕНИЕ КРЭША: Проверяем pixmap перед использованием
         if is_invalid_pixmap(self.pixmap):
               logging.warning(f"IconWithRatingWidget '{self.hero_name}' initialized with invalid pixmap. Using default size.")
               default_size = (35, 35)
@@ -27,9 +29,12 @@ class IconWithRatingWidget(QWidget):
         else:
             self.setMinimumSize(pixmap.size())
             self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
+            # ИСПРАВЛЕНИЕ КРЭША: Логируем только если pixmap валиден
+            logging.debug(f"IconWithRatingWidget: Final size: {self.size()}, pixmap size: {self.pixmap.size()}")
+
         self.font = QFont(); self.font.setPointSize(10); self.font.setBold(True)
         self.fm = QFontMetrics(self.font); self.border_pen = QPen(Qt.PenStyle.NoPen); self.border_width = 1
-        logging.debug(f"IconWithRatingWidget: Final size: {self.size()}, pixmap size: {self.pixmap.size() if 'invalid' not in str(self.pixmap) else 'invalid'}")
+
 
     def set_border(self, color_name: str, width: int):
         logging.debug(f"[DEBUG] set_border called for {self.hero_name} with color='{color_name}', width={width}")
@@ -209,7 +214,7 @@ def update_horizontal_icon_list(window, target_layout: QHBoxLayout, counter_scor
 
     # Адаптация ширины контейнера для таб-режима при большом количестве контрпиков (>20)
     if is_tab_mode and hasattr(window, 'tab_counters_container') and len(sorted_heroes) > 20:
-        icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal', [35, 35])[0]
+        icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal',)
         spacing = 4  # spacing между иконками
         margin = 4   # margins контейнера
         optimal_width = min(icon_width * len(sorted_heroes) + (len(sorted_heroes) - 1) * spacing + 2 * margin, 1200)
@@ -245,7 +250,7 @@ def update_enemy_horizontal_list(window, target_layout: QHBoxLayout) -> None:
         selected_heroes_count = len(logic.selected_heroes)
         if selected_heroes_count > 0:
             # Рассчитываем оптимальную ширину на основе количества врагов
-            icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal', [35, 35])[0]
+            icon_width = IMG_SIZES.get(window.mode, {}).get('horizontal',)
             spacing = 4  # spacing между иконками
             margin = 4   # margins контейнера
             min_width = icon_width + 2 * margin  # Минимальная ширина для одного героя

@@ -4,50 +4,35 @@ import sys
 import datetime
 import shutil
 import subprocess
-import platform
 import logging
 import re
-from PIL import Image  # <--- Добавлено для работы с изображениями
+from PIL import Image
 
-# --- Настройка логирования для скрипта сборки ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s', datefmt='%H:%M:%S')
+# --- Настройка логирования ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
 
-# --- Определяем пути ---
-script_dir = os.path.dirname(os.path.abspath(__file__))  # Папка core/build_scripts
-project_root = os.path.dirname(script_dir)  # Корень проекта rivals_counter_peaks
+# --- Определяем пути относительно скрипта ---
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
 dist_dir = os.path.join(project_root, 'dist')
-build_cache_dir = os.path.join(project_root, "build_cache")  # PyInstaller создаст папку build здесь
+build_cache_dir = os.path.join(project_root, "build_cache")
+spec_file_path = os.path.join(script_dir, "rivals_counter_peaks.spec")
 
-# Пути к иконкам
+# --- Пути к иконкам ---
 png_icon_path = os.path.join(project_root, 'resources', 'logo.png')
 ico_icon_path = os.path.join(project_root, 'resources', 'logo.ico')
 
-# Имя .spec файла (теперь он в script_dir)
-spec_file_name_base = "rivals_counter_peaks.spec"
-spec_file_path_abs = os.path.join(script_dir, spec_file_name_base)
-logging.info(f"Используется .spec файл: {spec_file_path_abs}")
-
-# --- Функция конвертации PNG в ICO ---
 def convert_png_to_ico(png_path, ico_path):
     """Конвертирует PNG в ICO, если ICO не существует или PNG новее."""
     if not os.path.exists(png_path):
         logging.error(f"PNG иконка не найдена: {png_path}")
         return False
     
-    need_convert = False
-    if not os.path.exists(ico_path):
-        need_convert = True
-    else:
-        png_mtime = os.path.getmtime(png_path)
-        ico_mtime = os.path.getmtime(ico_path)
-        if png_mtime > ico_mtime:
-            need_convert = True
-    
-    if need_convert:
+    if not os.path.exists(ico_path) or os.path.getmtime(png_path) > os.path.getmtime(ico_path):
         try:
             img = Image.open(png_path)
-            img.save(ico_path, format='ICO')
-            logging.info(f"Иконка сконвертирована: {ico_path}")
+            img.save(ico_path, format='ICO', sizes=[(256, 256)])
+            logging.info(f"Иконка успешно сконвертирована: {ico_path}")
         except Exception as e:
             logging.error(f"Ошибка при конвертации иконки: {e}")
             return False
@@ -55,154 +40,85 @@ def convert_png_to_ico(png_path, ico_path):
         logging.info(f"Иконка в актуальном состоянии: {ico_path}")
     return True
 
-# --- Генерация имени с текущей датой ---
-now = datetime.datetime.now()
-version_date_str = f"{str(now.year)[2:]}.{now.month:02d}.{now.day:02d}"
-app_name_with_version = f"rivals_counter_peaks_{version_date_str}"
-exe_name_with_version = f"{app_name_with_version}.exe"
-logging.info(f"Сгенерированное имя для EXE: {exe_name_with_version}")
-
-# --- Конвертируем иконку, если нужно ---
-if not convert_png_to_ico(png_icon_path, ico_icon_path):
-    logging.error("Не удалось подготовить иконку. Сборка продолжится без обновления иконки в .spec, если она там есть.")
-
-# --- Модификация .spec файла для установки нового имени и иконки ---
-if os.path.exists(spec_file_path_abs):
+def update_spec_file(spec_path, app_name):
+    """Обновляет имя приложения в .spec файле."""
     try:
-        with open(spec_file_path_abs, 'r', encoding='utf-8') as f_spec_read:
-            spec_content = f_spec_read.read()
+        with open(spec_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         
-        # Замена имени приложения
-        logging.info(f"Пытаемся заменить name на '{app_name_with_version}'")
-        new_spec_content, num_name_replacements = re.subn(
-            r"name\s*=\s*['\"]([^'\"]+)['\"]",
-            f"name='{app_name_with_version}'",
-            spec_content,
-            count=1
-        )
-        logging.info(f"Заменено строк с name: {num_name_replacements}")
-
-        # Замена иконки отключена
-        # escaped_ico_path = ico_icon_path.replace('\\', '\\\\')
-        # new_spec_content, num_icon_replacements = re.subn(
-        #     r"icon\s*=\s*(['\"])([^'\"]+)\1",
-        #     f"icon=r'{escaped_ico_path}'",
-        #     new_spec_content,
-        #     count=1
-        # )
-
-        # Icon handling disabled, icon already added manually to .spec
-        num_icon_replacements = 1
-#           logging.info("Строка 'icon=' не найдена в .spec файле. Добавляем иконку вручную.")
-#           if 'name=' in new_spec_content:
-#               # Вставляем перед name
-#               new_spec_content = re.sub(
-#                   r"(name\s*=\s*['\"][^'\"]+['\"])",
-#                   f"icon=r'{escaped_ico_path}'\n    \\1",
-#                   new_spec_content,
-#                   count=1
-#               )
-#           elif 'pyz = PYZ' in new_spec_content:
-#               # Вставляем перед PYZ
-#               new_spec_content = re.sub(
-#                   r"pyz = PYZ",
-#                   f"icon=r'{escaped_ico_path}'\n\npyz = PYZ",
-#                   new_spec_content,
-#                   count=1
-#               )
-#           else:
-#               logging.warning("Не удалось добавить строку иконки в .spec файл.")
+        new_content, count = re.subn(r"name\s*=\s*['\"].*?['\"]", f"name='{app_name}'", content, count=1)
         
-        if num_name_replacements > 0:
-            logging.info(f"Файл {spec_file_name_base} успешно обновлен. Новое имя приложения: {app_name_with_version}")
+        if count > 0:
+            with open(spec_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            logging.info(f"Имя приложения в {os.path.basename(spec_path)} обновлено на '{app_name}'.")
         else:
-            logging.warning(f"Не удалось найти строку 'name='...' в файле {spec_file_name_base} для обновления.")
-        
-        if num_icon_replacements > 0:
-            logging.info(f"Обновлена иконка в .spec файле: {ico_icon_path}")
-        else:
-            logging.warning(f"Не найдена строка 'icon=...' в .spec файле. Иконка не будет обновлена. Пожалуйста, добавьте вручную строку: icon='{ico_icon_path}'")
-        
-        with open(spec_file_path_abs, 'w', encoding='utf-8') as f_spec_write:
-            f_spec_write.write(new_spec_content)
-            
-    except Exception as e_spec_mod:
-        logging.error(f"Ошибка при модификации .spec файла: {e_spec_mod}. Сборка будет использовать оригинальный .spec файл.")
-else:
-    logging.error(f".spec файл {spec_file_path_abs} не найден. Сборка невозможна.")
-    sys.exit(1)
-
-# --- Принудительная очистка перед сборкой ---
-logging.info("Принудительная очистка перед сборкой (кроме папки dist)...")
-if os.path.exists(build_cache_dir):
-    try:
-        shutil.rmtree(build_cache_dir)
-        logging.info(f"Удалена папка кэша PyInstaller: {build_cache_dir}")
+            logging.warning(f"Не удалось найти и заменить 'name' в {os.path.basename(spec_path)}.")
     except Exception as e:
-        logging.warning(f"Не удалось удалить папку кэша {build_cache_dir}: {e}")
-else:
-    logging.info(f"Папка кэша {build_cache_dir} не найдена, удаление не требуется.")
+        logging.error(f"Ошибка при обновлении .spec файла: {e}")
 
-# --- Определяем путь к python.exe из текущего виртуального окружения ---
-python_exe = sys.executable
-if not python_exe:
-    logging.error("Не удалось определить путь к исполняемому файлу Python (sys.executable пуст). Сборка невозможна.")
-    sys.exit(1)
-logging.info(f"Используется Python интерпретатор: {python_exe}")
+# --- Основной процесс сборки ---
+if __name__ == "__main__":
+    # 1. Подготовка иконки
+    if not convert_png_to_ico(png_icon_path, ico_icon_path):
+        sys.exit(1)
 
-# --- Формируем команду PyInstaller для запуска с .spec файлом ---
-command_parts_pyinstaller = [
-    '--noconfirm',
-    f'--distpath "{dist_dir}"',
-    f'--workpath "{build_cache_dir}"',
-    f'"{spec_file_path_abs}"'
-]
-command_full_list = [f'"{python_exe}"', '-m', 'PyInstaller'] + command_parts_pyinstaller
-command = " ".join(command_full_list)
+    # 2. Генерация имени с версией
+    now = datetime.datetime.now()
+    version_date_str = f"{now.year % 100}.{now.month:02d}.{now.day:02d}"
+    app_name_with_version = f"rivals_counter_peaks_{version_date_str}"
+    logging.info(f"Имя для EXE: {app_name_with_version}.exe")
 
-# --- Вывод информации и запуск сборки ---
-print("-" * 60)
-logging.info(f"Папка для результатов сборки: {dist_dir}")
-logging.info(f"Выполняем команду:\n{command}")
-print("-" * 60)
-logging.info("Запуск PyInstaller...")
-rc = 1
-try:
-    # Temporarily disable output capture to see real-time output
-    result = subprocess.run(command, shell=True, cwd=project_root)
-    rc = result.returncode
-    print("PyInstaller process completed")
-    print("-" * 60)
-    if rc == 0:
-         logging.info(f"--- PyInstaller УСПЕШНО завершен (Код: {rc}) ---")
-         exe_path_expected = os.path.join(dist_dir, exe_name_with_version)
-         logging.info(f"Ожидаемый исполняемый файл: {exe_path_expected}")
-         if os.path.exists(exe_path_expected):
-             logging.info("Исполняемый файл найден.")
-         else:
-             found_exes = [f for f in os.listdir(dist_dir) if f.lower().endswith(".exe")]
-             if found_exes:
-                 logging.warning(f"Ожидаемый файл {exe_path_expected} НЕ НАЙДЕН, но найдены другие .exe: {found_exes}.")
-             else:
-                 logging.error(f"Ожидаемый файл {exe_path_expected} НЕ НАЙДEN, и других .exe в dist не найдено.")
-    else:
-         logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {rc}) ---")
-except Exception as e:
-    logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
-    rc = -1
+    # 3. Обновление .spec файла
+    if not os.path.exists(spec_file_path):
+        logging.error(f".spec файл не найден: {spec_file_path}")
+        sys.exit(1)
+    update_spec_file(spec_file_path, app_name_with_version)
 
-# --- Очистка временных файлов ---
-if rc == 0:
+    # 4. Очистка перед сборкой
+    logging.info("Очистка предыдущих сборок...")
     if os.path.exists(build_cache_dir):
-        logging.info(f"Папка {build_cache_dir} должна была быть удалена PyInstaller. Проверяем...")
-        try:
-            shutil.rmtree(build_cache_dir)
-            logging.info(f"Принудительно удалена папка build_cache: {build_cache_dir}")
-        except Exception as e:
-            logging.warning(f"Не удалось принудительно удалить папку {build_cache_dir} после сборки: {e}")
-else:
-    logging.warning("Сборка завершилась с ошибкой, папка кэша сборки не удалена для анализа.")
-    logging.warning(f"Папка кэша сборки: {build_cache_dir}")
+        shutil.rmtree(build_cache_dir)
+    # Папку dist лучше чистить вручную или с явным флагом, чтобы не потерять результаты
+    
+    # 5. Сборка с помощью PyInstaller
+    python_exe = sys.executable
+    command = [
+        python_exe, '-m', 'PyInstaller', '--noconfirm',
+        '--distpath', dist_dir,
+        '--workpath', build_cache_dir,
+        spec_file_path
+    ]
+    
+    logging.info(f"Выполняется команда сборки:\n{' '.join(command)}")
+    
+    # ИСПРАВЛЕНИЕ: Передаем путь к корню проекта через переменную окружения
+    build_env = os.environ.copy()
+    build_env["PROJECT_ROOT_FOR_SPEC"] = project_root
+    
+    try:
+        result = subprocess.run(command, check=True, cwd=project_root, text=True, env=build_env)
+        logging.info("--- PyInstaller УСПЕШНО завершен ---")
+        exe_path = os.path.join(dist_dir, f"{app_name_with_version}.exe")
+        if os.path.exists(exe_path):
+            logging.info(f"Исполняемый файл готов: {exe_path}")
+        else:
+            logging.warning(f"Ожидаемый .exe файл не найден: {exe_path}")
+        rc = 0
+    except subprocess.CalledProcessError as e:
+        logging.error(f"--- PyInstaller ЗАВЕРШЕН С ОШИБКОЙ (Код: {e.returncode}) ---")
+        logging.error("Логи сборки смотрите выше.")
+        rc = e.returncode
+    except Exception as e:
+        logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
+        rc = -1
 
-logging.info("Скрипт сборки завершен.")
-sys.exit(rc)
+    # 6. Финальная очистка
+    if rc == 0 and os.path.exists(build_cache_dir):
+        logging.info(f"Удаление временной папки сборки: {build_cache_dir}")
+        shutil.rmtree(build_cache_dir)
+    else:
+        logging.warning(f"Сборка завершилась с ошибкой. Временная папка не удалена для анализа: {build_cache_dir}")
+
+    logging.info("Скрипт сборки завершен.")
+    sys.exit(rc)

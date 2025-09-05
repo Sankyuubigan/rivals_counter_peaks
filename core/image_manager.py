@@ -4,19 +4,27 @@ import logging
 import cv2
 import numpy as np
 from PIL import Image, ImageFilter
-# ИСПРАВЛЕНО: Добавлен импорт Qt
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QColor
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
+# ИМПОРТ: Получаем список героев из единого источника
+from database.heroes_bd import heroes as ALL_HEROES
+
+# Размеры для единственного режима "middle"
+SIZES = {
+    'middle': {'right': (40, 40), 'left': (35, 35), 'small': (25, 25), 'horizontal': (45, 45)},
+    'min': {'right': (0, 0), 'left': (40, 40), 'small': (0, 0), 'horizontal': (40, 40)} # Оставим для трея
+}
+
 class ImageManager:
     """Унифицированный менеджер для работы с изображениями и иконками"""
     
     def __init__(self, project_root: str):
         self.project_root = project_root
         self.original_images: Dict[str, QPixmap] = {}
-        self.cached_images: Dict[str, Dict[str, Dict[str, QPixmap]]] = {}
+        self.cached_images: Dict[str, Dict[str, QPixmap]] = {}
         self.cv2_templates: Dict[str, List[np.ndarray]] = {}
         self._load_original_images()
         self._load_cv2_templates()
@@ -37,38 +45,26 @@ class ImageManager:
         logging.info("Loading original hero images...")
         heroes_icons_folder = self.resource_path("resources/heroes_icons")
         
-        # Маппинг специальных имен героев
-        hero_mapping = {
-  
-        }
-        
         for hero in self._get_all_heroes():
-            # Определяем имя файла
-            if hero in hero_mapping:
-                icon_filename = hero_mapping[hero]
-            else:
-                icon_filename = hero.lower().replace(' ', '_').replace('&', 'and') + '_1'
-            
+            icon_filename = hero.lower().replace(' ', '_').replace('&', 'and') + '_1'
             img_path = os.path.join(heroes_icons_folder, f"{icon_filename}.png")
             
             if os.path.exists(img_path):
                 pixmap = QPixmap(img_path)
                 if not pixmap.isNull():
                     self.original_images[hero] = pixmap
-                    # Сохраняем оба варианта имени для совместимости
-                    if hero != icon_filename.replace('_1', '').replace('_', ' ').title():
-                        self.original_images[icon_filename.replace('_1', '').replace('_', ' ').title()] = pixmap
                 else:
-                    logging.warning(f"Invalid pixmap for hero: {hero}")
+                    logging.warning(f"Invalid pixmap for hero: {hero} at path {img_path}")
             else:
-                logging.warning(f"Image not found for hero: {hero}")
+                logging.warning(f"Image not found for hero: {hero} at path {img_path}")
         
-        logging.info(f"Loaded {len(self.original_images)} original images")
+        logging.info(f"Loaded {len(self.original_images)} original images for {len(self._get_all_heroes())} heroes.")
     
     def _load_cv2_templates(self):
         """Загружает CV2 шаблоны для распознавания"""
         templates_dir = self.resource_path("resources/templates")
         if not os.path.isdir(templates_dir):
+            logging.warning(f"CV2 templates directory not found at {templates_dir}")
             return
             
         hero_templates = defaultdict(list)
@@ -76,162 +72,92 @@ class ImageManager:
         
         for filename in os.listdir(templates_dir):
             if filename.lower().endswith(valid_extensions):
-                base_name = os.path.splitext(filename)[0]
+                base_name, _ = os.path.splitext(filename) # Убираем расширение
+                # Предполагаем формат "имя_героя_индекс"
                 parts = base_name.split('_')
                 
-                if len(parts) >= 2:
-                    hero_name = " ".join(parts[:-1]).strip()
+                if len(parts) >= 2 and parts[-1].isdigit():
+                    hero_name_from_file = " ".join(parts[:-1]).strip().title() # Восстанавливаем имя
                     template_path = os.path.join(templates_dir, filename)
                     template_img = cv2.imread(template_path, cv2.IMREAD_UNCHANGED)
                     
                     if template_img is not None:
-                        # Конвертация в BGR если нужно
-                        if len(template_img.shape) == 3 and template_img.shape[2] == 4:
+                        if len(template_img.shape) == 3 and template_img.shape == 4:
                             template_img = cv2.cvtColor(template_img, cv2.COLOR_BGRA2BGR)
-                        hero_templates[hero_name].append(template_img)
+                        hero_templates[hero_name_from_file].append(template_img)
         
         self.cv2_templates = dict(hero_templates)
-        logging.info(f"Loaded CV2 templates for {len(self.cv2_templates)} heroes")
+        logging.info(f"Loaded CV2 templates for {len(self.cv2_templates)} heroes.")
     
     def _get_all_heroes(self) -> List[str]:
-        """Возвращает список всех героев согласно эталонной базе данных"""
-        # Синхронизировано с marvel_rivals_stats_20250831-030213.json
-        return [
-            "Peni Parker",
-            "Rocket Raccoon",
-            "Magik",
-            "Mantis",
-            "Storm",
-            "Hulk",
-            "Ultron",
-            "Captain America",
-            "Mister Fantastic",
-            "Iron Man",
-            "Thor",
-            "Loki",
-            "Black Panther",
-            "Iron Fist",
-            "Namor",
-            "The Thing",
-            "Emma Frost",
-            "Doctor Strange",
-            "Psylocke",
-            "Wolverine",
-            "Human Torch",
-            "Adam Warlock",
-            "Magneto",
-            "Hela",
-            "Cloak & Dagger",
-            "Venom",
-            "Luna Snow",
-            "Scarlet Witch",
-            "Groot",
-            "Spider Man",
-            "Squirrel Girl",
-            "Star Lord",
-            "Invisible Woman",
-            "Phoenix",
-            "Winter Soldier",
-            "Moon Knight",
-            "Jeff The Land Shark",
-            "Hawkeye",
-            "The Punisher",
-            "Black Widow",
-            "Blade"
-        ]
+        """Возвращает список всех героев из единого источника данных"""
+        return ALL_HEROES
     
-    def get_images_for_mode(self, mode: str = 'middle') -> Tuple[Dict[str, QPixmap], Dict[str, QPixmap], Dict[str, QPixmap], Dict[str, QPixmap]]:
-        """Возвращает изображения для указанного режима"""
+    def get_images(self, mode: str = 'middle') -> Tuple[Dict[str, QPixmap], Dict[str, QPixmap], Dict[str, QPixmap], Dict[str, QPixmap]]:
+        """Возвращает изображения для указанного режима, используя кэш"""
         if mode in self.cached_images:
             return (
-                self.cached_images[mode]['right'],
-                self.cached_images[mode]['left'],
-                self.cached_images[mode]['small'],
-                self.cached_images[mode]['horizontal']
+                self.cached_images[mode].get('right', {}),
+                self.cached_images[mode].get('left', {}),
+                self.cached_images[mode].get('small', {}),
+                self.cached_images[mode].get('horizontal', {})
             )
         
-        # Размеры для разных режимов
-        sizes = {
-            'max': {'right': (60, 60), 'left': (50, 50), 'small': (35, 35), 'horizontal': (55, 55)},
-            'middle': {'right': (40, 40), 'left': (35, 35), 'small': (25, 25), 'horizontal': (45, 45)},
-            'min': {'right': (0, 0), 'left': (40, 40), 'small': (0, 0), 'horizontal': (40, 40)}
-        }
+        mode_sizes = SIZES.get(mode, SIZES['middle'])
         
-        if mode not in sizes:
-            mode = 'middle'
-        
-        mode_sizes = sizes[mode]
-        right_images = {}
-        left_images = {}
-        small_images = {}
-        horizontal_images = {}
+        right_images, left_images, small_images, horizontal_images = {}, {}, {}, {}
         
         for hero, img in self.original_images.items():
-            if img.isNull():
-                continue
-                
-            # Масштабируем изображения для разных размеров
-            right_images[hero] = self._scale_image(img, mode_sizes['right'])
-            left_images[hero] = self._scale_image(img, mode_sizes['left'])
-            small_images[hero] = self._scale_image(img, mode_sizes['small'])
-            horizontal_images[hero] = self._scale_image(img, mode_sizes['horizontal'])
+            if not img.isNull():
+                right_images[hero] = self._scale_image(img, mode_sizes['right'])
+                left_images[hero] = self._scale_image(img, mode_sizes['left'])
+                small_images[hero] = self._scale_image(img, mode_sizes['small'])
+                horizontal_images[hero] = self._scale_image(img, mode_sizes['horizontal'])
         
-        # Кэшируем результаты
         self.cached_images[mode] = {
-            'right': right_images,
-            'left': left_images,
-            'small': small_images,
-            'horizontal': horizontal_images
+            'right': right_images, 'left': left_images, 
+            'small': small_images, 'horizontal': horizontal_images
         }
         
         return right_images, left_images, small_images, horizontal_images
     
+    def get_specific_images(self, mode: str, image_type: str) -> Dict[str, QPixmap]:
+        """
+        Возвращает словарь с изображениями определенного типа для указанного режима.
+        Например, все 'horizontal' изображения для режима 'min'.
+        """
+        # Сначала убеждаемся, что кэш для данного режима существует.
+        # Вызов get_images() заполнит кэш, если он пуст.
+        self.get_images(mode)
+        
+        # Теперь безопасно извлекаем данные из кэша.
+        mode_cache = self.cached_images.get(mode, {})
+        specific_images = mode_cache.get(image_type, {})
+        
+        if not specific_images and image_type in SIZES.get(mode, {}):
+             logging.warning(f"Could not find cached images for mode='{mode}', type='{image_type}'.")
+
+        return specific_images
+
     def _scale_image(self, pixmap: QPixmap, size: Tuple[int, int]) -> QPixmap:
         """Масштабирует изображение до указанного размера"""
-        if pixmap.isNull():
-            return self._get_default_pixmap(size)
-        
         w, h = size
         if w <= 0 or h <= 0:
             return self._get_default_pixmap((1, 1))
         
-        scaled = pixmap.scaled(QSize(w, h), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        return scaled if not scaled.isNull() else self._get_default_pixmap(size)
+        return pixmap.scaled(QSize(w, h), Qt.KeepAspectRatio, Qt.SmoothTransformation)
     
     def _get_default_pixmap(self, size: Tuple[int, int] = (1, 1)) -> QPixmap:
         """Возвращает изображение-заглушку"""
-        default = QPixmap(1, 1)
-        default.fill(QColor(128, 128, 128))
-        return default.scaled(QSize(*size), Qt.IgnoreAspectRatio, Qt.FastTransformation)
+        default = QPixmap(QSize(*size))
+        default.fill(QColor("lightgray"))
+        return default
     
     def get_cv2_templates(self) -> Dict[str, List[np.ndarray]]:
         """Возвращает CV2 шаблоны для распознавания"""
         return self.cv2_templates
     
-    def preprocess_image_for_dino(self, image_pil: Image.Image) -> Optional[Image.Image]:
-        """Предобрабатывает изображение для DINO модели"""
-        if image_pil is None:
-            return None
-        
-        try:
-            # Конвертируем в RGB если необходимо
-            if image_pil.mode not in ('RGB', 'L'):
-                if image_pil.mode == 'RGBA':
-                    background = Image.new("RGB", image_pil.size, (255, 255, 255))
-                    if 'A' in image_pil.getbands():
-                        background.paste(image_pil, mask=image_pil.split()[-1])
-                    image_pil = background
-                else:
-                    image_pil = image_pil.convert('RGB')
-            
-            # Применяем нерезкое маскирование
-            sharpened = image_pil.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
-            return sharpened
-        except Exception as e:
-            logging.error(f"Error preprocessing image: {e}")
-            return None
-    
     def clear_cache(self):
         """Очищает кэш изображений"""
         self.cached_images.clear()
-        logging.info("Image cache cleared")
+        logging.info("Image cache cleared.")

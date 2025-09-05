@@ -39,11 +39,17 @@ class EventBus(QObject):
     def emit(self, event_type: str, *args, **kwargs):
         """Эмитировать событие"""
         if event_type in self._subscribers:
+            self.logger.debug(f"Emitting event '{event_type}' with args: {args}, kwargs: {kwargs}")
             for callback in self._subscribers[event_type]:
                 try:
+                    # ИСПРАВЛЕНИЕ: Универсальный вызов callback(*args, **kwargs)
+                    # корректно обрабатывает как один, так и несколько аргументов.
+                    # Предыдущая логика с if/else ошибочно передавала кортеж (arg,)
+                    # вместо самого аргумента.
+                    self.logger.debug(f"Passing args to callback {callback.__name__}")
                     callback(*args, **kwargs)
                 except Exception as e:
-                    self.logger.error(f"Error in callback {callback.__name__} for event {event_type}: {e}")
+                    self.logger.error(f"Error in callback {callback.__name__} for event {event_type}: {e}", exc_info=True)
     
     def clear_subscribers(self):
         """Очистить всех подписчиков"""

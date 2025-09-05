@@ -15,17 +15,15 @@ DEFAULT_HOTKEYS = {
     "move_cursor_left": "tab+left",
     "move_cursor_right": "tab+right",
     "toggle_selection": "tab+num_0",
-    "toggle_mode": "tab+num_multiply",
     "recognize_heroes": "tab+num_divide",
     "clear_all": "tab+num_subtract",
     "copy_team": "tab+num_1",
     "debug_capture": "tab+num_3",
-    "decrease_opacity": "tab+num_4",
-    "increase_opacity": "tab+num_6",
 }
 DEFAULT_SAVE_SCREENSHOT = False
 DEFAULT_SCREENSHOT_PATH = ""
-DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 600}
+# ИЗМЕНЕНО: Высота по умолчанию для окна трея сделана более адекватной
+DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 80}
 
 class AppSettingsManager:
     """Расширенный менеджер настроек приложения"""

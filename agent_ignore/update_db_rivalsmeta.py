@@ -565,7 +565,7 @@ def get_matchups_data(hero_url_name, season="1", max_retries=3):
                                 opponentName = opponentName
                                     .replace(/\\s+/g, ' ')
                                     .trim()
-                                    .replace(/[^a-zA-Z\\s]/g, '')
+                                    .replace(/[^a-zA-Z\\s&]/g, '')  // <-- ИЗМЕНЕНО: добавлен & в разрешенные символы
                                     .replace(/\\s+/g, ' ')
                                     .trim();
                                 

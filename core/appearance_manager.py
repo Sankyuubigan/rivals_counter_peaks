@@ -178,7 +178,7 @@ class AppearanceManager:
         # Строки QSS остаются те же, что и в вашем предыдущем коде
         light_qss = """
             QMainWindow, QDialog { background-color: #f0f0f0; }
-            QWidget { color: black; } 
+            QWidget { color: black; }
             QTextBrowser { background-color: white; color: black; border: 1px solid #cccccc; }
             QLabel { color: black; }
             QPushButton { background-color: #e1e1e1; border: 1px solid #adadad; color: black; padding: 3px; border-radius: 3px; }
@@ -186,9 +186,9 @@ class AppearanceManager:
             QPushButton:pressed { background-color: #d1d1d1; }
             QListWidget { background-color: white; border: 1px solid #d3d3d3; color: black; }
             QListWidget::item { color: black; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center; }
-            QListWidget::item:selected { background-color: #3399ff; color: white; border: 1px solid #2d8ae5; }
+            QListWidget::item:selected { background-color: #FFD700; color: white; border: 4px solid #FF4500; box-shadow: 0 0 8px rgba(255, 215, 0, 0.6); }
             QListWidget::item:!selected:hover { background-color: #e0f7ff; border: 1px solid #cceeff; }
-            QListWidget QAbstractItemView { background-color: white; } 
+            QListWidget QAbstractItemView { background-color: white; }
             QMenu { background-color: #f8f8f8; border: 1px solid #cccccc; color: black; }
             QMenu::item:selected { background-color: #3399ff; color: white; }
             QScrollArea { border: none; background-color: transparent; }
@@ -206,8 +206,9 @@ class AppearanceManager:
             QFrame#top_frame { background-color: #e0e0e0; border-bottom: 1px solid #c0c0c0; }
             QFrame#left_panel_container_frame { background-color: #f7f7f7; } 
             QFrame#result_frame { background-color: transparent; } 
-            QFrame#right_frame { background-color: #f7f7f7 !important; } 
-            QWidget#right_list_widget { background-color: white !important; } 
+            QFrame#right_frame { background-color: #f7f7f7 !important; }
+            QWidget#right_list_widget { background-color: white !important; }
+            QWidget#right_list_widget QListWidget::item:selected { background-color: #FFD700 !important; color: white !important; border: 4px solid #FF4500 !important; box-shadow: 0 0 8px rgba(255, 215, 0, 0.6) !important; }
             QLabel#selected_heroes_label { color: #333333; margin: 2px; }
             QLabel#mode_label { margin-left:5px; color: black;} 
             QLabel#version_label { color: #555555; margin-left: 10px; margin-right: 5px; }
@@ -240,7 +241,7 @@ class AppearanceManager:
             QPushButton:pressed { background-color: #383838; }
             QListWidget { background-color: #252525 !important; border: 1px solid #454545; color: #d0d0d0; }
             QListWidget::item { color: #d0d0d0; border-radius: 4px; border: 1px solid transparent; background-color: transparent; text-align: center;}
-            QListWidget::item:selected { background-color: #0078d7; color: white; border: 1px solid #005394; }
+            QListWidget::item:selected { background-color: #FFD700; color: white; border: 4px solid #FF4500; box-shadow: 0 0 8px rgba(255, 215, 0, 0.6); }
             QListWidget::item:!selected:hover { background-color: #3a3a3a; border: 1px solid #4f4f4f; }
             QListWidget QAbstractItemView { 
                 background-color: #252525 !important; 
@@ -265,8 +266,9 @@ class AppearanceManager:
             QFrame#top_frame { background-color: #202020; border-bottom: 1px solid #353535; }
             QFrame#left_panel_container_frame { background-color: #2a2a2a; } 
             QFrame#result_frame { background-color: transparent; } 
-            QFrame#right_frame { background-color: #2a2a2a !important; } 
-            QWidget#right_list_widget { background-color: #252525 !important; } 
+            QFrame#right_frame { background-color: #2a2a2a !important; }
+            QWidget#right_list_widget { background-color: #252525 !important; }
+            QWidget#right_list_widget QListWidget::item:selected { background-color: #FFD700 !important; color: white !important; border: 4px solid #FF4500 !important; box-shadow: 0 0 8px rgba(255, 215, 0, 0.6) !important; }
             QLabel#selected_heroes_label { color: #b0b0b0; margin: 2px; }
             QLabel#mode_label { color: #c0c0c0; margin-left:5px; }
             QLabel#version_label { color: #888888; margin-left: 10px; margin-right: 5px; }

@@ -38,6 +38,9 @@ class RightPanel:
         self._setup_layout()
         self._connect_signals()
 
+        # Применяем золотое выделение для selected элементов QListWidget
+        self._apply_selected_stylesheet()
+
     def _setup_list_widget(self):
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)
         self.list_widget.setResizeMode(QListView.ResizeMode.Adjust) # Позволяет QListWidget управлять размером элементов
@@ -159,3 +162,16 @@ class RightPanel:
         self.selected_heroes_label.setText(self.logic.get_selected_heroes_text())
         self.copy_button.setText(translations.get_text('copy_rating', language=self.logic.DEFAULT_LANGUAGE))
         self.clear_button.setText(translations.get_text('clear_all', language=self.logic.DEFAULT_LANGUAGE))
+
+    def _apply_selected_stylesheet(self):
+        """Применяем золотую стилизацию для выделенных элементов QListWidget"""
+        stylesheet = """
+        QListWidget::item:selected {
+            background-color: #FFD700;
+            border: 4px solid #FF4500;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+            color: white;
+        }
+        """
+        self.list_widget.setStyleSheet(stylesheet)
+        logging.debug("[RightPanel] Applied gold selection stylesheet to QListWidget")

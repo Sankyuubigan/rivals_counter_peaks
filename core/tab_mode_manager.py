@@ -1,14 +1,16 @@
 # File: core/tab_mode_manager.py
 import logging
+import threading
 from typing import TYPE_CHECKING
+from PySide6.QtCore import QTimer
 from core.tray_window import TrayWindow
 
 if TYPE_CHECKING:
-    from main_window import MainWindow
+    from main_window_refactored import MainWindowRefactored
 
 class TrayModeManager:
     """Управляет отдельным tray окном для таб-режима."""
-    def __init__(self, main_window: 'MainWindow'):
+    def __init__(self, main_window: 'MainWindowRefactored'):
         self.mw = main_window
         self._tray_window: TrayWindow | None = None
         self._is_active = False
@@ -18,68 +20,65 @@ class TrayModeManager:
         return self._is_active
 
     def enable(self):
-        """Включает tray окно."""
-        logging.info("TrayModeManager: enable() called.")
-        logging.info(f"ROO DEBUG: tab_mode_manager enable - previous _is_active: {self._is_active}")
-
+        """
+        Планирует показ и обновление tray окна, чтобы избежать блокировки
+        из-за конфликта с библиотекой глобальных хоткеев.
+        """
+        logging.info("[TRAY_MANAGER] Запрос на включение режима трея.")
         if self._is_active:
-            logging.warning("TrayModeManager: enable() called, but already active.")
+            logging.warning("[TRAY_MANAGER] Режим трея уже активен, запрос проигнорирован.")
             return
 
-        # Создаем tray window один раз, если не существует
         if not self._tray_window:
-            logging.info("[TrayModeManager] Creating new TrayWindow")
+            logging.info("[TRAY_MANAGER] Создание нового экземпляра TrayWindow.")
             self._tray_window = TrayWindow(self.mw)
 
-            # Подключаем сигналы распознавания к прогресс бару
-            if hasattr(self.mw, 'rec_manager') and self.mw.rec_manager:
-                if hasattr(self.mw.rec_manager, 'recognition_started'):
-                    self.mw.rec_manager.recognition_started.connect(self._tray_window.start_recognition_progress)
-                if hasattr(self.mw.rec_manager, 'recognition_stopped'):
-                    self.mw.rec_manager.recognition_stopped.connect(self._tray_window.stop_recognition_progress)
-                logging.info("[TrayModeManager] Connected recognition signals to progress bar")
-
         self._is_active = True
-        logging.info("ROO DEBUG: tab_mode_manager enable - set _is_active = True")
+        
+        # ИСПРАВЛЕНИЕ ЗАДЕРЖКИ:
+        # Уменьшаем задержку таймера до 0. Это выполнит слот в следующем цикле
+        # обработки событий Qt, что по-прежнему безопасно, но для пользователя будет мгновенно.
+        logging.info("[TRAY_MANAGER] Планирование показа и обновления TrayWindow через QTimer (0ms) для избежания deadlock.")
+        QTimer.singleShot(0, self._show_and_update_tray)
 
-        # Показываем tray окно
+    def _show_and_update_tray(self):
+        """Безопасный слот для показа и обновления окна трея."""
+        logging.info("[TRAY_MANAGER_TIMER] QTimer сработал. Выполнение _show_and_update_tray в потоке: %s", threading.current_thread().name)
+        if not self._is_active:
+            logging.warning("[TRAY_MANAGER] Показ/обновление трея отменено, так как режим уже неактивен.")
+            return
+
+        logging.info("[TRAY_MANAGER] Шаг 1 (выполнение таймера): Вызов show_tray() для отображения окна.")
         if self._tray_window:
-            self._tray_window._skip_content_update = True
-            logging.info("ROO DEBUG: tray_window.show_tray() called")
             self._tray_window.show_tray()
-            self._tray_window._skip_content_update = False
-            logging.info("ROO DEBUG: tray_window.show_tray() called")
 
-        logging.info("[TrayModeManager] Tray mode enabled")
-
+        logging.info("[TRAY_MANAGER] Шаг 2 (выполнение таймера): Инициирование обновления UI.")
+        if hasattr(self.mw, 'ui_updater'):
+            self.mw.ui_updater.update_ui_after_logic_change(force_update=True)
+        
+        logging.info("[TRAY_MANAGER] TrayWindow показан и его содержимое обновлено.")
 
     def disable(self):
         """Скрывает tray окно."""
-        logging.info("TrayModeManager: disable() called.")
-        was_active = self._is_active  # Запоминаем предыдущее состояние
-
-        # Скрываем tray окно, если оно видимо
+        logging.info("[TRAY_MANAGER] Запрос на отключение режима трея.")
+        if not self._is_active:
+            logging.warning("[TRAY_MANAGER] Режим трея уже неактивен, запрос проигнорирован.")
+            return
+            
         if self._tray_window and self._tray_window.isVisible():
             self._tray_window.hide_tray()
 
-        self._is_active = False  # Обновляем флаг, независимо от предыдущего состояния
-
-        # Логируем в зависимости от предыдущего состояния
-        if not was_active:
-            logging.warning("TrayModeManager: disable() called, but not active.")
-        else:
-            logging.info("[TrayModeManager] Tray mode disabled")
+        self._is_active = False
+        logging.info("[TRAY_MANAGER] Режим трея отключен.")
 
     def show_tray(self):
-        """Показывает tray окно (используется для внешнего доступа)."""
-        logging.info("TrayModeManager: show_tray() called.")
-        if self._tray_window:
-            self._tray_window.show_tray()
-        else:
+        """Просто показывает tray окно (используется для внешнего доступа)."""
+        if not self._is_active:
             self.enable()
+        elif self._tray_window:
+            self._tray_window.show_tray()
 
     def close_tray(self):
-        """Закрывает tray окно."""
-        logging.info("TrayModeManager: close_tray() called.")
+        """Закрывает (скрывает) tray окно."""
         if self._is_active:
             self.disable()
