@@ -6,7 +6,6 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PySide6.QtCore import Qt, Signal, Slot
 from info.translations import get_text
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG, DEFAULT_HOTKEYS
-from core.ui_components.hotkey_capture_line_edit import HotkeyCaptureLineEdit
 from core.app_settings_manager import AppSettingsManager, DEFAULT_SAVE_SCREENSHOT, DEFAULT_SCREENSHOT_PATH
 
 class SettingsWindow(QWidget):
@@ -27,7 +26,6 @@ class SettingsWindow(QWidget):
     def _init_ui(self):
         self.main_layout = QVBoxLayout(self)
         
-        # --- Scroll Area для всего контента ---
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -35,23 +33,19 @@ class SettingsWindow(QWidget):
         scroll_content = QWidget()
         content_layout = QVBoxLayout(scroll_content)
         
-        # --- Секция "Общие" ---
         self._create_general_settings(content_layout)
         
-        # --- Разделитель ---
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         separator.setFrameShadow(QFrame.Shadow.Sunken)
         content_layout.addWidget(separator)
 
-        # --- Секция "Горячие клавиши" ---
         self._create_hotkeys_settings(content_layout)
         
         content_layout.addStretch(1)
         scroll_area.setWidget(scroll_content)
         self.main_layout.addWidget(scroll_area)
 
-        # --- Кнопки управления ---
         buttons_layout = QHBoxLayout()
         reset_button = QPushButton(get_text('hotkey_settings_reset_defaults'))
         reset_button.clicked.connect(self._reset_all_settings_to_defaults)
@@ -65,7 +59,6 @@ class SettingsWindow(QWidget):
         self.main_layout.addLayout(buttons_layout)
 
     def _create_general_settings(self, layout: QVBoxLayout):
-        """Создает виджеты для общих настроек и добавляет их в layout."""
         title_label = QLabel(f"<b>{get_text('sw_general_tab_title')}</b>")
         layout.addWidget(title_label)
         
@@ -84,7 +77,6 @@ class SettingsWindow(QWidget):
         layout.addLayout(path_layout)
 
     def _create_hotkeys_settings(self, layout: QVBoxLayout):
-        """Создает виджеты для настроек горячих клавиш и добавляет их в layout."""
         title_label = QLabel(f"<b>{get_text('sw_hotkeys_tab_title')}</b>")
         layout.addWidget(title_label)
         
@@ -101,11 +93,9 @@ class SettingsWindow(QWidget):
         self.path_line_edit.setText(self.temp_screenshot_path or get_text("sw_default_path_text"))
 
     def _populate_hotkey_list_ui(self):
-        # Очистка старых виджетов
         for i in reversed(range(self.hotkeys_grid_layout.count())): 
             widget = self.hotkeys_grid_layout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
+            if widget: widget.setParent(None)
         self.hotkey_action_widgets.clear()
 
         for row, (action_id, config) in enumerate(HOTKEY_ACTIONS_CONFIG.items()):
@@ -116,13 +106,12 @@ class SettingsWindow(QWidget):
             desc_label = QLabel(desc)
             hotkey_label = QLabel(f"<code>{display_hotkey}</code>")
             hotkey_label.setTextFormat(Qt.TextFormat.RichText)
-            change_button = QPushButton(get_text('hotkey_settings_change_btn'))
-            change_button.setProperty("action_id", action_id)
-            change_button.clicked.connect(self._on_change_hotkey_button_clicked)
-
+            
+            # ИЗМЕНЕНИЕ: Кнопка "Изменить" удалена, т.к. виджет для захвата удален.
+            # В будущем здесь можно будет реализовать новый механизм.
+            
             self.hotkeys_grid_layout.addWidget(desc_label, row, 0)
             self.hotkeys_grid_layout.addWidget(hotkey_label, row, 1)
-            self.hotkeys_grid_layout.addWidget(change_button, row, 2)
             
             self.hotkey_action_widgets[action_id] = {'hotkey_label': hotkey_label}
 
@@ -130,12 +119,6 @@ class SettingsWindow(QWidget):
         if not internal_str: return get_text('hotkey_not_set')
         return " + ".join(p.strip().capitalize() for p in internal_str.split('+'))
 
-    @Slot()
-    def _on_change_hotkey_button_clicked(self):
-        action_id = self.sender().property("action_id")
-        # Логика диалога захвата (остается похожей)
-        # ... (код диалога захвата)
-            
     @Slot()
     def _browse_save_directory(self):
         directory = QFileDialog.getExistingDirectory(self, get_text("sw_select_dir_dialog_title"))
@@ -154,7 +137,6 @@ class SettingsWindow(QWidget):
 
     @Slot()
     def _apply_settings(self):
-        # Сохранение
         self.app_settings_manager.set_hotkeys(self.temp_hotkeys)
         self.app_settings_manager.set_save_screenshot_flag(self.save_screenshots_checkbox.isChecked())
         self.app_settings_manager.set_screenshot_path(self.temp_screenshot_path)

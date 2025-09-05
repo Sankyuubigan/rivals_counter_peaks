@@ -4,12 +4,10 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QScrollArea, QFrame, QPushB
                                QHBoxLayout, QLabel, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-
 from core.logic import CounterpickLogic
 from core.image_manager import ImageManager
 from info.translations import get_text
 from images_load import is_invalid_pixmap
-
 class TierListTab(QWidget):
     """Вкладка для отображения тир-листа (меты) героев."""
     def __init__(self, logic: CounterpickLogic, image_manager: ImageManager, parent=None):
@@ -20,7 +18,6 @@ class TierListTab(QWidget):
         
         self._init_ui()
         self._populate_tier_list()
-
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
         
@@ -50,7 +47,6 @@ class TierListTab(QWidget):
         
         scroll_area.setWidget(self.result_frame)
         main_layout.addWidget(scroll_area)
-
     def _populate_tier_list(self):
         """Запрашивает данные и заполняет список героев."""
         # Очистка старого списка
@@ -66,8 +62,8 @@ class TierListTab(QWidget):
             self.result_layout.addWidget(QLabel(get_text("tier_list_no_data", default_text="Не удалось рассчитать тир-лист.")))
             return
             
-        # ИСПРАВЛЕНИЕ: Сортируем словарь по значениям (очкам) - item
-        sorted_heroes = sorted(scores.items(), key=lambda item: item, reverse=True)
+        # ИСПРАВЛЕНИЕ: Сортируем словарь по значениям (очкам) - item[1]
+        sorted_heroes = sorted(scores.items(), key=lambda item: item[1], reverse=True)
         
         left_images = self.image_manager.get_specific_images('middle', 'left')
         
@@ -84,12 +80,10 @@ class TierListTab(QWidget):
             hero_layout = QHBoxLayout(hero_frame)
             hero_layout.setContentsMargins(4, 1, 4, 1)
             hero_layout.setSpacing(5)
-
             pixmap = left_images.get(hero)
             if is_invalid_pixmap(pixmap):
                 logging.warning(f"[TierList] Invalid pixmap for hero: {hero}")
                 continue
-
             img_label = QLabel()
             img_label.setPixmap(pixmap)
             

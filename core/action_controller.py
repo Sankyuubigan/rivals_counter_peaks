@@ -1,7 +1,7 @@
 # File: core/action_controller.py
 import logging
 import time
-from PySide6.QtCore import Slot, QMetaObject, Qt, QPoint
+from PySide6.QtCore import Slot, Qt, QPoint
 from PySide6.QtWidgets import QAbstractItemView, QMessageBox, QApplication, QMenu
 from core import utils
 import cv2

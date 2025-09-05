@@ -6,22 +6,25 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QFrame, QLabel, QListWidget, QListWidgetItem,
     QListView, QPushButton, QVBoxLayout, QWidget
 )
-from database.heroes_bd import heroes
-from images_load import is_invalid_pixmap, SIZES # Добавляем SIZES
-from logic import TEAM_SIZE
+# ИСПРАВЛЕНО: Исправлен путь импорта
+from core.database.heroes_bd import heroes
+from core.images_load import is_invalid_pixmap, SIZES
+# ИСПРАВЛЕНО: Удален импорт logic, так как он используется через self.window.logic
+from core import images_load
 import logging
 
-HERO_NAME_ROLE = Qt.UserRole + 1
-TARGET_COLUMN_COUNT = 5 # Желаемое количество столбцов
+# ИСПРАВЛЕНО: Добавлена константа TEAM_SIZE
+TEAM_SIZE = 6
 
+HERO_NAME_ROLE = Qt.UserRole + 1
+TARGET_COLUMN_COUNT = 5
 class RightPanel:
     """Класс для создания и управления правой панелью."""
     def __init__(self, window: QWidget, initial_mode="middle"):
         self.window = window
         if not hasattr(window, 'logic'): raise AttributeError("Объект 'window' должен иметь атрибут 'logic'.")
         self.logic = window.logic
-        self.current_mode = initial_mode # Сохраняем текущий режим
-
+        self.current_mode = initial_mode
         self.frame = QFrame(window); self.frame.setObjectName("right_frame"); self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.list_widget = QListWidget(); self.list_widget.setObjectName("right_list_widget")
         
@@ -32,146 +35,70 @@ class RightPanel:
         self.copy_button = QPushButton(translations.get_text("copy_rating", language=self.logic.DEFAULT_LANGUAGE)); self.copy_button.setObjectName("copy_button")
         self.clear_button = QPushButton(translations.get_text("clear_all", language=self.logic.DEFAULT_LANGUAGE)); self.clear_button.setObjectName("clear_button")
         self.hero_items = {}
-
-        self._setup_list_widget() # Передаем режим
+        self._setup_list_widget()
         self._populate_list_widget()
         self._setup_layout()
         self._connect_signals()
-
-        # Применяем золотое выделение для selected элементов QListWidget
         self._apply_selected_stylesheet()
-
     def _setup_list_widget(self):
         self.list_widget.setViewMode(QListView.ViewMode.IconMode)
-        self.list_widget.setResizeMode(QListView.ResizeMode.Adjust) # Позволяет QListWidget управлять размером элементов
+        self.list_widget.setResizeMode(QListView.ResizeMode.Adjust)
         self.list_widget.setMovement(QListView.Movement.Static)
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        self.list_widget.setWordWrap(True) # Для текста под иконками, если он есть
-        self.list_widget.setUniformItemSizes(True) # Для производительности, если все иконки одного размера
-
-        # Получаем размеры иконок для текущего режима
+        self.list_widget.setWordWrap(True)
+        self.list_widget.setUniformItemSizes(True)
         icon_width, icon_height = SIZES.get(self.current_mode, {}).get('right', (40, 40))
         self.list_widget.setIconSize(QSize(icon_width, icon_height))
-
-        # Рассчитываем gridSize для достижения ~TARGET_COLUMN_COUNT столбцов
-        # Это примерный расчет. Реальное количество столбцов также будет зависеть от ширины панели.
-        # Мы устанавливаем item'ам фиксированный размер через gridSize, чтобы контролировать их ширину.
-        # Предполагаем небольшой отступ (spacing_guess) между иконками
-        spacing_guess = 4 if self.current_mode == "middle" else 10 # Примерные значения
-        # Ширина элемента = ширина иконки + небольшой запас для текста/отступов
-        item_width_for_calc = icon_width + 15 # Запас для текста под иконкой и внутренних отступов QListWidgetItem
-        # Высота элемента = высота иконки + запас для текста
-        item_height_for_calc = icon_height + (20 if self.current_mode == "max" else 10)
-
-        self.list_widget.setGridSize(QSize(item_width_for_calc, item_height_for_calc))
-        self.list_widget.setSpacing(spacing_guess)
+        item_width = icon_width + 15
+        item_height = icon_height + 10
+        self.list_widget.setGridSize(QSize(item_width, item_height))
+        self.list_widget.setSpacing(4)
         
-        # self.list_widget.setFlow(QListView.Flow.LeftToRight) # Элементы располагаются слева направо
-        # self.list_widget.setWrapping(True) # Включаем перенос строк
-
         self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        
-        viewport = self.list_widget.viewport()
-        if viewport:
-            logging.debug(f"[RightPanel] List widget configured for mode '{self.current_mode}'. IconSize: {icon_width}x{icon_height}, GridSize: {item_width_for_calc}x{item_height_for_calc}, Spacing: {spacing_guess}")
-        else:
-            logging.debug(f"[RightPanel] List widget configured for mode '{self.current_mode}'. Viewport is None.")
-
-
     def _populate_list_widget(self):
-        # ПОЛНАЯ ОЧИСТКА СПИСКА ПЕРЕД ЗАПОЛНЕНИЕМ ПО НОВОЙ
         self.hero_items.clear()
         self.list_widget.clear()
-        logging.info(f"[RightPanel] Cleared list widget and hero_items dictionary for mode {self.current_mode}")
-
+        logging.info(f"[RightPanel] Cleared list widget for mode {self.current_mode}")
         right_images = getattr(self.window, 'right_images', {})
         if not right_images:
-            logging.error(f"[RightPanel] ERROR: 'right_images' not found or empty in main window for mode {self.current_mode}. Cannot populate list!")
+            logging.error(f"[RightPanel] 'right_images' not found for mode {self.current_mode}.")
             return
-
-        # Получаем размеры иконок для текущего режима
-        icon_w, icon_h = SIZES.get(self.current_mode, {}).get('right', (40, 40))
-        logging.debug(f"[RightPanel] Populating list with icon size {icon_w}x{icon_h} for mode {self.current_mode}")
-
-        try:
-            heroes_processed = 0
-            heroes_with_valid_icons = 0
-
-            for hero in heroes:
-                item = QListWidgetItem()
-                # Текст под иконкой только для 'max' режима, как и было
-                item_text = hero if self.current_mode == "max" else ""
-                item.setText(item_text)
-                item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
-
-                icon_pixmap : QPixmap | None = right_images.get(hero)
-                if is_invalid_pixmap(icon_pixmap):
-                    logging.warning(f"[RightPanel] Invalid or missing icon for hero: '{hero}' in mode {self.current_mode}")
-                    # Не добавляем элементы без корректных иконок для предотвращения визуального мусора
-                    continue
-                else:
-                    item.setIcon(QIcon(icon_pixmap))
-                    heroes_with_valid_icons += 1
-
-                # Устанавливаем размер элемента, чтобы он был предсказуем для расчета столбцов
-                item.setSizeHint(QSize(icon_w + 10, icon_h + (20 if self.current_mode == "max" else 10) ))
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-                item.setData(HERO_NAME_ROLE, hero)
-                item.setToolTip(hero)
-
-                self.list_widget.addItem(item)
-                self.hero_items[hero] = item
-                heroes_processed += 1
-
-            logging.info(f"[RightPanel] List populated successfully: {len(heroes)} total heroes, {heroes_processed} processed, {heroes_with_valid_icons} with valid icons, {len(self.hero_items)} items in list for mode {self.current_mode}")
-
-            # ПРОПРКА НА ДУБЛИРОВАНИЕ: проверяем, не добавились ли дубликаты
-            if len(self.hero_items) != len(set(self.hero_items.keys())):
-                logging.error(f"[RightPanel] ERROR: Found duplicates in hero_items ({len(self.hero_items)} items vs {len(set(self.hero_items.keys()))} unique keys)")
-            elif len(self.hero_items) != heroes_processed:
-                logging.error(f"[RightPanel] ERROR: hero_items size mismatch ({len(self.hero_items)} items vs {heroes_processed} processed)")
-            else:
-                logging.info(f"[RightPanel] Integrity check passed: {len(self.hero_items)} items, no duplicates found")
-
-        except Exception as e:
-            logging.error(f"[RightPanel] ERROR: Exception occurred during list population: {e}", exc_info=True)
-
-        viewport = self.list_widget.viewport()
-        if viewport:
-            logging.debug(f"RightPanel: List widget viewport size: {viewport.size()}")
-        logging.debug(f"RightPanel: Grid size applied: {self.list_widget.gridSize()}, target columns: {TARGET_COLUMN_COUNT}")
-
+        for hero in heroes:
+            item = QListWidgetItem()
+            item.setTextAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
+            pixmap = right_images.get(hero)
+            if is_invalid_pixmap(pixmap):
+                logging.warning(f"[RightPanel] Invalid icon for hero: '{hero}'")
+                continue
+            
+            item.setIcon(QIcon(pixmap))
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            item.setData(HERO_NAME_ROLE, hero)
+            item.setToolTip(hero)
+            self.list_widget.addItem(item)
+            self.hero_items[hero] = item
+        logging.info(f"[RightPanel] List populated with {len(self.hero_items)} items.")
     def _setup_layout(self):
         self.layout = QVBoxLayout(self.frame); self.layout.setObjectName("right_panel_layout")
         self.layout.setContentsMargins(5, 5, 5, 5); self.layout.setSpacing(5)
         self.layout.addWidget(self.list_widget, stretch=1); self.layout.addWidget(self.selected_heroes_label)
         self.layout.addWidget(self.copy_button); self.layout.addWidget(self.clear_button)
-
     def _connect_signals(self):
-        if hasattr(self.window, 'action_controller') and self.window.action_controller:
-            if hasattr(self.window.action_controller, 'handle_copy_team'):
-                 self.copy_button.clicked.connect(self.window.action_controller.handle_copy_team)
-            if hasattr(self.window.action_controller, 'handle_clear_all'):
-                 self.clear_button.clicked.connect(self.window.action_controller.handle_clear_all)
-        else:
-            logging.error("[RightPanel] ActionController not found in parent window for connecting button signals.")
-
-
+        if hasattr(self.window, 'action_controller'):
+            self.copy_button.clicked.connect(self.window.action_controller.handle_copy_team)
+            self.clear_button.clicked.connect(self.window.action_controller.handle_clear_all)
     def update_language(self):
         self.selected_heroes_label.setText(self.logic.get_selected_heroes_text())
         self.copy_button.setText(translations.get_text('copy_rating', language=self.logic.DEFAULT_LANGUAGE))
         self.clear_button.setText(translations.get_text('clear_all', language=self.logic.DEFAULT_LANGUAGE))
-
     def _apply_selected_stylesheet(self):
-        """Применяем золотую стилизацию для выделенных элементов QListWidget"""
+        # ИСПРАВЛЕНИЕ: Удалено неподдерживаемое свойство `box-shadow`.
         stylesheet = """
         QListWidget::item:selected {
             background-color: #FFD700;
             border: 4px solid #FF4500;
-            box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
             color: white;
         }
         """
         self.list_widget.setStyleSheet(stylesheet)
-        logging.debug("[RightPanel] Applied gold selection stylesheet to QListWidget")

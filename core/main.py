@@ -7,7 +7,7 @@ import os
 
 import logging 
 import datetime
-import time 
+import time                                                                             
 logging.basicConfig(level=logging.INFO, # ИЗМЕНЕНО: Устанавливаем уровень INFO по умолчанию
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
                     datefmt='%H:%M:%S')
