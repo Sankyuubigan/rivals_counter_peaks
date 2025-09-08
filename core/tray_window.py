@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import TYPE_CHECKING, Dict, List, Tuple
 from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QProgressBar, 
                                QScrollArea, QFrame)
@@ -24,8 +25,8 @@ class TrayWindow(QMainWindow):
         self._restored_geometry = False
         self.enemy_widgets: Dict[str, IconWithRatingWidget] = {}
         self.counter_widgets: Dict[str, IconWithRatingWidget] = {}
-        self._last_enemy_count = 0
-        self._last_counter_count = 0
+        self._last_enemy_list: List[str] = []
+        self._last_counter_list: List[str] = []
         self._pending_update = False
         self._update_timer = QTimer(self)
         self._update_timer.setSingleShot(True)
@@ -37,20 +38,17 @@ class TrayWindow(QMainWindow):
 
     def _setup_window_properties(self):
         self.setWindowTitle("Rivals Counter Peaks - TAB Mode")
-        # Уменьшаем высоту окна и делаем его более компактным
         self.setMinimumSize(400, 100)
         self.setMaximumHeight(120)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.FramelessWindowHint)
-        # Устанавливаем атрибуты для быстрого отображения
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_NoSystemBackground, True)
-        # Отключаем тени для ускорения отрисовки
+        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WA_DontCreateNativeAncestors, True)
 
     def _create_ui(self):
         central_widget = QWidget(self)
         central_widget.setObjectName("central_widget")
-        # Устанавливаем фон для центрального виджета
         central_widget.setStyleSheet("""
             #central_widget {
                 background-color: rgba(40, 40, 40, 200);
@@ -61,59 +59,38 @@ class TrayWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(0)  # УБИРАЕМ ОТСТУПЫ МЕЖДУ СЛОЯМИ
+        layout.setSpacing(0)
         
-        # Верхний слой для врагов - теперь с выравниванием вправо
-        self.enemies_layout = QHBoxLayout()
-        self.enemies_layout.setContentsMargins(0,0,0,0)
-        self.enemies_layout.setSpacing(2)  # Уменьшаем отступы между иконками
-        self.enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight)  # Выравниваем врагов вправо
-        # Устанавливаем фиксированную высоту для слоя врагов, чтобы он не занимал место когда пуст
         self.enemies_container = QWidget()
-        self.enemies_container.setLayout(self.enemies_layout)
-        self.enemies_container.setFixedHeight(30)
-        self.enemies_container.setStyleSheet("background: transparent;")
+        self.enemies_layout = QHBoxLayout(self.enemies_container)
+        self.enemies_layout.setContentsMargins(0,0,0,0)
+        self.enemies_layout.setSpacing(2)
+        self.enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.enemies_container.setFixedHeight(35)
         
-        # Нижний слой для контрпиков с прокруткой
         self.counters_scroll_area = QScrollArea()
         self.counters_scroll_area.setWidgetResizable(True)
         self.counters_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        # Убираем полосу прокрутки
         self.counters_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.counters_scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        # Устанавливаем такой же фон как у центрального виджета
-        self.counters_scroll_area.setStyleSheet("""
-            QScrollArea {
-                background-color: rgba(40, 40, 40, 200);
-                border: none;
-            }
-        """)
-        # Уменьшаем высоту области контрпиков
+        self.counters_scroll_area.setStyleSheet("background: transparent; border: none;")
         self.counters_scroll_area.setFixedHeight(50) 
+        
         scroll_content_widget = QWidget()
-        scroll_content_widget.setObjectName("scroll_content")
-        # Устанавливаем фон для области прокрутки
-        scroll_content_widget.setStyleSheet("""
-            #scroll_content {
-                background-color: rgba(40, 40, 40, 200);
-                border: none;
-            }
-        """)
         self.counters_layout = QHBoxLayout(scroll_content_widget)
         self.counters_layout.setContentsMargins(0,0,0,0)
-        self.counters_layout.setSpacing(2)  # Уменьшаем отступы между иконками
+        self.counters_layout.setSpacing(2)
         self.counters_scroll_area.setWidget(scroll_content_widget)
         
-        # Добавляем слои в основной layout
         layout.addWidget(self.enemies_container)
         layout.addWidget(self.counters_scroll_area)
         
-        # Возвращаем прогрессбар
         self.recognition_progress_bar = QProgressBar()
         self.recognition_progress_bar.setFixedHeight(5)
         self.recognition_progress_bar.setRange(0, 0)
         self.recognition_progress_bar.setTextVisible(False)
         self.recognition_progress_bar.setVisible(False)
+        self.recognition_progress_bar.setStyleSheet("QProgressBar { border-radius: 2px; } QProgressBar::chunk { background-color: #0078d7; border-radius: 2px; }")
         layout.addWidget(self.recognition_progress_bar)
 
     def _connect_signals(self):
@@ -121,149 +98,99 @@ class TrayWindow(QMainWindow):
         if hasattr(self.main_window, 'recognition_manager'):
             self.main_window.recognition_manager.recognition_started.connect(self.start_recognition_progress)
             self.main_window.recognition_manager.recognition_stopped.connect(self.stop_recognition_progress)
-            logging.info("[TrayWindow] Connected to recognition_manager signals")
         else:
             logging.error("[TrayWindow] recognition_manager not found in main_window!")
 
     def _schedule_update(self, data: dict):
-        """Планирует отложенное обновление контента для предотвращения лагов."""
-        if not self._initialized:
-            logging.warning("[TrayWindow] _schedule_update called before window is initialized/shown. Skipping.")
-            return
-        if not isinstance(data, dict):
-            logging.error(f"[TrayWindow] Invalid payload received for content update (not a dict): {data}")
-            return
+        if not self._initialized: return
+        if not isinstance(data, dict): return
             
-        # Сохраняем данные для отложенного обновления
         self._pending_data = data
         self._pending_update = True
-        
-        # Запускаем таймер для отложенного обновления (50мс задержка для большей отзывчивости)
         self._update_timer.start(50)
 
     def _process_pending_update(self):
-        """Обрабатывает отложенное обновление контента."""
-        if not self._pending_update or not hasattr(self, '_pending_data'):
-            return
+        if not self._pending_update or not hasattr(self, '_pending_data'): return
             
         self._pending_update = False
         data = self._pending_data
+        start_time = data.get("start_time")
         
-        selected_heroes = data.get("selected_heroes", [])
+        if start_time:
+            delta = time.time() - start_time
+            logging.info(f"[TIME-LOG] {delta:.3f}s: TrayWindow received logic_updated event.")
+
+        selected_heroes = sorted(data.get("selected_heroes", []))
         counter_scores = data.get("counter_scores", {})
         effective_team = data.get("effective_team", [])
         
-        # Проверяем, нужно ли вообще обновлять врагов
-        if len(selected_heroes) != self._last_enemy_count:
-            self._update_heroes_layout(selected_heroes)
-            self._last_enemy_count = len(selected_heroes)
-        
-        # Проверяем, нужно ли обновлять контрпики
-        heroes_to_display = [h for h, s in counter_scores.items() if s >= 1.0 or h in effective_team]
-        if len(heroes_to_display) != self._last_counter_count:
-            self._update_counters_layout(heroes_to_display)
-            self._last_counter_count = len(heroes_to_display)
-        
-        # Управляем видимостью контейнеров в зависимости от наличия данных
-        if not selected_heroes:
-            self.enemies_container.hide()
-        else:
-            self.enemies_container.show()
-            
-        if not heroes_to_display:
-            self.counters_scroll_area.hide()
-        else:
-            self.counters_scroll_area.show()
+        sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
+        heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
 
-    def _update_heroes_layout(self, selected_heroes: List[str]):
-        """Оптимизированное обновление слоя врагов."""
-        horizontal_images = self.image_manager.get_specific_images('min', 'horizontal')
-        
-        # Очищаем только если количество виджетов не совпадает
-        if self.enemies_layout.count() != len(selected_heroes) + 1:  # +1 для stretch
-            self._clear_layout(self.enemies_layout)
-            # Добавляем stretch слева, чтобы враги были справа
-            self.enemies_layout.addStretch(1)
-            
-            # Добавляем врагов в правильном порядке (слева направо)
-            for hero_name in selected_heroes:
-                pixmap = horizontal_images.get(hero_name)
-                if is_invalid_pixmap(pixmap):
-                    logging.warning(f"Skipping enemy hero '{hero_name}' due to missing pixmap.")
-                    continue
-                    
-                if hero_name not in self.enemy_widgets:
-                    widget = IconWithRatingWidget(pixmap, 0, False, True, hero_name, parent=self)
-                    widget.setFixedSize(pixmap.size().width() + 6, pixmap.size().height() + 6)  # Уменьшаем отступы
-                    self.enemy_widgets[hero_name] = widget
-                
-                widget = self.enemy_widgets[hero_name]
-                widget.setVisible(True)
-                # Просто добавляем виджет в layout, выравнивание справа уже установлено
-                self.enemies_layout.addWidget(widget)
+        if selected_heroes != self._last_enemy_list:
+            self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
+            self._last_enemy_list = selected_heroes
 
-    def _update_counters_layout(self, heroes_to_display: List[str]):
-        """Оптимизированное обновление слоя контрпиков."""
-        horizontal_images = self.image_manager.get_specific_images('min', 'horizontal')
-        
-        # Очищаем только если количество виджетов не совпадает
-        if self.counters_layout.count() != len(heroes_to_display) + 1:  # +1 для stretch
-            self._clear_layout(self.counters_layout)
+        if heroes_to_display != self._last_counter_list:
+            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=counter_scores, effective=effective_team)
+            self._last_counter_list = heroes_to_display
             
-            # Добавляем контрпики в порядке убывания рейтинга
-            for hero_name in heroes_to_display:
-                pixmap = horizontal_images.get(hero_name)
-                if is_invalid_pixmap(pixmap):
-                    logging.warning(f"Skipping counter hero '{hero_name}' due to missing pixmap.")
-                    continue
-                    
-                if hero_name not in self.counter_widgets:
-                    widget = IconWithRatingWidget(pixmap, 0, False, False, hero_name, parent=self)
-                    widget.setFixedSize(pixmap.size().width() + 6, pixmap.size().height() + 6)  # Уменьшаем отступы
-                    self.counter_widgets[hero_name] = widget
-                
-                widget = self.counter_widgets[hero_name]
-                widget.setVisible(True)
-                self.counters_layout.addWidget(widget)
-            
-            self.counters_layout.addStretch(1)
+        self.enemies_container.setVisible(bool(selected_heroes))
+        self.counters_scroll_area.setVisible(bool(heroes_to_display))
 
-    def _clear_layout(self, layout: QHBoxLayout):
-        """Оптимизированная очистка слоя без удаления виджетов."""
+        if start_time:
+            delta_end = time.time() - start_time
+            logging.info(f"[TIME-LOG] {delta_end:.3f}s: TOTAL time from hotkey to tray UI update complete.")
+
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool, scores: Dict = None, effective: List = None):
+        for widget in widget_cache.values():
+            widget.setVisible(False)
+        
         while layout.count():
             item = layout.takeAt(0)
-            if item and item.widget():
-                widget = item.widget()
-                widget.setVisible(False)  # Просто скрываем вместо удаления
+            if item.widget(): item.widget().setParent(None)
+
+        if is_enemy: layout.addStretch(1)
+        
+        images = self.image_manager.get_specific_images('min', 'horizontal')
+        
+        for hero_name in hero_list:
+            widget = widget_cache.get(hero_name)
+            if not widget:
+                pixmap = images.get(hero_name)
+                if is_invalid_pixmap(pixmap): continue
+                
+                rating = scores.get(hero_name, 0) if scores else 0
+                is_effective = hero_name in (effective or [])
+                tooltip = f"{hero_name}: {rating:.1f}" if not is_enemy else hero_name
+                widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
+                widget.setFixedSize(pixmap.size().width() + 4, pixmap.size().height() + 4)
+                widget_cache[hero_name] = widget
+            
+            widget.setVisible(True)
+            layout.addWidget(widget)
+            
+        if not is_enemy: layout.addStretch(1)
 
     def show_tray(self):
-        """Оптимизированный показ окна с минимальными операциями."""
         if not self._restored_geometry:
             self._restore_geometry()
             self._restored_geometry = True
             
         if not self.isVisible():
-            # Устанавливаем флаги для быстрого отображения
-            self.setAttribute(Qt.WA_ShowWithoutActivating, True)
-            # Отключаем анимации для ускорения
-            self.setAttribute(Qt.WA_Disabled, True)
             self.show()
-            # Включаем обратно после отображения
-            self.setAttribute(Qt.WA_Disabled, False)
-            # Активируем окно после отображения
             self.raise_()
             self.activateWindow()
             
         self._initialized = True
 
     def hide_tray(self):
-        """Оптимизированное скрытие окна."""
         if self.isVisible():
+            self._save_geometry()
             self.hide()
 
     def _save_geometry(self):
-        if not self.isVisible() or not self._initialized:
-            return
+        if not self.isVisible() or not self._initialized: return
         geo = self.geometry()
         settings_data = {"x": geo.x(), "y": geo.y(), "width": geo.width(), "height": geo.height()}
         self.main_window.settings_manager.set_tab_window_geometry(settings_data)
@@ -271,32 +198,24 @@ class TrayWindow(QMainWindow):
     def _restore_geometry(self):
         settings_data = self.main_window.settings_manager.get_tab_window_geometry()
         if all(k in settings_data for k in ["x", "y", "width", "height"]):
-            # Ограничиваем высоту восстанавливаемого окна
             height = min(settings_data["height"], 120)
             self.setGeometry(QRect(settings_data["x"], settings_data["y"], settings_data["width"], height))
-            logging.info(f"Tray geometry restored: {settings_data}")
 
     def moveEvent(self, event: QMoveEvent):
-        # Отложенное сохранение геометрии для предотвращения лагов
-        QTimer.singleShot(100, self._save_geometry)
+        QTimer.singleShot(250, self._save_geometry)
         super().moveEvent(event)
 
     def resizeEvent(self, event: QResizeEvent):
-        # Отложенное сохранение геометрии для предотвращения лагов
-        QTimer.singleShot(100, self._save_geometry)
+        QTimer.singleShot(250, self._save_geometry)
         super().resizeEvent(event)
 
     @Slot()
     def start_recognition_progress(self):
-        """Показывает прогрессбар во время распознавания."""
-        if self.recognition_progress_bar:
-            self.recognition_progress_bar.setVisible(True)
+        if self.recognition_progress_bar: self.recognition_progress_bar.setVisible(True)
 
     @Slot()
     def stop_recognition_progress(self):
-        """Скрывает прогрессбар после завершения распознавания."""
-        if self.recognition_progress_bar:
-            self.recognition_progress_bar.setVisible(False)
+        if self.recognition_progress_bar: self.recognition_progress_bar.setVisible(False)
 
     def closeEvent(self, event):
         self.hide_tray()

@@ -5,7 +5,6 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, Optional
 from core.app_settings_keys import *
-
 # Значения по умолчанию
 DEFAULT_THEME = "light"
 DEFAULT_LANGUAGE = "ru_RU"
@@ -22,9 +21,10 @@ DEFAULT_HOTKEYS = {
 }
 DEFAULT_SAVE_SCREENSHOT = False
 DEFAULT_SCREENSHOT_PATH = ""
+# Новое значение по умолчанию для минимального количества распознанных героев
+DEFAULT_MIN_RECOGNIZED_HEROES = 0
 # ИЗМЕНЕНО: Высота по умолчанию для окна трея сделана более адекватной
 DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 80}
-
 class AppSettingsManager:
     """Расширенный менеджер настроек приложения"""
     
@@ -66,6 +66,7 @@ class AppSettingsManager:
             HOTKEYS_KEY: DEFAULT_HOTKEYS,
             SAVE_SCREENSHOT_LESS_THAN_6_KEY: DEFAULT_SAVE_SCREENSHOT,
             SCREENSHOT_SAVE_PATH_KEY: DEFAULT_SCREENSHOT_PATH,
+            MIN_RECOGNIZED_HEROES_KEY: DEFAULT_MIN_RECOGNIZED_HEROES,
             TAB_WINDOW_GEOMETRY_KEY: DEFAULT_TAB_GEOMETRY
         }
         
@@ -148,15 +149,20 @@ class AppSettingsManager:
     def set_screenshot_path(self, path: str, save: bool = True):
         self.set_setting(SCREENSHOT_SAVE_PATH_KEY, path, save)
     
+    # Новый метод для получения минимального количества распознанных героев
+    def get_min_recognized_heroes(self) -> int:
+        return self.get_setting(MIN_RECOGNIZED_HEROES_KEY, DEFAULT_MIN_RECOGNIZED_HEROES)
+    
+    # Новый метод для установки минимального количества распознанных героев
+    def set_min_recognized_heroes(self, min_heroes: int, save: bool = True):
+        self.set_setting(MIN_RECOGNIZED_HEROES_KEY, min_heroes, save)
+    
     def get_tab_geometry(self) -> Dict[str, int]:
         return self.get_setting(TAB_WINDOW_GEOMETRY_KEY, DEFAULT_TAB_GEOMETRY).copy()
-
     def set_tab_geometry(self, geometry: Dict[str, int], save: bool = True):
         self.set_setting(TAB_WINDOW_GEOMETRY_KEY, geometry.copy(), save)
-
     # Алиасы для поддержки существующего кода
     def get_tab_window_geometry(self) -> Dict[str, int]:
         return self.get_tab_geometry()
-
     def set_tab_window_geometry(self, geometry: Dict[str, int], save: bool = True):
         self.set_tab_geometry(geometry, save)

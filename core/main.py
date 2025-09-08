@@ -4,19 +4,15 @@ import os
 # --- ОТЛАДОЧНЫЙ БЛОК: ПРОВЕРКА ПУТЕЙ ---
 # ... (блок оставлен без изменений) ...
 # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
-
 import logging 
 import datetime
 import time                                                                             
 logging.basicConfig(level=logging.INFO, # ИЗМЕНЕНО: Устанавливаем уровень INFO по умолчанию
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
                     datefmt='%H:%M:%S')
-
 # ИСПРАВЛЕНИЕ: Отключаем избыточное логирование от numba
 logging.getLogger('numba').setLevel(logging.WARNING)
-
 logging.info("[Main] Начало работы main.py (после отладочного блока)")
-
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path: sys.path.insert(0, project_root)
 core_dir = os.path.dirname(__file__)
@@ -34,13 +30,11 @@ import images_load
 import utils
 from config import USE_REFACTORED_ARCHITECTURE
 from core.log_handler import QLogHandler
-
 if USE_REFACTORED_ARCHITECTURE:
     from main_window_refactored import MainWindowRefactored as MainWindow
 else:
     # Fallback to old window if needed, though it's now deleted
     from main_window_refactored import MainWindowRefactored as MainWindow
-
 
 if __name__ == "__main__":
     logging.info("[LOG] core/main.py: __main__ block started")
@@ -54,7 +48,6 @@ if __name__ == "__main__":
         app_created_now = False 
     app.setQuitOnLastWindowClosed(False) 
     logging.info(f"QApplication.quitOnLastWindowClosed set to {app.quitOnLastWindowClosed()}")
-
     # ИСПРАВЛЕНИЕ БАГА С ЛОГАМИ: Создаем и настраиваем GUI логгер здесь
     log_handler = QLogHandler()
     log_format = '%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s'
@@ -63,7 +56,6 @@ if __name__ == "__main__":
     log_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(log_handler)
     logging.info("GUI Log Handler initialized and added to root logger.")
-
     logging.info("[LOG] Запуск валидации героев...")
     validation_errors = utils.validate_heroes()
     if validation_errors:
@@ -79,48 +71,81 @@ if __name__ == "__main__":
     if not is_admin: logging.warning("Приложение запущено без прав администратора. Глобальные горячие клавиши могут не работать.")
     else: logging.info("Приложение запущено с правами администратора.")
     logging.info(f"Используется стиль по умолчанию: {app.style().objectName()}")
-
-    logging.info("Предварительная загрузка ресурсов...")
+    
+    # Оптимизация запуска: асинхронная загрузка ресурсов
+    logging.info("Предварительная асинхронная загрузка ресурсов...")
     try:
-        images_load.load_original_images()
-        logging.info("Загрузка ресурсов завершена.")
+        # Запускаем загрузку изображений в отдельном потоке
+        from PySide6.QtCore import QThread, QTimer, Signal, QObject
+        
+        class ResourceLoader(QObject):
+            loaded = Signal()
+            def __init__(self):
+                super().__init__()
+            
+            def load_resources(self):
+                images_load.load_original_images()
+                self.loaded.emit()
+        
+        resource_loader = ResourceLoader()
+        resource_thread = QThread()
+        resource_loader.moveToThread(resource_thread)
+        resource_thread.started.connect(resource_loader.load_resources)
+        
+        # Продолжаем создание интерфейса, не дожидаясь загрузки ресурсов
+        logging.info("Создание экземпляра CounterpickLogic...")
+        try:
+            logic_instance = logic.CounterpickLogic(app_version=app_version_display)
+            logging.info(f"Logic instance created. App version from logic: {logic_instance.APP_VERSION}")
+        except Exception as e:
+            logging.error(f"Не удалось создать экземпляр CounterpickLogic: {e}", exc_info=True)
+            QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
+            if app_created_now: app.quit() 
+            sys.exit(1)
+        
+        logging.info("Создание MainWindow...")
+        window = None 
+        try:
+            # ИСПРАВЛЕНИЕ БАГА С ЛОГАМИ: Передаем созданный handler в конструктор окна
+            window = MainWindow(logic_instance, log_handler, app_version=app_version_display)
+            logging.info("MainWindow instance created. Calling show()...")
+            window.show()
+            logging.info("MainWindow.show() called.")
+            if window.isVisible():
+                logging.info("Окно стало видимым после вызова show().")
+                win_id = window.winId() 
+                logging.info(f"Window ID: {win_id}")
+                if win_id == 0 :                                                                        
+                    logging.error("Window ID is 0, окно не было создано корректно на уровне ОС!")
+            else:
+                logging.error("Окно НЕ стало видимым после вызова show()!")
+        except Exception as e:
+            logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
+            if app_created_now: app.quit()
+            sys.exit(1)
+        
+        if window is None:
+            logging.critical("Экземпляр MainWindow не был создан. Выход.")
+            sys.exit(1)
+            
+        # Запускаем поток загрузки ресурсов после создания окна
+        resource_thread.start()
+        
+        # Подключаем сигнал завершения загрузки
+        def on_resources_loaded():
+            logging.info("Асинхронная загрузка ресурсов завершена.")
+            # Исправление проблемы с ожиданием самого себя
+            if QThread.currentThread() != resource_thread:
+                resource_thread.quit()
+                resource_thread.wait()
+        
+        resource_loader.loaded.connect(on_resources_loaded)
+        
     except Exception as e:
-        logging.critical(f"Критическая ошибка при загрузке ресурсов: {e}", exc_info=True)
+        logging.critical(f"Критическая ошибка при асинхронной загрузке ресурсов: {e}", exc_info=True)
         if app_created_now: app.quit() 
         sys.exit(1)
-    logging.info("Создание экземпляра CounterpickLogic...")
-    try:
-        logic_instance = logic.CounterpickLogic(app_version=app_version_display)
-        logging.info(f"Logic instance created. App version from logic: {logic_instance.APP_VERSION}")
-    except Exception as e:
-        logging.error(f"Не удалось создать экземпляр CounterpickLogic: {e}", exc_info=True)
-        QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
-        if app_created_now: app.quit()
-        sys.exit(1)
-    logging.info("Создание MainWindow...")
-    window = None 
-    try:
-        # ИСПРАВЛЕНИЕ БАГА С ЛОГАМИ: Передаем созданный handler в конструктор окна
-        window = MainWindow(logic_instance, log_handler, app_version=app_version_display)
-        logging.info("MainWindow instance created. Calling show()...")
-        window.show()
-        logging.info("MainWindow.show() called.")
-        if window.isVisible():
-            logging.info("Окно стало видимым после вызова show().")
-            win_id = window.winId() 
-            logging.info(f"Window ID: {win_id}")
-            if win_id == 0 :                                                                        
-                logging.error("Window ID is 0, окно не было создано корректно на уровне ОС!")
-        else:
-            logging.error("Окно НЕ стало видимым после вызова show()!")
-    except Exception as e:
-        logging.error(f"Не удалось создать или показать MainWindow: {e}", exc_info=True)
-        if app_created_now: app.quit()
-        sys.exit(1)
     
-    if window is None:
-        logging.critical("Экземпляр MainWindow не был создан. Выход.")
-        sys.exit(1)
     logging.info("Запуск главного цикла приложения (app.exec())...")
     exit_code = 0
     try:

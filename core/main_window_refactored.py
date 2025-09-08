@@ -4,6 +4,7 @@
 import logging
 import sys
 import os
+import time
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTextBrowser, QStatusBar, QApplication)
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QCloseEvent
@@ -84,7 +85,13 @@ class MainWindowRefactored(QMainWindow):
         self._init_ui()
         self._connect_signals()
         self._load_initial_state()
+        
+        # Запускаем асинхронную загрузку моделей
+        self.recognition_manager.start_async_model_load()
+        self.status_bar.showMessage(get_text("status_loading_models", default_text="Загрузка моделей..."))
+        
         logging.info("MainWindowRefactored initialized successfully.")
+        
     def _init_ui(self):
         self.setWindowTitle(f"Rivals Counter Peaks v{self.app_version}")
         self.resize(1100, 800)
@@ -97,7 +104,6 @@ class MainWindowRefactored(QMainWindow):
         self.main_layout.setSpacing(5)
         self.tab_widget = QTabWidget()
         self.main_layout.addWidget(self.tab_widget)
-        # ИСПРАВЛЕНИЕ: Добавлен `default_text` для всех `get_text` при создании вкладок
         self._create_counter_pick_tab()
         self.tier_list_tab = TierListTab(self.logic, self.image_manager, self)
         self.tab_widget.addTab(self.tier_list_tab, get_text("tier_list_tab_title", default_text="Тир-лист"))
@@ -116,7 +122,7 @@ class MainWindowRefactored(QMainWindow):
         self.tab_widget.addTab(self.author_tab, get_text("author_info_title", default_text="Об авторе"))
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(f"v{self.app_version}")
+        
     def _create_counter_pick_tab(self):
         """Создает содержимое для основной вкладки 'Контрпики'."""
         self.counter_pick_tab = QWidget()
@@ -124,26 +130,35 @@ class MainWindowRefactored(QMainWindow):
         self.counter_pick_layout.setContentsMargins(0, 0, 0, 0)
         self.counter_pick_layout.setSpacing(0)
         self.tab_widget.addTab(self.counter_pick_tab, get_text("counter_picks_tab_title", default_text="Контрпики"))
+        
     def _connect_signals(self):
         self.hotkey_manager.hotkey_triggered.connect(self._on_hotkey_pressed)
         self.recognition_manager.recognition_complete_signal.connect(self._on_recognition_complete)
-        # ИСПРАВЛЕНИЕ: Добавляем логирование для отслеживания подключения сигналов
+        self.recognition_manager.models_ready_signal.connect(self._on_models_ready)
         logging.info("[MainWindow] Connected to hotkey_manager and recognition_manager signals")
+        
     def _load_initial_state(self):
         self.ui_updater.update_interface_for_mode(self.mode)
+        self.status_bar.showMessage(f"v{self.app_version}")
+        
     @Slot(str)
     def _on_hotkey_pressed(self, action_id: str):
         logging.debug(f"Hotkey event received: {action_id}")
         
-        # ИЗМЕНЕНО: Добавляем обработку сигнала для запуска таймера
         if action_id == "start_recognition_timer":
             self.hotkey_manager.start_recognition_timer_in_main_thread()
+            return
+
+        # ИЗМЕНЕНИЕ: Замеряем время при нажатии на распознавание
+        if action_id == "recognize_heroes":
+            start_time = time.time()
+            logging.info(f"[TIME-LOG] 0.000s: Hotkey 'recognize_heroes' pressed. Emitting signal.")
+            self.recognition_manager.recognize_heroes_signal.emit(start_time)
             return
             
         actions = {
             "enter_tab_mode": self.tab_mode_manager.enable,
             "exit_tab_mode": self.tab_mode_manager.disable,
-            "recognize_heroes": lambda: (logging.info(f"[MainWindow] Emitting recognize_heroes to recognition_manager"), self.recognition_manager.recognize_heroes_signal.emit()),
             "move_cursor_up": lambda: self.action_controller.handle_move_cursor('up'),
             "move_cursor_down": lambda: self.action_controller.handle_move_cursor('down'),
             "move_cursor_left": lambda: self.action_controller.handle_move_cursor('left'),
@@ -160,18 +175,34 @@ class MainWindowRefactored(QMainWindow):
             action()
         else:
             logging.warning(f"[MainWindow] Unknown action_id: {action_id}")
-    @Slot(list)
-    def _on_recognition_complete(self, recognized_heroes: list):
-        logging.info(f"[MainWindow] Recognition complete. Heroes: {recognized_heroes}")
+            
+    @Slot(list, float)
+    def _on_recognition_complete(self, recognized_heroes: list, start_time: float):
+        delta = time.time() - start_time
+        logging.info(f"[TIME-LOG] {delta:.3f}s: MainWindow received recognition results.")
+        
+        if not recognized_heroes:
+            logging.info("[MainWindow] No heroes recognized. Skipping selection update.")
+            return
+
         normalized_heroes = {normalize_hero_name(h) for h in recognized_heroes if h}
         self.logic.set_selection(normalized_heroes)
-        self.ui_updater.update_ui_after_logic_change()
+        self.ui_updater.update_ui_after_logic_change(start_time=start_time)
+        
+    @Slot(bool)
+    def _on_models_ready(self, success: bool):
+        """Слот для обработки сигнала о готовности моделей."""
+        if success:
+            self.status_bar.showMessage(get_text("status_ready", default_text="Готово"), 5000)
+        else:
+            self.status_bar.showMessage(get_text("status_models_error", default_text="Ошибка загрузки моделей! Распознавание недоступно."), 0)
             
     def closeEvent(self, event: QCloseEvent):
         logging.info("Closing application...")
+        if hasattr(self, 'tab_mode_manager') and self.tab_mode_manager._tray_window:
+             self.tab_mode_manager._tray_window._save_geometry()
         self.hotkey_manager.stop()
         self.recognition_manager.stop_recognition()
         self.settings_manager.save_settings()
         QApplication.instance().quit()
-        os._exit(0)
         super().closeEvent(event)

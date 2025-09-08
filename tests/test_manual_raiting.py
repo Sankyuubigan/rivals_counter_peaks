@@ -292,7 +292,7 @@ if __name__ == "__main__":
         "Black Widow",
         "Blade"
     ]
-        num_count=10
+        num_count=40
         print(f"Поиск оптимальной команды против {enemy_team}")
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)
         

@@ -1,5 +1,6 @@
 # File: core/ui_updater.py
 import logging
+import time
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QColor, QBrush
 # Импортируем `create_left_panel` из правильного модуля `left_panel`.
@@ -51,11 +52,15 @@ class UiUpdater(QObject):
         
         self.update_ui_after_logic_change()
 
-    def update_ui_after_logic_change(self, force_update=False):
+    def update_ui_after_logic_change(self, force_update=False, start_time: float = None):
         if self._is_updating_ui and not force_update: return
         
         self._is_updating_ui = True
         try:
+            if start_time:
+                delta = time.time() - start_time
+                logging.info(f"[TIME-LOG] {delta:.3f}s: UiUpdater started logic update.")
+
             counter_scores = self.mw.logic.calculate_counter_scores()
             effective_team = self.mw.logic.calculate_effective_team(counter_scores)
             self._update_counterpick_display(counter_scores, effective_team)
@@ -66,11 +71,11 @@ class UiUpdater(QObject):
             payload = {
                 "selected_heroes": list(self.mw.logic.selected_heroes),
                 "counter_scores": counter_scores,
-                "effective_team": effective_team
+                "effective_team": effective_team,
+                "start_time": start_time
             }
             event_bus.emit("logic_updated", payload)
             
-            # Уведомляем об окончании обновления UI
             self.ui_updated.emit()
         except Exception as e:
             logging.error(f"Error in update_ui_after_logic_change: {e}")
@@ -88,7 +93,6 @@ class UiUpdater(QObject):
         if not hasattr(self.mw, 'right_list_widget'): return
         
         list_widget = self.mw.right_list_widget
-        # Блокируем сигналы на время обновления, чтобы избежать мерцания
         list_widget.blockSignals(True)
         current_logic_selection = set(self.mw.logic.selected_heroes)
         for hero, item in self.mw.hero_items.items():
