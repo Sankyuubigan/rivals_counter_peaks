@@ -115,7 +115,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='rivals_counter_peaks_25.09.05', # Имя будет заменено скриптом build.py
+    name='rivals_counter_peaks_25.09.06', # Имя будет заменено скриптом build.py
     icon=os.path.join(project_root, 'resources', 'logo.ico'),
     debug=False,
     console=False,

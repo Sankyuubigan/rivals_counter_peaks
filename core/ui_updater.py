@@ -1,8 +1,8 @@
 # File: core/ui_updater.py
 import logging
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QColor, QBrush
-# ИСПРАВЛЕНИЕ: Импортируем `create_left_panel` из правильного модуля `left_panel`.
+# Импортируем `create_left_panel` из правильного модуля `left_panel`.
 from core.left_panel import create_left_panel
 from core.right_panel import RightPanel, HERO_NAME_ROLE
 import core.delegate as delegate
@@ -10,10 +10,15 @@ from core.horizontal_list import clear_layout as clear_layout_util
 from core.event_bus import event_bus
 import core.display as display
 
-class UiUpdater:
+class UiUpdater(QObject):
+    # Правильно объявляем сигнал как атрибут класса
+    ui_updated = Signal()
+    
     def __init__(self, main_window):
+        super().__init__()  # Важно вызвать конструктор QObject для поддержки сигналов
         self.mw = main_window
         self._is_updating_ui = False
+        
     def update_interface_for_mode(self, new_mode=None):
         if new_mode is None: new_mode = self.mw.mode
         logging.info(f"UiUpdater: update_interface_for_mode for mode '{new_mode}'")
@@ -25,7 +30,7 @@ class UiUpdater:
         self.mw.right_images, self.mw.left_images, self.mw.small_images, self.mw.horizontal_images = images
         
         if hasattr(self.mw, 'counter_pick_tab'):
-            # ИСПРАВЛЕНИЕ: Вызываем `create_left_panel` из импортированного модуля.
+            # Вызываем `create_left_panel` из импортированного модуля.
             left_widgets = create_left_panel(self.mw.counter_pick_tab)
             # `create_left_panel` теперь возвращает 4 элемента, включая callback
             self.mw.canvas, self.mw.result_frame, self.mw.result_label, self.mw.update_scrollregion_callback = left_widgets
@@ -45,6 +50,7 @@ class UiUpdater:
             self.mw.right_list_widget.customContextMenuRequested.connect(self.mw.action_controller.show_priority_context_menu)
         
         self.update_ui_after_logic_change()
+
     def update_ui_after_logic_change(self, force_update=False):
         if self._is_updating_ui and not force_update: return
         
@@ -63,24 +69,32 @@ class UiUpdater:
                 "effective_team": effective_team
             }
             event_bus.emit("logic_updated", payload)
+            
+            # Уведомляем об окончании обновления UI
+            self.ui_updated.emit()
+        except Exception as e:
+            logging.error(f"Error in update_ui_after_logic_change: {e}")
         finally:
             self._is_updating_ui = False
+
     def _update_counterpick_display(self, counter_scores, effective_team):
         if hasattr(self.mw, 'result_frame') and self.mw.result_frame:
             display.generate_counterpick_display(
                 self.mw.logic, self.mw.result_frame, self.mw.left_images,
                 self.mw.small_images, counter_scores, effective_team
             )
+
     def update_list_item_selection_states(self):
         if not hasattr(self.mw, 'right_list_widget'): return
         
         list_widget = self.mw.right_list_widget
-        # ИСПРАВЛЕНИЕ: Блокируем сигналы на время обновления, чтобы избежать мерцания
+        # Блокируем сигналы на время обновления, чтобы избежать мерцания
         list_widget.blockSignals(True)
         current_logic_selection = set(self.mw.logic.selected_heroes)
         for hero, item in self.mw.hero_items.items():
             item.setSelected(hero in current_logic_selection)
         list_widget.blockSignals(False)
+
     def _update_priority_labels(self):
         if not hasattr(self.mw, 'hero_items'): return
         
@@ -93,9 +107,11 @@ class UiUpdater:
                 item.setBackground(QBrush(priority_color) if is_priority else default_brush)
             else:
                 item.setBackground(default_brush)
+
     def _update_selected_heroes_label(self):
         if hasattr(self.mw, 'right_panel_instance'):
             self.mw.right_panel_instance.update_language()
+
     def update_hotkey_highlight(self, old_index=None):
         if not hasattr(self.mw, 'right_list_widget'): return
         

@@ -137,7 +137,7 @@ class HotkeyManager(QObject):
     def start_recognition_timer_in_main_thread(self):
         """Запускает таймер в главном потоке"""
         logging.info("[HotkeyManager] Starting recognition timer in main thread")
-        self.recognition_timer.start(100)
+        self.recognition_timer.start(200)
     def stop(self):
         if not self._is_running:
             return
