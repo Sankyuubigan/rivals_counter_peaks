@@ -18,7 +18,6 @@ logger = logging.getLogger("rivals_scraper")
 
 def block_unnecessary_resources(page):
     """Блокирует загрузку ненужных ресурсов для ускорения загрузки страницы"""
-    # Блокируем только изображения, шрифты и медиа, но не скрипты
     blocked_resources = ['image', 'font', 'media']
     
     def block_route(route):
@@ -63,9 +62,6 @@ def get_heroes_list(season="1", max_retries=3):
         
         page = context.new_page()
         
-        # НЕ блокируем изображения, так как нам нужны иконки ролей
-        # block_unnecessary_resources(page)
-        
         # Устанавливаем таймауты
         page.set_default_timeout(30000)
         page.set_default_navigation_timeout(45000)
@@ -97,43 +93,6 @@ def get_heroes_list(season="1", max_retries=3):
                 # Даем время на инициализацию JavaScript
                 time.sleep(3)
                 
-                # Сохраняем HTML страницы для анализа
-                html_content = page.content()
-                with open('page_debug.html', 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-                logger.info("HTML страницы сохранен в page_debug.html")
-                
-                # Ждем появления таблицы
-                logger.info("Ожидаем появления таблицы героев...")
-                try:
-                    page.wait_for_selector("table", timeout=20000)
-                except:
-                    logger.warning("Таблица не найдена, продолжаем попытку извлечения данные")
-                
-                # Проверяем данные до выбора сезона
-                logger.info("Проверяем данные до выбора сезона...")
-                initial_data = page.evaluate('''() => {
-                    const table = document.querySelector('table');
-                    if (!table) return "No table";
-                    
-                    const firstRow = table.querySelector('tbody tr');
-                    if (!firstRow) return "No rows";
-                    
-                    const cells = firstRow.querySelectorAll('td');
-                    if (cells.length >= 4) {
-                        return {
-                            hero: cells[0].textContent.trim(),
-                            winRate: cells[3].textContent.trim(),
-                            pickRate: cells[4].textContent.trim(),
-                            banRate: cells[5].textContent.trim(),
-                            matches: cells[6].textContent.trim()
-                        };
-                    }
-                    return "No data";
-                }''')
-                
-                logger.info(f"Данные до выбора сезона: {initial_data}")
-                
                 # Пробуем выбрать сезон через select
                 logger.info(f"Пробуем выбрать сезон {season} через select...")
                 
@@ -161,91 +120,11 @@ def get_heroes_list(season="1", max_retries=3):
                 else:
                     logger.warning("Не найден select с id season_filter")
                 
-                # Проверяем данные после выбора сезона
-                logger.info("Проверяем данные после выбора сезона...")
-                final_data = page.evaluate('''() => {
-                    const table = document.querySelector('table');
-                    if (!table) return "No table";
-                    
-                    const firstRow = table.querySelector('tbody tr');
-                    if (!firstRow) return "No rows";
-                    
-                    const cells = firstRow.querySelectorAll('td');
-                    if (cells.length >= 4) {
-                        return {
-                            hero: cells[0].textContent.trim(),
-                            winRate: cells[3].textContent.trim(),
-                            pickRate: cells[4].textContent.trim(),
-                            banRate: cells[5].textContent.trim(),
-                            matches: cells[6].textContent.trim()
-                        };
-                    }
-                    return "No data";
-                }''')
-                
-                logger.info(f"Данные после выбора сезона: {final_data}")
-                
                 # Ждем загрузки данных
                 logger.info("Ждем загрузки данных...")
                 time.sleep(3)
                 
-                logger.info("Таблица найдена, начинаем обработку")
-                
-                # Извлекаем данные через JavaScript с расширенной отладкой
-                debug_info = page.evaluate('''() => {
-                    const table = document.querySelector('table');
-                    if (!table) return "No table";
-                    
-                    // Получаем заголовки таблицы
-                    const headers = table.querySelectorAll('thead th');
-                    const headerTexts = Array.from(headers).map(h => h.textContent.trim());
-                    
-                    // Получаем первую строку для анализа
-                    const firstRow = table.querySelector('tbody tr');
-                    if (!firstRow) return "No rows";
-                    
-                    const cells = firstRow.querySelectorAll('td');
-                    const cellContents = [];
-                    
-                    // Анализируем содержимое каждой ячейки
-                    for (let i = 0; i < cells.length; i++) {
-                        const cell = cells[i];
-                        const img = cell.querySelector('img');
-                        let content = {
-                            index: i,
-                            text: cell.textContent.trim(),
-                            hasImage: img !== null,
-                            imageSrc: img ? img.src : '',
-                            imageAlt: img ? img.alt : '',
-                            imageTitle: img ? img.title : '',
-                            html: cell.innerHTML.substring(0, 100) + '...'  // Ограничиваем длину для лога
-                        };
-                        cellContents.push(content);
-                    }
-                    
-                    return {
-                        headers: headerTexts,
-                        firstRowCells: cellContents
-                    };
-                }''')
-                
-                # Выводим отладочную информацию
-                logger.info("Заголовки таблицы:")
-                for i, header in enumerate(debug_info.get('headers', [])):
-                    logger.info(f"  [{i}]: {header}")
-                
-                logger.info("Содержимое ячеек первой строки:")
-                for cell in debug_info.get('firstRowCells', []):
-                    logger.info(f"  Ячейка [{cell['index']}]:")
-                    logger.info(f"    Текст: '{cell['text']}'")
-                    logger.info(f"    Есть изображение: {cell['hasImage']}")
-                    if cell['hasImage']:
-                        logger.info(f"    SRC: {cell['imageSrc']}")
-                        logger.info(f"    ALT: {cell['imageAlt']}")
-                        logger.info(f"    TITLE: {cell['imageTitle']}")
-                    logger.info(f"    HTML: {cell['html']}")
-                
-                # Теперь извлекаем данные с учетом полученной информации
+                # Извлекаем данные через JavaScript
                 heroes_data = page.evaluate('''() => {
                     const heroes = [];
                     const table = document.querySelector('table');
@@ -267,10 +146,8 @@ def get_heroes_list(season="1", max_retries=3):
                                 .replace(/\\s+/g, '-')
                                 .replace(/^-+|-+$/g, '');
                                 
-                            // Пытаемся извлечь роль из разных возможных мест
+                            // Пытаемся извлечь роль
                             let role = '';
-                            
-                            // Вариант 1: роль в ячейке с индексом 1 (как предполагалось ранее)
                             const roleCell = cells[1];
                             const roleImg = roleCell.querySelector('img');
                             if (roleImg) {
@@ -278,59 +155,12 @@ def get_heroes_list(season="1", max_retries=3):
                                     role = roleImg.alt.trim();
                                 } else if (roleImg.title) {
                                     role = roleImg.title.trim();
-                                } else {
-                                    const src = roleImg.src;
-                                    const match = src.match(/\\/([^\\/]+)\\.(png|jpg|jpeg|svg|gif)$/i);
-                                    if (match) {
-                                        role = match[1].replace(/[-_]/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());
-                                    }
                                 }
                             } else {
                                 role = roleCell.textContent.trim();
                             }
                             
-                            // Если роль не найдена или совпадает с именем героя, пробуем другие варианты
-                            if (!role || role === heroName) {
-                                // Вариант 2: ищем классы, связанные с ролями
-                                const roleClasses = ['duelist', 'vanguard', 'strategist', 'damage', 'tank', 'support'];
-                                for (const cell of cells) {
-                                    const cellClass = cell.className.toLowerCase();
-                                    for (const roleClass of roleClasses) {
-                                        if (cellClass.includes(roleClass)) {
-                                            role = roleClass.charAt(0).toUpperCase() + roleClass.slice(1);
-                                            break;
-                                        }
-                                    }
-                                    if (role) break;
-                                }
-                            }
-                            
-                            // Если роль всё ещё не найдена, ищем по другим признакам
-                            if (!role || role === heroName) {
-                                // Вариант 3: ищем изображение с определенными паттернами в URL
-                                for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
-                                    const cell = cells[cellIndex];
-                                    const img = cell.querySelector('img');
-                                    if (img && img.src) {
-                                        const src = img.src.toLowerCase();
-                                        if (src.includes('role') || src.includes('class') || src.includes('icon')) {
-                                            if (img.alt) {
-                                                role = img.alt.trim();
-                                            } else if (img.title) {
-                                                role = img.title.trim();
-                                            } else {
-                                                const match = src.match(/\\/([^\\/]+)\\.(png|jpg|jpeg|svg|gif)$/i);
-                                                if (match) {
-                                                    role = match[1].replace(/[-_]/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());
-                                                }
-                                            }
-                                            if (role && role !== heroName) break;
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Если роль всё ещё не найдена, устанавливаем значение по умолчанию
+                            // Если роль не найдена, устанавливаем значение по умолчанию
                             if (!role || role === heroName) {
                                 role = 'Unknown';
                             }
@@ -376,15 +206,6 @@ def get_heroes_list(season="1", max_retries=3):
                 
                 logger.info(f"Отфильтровано до {len(valid_heroes)} валидных героев")
                 
-                # Логируем первые 5 героев для проверки
-                logger.info("Первые 5 обнаруженных героев с их статистикой:")
-                for i, hero in enumerate(valid_heroes[:5]):
-                    logger.info(f"  {i+1}. {hero['display_name']}: Role={hero['role']}, WR={hero['win_rate']}, PR={hero['pick_rate']}, BR={hero['ban_rate']}, M={hero['matches']}")
-                
-                # Сохраняем полный список в файл для отладки
-                with open('heroes_debug.json', 'w', encoding='utf-8') as f:
-                    json.dump(valid_heroes, f, ensure_ascii=False, indent=2)
-                
                 context.close()
                 browser.close()
                 logger.info("=== ЗАВЕРШЕНИЕ ПОЛУЧЕНИЯ СПИСКА ГЕРОЕВ ===")
@@ -399,6 +220,158 @@ def get_heroes_list(season="1", max_retries=3):
                 continue
         
         logger.error(f"Не удалось загрузить страницу после {max_retries} попыток")
+        context.close()
+        browser.close()
+        return []
+
+def get_teamups_data(max_retries=3):
+    """Получает данные о тим апах со страницы tier-list/team-ups"""
+    logger.info("=== НАЧАЛО ПОЛУЧЕНИЯ ДАННЫХ О ТИМ АПАХ ===")
+    logger.info("Открываем страницу https://rivalsmeta.com/tier-list/team-ups")
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ]
+        )
+        
+        context = browser.new_context(
+            viewport={'width': 1200, 'height': 800},
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            extra_http_headers={
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+        )
+        
+        page = context.new_page()
+        
+        # НЕ блокируем ресурсы, так как нам нужны изображения для извлечения имен героев
+        # block_unnecessary_resources(page)
+        
+        # Устанавливаем таймауты
+        page.set_default_timeout(30000)
+        page.set_default_navigation_timeout(45000)
+        
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                logger.info(f"Попытка {retry_count + 1} из {max_retries}")
+                
+                # Переходим на страницу
+                logger.info("Загружаем страницу тим апов...")
+                start_time = time.time()
+                
+                response = page.goto(
+                    "https://rivalsmeta.com/tier-list/team-ups", 
+                    timeout=45000, 
+                    wait_until="domcontentloaded"
+                )
+                
+                # Проверяем статус
+                if response and response.status != 200:
+                    logger.error(f"Ошибка загрузки страницы: статус {response.status}")
+                    retry_count += 1
+                    continue
+                    
+                load_time = time.time() - start_time
+                logger.info(f"Страница загружена за {load_time:.2f} секунд")
+                
+                # Даем время на загрузку динамических данных
+                logger.info("Ожидаем загрузки данных тим апов...")
+                time.sleep(5)
+                
+                # Извлекаем данные тим апов через JavaScript, анализируя HTML-структуру
+                teamups_data = page.evaluate('''() => {
+                    const teamups = [];
+                    
+                    // Ищем все tier блоки (S, A, B, C)
+                    const tierBlocks = document.querySelectorAll('.tier');
+                    
+                    tierBlocks.forEach(tierBlock => {
+                        // Получаем название tier (S, A, B, C)
+                        const tierNameElement = tierBlock.querySelector('.t-name');
+                        const tierName = tierNameElement ? tierNameElement.textContent.trim() : 'Unknown';
+                        
+                        // Ищем все тим апы внутри этого tier, но только те, которые имеют структуру тимапа
+                        // Используем более точный селектор: ищем .teamup внутри .content.teamup
+                        const contentElement = tierBlock.querySelector('.content.teamup');
+                        if (!contentElement) return;
+                        
+                        const teamupElements = contentElement.querySelectorAll(':scope > .teamup');
+                        
+                        teamupElements.forEach(teamupElement => {
+                            // Проверяем, что это не общий контейнер, а конкретный тимап
+                            // У тимапа должен быть .win-rate и .teamup-heroes
+                            const winRateElement = teamupElement.querySelector('.win-rate');
+                            const teamupHeroesElement = teamupElement.querySelector('.teamup-heroes');
+                            
+                            if (!winRateElement || !teamupHeroesElement) {
+                                return; // Пропускаем, если структура не соответствует тимапу
+                            }
+                            
+                            const winRate = winRateElement.textContent.trim();
+                            
+                            // Получаем имена героев
+                            const heroElements = teamupElement.querySelectorAll('.teamup-heroes .cha img');
+                            const heroes = [];
+                            
+                            heroElements.forEach(img => {
+                                // Извлекаем имя героя из атрибута alt
+                                const heroName = img.getAttribute('alt');
+                                if (heroName && heroName.trim() !== '') {
+                                    heroes.push(heroName.trim());
+                                }
+                            });
+                            
+                            // Если нашли хотя бы двух героев, добавляем тим ап
+                            if (heroes.length >= 2) {
+                                teamups.push({
+                                    heroes: heroes,
+                                    win_rate: winRate,
+                                    tier: tierName
+                                });
+                            }
+                        });
+                    });
+                    
+                    return teamups;
+                }''')
+                
+                logger.info(f"Извлечено {len(teamups_data)} записей о тим апах")
+                
+                if teamups_data:
+                    logger.info("Примеры извлеченных тим апов:")
+                    for i, teamup in enumerate(teamups_data[:5]):
+                        logger.info(f"  {i+1}. {teamup['heroes']}: Win Rate={teamup['win_rate']}, Tier={teamup['tier']}")
+                else:
+                    logger.warning("Не удалось извлечь данные о тим апах")
+                
+                context.close()
+                browser.close()
+                logger.info("=== ЗАВЕРШЕНИЕ ПОЛУЧЕНИЯ ДАННЫХ О ТИМ АПАХ ===")
+                return teamups_data
+                
+            except Exception as e:
+                logger.error(f"Ошибка при попытке {retry_count + 1}: {str(e)}")
+                retry_count += 1
+                if retry_count < max_retries:
+                    logger.info(f"Ждем 5 секунд перед повторной попыткой...")
+                    time.sleep(5)
+                continue
+        
+        logger.error(f"Не удалось загрузить страницу тим апов после {max_retries} попыток")
         context.close()
         browser.close()
         return []
@@ -476,37 +449,6 @@ def get_matchups_data(hero_url_name, season="1", max_retries=3):
                 # Даем время на инициализацию JavaScript
                 time.sleep(3)
                 
-                # Проверяем наличие таблиц
-                logger.info("Ищем таблицы матчапов...")
-                
-                try:
-                    page.wait_for_function("""
-                        () => {
-                            const tables = document.querySelectorAll('table');
-                            for (const table of tables) {
-                                const headers = table.querySelectorAll('th');
-                                if (headers.length >= 4) {
-                                    const headerTexts = Array.from(headers).map(h => 
-                                        h.textContent.trim().toLowerCase()
-                                    );
-                                    if (headerTexts.includes('hero') && 
-                                        headerTexts.includes('win rate') && 
-                                        headerTexts.includes('difference') && 
-                                        headerTexts.includes('matches')) {
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        }
-                    """, timeout=20000)
-                    
-                    logger.info("Найдены таблицы с нужными заголовками")
-                except Exception as e:
-                    logger.warning(f"Не удалось найти таблицы по заголовкам: {str(e)}")
-                    retry_count += 1
-                    continue
-                
                 # Извлекаем данные матчапов
                 matchups = page.evaluate('''() => {
                     const allMatchups = [];
@@ -565,7 +507,7 @@ def get_matchups_data(hero_url_name, season="1", max_retries=3):
                                 opponentName = opponentName
                                     .replace(/\\s+/g, ' ')
                                     .trim()
-                                    .replace(/[^a-zA-Z\\s&]/g, '')  // <-- ИЗМЕНЕНО: добавлен & в разрешенные символы
+                                    .replace(/[^a-zA-Z\\s&]/g, '')
                                     .replace(/\\s+/g, ' ')
                                     .trim();
                                 
@@ -590,16 +532,6 @@ def get_matchups_data(hero_url_name, season="1", max_retries=3):
                 }''')
                 
                 logger.info(f"Извлечено {len(matchups)} записей матчапов из всех таблиц")
-                
-                if matchups:
-                    logger.info("Примеры извлеченных данных:")
-                    for i, matchup in enumerate(matchups[:3]):
-                        logger.info(f"  {i+1}. Противник: {matchup['opponent']}, "
-                                   f"Win Rate: {matchup['win_rate']}, "
-                                   f"Difference: {matchup['difference']}, "
-                                   f"Matches: {matchup['matches']}")
-                else:
-                    logger.warning("Таблицы найдены, но данные не извлечены.")
                 
                 context.close()
                 browser.close()
@@ -630,9 +562,10 @@ def save_to_json(data, filename=None):
             json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"Данные успешно сохранены в {filename}")
         
-        total_heroes = len(data)
-        total_matchups = sum(len(hero_data.get('opponents', [])) for hero_data in data.values())
-        logger.info(f"Статистика сохранения: {total_heroes} героев, {total_matchups} матчапов")
+        total_heroes = len(data.get('heroes', {}))
+        total_matchups = sum(len(hero_data.get('opponents', [])) for hero_data in data.get('heroes', {}).values())
+        total_teamups = len(data.get('teamups', []))
+        logger.info(f"Статистика сохранения: {total_heroes} героев, {total_matchups} матчапов, {total_teamups} тим апов")
         
         return filename
     except Exception as e:
@@ -644,6 +577,11 @@ def main(season="1"):
     logger.info(f"=== НАЧАЛО РАБОТЫ СКРИПТА (СЕЗОН {season}) ===")
     
     try:
+        # Получаем данные о тим апах
+        logger.info("Получаем данные о тим апах...")
+        teamups = get_teamups_data()
+        
+        # Получаем список героев
         heroes = get_heroes_list(season)
         
         if not heroes:
@@ -652,7 +590,10 @@ def main(season="1"):
         
         logger.info(f"Обнаружено {len(heroes)} героев для обработки")
         
-        all_data = {}
+        all_data = {
+            'teamups': teamups,
+            'heroes': {}
+        }
         
         for i, hero in enumerate(heroes):
             logger.info(f"--- Обработка героя {i+1}/{len(heroes)} ---")
@@ -673,7 +614,7 @@ def main(season="1"):
                     "opponents": matchups if matchups else []
                 }
                 
-                all_data[hero["display_name"]] = hero_data
+                all_data["heroes"][hero["display_name"]] = hero_data
                 
                 logger.info(f"Успешно обработан {hero['display_name']} за {processing_time:.2f} сек")
                 logger.info(f"  Глобальная статистика: WR={hero['win_rate']}, PR={hero['pick_rate']}, BR={hero['ban_rate']}, M={hero['matches']}, Role={hero['role']}")
@@ -686,9 +627,9 @@ def main(season="1"):
                 logger.exception(f"Ошибка при обработке {hero['display_name']}")
                 continue
         
-        if all_data:
+        if all_data["heroes"]:
             save_to_json(all_data)
-            logger.info(f"Успешно обработано {len(all_data)}/{len(heroes)} героев")
+            logger.info(f"Успешно обработано {len(all_data['heroes'])}/{len(heroes)} героев")
         else:
             logger.warning("Не удалось собрать данные ни по одному герою")
         

@@ -1,6 +1,5 @@
 import json
-import importlib.util
-import os
+
 def load_matchups_data(file_path="database/marvel_rivals_stats_20250905-040756.json"):
     """Загружает данные из JSON файла в новом формате"""
     try:
@@ -19,6 +18,7 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250905-040756.j
     except json.JSONDecodeError:
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
+
 def load_hero_stats(file_path="database/marvel_rivals_stats_20250905-040756.json"):
     """Загружает общую статистику героев из JSON файла"""
     try:
@@ -40,44 +40,32 @@ def load_hero_stats(file_path="database/marvel_rivals_stats_20250905-040756.json
     except json.JSONDecodeError:
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
-def load_hero_roles_from_file(file_path="database/roles_and_groups.py"):
-    """Загружает роли героев из файла database/roles_and_groups.py"""
-    
-    # Загружаем модуль
-    spec = importlib.util.spec_from_file_location("roles_and_groups", file_path)
-    roles_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(roles_module)
-    
-    # Получаем словарь с ролями
-    roles_dict = roles_module.hero_roles
-    
-    # Создаем соответствие между разными именами героев
-    name_mapping = {
-     
-    }
-    
-    # Преобразуем в формат {имя_героя: роль}
-    hero_roles = {}
-    
-    for role, heroes in roles_dict.items():  # Missing ()
-    
-        # print(role.value)
-        for hero in heroes:
-            # print(hero)
-            # Используем правильное имя, если есть в маппинге
-            hero_name = name_mapping.get(hero, hero)
-            hero_roles[hero_name] = role
-    # print(hero_roles)
-    
-    
-    
-    return hero_roles
-   
+
+def load_hero_roles_from_file(file_path="database/roles.json"):
+    """Загружает роли героев из файла database/roles.json"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # Преобразуем в формат {имя_героя: роль}
+        hero_roles = {}
+        for role, heroes in data.items():
+            for hero in heroes:
+                hero_roles[hero] = role
+        return hero_roles
+    except FileNotFoundError:
+        print(f"Файл {file_path} не найден")
+        return {}
+    except json.JSONDecodeError:
+        print(f"Ошибка при чтении JSON из файла {file_path}")
+        return {}
+
 def absolute_with_context(scores, hero_stats):
     """
     Использует абсолютные значения, но учитывает контекст общей силы героя.
+    Нормализует результаты для отображения в диапазоне 1-100, сохраняя исходный порядок.
     """
-    absolute_scores = []
+    # Шаг 1: Рассчитываем баллы по исходной формуле
+    original_scores = []
     
     for hero, score in scores:
         # Получаем статистику героя
@@ -89,12 +77,34 @@ def absolute_with_context(scores, hero_stats):
         # Чем сильнее герой в целом, тем ценнее его положительный вклад
         context_factor = overall_winrate / 50.0
         
-        # Инвертируем отрицательный score и применяем контекстный фактор
-        # Чем меньше отрицательное значение (тем лучше герой), тем выше итоговый балл
+        # ИСПОЛЬЗУЕМ ИСХОДНУЮ ФОРМУЛУ
         absolute_score = (100 + score) * context_factor  # 100 + score превратит -8.75 в 91.25
-        absolute_scores.append((hero, absolute_score))
+        original_scores.append((hero, absolute_score))
     
-    return absolute_scores
+    # Шаг 2: Находим минимальный и максимальный баллы для нормализации отображения
+    if not original_scores:
+        return []
+    
+    original_values = [score for _, score in original_scores]
+    min_score = min(original_values)
+    max_score = max(original_values)
+    
+    # Шаг 3: Нормализуем ТОЛЬКО для отображения в диапазоне 1-100, сохраняя исходный порядок
+    display_scores = []
+    
+    # Если все баллы одинаковы, избегаем деления на ноль
+    if max_score == min_score:
+        # Всем присваиваем 50.5 (середина диапазона 1-100)
+        for hero, _ in original_scores:
+            display_scores.append((hero, 50.5))
+    else:
+        for hero, original_score in original_scores:
+            # Нормализация в диапазоне 1-100: (x - min) / (max - min) * 99 + 1
+            display_score = (original_score - min_score) / (max_score - min_score) * 99 + 1
+            display_scores.append((hero, display_score))
+    
+    return display_scores
+
 def select_optimal_team(sorted_heroes, hero_roles):
     """
     Выбирает оптимальную команду из 6 героев с учетом ограничений на роль.
@@ -106,11 +116,11 @@ def select_optimal_team(sorted_heroes, hero_roles):
     
     for hero, diff in sorted_heroes:
         role = hero_roles.get(hero, "Unknown")
-        if role == "tank":
+        if role == "Vanguard":
             vanguards.append((hero, diff))
-        elif role == "support":
+        elif role == "Strategist":
             strategists.append((hero, diff))
-        elif role == "dd":
+        elif role == "Duelist":
             duelists.append((hero, diff))
     
     # Сортируем каждую группу по убыванию difference
@@ -172,6 +182,7 @@ def select_optimal_team(sorted_heroes, hero_roles):
     
     # Возвращаем только имена героев
     return [hero[0] for hero in best_team[:6]]
+
 def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg", weighting="equal"):
     """
     Рассчитывает рейтинг героев против указанной команды врагов.
@@ -240,6 +251,7 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
     hero_scores.sort(key=lambda x: x[1], reverse=True)
     
     return hero_scores
+
 # Пример использования
 if __name__ == "__main__":
     # Загружаем данные
@@ -250,67 +262,34 @@ if __name__ == "__main__":
     if matchups_data and hero_stats and hero_roles:
         print("=" * 50)
         enemy_team = [
-        "Peni Parker",
-        "Rocket Raccoon",
-        "Magik",
-        "Mantis",
-        "Storm",
-        "Hulk",
-        "Ultron",
-        "Captain America",
-        "Mister Fantastic",
-        "Iron Man",
-        "Thor",
-        "Loki",
-        "Black Panther",
-        "Iron Fist",
-        "Namor",
-        "The Thing",
-        "Emma Frost",
-        "Doctor Strange",
-        "Psylocke",
-        "Wolverine",
-        "Human Torch",
-        "Adam Warlock",
-        "Magneto",
-        "Hela",
-        "Cloak & Dagger",
-        "Venom",
-        "Luna Snow",
-        "Scarlet Witch",
-        "Groot",
-        "Spider Man",
-        "Squirrel Girl",
-        "Star Lord",
-        "Invisible Woman",
-        "Phoenix",
-        "Winter Soldier",
-        "Moon Knight",
-        "Jeff The Land Shark",
-        "Hawkeye",
-        "The Punisher",
-        "Black Widow",
-        "Blade"
-    ]
-        num_count=40
-        print(f"Поиск оптимальной команды против {enemy_team}")
+        "Peni Parker", "Rocket Raccoon", "Magik", "Mantis", "Storm", "Hulk", "Ultron", 
+        "Captain America", "Mister Fantastic", "Iron Man", "Thor", "Loki", "Black Panther", 
+        "Iron Fist", "Namor", "The Thing", "Emma Frost", "Doctor Strange", "Psylocke", 
+        "Wolverine", "Human Torch", "Adam Warlock", "Magneto", "Hela", "Cloak & Dagger", 
+        "Venom", "Luna Snow", "Scarlet Witch", "Groot", "Spider Man", "Squirrel Girl", 
+        "Star Lord", "Invisible Woman", "Phoenix", "Winter Soldier", "Moon Knight", 
+        "Jeff The Land Shark", "Hawkeye", "The Punisher", "Black Widow", "Blade"
+        ]
+        num_count = 40
+        print(f"Поиск оптимальной команды против {len(enemy_team)} врагов")
+        
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)
         
-        # Рассчитываем абсолютные значения для всех героев
+        # Рассчитываем абсолютные значения для всех героев (с нормализацией для отображения)
         absolute_scores = absolute_with_context(hero_scores, hero_stats)
         
-        # Сортируем по абсолютным значениям
+        # Сортируем по абсолютным значениям (сохраняем исходный порядок)
         absolute_scores.sort(key=lambda x: x[1], reverse=True)
         
-        print(f"\nТоп-10 героев против {enemy_team[0]}:")
+        print(f"\nТоп-{num_count} героев против команды врагов:")
         
         for i, (hero, absolute_score) in enumerate(absolute_scores[:num_count], 1):
             role = hero_roles.get(hero, "Unknown")
-            print(f"{i}. {hero} ({role}): {absolute_score:.2f}")
+            print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f}")
         
         # Выбираем оптимальную команду на основе абсолютных значений
         optimal_team = select_optimal_team(absolute_scores, hero_roles)
-        print(f"\nОптимальная команда из 6 героев против {enemy_team[0]}:")
+        print(f"\nОптимальная команда из 6 героев:")
         
         for i, hero in enumerate(optimal_team, 1):
             role = hero_roles.get(hero, "Unknown")
@@ -319,11 +298,44 @@ if __name__ == "__main__":
             print(f"{i}. {hero} ({role}): {absolute_score:.2f}")
         
         # Проверяем условия
-        vanguard_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "tank")
-        strategist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "support")
-        duelist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "dd")
+        vanguard_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Vanguard")
+        strategist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Strategist")
+        duelist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Duelist")
         
         print(f"\nПроверка условий:")
         print(f"- Авангардов: {vanguard_count} (должно быть >= 1)")
         print(f"- Стратегов: {strategist_count} (должно быть 2-3)")
         print(f"- Дуэлянтов: {duelist_count} (остальные)")
+        print(f"- Всего: {vanguard_count + strategist_count + duelist_count} героев")
+        
+        # ====== НОВЫЙ УЛУЧШЕННЫЙ СПИСОК ======
+        print(f"\n{'='*50}")
+        print("УЛУЧШЕННЫЙ СПИСОК (оптимальная команда + остальные по баллам):")
+        
+        # Создаем улучшенный список
+        improved_list = []
+        
+        # 1. Добавляем оптимальную команду (первые 6 героев)
+        for hero in optimal_team:
+            absolute_score = next((score for h, score in absolute_scores if h == hero), 0)
+            improved_list.append((hero, absolute_score))
+        
+        # 2. Добавляем оставшихся героев (начиная с 7-го места), отсортированных по баллам
+        # Создаем множество имен героев из оптимальной команды для быстрой проверки
+        optimal_team_set = set(optimal_team)
+        
+        # Фильтруем normalized_scores, исключая героев из оптимальной команды
+        remaining_heroes = [(hero, score) for hero, score in absolute_scores if hero not in optimal_team_set]
+        
+        # Добавляем оставшихся героев в улучшенный список
+        improved_list.extend(remaining_heroes)
+        
+        # Выводим улучшенный список (ограничиваем первыми 41 позициями)
+        print(f"\nТоп-41 героев (улучшенный список):")
+        for i, (hero, absolute_score) in enumerate(improved_list[:41], 1):
+            role = hero_roles.get(hero, "Unknown")
+            # Для первых 6 героев добавляем пометку "ОПТИМАЛЬНАЯ КОМАНДА"
+            if i <= 6:
+                print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f} [ОПТИМАЛЬНАЯ КОМАНДА]")
+            else:
+                print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f}")
