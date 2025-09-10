@@ -38,7 +38,7 @@ class ImageManager:
         heroes_icons_folder = self.resource_path("resources/heroes_icons")
         
         for hero in self._get_all_heroes():
-            icon_filename = hero.lower().replace(' ', '_').replace('&', 'and') + '_1'
+            icon_filename = hero.lower().replace(' ', '_') + '_1'
             img_path = os.path.join(heroes_icons_folder, f"{icon_filename}.png")
             
             if os.path.exists(img_path):
