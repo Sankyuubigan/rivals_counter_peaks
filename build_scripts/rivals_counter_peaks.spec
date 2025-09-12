@@ -94,24 +94,49 @@ a = Analysis(
     datas=datas_list,
     hiddenimports=[
         'pynput', 'mss', 'cv2', 'numpy', 'pyperclip', 'ctypes', 'markdown',
-        'onnxruntime', 'numba', 'psutil', # Убран tqdm
+        'onnxruntime', 'psutil',
         'PySide6.QtNetwork', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'shiboken6',
     ],
     hookspath=[os.path.join(project_root, 'build_scripts')],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        # --- Основные тяжеловесные библиотеки ---
         'torch', 'torchvision', 'torchaudio',
         'tensorflow', 'tensorboard',
         'scipy',
         'pandas',
         'matplotlib',
+        
+        # --- Numba и его зависимость для ускорения (сильно влияют на размер) ---
+        'numba', 'llvmlite',
+
+        # --- Интерактивные окружения и инструменты разработчика ---
         'IPython', 'jupyter_client', 'jupyter_core', 'nbformat', 'nbconvert', 'ipykernel',
         'jedi', 'parso',
+        
+        # --- Альтернативные GUI и утилиты ---
         'PyQt5', 'tkinter',
+        
+        # --- Инструменты для форматирования и тестирования кода ---
         'black', 'blib2to3',
+        'pytest',
+
+        # --- Прочие тяжеловесные библиотеки ---
         'transformers',
-        'pytest'
+
+        # --- Ненужные модули PySide6 ---
+        'PySide6.QtQml',
+        'PySide6.QtQuick',
+        'PySide6.QtWebEngineCore',
+        'PySide6.QtWebEngineWidgets',
+        'PySide6.QtMultimedia',
+        'PySide6.Qt3DCore',
+        'PySide6.Qt3DRender',
+        'PySide6.QtCharts',
+        'PySide6.QtDataVisualization',
+        'PySide6.QtSql',
+        'PySide6.QtTest',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

@@ -5,8 +5,8 @@ global_hotkeys
 mss
 numpy
 onnxruntime
-opencv-python
+opencv-python-headless
 pyinstaller
 pyperclip
-numba
 psutil
+tabulate

@@ -17,6 +17,7 @@ project_root = os.path.dirname(script_dir)
 dist_dir = os.path.join(project_root, 'dist')
 build_cache_dir = os.path.join(project_root, "build_cache")
 spec_file_path = os.path.join(script_dir, "rivals_counter_peaks.spec")
+analyzer_script_path = os.path.join(script_dir, "analyze_build.py")
 
 # --- Пути к иконкам ---
 png_icon_path = os.path.join(project_root, 'resources', 'logo.png')
@@ -59,6 +60,9 @@ def update_spec_file(spec_path, app_name):
 
 # --- Основной процесс сборки ---
 if __name__ == "__main__":
+    # --- Проверка на режим отчета ---
+    is_report_mode = 'report' in sys.argv
+
     # 1. Подготовка иконки
     if not convert_png_to_ico(png_icon_path, ico_icon_path):
         sys.exit(1)
@@ -116,7 +120,6 @@ if __name__ == "__main__":
     
     logging.info(f"Выполняется команда сборки:\n{' '.join(command)}")
     
-    # ИСПРАВЛЕНИЕ: Передаем путь к корню проекта через переменную окружения
     build_env = os.environ.copy()
     build_env["PROJECT_ROOT_FOR_SPEC"] = project_root
     
@@ -137,10 +140,20 @@ if __name__ == "__main__":
         logging.critical(f"Критическая ошибка при запуске PyInstaller: {e}", exc_info=True)
         rc = -1
 
-    # 6. Финальная очистка
-    if rc == 0 and os.path.exists(build_cache_dir):
+    # 6. Анализ сборки в режиме отчета
+    if rc == 0 and is_report_mode:
+        logging.info("Запуск анализатора размера сборки...")
+        try:
+            subprocess.run([python_exe, analyzer_script_path, build_cache_dir], check=True)
+        except Exception as e:
+            logging.error(f"Не удалось запустить скрипт анализа: {e}")
+
+    # 7. Финальная очистка
+    if rc == 0 and not is_report_mode and os.path.exists(build_cache_dir):
         logging.info(f"Удаление временной папки сборки: {build_cache_dir}")
         shutil.rmtree(build_cache_dir)
+    elif is_report_mode:
+        logging.info(f"РЕЖИМ ОТЧЕТА: Временная папка сборки сохранена для анализа: {build_cache_dir}")
     else:
         logging.warning(f"Сборка завершилась с ошибкой. Временная папка не удалена для анализа: {build_cache_dir}")
 
