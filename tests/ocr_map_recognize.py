@@ -29,10 +29,10 @@ def capture_and_recognize_top_left():
     # Обрезка нужной области
     cropped = screenshot.crop((crop_x, crop_y, crop_x + crop_width, crop_y + crop_height))
     
-    # Сохранение обрезанного изображения для отладки
-    debug_filename = "debug_cropped_area.png"
-    cropped.save(debug_filename)
-    print(f"Обрезанное изображение сохранено как: {os.path.abspath(debug_filename)}")
+    # # Сохранение обрезанного изображения для отладки
+    # debug_filename = "debug_cropped_area.png"
+    # cropped.save(debug_filename)
+    # print(f"Обрезанное изображение сохранено как: {os.path.abspath(debug_filename)}")
     
     # Преобразование в numpy массив для EasyOCR
     img_array = np.array(cropped)

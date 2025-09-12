@@ -60,7 +60,7 @@ def find_dist_info_path(package_name, search_path):
 # --- Сборка списка данных (datas) ---
 datas_list = []
 
-# ИЗМЕНЕНИЕ: Убран `tqdm`, так как хук для него удален и он больше не является критичной зависимостью.
+# Убран `tqdm`, так как хук для него удален и он больше не является критичной зависимостью.
 dependencies_metadata = ['numpy']
 
 for dep_name in dependencies_metadata:
@@ -94,13 +94,25 @@ a = Analysis(
     datas=datas_list,
     hiddenimports=[
         'pynput', 'mss', 'cv2', 'numpy', 'pyperclip', 'ctypes', 'markdown',
-        'onnxruntime', 'tqdm', 'numba', 'psutil',
+        'onnxruntime', 'numba', 'psutil', # Убран tqdm
         'PySide6.QtNetwork', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'shiboken6',
     ],
     hookspath=[os.path.join(project_root, 'build_scripts')],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'torch', 'torchvision', 'torchaudio',
+        'tensorflow', 'tensorboard',
+        'scipy',
+        'pandas',
+        'matplotlib',
+        'IPython', 'jupyter_client', 'jupyter_core', 'nbformat', 'nbconvert', 'ipykernel',
+        'jedi', 'parso',
+        'PyQt5', 'tkinter',
+        'black', 'blib2to3',
+        'transformers',
+        'pytest'
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=None,
@@ -115,7 +127,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='rivals_counter_peaks_25.09.08', # Имя будет заменено скриптом build.py
+    name='rivals_counter_peaks_25.09.12', # Имя будет заменено скриптом build.py
     icon=os.path.join(project_root, 'resources', 'logo.ico'),
     debug=False,
     console=False,
