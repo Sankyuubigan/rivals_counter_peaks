@@ -30,7 +30,7 @@ def _load_json_data(file_path: str) -> Any:
 # --- Глобальные переменные с данными ---
 # Эти переменные инициализируются один раз при импорте модуля.
 # ИСПРАВЛЕНО: Правильные пути к файлам данных
-STATS_DATA = _load_json_data("database/marvel_rivals_stats_20250905-040756.json") or {}
+STATS_DATA = _load_json_data("database/marvel_rivals_stats_20251017-180727.json") or {}
 COMPOSITIONS_DATA = _load_json_data("database/heroes_compositions.json") or {}
 ROLES_DATA = _load_json_data("database/roles.json") or {}
 # --- Формирование основных структур данных ---

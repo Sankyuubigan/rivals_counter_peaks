@@ -1,6 +1,6 @@
 import json
 
-def load_matchups_data(file_path="database/marvel_rivals_stats_20250905-040756.json"):
+def load_matchups_data(file_path):
     """Загружает данные из JSON файла в новом формате"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -19,7 +19,7 @@ def load_matchups_data(file_path="database/marvel_rivals_stats_20250905-040756.j
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
 
-def load_hero_stats(file_path="database/marvel_rivals_stats_20250905-040756.json"):
+def load_hero_stats(file_path):
     """Загружает общую статистику героев из JSON файла"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -254,21 +254,16 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
 
 # Пример использования
 if __name__ == "__main__":
+    file_database="database/marvel_rivals_stats_20251017-202023.json"
     # Загружаем данные
-    matchups_data = load_matchups_data()
-    hero_stats = load_hero_stats()
+    matchups_data = load_matchups_data(file_database)
+    hero_stats = load_hero_stats(file_database)
     hero_roles = load_hero_roles_from_file()
     
     if matchups_data and hero_stats and hero_roles:
         print("=" * 50)
         enemy_team = [
-        "Peni Parker", "Rocket Raccoon", "Magik", "Mantis", "Storm", "Hulk", "Ultron", 
-        "Captain America", "Mister Fantastic", "Iron Man", "Thor", "Loki", "Black Panther", 
-        "Iron Fist", "Namor", "The Thing", "Emma Frost", "Doctor Strange", "Psylocke", 
-        "Wolverine", "Human Torch", "Adam Warlock", "Magneto", "Hela", "Cloak & Dagger", 
-        "Venom", "Luna Snow", "Scarlet Witch", "Groot", "Spider Man", "Squirrel Girl", 
-        "Star Lord", "Invisible Woman", "Phoenix", "Winter Soldier", "Moon Knight", 
-        "Jeff The Land Shark", "Hawkeye", "The Punisher", "Black Widow", "Blade"
+        "Peni Parker"
         ]
         num_count = 40
         print(f"Поиск оптимальной команды против {len(enemy_team)} врагов")
