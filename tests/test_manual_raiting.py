@@ -5,18 +5,48 @@ def load_matchups_data(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
+
+        # Логируем структуру данных для диагностики
+        print(f"DEBUG: Загружен JSON файл {file_path}")
+        print(f"DEBUG: Ключи верхнего уровня: {list(data.keys())}")
+        print(f"DEBUG: Тип данных: {type(data)}")
+
         # Преобразуем данные в старый формат для совместимости с существующим кодом
         old_format_data = {}
-        for hero_name, hero_stats in data.items():
-            old_format_data[hero_name] = hero_stats.get("opponents", [])
-            
+
+        # Проверяем, есть ли ключ "heroes" (новый формат)
+        if "heroes" in data:
+            print("DEBUG: Обнаружен новый формат с ключом 'heroes'")
+            heroes_data = data["heroes"]
+        else:
+            print("DEBUG: Обнаружен старый формат без ключа 'heroes'")
+            heroes_data = data
+
+        print(f"DEBUG: Количество героев для обработки: {len(heroes_data)}")
+
+        for hero_name, hero_stats in heroes_data.items():
+            # print(f"DEBUG: Обрабатываем героя {hero_name}, тип данных: {type(hero_stats)}")
+
+            # Проверяем, что hero_stats является словарем
+            if isinstance(hero_stats, dict):
+                opponents = hero_stats.get("opponents", [])
+                print(f"DEBUG: Герой {hero_name} - найдено {len(opponents)} противников")
+                old_format_data[hero_name] = opponents
+            else:
+                print(f"ERROR: hero_stats для {hero_name} не является словарем! Тип: {type(hero_stats)}")
+                # Если это не словарь, создаем пустой список opponents
+                old_format_data[hero_name] = []
+
+        print(f"DEBUG: Итоговый результат содержит {len(old_format_data)} героев")
         return old_format_data
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
         return {}
-    except json.JSONDecodeError:
-        print(f"Ошибка при чтении JSON из файла {file_path}")
+    except json.JSONDecodeError as e:
+        print(f"Ошибка при чтении JSON из файла {file_path}: {e}")
+        return {}
+    except Exception as e:
+        print(f"Неожиданная ошибка при загрузке данных из {file_path}: {e}")
         return {}
 
 def load_hero_stats(file_path):
@@ -24,21 +54,54 @@ def load_hero_stats(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
+
+        # Логируем структуру данных для диагностики
+        print(f"DEBUG: Загружен JSON файл {file_path}")
+        print(f"DEBUG: Ключи верхнего уровня: {list(data.keys())}")
+        print(f"DEBUG: Тип данных: {type(data)}")
+
         hero_stats = {}
-        for hero_name, hero_data in data.items():
-            hero_stats[hero_name] = {
-                "win_rate": hero_data["win_rate"],
-                "pick_rate": hero_data["pick_rate"],
-                "matches": hero_data["matches"]
-            }
-            
+
+        # Проверяем, есть ли ключ "heroes" (новый формат)
+        if "heroes" in data:
+            print("DEBUG: Обнаружен новый формат с ключом 'heroes'")
+            heroes_data = data["heroes"]
+        else:
+            print("DEBUG: Обнаружен старый формат без ключа 'heroes'")
+            heroes_data = data
+
+        print(f"DEBUG: Количество героев для обработки: {len(heroes_data)}")
+
+        for hero_name, hero_data in heroes_data.items():
+            # print(f"DEBUG: Обрабатываем героя {hero_name}, тип данных: {type(hero_data)}")
+
+            # Проверяем, что hero_data является словарем
+            if isinstance(hero_data, dict):
+                try:
+                    hero_stats[hero_name] = {
+                        "win_rate": hero_data["win_rate"],
+                        "pick_rate": hero_data["pick_rate"],
+                        "matches": hero_data["matches"]
+                    }
+                    # print(f"DEBUG: Герой {hero_name} успешно обработан")
+                except KeyError as e:
+                    print(f"ERROR: Отсутствует ключ {e} для героя {hero_name}")
+                    continue
+            else:
+                print(f"ERROR: hero_data для {hero_name} не является словарем! Тип: {type(hero_data)}")
+                # Если это не словарь, пропускаем героя
+                continue
+
+        print(f"DEBUG: Итоговый результат содержит {len(hero_stats)} героев")
         return hero_stats
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
         return {}
-    except json.JSONDecodeError:
-        print(f"Ошибка при чтении JSON из файла {file_path}")
+    except json.JSONDecodeError as e:
+        print(f"Ошибка при чтении JSON из файла {file_path}: {e}")
+        return {}
+    except Exception as e:
+        print(f"Неожиданная ошибка при загрузке данных из {file_path}: {e}")
         return {}
 
 def load_hero_roles_from_file(file_path="database/roles.json"):
@@ -252,6 +315,70 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
     
     return hero_scores
 
+def get_map_score(full_data, hero_name, map_name, min_score=0, max_score=20):
+    """
+    Рассчитывает балл для конкретной карты конкретного героя.
+
+    Args:
+        full_data (dict): Полный JSON-объект со статистикой всех героев.
+        hero_name (str): Имя героя (например, "Peni Parker").
+        map_name (str): Название карты (например, "KRAKOA").
+        min_score (int/float): Минимальный балл.
+        max_score (int/float): Максимальный балл.
+
+    Returns:
+        float: Рассчитанный балл для карты.
+               Возвращает None, если герой или карта не найдены.
+    """
+    # 1. Находим данные героя в общем JSON
+    hero_data = full_data.get('heroes', {}).get(hero_name)
+    if not hero_data:
+        print(f"Ошибка: Герой '{hero_name}' не найден в данных.")
+        return None
+
+    # 2. Находим список карт для этого героя
+    maps_list = hero_data.get('maps', [])
+    if not maps_list:
+        print(f"Ошибка: Для героя '{hero_name}' нет данных по картам.")
+        return None
+
+    # 3. Извлекаем все винрейты и находим винрейт для нужной карты
+    win_rates = []
+    target_map_wr = None
+
+    for map_info in maps_list:
+        try:
+            # Преобразуем "XX.XX%" в число XX.XX
+            wr = float(map_info['win_rate'].replace('%', ''))
+            win_rates.append(wr)
+            # Если это та самая карта, которую мы ищем, сохраняем её винрейт
+            if map_info['map_name'] == map_name:
+                target_map_wr = wr
+        except (KeyError, ValueError):
+            # Пропускаем некорректные записи в данных
+            continue
+
+    # 4. Проверяем, нашли ли мы нужную карту в списке героя
+    if target_map_wr is None:
+        print(f"Ошибка: Карта '{map_name}' не найдена для героя '{hero_name}'.")
+        return None
+
+    # 5. Находим минимальный и максимальный винрейт среди всех карт героя
+    min_wr = min(win_rates)
+    max_wr = max(win_rates)
+
+    # 6. Обрабатываем случай, когда все винрейты одинаковые
+    if min_wr == max_wr:
+        # Если у всех карт одинаковый винрейт, присваиваем им минимальный балл
+        return float(min_score)
+
+    # 7. Рассчитываем и возвращаем балл для целевой карты по формуле
+    score = min_score + (target_map_wr - min_wr) * (max_score - min_score) / (max_wr - min_wr)
+    
+    return round(score, 2)
+
+
+
 # Пример использования
 if __name__ == "__main__":
     file_database="database/marvel_rivals_stats_20251017-202023.json"
@@ -263,9 +390,9 @@ if __name__ == "__main__":
     if matchups_data and hero_stats and hero_roles:
         print("=" * 50)
         enemy_team = [
-        "Peni Parker"
+        "Spider Man"
         ]
-        num_count = 40
+        num_count = 50
         print(f"Поиск оптимальной команды против {len(enemy_team)} врагов")
         
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)
