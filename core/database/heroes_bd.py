@@ -31,39 +31,23 @@ def _load_json_data(file_path: str) -> Any:
         return None
 
 # --- Глобальные переменные с данными ---
-# Эти переменные инициализируются один раз при импорте модуля.
-# ИСПРАВЛЕНО: Загружаем все данные из одного основного файла
 FULL_DATA = _load_json_data("database/marvel_rivals_stats_20251017-202023.json") or {}
 ROLES_DATA = _load_json_data("database/roles.json") or {}
-
-# ИЗМЕНЕНИЕ: Извлекаем данные о героях из новой структуры
 STATS_DATA = FULL_DATA.get("heroes", {})
 
-# ИЗМЕНЕНИЕ: Генерируем данные о композициях из раздела 'teamups'
+# --- НОВАЯ ЛОГИКА ДЛЯ СИНЕРГИЙ (из test_manual_raiting.py) ---
 teamups_list = FULL_DATA.get("teamups", [])
-generated_compositions = {}
+TEAMUPS_DATA = {}
 for teamup in teamups_list:
-    heroes_in_teamup = teamup.get("heroes", [])
-    if len(heroes_in_teamup) >= 2:
-        for i in range(len(heroes_in_teamup)):
-            hero1 = heroes_in_teamup[i]
-            if hero1 not in generated_compositions:
-                generated_compositions[hero1] = []
-            for j in range(len(heroes_in_teamup)):
-                if i == j: continue
-                hero2 = heroes_in_teamup[j]
-                if hero2 not in generated_compositions[hero1]:
-                    generated_compositions[hero1].append(hero2)
-COMPOSITIONS_DATA = generated_compositions
-
+    heroes_set = frozenset(teamup.get("heroes", []))
+    if len(heroes_set) > 1:
+        TEAMUPS_DATA[heroes_set] = teamup
 
 # --- Формирование основных структур данных ---
 heroes: List[str] = sorted(list(STATS_DATA.keys()))
-heroes_counters: Dict[str, Dict[str, List[str]]] = {} # Будет заполнено при необходимости
-heroes_compositions: Dict[str, List[str]] = COMPOSITIONS_DATA
+heroes_counters: Dict[str, Dict[str, List[str]]] = {}
 hero_roles: Dict[str, List[str]] = ROLES_DATA
 
-# Извлечение данных о матчапах и статистике из общей структуры
 matchups_data: Dict[str, List[Dict[str, Any]]] = {hero: data.get("opponents", []) for hero, data in STATS_DATA.items()}
 hero_stats_data: Dict[str, Dict[str, Any]] = {}
 for hero, data in STATS_DATA.items():
@@ -80,78 +64,89 @@ for hero, data in STATS_DATA.items():
 logging.info(f"База данных инициализирована. Загружено героев: {len(heroes)}")
 
 # --- Логика расчета ---
-SYNERGY_BONUS = 2.0  # Бонус за синергию
+# ИЗМЕНЕНИЕ: Бонус за синергию как в эталонном файле
+SYNERGY_BONUS = 10.0
+
+def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score: float = 20) -> float:
+    """
+    Рассчитывает балл для конкретной карты конкретного героя, адаптировано из test_manual_raiting.py.
+    """
+    hero_data = STATS_DATA.get(hero_name)
+    if not hero_data: return 0
+    maps_list = hero_data.get('maps', [])
+    if not maps_list: return 0
+    win_rates = []
+    target_map_wr = None
+    for map_info in maps_list:
+        try:
+            wr = float(map_info['win_rate'].replace('%', ''))
+            win_rates.append(wr)
+            if map_info['map_name'] == map_name:
+                target_map_wr = wr
+        except (KeyError, ValueError): continue
+    if target_map_wr is None or not win_rates: return 0
+    min_wr = min(win_rates)
+    max_wr = max(win_rates)
+    if min_wr == max_wr: return float(min_score)
+    score = min_score + (target_map_wr - min_wr) * (max_score - min_score) / (max_wr - min_wr)
+    return round(score, 2)
 
 def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
     """Рассчитывает рейтинг героев против указанной команды врагов."""
     if not enemy_team: return []
-    
     hero_scores = {}
     for hero, matchups in matchups_data.items():
-        # Пропускаем героя, только если это не расчет тир-листа
-        if not is_tier_list_calc and hero in enemy_team:
-            continue
-        
-        total_difference = 0
-        found_matchups = 0
+        if not is_tier_list_calc and hero in enemy_team: continue
+        total_difference, found_matchups = 0, 0
         for enemy in enemy_team:
-            # Для тир-листа не сравниваем героя с самим собой
-            if is_tier_list_calc and hero == enemy:
-                continue
+            if is_tier_list_calc and hero == enemy: continue
             for matchup in matchups:
                 if matchup.get("opponent", "").lower() == enemy.lower():
                     try:
-                        # "difference" - это преимущество врага над нами, поэтому инвертируем знак.
                         difference = -float(matchup["difference"].strip('%'))
                         total_difference += difference
                         found_matchups += 1
-                    except (ValueError, KeyError):
-                        continue
-                    break # Нашли матч, переходим к следующему врагу
-        
+                    except (ValueError, KeyError): continue
+                    break
         if found_matchups > 0:
-            hero_scores[hero] = total_difference / found_matchups # Среднее преимущество
-            
-    # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по имени.
+            hero_scores[hero] = total_difference / found_matchups
+    # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
     return sorted(hero_scores.items(), key=lambda item: item, reverse=True)
 
 def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict) -> List[str]:
-    """Выбирает оптимальную команду из 6 героев с учетом ограничений на роли и синергии."""
+    """
+    Выбирает оптимальную команду из 6 героев с учетом ограничений на роли и синергии.
+    Логика адаптирована из test_manual_raiting.py.
+    """
     if not sorted_heroes or not hero_roles: return []
     
-    # Разделяем героев по ролям
     roles_map = {hero: role for role, heroes_in_role in hero_roles.items() for hero in heroes_in_role}
     vanguards, duelists, strategists = [], [], []
-    
     for hero, score in sorted_heroes:
         role = roles_map.get(hero)
         if role == "Vanguard": vanguards.append((hero, score))
         elif role == "Duelist": duelists.append((hero, score))
         elif role == "Strategist": strategists.append((hero, score))
         
-    # Возможные комбинации ролей (V, S, D), где V>=1, 2<=S<=3, V+S+D=6
     possible_combinations = [(v, s, 6 - v - s) for v in range(1, 5) for s in range(2, 4) if 6 - v - s >= 0]
-    
     best_team, best_score = [], float('-inf')
     
     for v_count, s_count, d_count in possible_combinations:
         if len(vanguards) >= v_count and len(strategists) >= s_count and len(duelists) >= d_count:
             team_candidates = vanguards[:v_count] + strategists[:s_count] + duelists[:d_count]
-            team_names = [h for h, s in team_candidates]
             
             base_score = sum(s for h, s in team_candidates)
+            team_names_set = {h for h, s in team_candidates}
             
             synergy_score = 0
-            for i in range(len(team_names)):
-                for j in range(i + 1, len(team_names)):
-                    hero1, hero2 = team_names[i], team_names[j]
-                    if hero2 in COMPOSITIONS_DATA.get(hero1, []): synergy_score += SYNERGY_BONUS
-                    if hero1 in COMPOSITIONS_DATA.get(hero2, []): synergy_score += SYNERGY_BONUS
+            for teamup_heroes_set in TEAMUPS_DATA.keys():
+                if teamup_heroes_set.issubset(team_names_set):
+                    synergy_score += SYNERGY_BONUS
             
             total_score = base_score + synergy_score
             if total_score > best_score:
                 best_score = total_score
-                best_team = team_names
+                best_team = [h for h, s in team_candidates]
     
     return best_team
 
@@ -160,9 +155,8 @@ def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> 
     absolute_scores = []
     for hero, score in scores:
         stats = hero_stats.get(hero, {"win_rate": 0.5})
-        context_factor = stats["win_rate"] / 0.5 # Коэффициент относительно 50% винрейта
+        context_factor = stats["win_rate"] / 0.5
         absolute_score = (100 + score) * context_factor
         absolute_scores.append((hero, absolute_score))
-        
-    # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по всему кортежу.
+    # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
     return sorted(absolute_scores, key=lambda item: item, reverse=True)

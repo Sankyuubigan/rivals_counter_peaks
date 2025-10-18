@@ -72,7 +72,8 @@ class UiUpdater(QObject):
                 "selected_heroes": list(self.mw.logic.selected_heroes),
                 "counter_scores": counter_scores,
                 "effective_team": effective_team,
-                "start_time": start_time
+                "start_time": start_time,
+                "selected_map": self.mw.logic.selected_map
             }
             event_bus.emit("logic_updated", payload)
             

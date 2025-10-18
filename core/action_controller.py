@@ -167,3 +167,12 @@ class ActionController:
     @Slot()
     def handle_copy_team(self):
         utils_gui.copy_to_clipboard(self.mw.logic)
+
+    @Slot()
+    def handle_cycle_map(self):
+        """Переключает на следующую карту и инициирует обновление UI."""
+        logging.info("ActionController: Handling cycle map request.")
+        self.mw.logic.cycle_next_map()
+        # Полное обновление UI необходимо, так как все оценки героев изменятся
+        if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+            self.mw.ui_updater.update_ui_after_logic_change()

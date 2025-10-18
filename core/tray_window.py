@@ -1,10 +1,11 @@
 import logging
+import os
 import time
 from typing import TYPE_CHECKING, Dict, List, Tuple
 from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QProgressBar, 
-                               QScrollArea, QFrame)
+                               QScrollArea, QFrame, QLabel)
 from PySide6.QtCore import Qt, Slot, QRect, QSize, QTimer, QObject
-from PySide6.QtGui import QMoveEvent, QResizeEvent, QColor
+from PySide6.QtGui import QMoveEvent, QResizeEvent, QColor, QPixmap
 from core.event_bus import event_bus
 from core.horizontal_list import IconWithRatingWidget, is_invalid_pixmap
 from info.translations import get_text
@@ -12,7 +13,6 @@ from core.image_manager import SIZES
 
 if TYPE_CHECKING:
     from main_window_refactored import MainWindowRefactored
-    from PySide6.QtGui import QPixmap
 
 class TrayWindow(QMainWindow):
     """Оптимизированное окно для таб-режима, которое переиспользует виджеты."""
@@ -31,6 +31,10 @@ class TrayWindow(QMainWindow):
         self._update_timer = QTimer(self)
         self._update_timer.setSingleShot(True)
         self._update_timer.timeout.connect(self._process_pending_update)
+        
+        self.map_images: Dict[str, QPixmap] = {}
+        self._load_map_images()
+        
         self._setup_window_properties()
         self._create_ui()
         self._connect_signals()
@@ -46,6 +50,25 @@ class TrayWindow(QMainWindow):
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WA_DontCreateNativeAncestors, True)
 
+    def _load_map_images(self):
+        """Загружает и кэширует изображения карт."""
+        try:
+            from core.utils import resource_path
+            maps_dir = resource_path("resources/maps")
+            if not os.path.isdir(maps_dir): return
+
+            for map_name in self.logic.available_maps:
+                filename = f"{map_name}.png"
+                filepath = os.path.join(maps_dir, filename)
+                if os.path.exists(filepath):
+                    pixmap = QPixmap(filepath)
+                    if not pixmap.isNull():
+                        self.map_images[map_name] = pixmap.scaled(64, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                else:
+                    logging.warning(f"Изображение карты не найдено: {filepath}")
+        except Exception as e:
+            logging.error(f"Ошибка при загрузке изображений карт: {e}")
+
     def _create_ui(self):
         central_widget = QWidget(self)
         central_widget.setObjectName("central_widget")
@@ -60,14 +83,34 @@ class TrayWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(0)
-        
+
+        # Верхний контейнер для карты и врагов
+        top_container = QWidget()
+        top_layout = QHBoxLayout(top_container)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(5)
+
+        # Виджет для отображения карты
+        self.map_display_widget = QWidget()
+        map_display_layout = QVBoxLayout(self.map_display_widget)
+        map_display_layout.setContentsMargins(0, 0, 0, 0)
+        self.map_image_label = QLabel()
+        self.map_name_label = QLabel()
+        self.map_name_label.setAlignment(Qt.AlignCenter)
+        self.map_name_label.setStyleSheet("color: white; font-size: 9px; font-weight: bold;")
+        map_display_layout.addWidget(self.map_image_label)
+        map_display_layout.addWidget(self.map_name_label)
+        self.map_display_widget.setVisible(False) # Скрыт по умолчанию
+
+        # Контейнер для врагов
         self.enemies_container = QWidget()
         self.enemies_layout = QHBoxLayout(self.enemies_container)
         self.enemies_layout.setContentsMargins(0,0,0,0)
         self.enemies_layout.setSpacing(2)
-        self.enemies_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.enemies_container.setFixedHeight(35)
         
+        top_layout.addWidget(self.map_display_widget)
+        top_layout.addWidget(self.enemies_container, 1) # Занимает оставшееся место
+
         self.counters_scroll_area = QScrollArea()
         self.counters_scroll_area.setWidgetResizable(True)
         self.counters_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -82,7 +125,7 @@ class TrayWindow(QMainWindow):
         self.counters_layout.setSpacing(2)
         self.counters_scroll_area.setWidget(scroll_content_widget)
         
-        layout.addWidget(self.enemies_container)
+        layout.addWidget(top_container)
         layout.addWidget(self.counters_scroll_area)
         
         self.recognition_progress_bar = QProgressBar()
@@ -109,6 +152,27 @@ class TrayWindow(QMainWindow):
         self._pending_update = True
         self._update_timer.start(50)
 
+    def _update_map_display(self, selected_map: str = None):
+        """Обновляет отображение карты в трее.
+
+        Args:
+            selected_map: Название выбранной карты или None если карта не выбрана
+        """
+        if selected_map and selected_map in self.map_images:
+            # Показываем выбранную карту
+            self.map_image_label.setPixmap(self.map_images[selected_map])
+            self.map_name_label.setText(selected_map)
+            self.map_display_widget.setVisible(True)
+        else:
+            # Показываем индикатор невыбранной карты
+            # Создаем пустой pixmap для индикатора
+            empty_pixmap = QPixmap(64, 36)
+            empty_pixmap.fill(QColor(60, 60, 60, 150))  # Полупрозрачный серый фон
+
+            self.map_image_label.setPixmap(empty_pixmap)
+            self.map_name_label.setText(get_text("map_not_selected", "Карта не выбрана"))
+            self.map_display_widget.setVisible(True)
+
     def _process_pending_update(self):
         if not self._pending_update or not hasattr(self, '_pending_data'): return
             
@@ -123,8 +187,13 @@ class TrayWindow(QMainWindow):
         selected_heroes = sorted(data.get("selected_heroes", []))
         counter_scores = data.get("counter_scores", {})
         effective_team = data.get("effective_team", [])
+        selected_map = data.get("selected_map")
         
-        sorted_counters = sorted(counter_scores.items(), key=lambda x: x[1], reverse=True)
+        # Обновление информации о карте
+        self._update_map_display(selected_map)
+        
+        # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
+        sorted_counters = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
         heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
 
         if selected_heroes != self._last_enemy_list:
