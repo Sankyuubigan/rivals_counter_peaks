@@ -1,81 +1,34 @@
 import json
 
+# --- ФУНКЦИИ ЗАГРУЗКИ ДАННЫХ ---
+
 def load_matchups_data(file_path):
-    """Загружает данные из JSON файла в новом формате"""
+    """Загружает данные о противниках из JSON файла."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-
-        # Логируем структуру данных для диагностики
-        print(f"DEBUG: Загружен JSON файл {file_path}")
-        print(f"DEBUG: Ключи верхнего уровня: {list(data.keys())}")
-        print(f"DEBUG: Тип данных: {type(data)}")
-
-        # Преобразуем данные в старый формат для совместимости с существующим кодом
         old_format_data = {}
-
-        # Проверяем, есть ли ключ "heroes" (новый формат)
-        if "heroes" in data:
-            print("DEBUG: Обнаружен новый формат с ключом 'heroes'")
-            heroes_data = data["heroes"]
-        else:
-            print("DEBUG: Обнаружен старый формат без ключа 'heroes'")
-            heroes_data = data
-
-        print(f"DEBUG: Количество героев для обработки: {len(heroes_data)}")
-
+        heroes_data = data.get("heroes", {})
         for hero_name, hero_stats in heroes_data.items():
-            # print(f"DEBUG: Обрабатываем героя {hero_name}, тип данных: {type(hero_stats)}")
-
-            # Проверяем, что hero_stats является словарем
             if isinstance(hero_stats, dict):
                 opponents = hero_stats.get("opponents", [])
-                print(f"DEBUG: Герой {hero_name} - найдено {len(opponents)} противников")
                 old_format_data[hero_name] = opponents
-            else:
-                print(f"ERROR: hero_stats для {hero_name} не является словарем! Тип: {type(hero_stats)}")
-                # Если это не словарь, создаем пустой список opponents
-                old_format_data[hero_name] = []
-
-        print(f"DEBUG: Итоговый результат содержит {len(old_format_data)} героев")
         return old_format_data
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
         return {}
-    except json.JSONDecodeError as e:
-        print(f"Ошибка при чтении JSON из файла {file_path}: {e}")
-        return {}
     except Exception as e:
-        print(f"Неожиданная ошибка при загрузке данных из {file_path}: {e}")
+        print(f"Ошибка при загрузке данных из {file_path}: {e}")
         return {}
 
 def load_hero_stats(file_path):
-    """Загружает общую статистику героев из JSON файла"""
+    """Загружает общую статистику героев из JSON файла."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-
-        # Логируем структуру данных для диагностики
-        print(f"DEBUG: Загружен JSON файл {file_path}")
-        print(f"DEBUG: Ключи верхнего уровня: {list(data.keys())}")
-        print(f"DEBUG: Тип данных: {type(data)}")
-
         hero_stats = {}
-
-        # Проверяем, есть ли ключ "heroes" (новый формат)
-        if "heroes" in data:
-            print("DEBUG: Обнаружен новый формат с ключом 'heroes'")
-            heroes_data = data["heroes"]
-        else:
-            print("DEBUG: Обнаружен старый формат без ключа 'heroes'")
-            heroes_data = data
-
-        print(f"DEBUG: Количество героев для обработки: {len(heroes_data)}")
-
+        heroes_data = data.get("heroes", {})
         for hero_name, hero_data in heroes_data.items():
-            # print(f"DEBUG: Обрабатываем героя {hero_name}, тип данных: {type(hero_data)}")
-
-            # Проверяем, что hero_data является словарем
             if isinstance(hero_data, dict):
                 try:
                     hero_stats[hero_name] = {
@@ -83,33 +36,20 @@ def load_hero_stats(file_path):
                         "pick_rate": hero_data["pick_rate"],
                         "matches": hero_data["matches"]
                     }
-                    # print(f"DEBUG: Герой {hero_name} успешно обработан")
-                except KeyError as e:
-                    print(f"ERROR: Отсутствует ключ {e} для героя {hero_name}")
-                    continue
-            else:
-                print(f"ERROR: hero_data для {hero_name} не является словарем! Тип: {type(hero_data)}")
-                # Если это не словарь, пропускаем героя
-                continue
-
-        print(f"DEBUG: Итоговый результат содержит {len(hero_stats)} героев")
+                except KeyError: continue
         return hero_stats
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
         return {}
-    except json.JSONDecodeError as e:
-        print(f"Ошибка при чтении JSON из файла {file_path}: {e}")
-        return {}
     except Exception as e:
-        print(f"Неожиданная ошибка при загрузке данных из {file_path}: {e}")
+        print(f"Ошибка при загрузке данных из {file_path}: {e}")
         return {}
 
 def load_hero_roles_from_file(file_path="database/roles.json"):
-    """Загружает роли героев из файла database/roles.json"""
+    """Загружает роли героев из файла database/roles.json."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        # Преобразуем в формат {имя_героя: роль}
         hero_roles = {}
         for role, heroes in data.items():
             for hero in heroes:
@@ -122,342 +62,247 @@ def load_hero_roles_from_file(file_path="database/roles.json"):
         print(f"Ошибка при чтении JSON из файла {file_path}")
         return {}
 
-def absolute_with_context(scores, hero_stats):
-    """
-    Использует абсолютные значения, но учитывает контекст общей силы героя.
-    Нормализует результаты для отображения в диапазоне 1-100, сохраняя исходный порядок.
-    """
-    # Шаг 1: Рассчитываем баллы по исходной формуле
-    original_scores = []
-    
-    for hero, score in scores:
-        # Получаем статистику героя
-        if hero in hero_stats:
-            overall_winrate = float(hero_stats[hero]["win_rate"].replace('%', ''))
-        else:
-            overall_winrate = 50.0
-        
-        # Чем сильнее герой в целом, тем ценнее его положительный вклад
-        context_factor = overall_winrate / 50.0
-        
-        # ИСПОЛЬЗУЕМ ИСХОДНУЮ ФОРМУЛУ
-        absolute_score = (100 + score) * context_factor  # 100 + score превратит -8.75 в 91.25
-        original_scores.append((hero, absolute_score))
-    
-    # Шаг 2: Находим минимальный и максимальный баллы для нормализации отображения
-    if not original_scores:
-        return []
-    
-    original_values = [score for _, score in original_scores]
-    min_score = min(original_values)
-    max_score = max(original_values)
-    
-    # Шаг 3: Нормализуем ТОЛЬКО для отображения в диапазоне 1-100, сохраняя исходный порядок
-    display_scores = []
-    
-    # Если все баллы одинаковы, избегаем деления на ноль
-    if max_score == min_score:
-        # Всем присваиваем 50.5 (середина диапазона 1-100)
-        for hero, _ in original_scores:
-            display_scores.append((hero, 50.5))
-    else:
-        for hero, original_score in original_scores:
-            # Нормализация в диапазоне 1-100: (x - min) / (max - min) * 99 + 1
-            display_score = (original_score - min_score) / (max_score - min_score) * 99 + 1
-            display_scores.append((hero, display_score))
-    
-    return display_scores
+def load_teamups_data(file_path):
+    """Загружает и обрабатывает данные о тимапах из основного файла."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        teamups_data = {}
+        teamups_list = data.get("teamups", [])
+        for teamup in teamups_list:
+            heroes_set = frozenset(teamup["heroes"])
+            teamups_data[heroes_set] = teamup
+        return teamups_data
+    except FileNotFoundError:
+        print(f"Файл {file_path} не найден")
+        return {}
+    except Exception as e:
+        print(f"Ошибка при загрузке тимапов из {file_path}: {e}")
+        return {}
 
-def select_optimal_team(sorted_heroes, hero_roles):
-    """
-    Выбирает оптимальную команду из 6 героев с учетом ограничений на роль.
-    """
-    # Разделяем героев по ролям
-    vanguards = []  # Авангарды
-    strategists = []  # Стратеги
-    duelists = []  # Дуэлянты
-    
-    for hero, diff in sorted_heroes:
-        role = hero_roles.get(hero, "Unknown")
-        if role == "Vanguard":
-            vanguards.append((hero, diff))
-        elif role == "Strategist":
-            strategists.append((hero, diff))
-        elif role == "Duelist":
-            duelists.append((hero, diff))
-    
-    # Сортируем каждую группу по убыванию difference
-    vanguards.sort(key=lambda x: x[1], reverse=True)
-    strategists.sort(key=lambda x: x[1], reverse=True)
-    duelists.sort(key=lambda x: x[1], reverse=True)
-    
-    # Возможные комбинации ролей, удовлетворяющие условиям:
-    # (V, S, D) где V >= 1, 2 <= S <= 3, V + S + D = 6
-    possible_combinations = []
-    
-    for v in range(1, 5):  # Авангардов может быть от 1 до 4
-        for s in range(2, 4):  # Стратегов может быть 2 или 3
-            d = 6 - v - s
-            if d >= 0:
-                possible_combinations.append((v, s, d))
-    
-    best_team = None
-    best_score = float('-inf')
-    
-    # Проверяем каждую возможную комбинацию
-    for v_count, s_count, d_count in possible_combinations:
-        # Проверяем, достаточно ли героев каждой роли
-        if len(vanguards) >= v_count and len(strategists) >= s_count and len(duelists) >= d_count:
-            # Формируем команду
-            team = vanguards[:v_count] + strategists[:s_count] + duelists[:d_count]
-            score = sum(diff for _, diff in team)
-            
-            if score > best_score:
-                best_score = score
-                best_team = team
-    
-    # Если не найдено подходящей команды, составляем вручную с приоритетом условий
-    if best_team is None:
-        team = []
-        
-        # Добавляем как минимум 1 авангард (лучший)
-        if vanguards:
-            team.append(vanguards[0])
-        
-        # Добавляем как минимум 2 стратега (лучших)
-        team.extend(strategists[:min(2, len(strategists))])
-        
-        # Добавляем остальных героев, учитывая ограничение максимум 3 стратега
-        remaining = []
-        remaining.extend(vanguards[1:])  # Оставшиеся авангарды
-        remaining.extend(strategists[min(2, len(strategists)):3])  # Может добавить 1 стратега, чтобы стало 3
-        remaining.extend(duelists)  # Все дуэлянты
-        
-        # Сортируем оставшихся по убыванию difference
-        remaining.sort(key=lambda x: x[1], reverse=True)
-        
-        # Добавляем героев до 6 человек
-        while len(team) < 6 and remaining:
-            hero = remaining.pop(0)
-            team.append(hero)
-    
-        best_team = team
-    
-    # Возвращаем только имена героев
-    return [hero[0] for hero in best_team[:6]]
+def load_full_data_for_maps(file_path):
+    """Загружает полный JSON, чтобы получить доступ к данным по картам."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Не удалось загрузить полные данные для карт: {e}")
+        return None
 
-def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg", weighting="equal"):
-    """
-    Рассчитывает рейтинг героев против указанной команды врагов.
-    """
-    # Проверяем корректность входных данных
-    if not enemy_team:
-        raise ValueError("Список вражеских героев не может быть пустым")
-    if method not in ['sum', 'avg']:
-        raise ValueError("Метод агрегации должен быть 'sum' или 'avg'")
-    if weighting not in ['equal', 'matches']:
-        raise ValueError("Метод взвешивания должно быть 'equal' или 'matches'")
-    
-    hero_scores = []
-    
-    # Проходим по каждому герою в базе данных
-    for hero, matchups in matchups_data.items():
-        total_weighted_difference = 0
-        total_weight = 0
-        found_matchups = 0
-        
-        # Проходим по каждому вражескому герою
-        for enemy in enemy_team:
-            # Ищем матчап против этого врага
-            for matchup in matchups:
-                # Сравниваем имена, игнорируя регистр и возможные различия в написании
-                if matchup["opponent"].lower() == enemy.lower():
-                    # Преобразуем строку difference в число
-                    diff_str = matchup["difference"].replace('%', '').strip()
-                    try:
-                        difference = -float(diff_str)
-                    except ValueError:
-                        continue
-                    
-                    # Определяем вес
-                    weight = 1
-                    if weighting == "matches" and "matches" in matchup:
-                        # Убираем запятые из числа матчей и преобразуем в int
-                        try:
-                            matches = int(matchup["matches"].replace(',', ''))
-                            weight = matches
-                        except ValueError:
-                            pass
-                    
-                    total_weighted_difference += difference * weight
-                    total_weight += weight
-                    found_matchups += 1
-                    break
-        
-        # Пропускаем героев без данных
-        if found_matchups == 0:
-            continue
-            
-        # Рассчитываем итоговый рейтинг
-        if total_weight > 0:
-            if method == "sum":
-                # Нормализуем к среднему, чтобы сравнение было справедливым
-                rating = total_weighted_difference / total_weight * len(enemy_team)
-            else:  # avg
-                rating = total_weighted_difference / total_weight
-        else:
-            rating = 0
-            
-        hero_scores.append((hero, rating))
-    
-    # Сортируем по рейтингу в порядке убывания
-    hero_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    return hero_scores
+# --- ФУНКЦИИ РАСЧЕТА ---
 
 def get_map_score(full_data, hero_name, map_name, min_score=0, max_score=20):
     """
     Рассчитывает балл для конкретной карты конкретного героя.
-
-    Args:
-        full_data (dict): Полный JSON-объект со статистикой всех героев.
-        hero_name (str): Имя героя (например, "Peni Parker").
-        map_name (str): Название карты (например, "KRAKOA").
-        min_score (int/float): Минимальный балл.
-        max_score (int/float): Максимальный балл.
-
-    Returns:
-        float: Рассчитанный балл для карты.
-               Возвращает None, если герой или карта не найдены.
     """
-    # 1. Находим данные героя в общем JSON
     hero_data = full_data.get('heroes', {}).get(hero_name)
-    if not hero_data:
-        print(f"Ошибка: Герой '{hero_name}' не найден в данных.")
-        return None
+    if not hero_data: return 0
 
-    # 2. Находим список карт для этого героя
     maps_list = hero_data.get('maps', [])
-    if not maps_list:
-        print(f"Ошибка: Для героя '{hero_name}' нет данных по картам.")
-        return None
+    if not maps_list: return 0
 
-    # 3. Извлекаем все винрейты и находим винрейт для нужной карты
     win_rates = []
     target_map_wr = None
-
     for map_info in maps_list:
         try:
-            # Преобразуем "XX.XX%" в число XX.XX
             wr = float(map_info['win_rate'].replace('%', ''))
             win_rates.append(wr)
-            # Если это та самая карта, которую мы ищем, сохраняем её винрейт
             if map_info['map_name'] == map_name:
                 target_map_wr = wr
-        except (KeyError, ValueError):
-            # Пропускаем некорректные записи в данных
-            continue
+        except (KeyError, ValueError): continue
 
-    # 4. Проверяем, нашли ли мы нужную карту в списке героя
-    if target_map_wr is None:
-        print(f"Ошибка: Карта '{map_name}' не найдена для героя '{hero_name}'.")
-        return None
+    if target_map_wr is None: return 0
 
-    # 5. Находим минимальный и максимальный винрейт среди всех карт героя
     min_wr = min(win_rates)
     max_wr = max(win_rates)
 
-    # 6. Обрабатываем случай, когда все винрейты одинаковые
-    if min_wr == max_wr:
-        # Если у всех карт одинаковый винрейт, присваиваем им минимальный балл
-        return float(min_score)
-
-    # 7. Рассчитываем и возвращаем балл для целевой карты по формуле
-    score = min_score + (target_map_wr - min_wr) * (max_score - min_score) / (max_wr - min_wr)
+    if min_wr == max_wr: return float(min_score)
     
+    score = min_score + (target_map_wr - min_wr) * (max_score - min_score) / (max_wr - min_wr)
     return round(score, 2)
 
+def calculate_team_score_with_synergy(team_list, teamups_data, bonus=10):
+    """Рассчитывает общую силу команды с учетом бонусов за тимапы."""
+    total_score = sum(score for _, score in team_list)
+    team_heroes_names = {hero for hero, _ in team_list}
+    synergy_bonus = 0
+    for teamup_heroes_set in teamups_data.keys():
+        if teamup_heroes_set.issubset(team_heroes_names):
+            synergy_bonus += bonus
+    return total_score + synergy_bonus
 
+def select_optimal_team(sorted_heroes, hero_roles, teamups_data=None):
+    """Выбирает оптимальную команду из 6 героев."""
+    vanguards, strategists, duelists = [], [], []
+    for hero, diff in sorted_heroes:
+        role = hero_roles.get(hero, "Unknown")
+        if role == "Vanguard": vanguards.append((hero, diff))
+        elif role == "Strategist": strategists.append((hero, diff))
+        elif role == "Duelist": duelists.append((hero, diff))
+    
+    vanguards.sort(key=lambda x: x[1], reverse=True)
+    strategists.sort(key=lambda x: x[1], reverse=True)
+    duelists.sort(key=lambda x: x[1], reverse=True)
+    
+    best_team, best_score = None, float('-inf')
+    for v in range(1, 5):
+        for s in range(2, 4):
+            d = 6 - v - s
+            if d >= 0 and len(vanguards) >= v and len(strategists) >= s and len(duelists) >= d:
+                team = vanguards[:v] + strategists[:s] + duelists[:d]
+                score = calculate_team_score_with_synergy(team, teamups_data) if teamups_data else sum(diff for _, diff in team)
+                if score > best_score:
+                    best_score, best_team = score, team
+    
+    if best_team is None: # Fallback
+        team = []
+        if vanguards: team.append(vanguards[0])
+        team.extend(strategists[:min(2, len(strategists))])
+        remaining = sorted(vanguards[1:] + strategists[min(2, len(strategists)):3] + duelists, key=lambda x: x[1], reverse=True)
+        while len(team) < 6 and remaining: team.append(remaining.pop(0))
+        best_team = team
 
-# Пример использования
+    return [hero[0] for hero in best_team[:6]]
+
+def absolute_with_context(scores, hero_stats):
+    """Рассчитывает абсолютные значения с нормализацией."""
+    original_scores = []
+    for hero, score in scores:
+        if hero in hero_stats:
+            overall_winrate = float(hero_stats[hero]["win_rate"].replace('%', ''))
+        else: overall_winrate = 50.0
+        context_factor = overall_winrate / 50.0
+        absolute_score = (100 + score) * context_factor
+        original_scores.append((hero, absolute_score))
+    
+    if not original_scores: return []
+    original_values = [score for _, score in original_scores]
+    min_score, max_score = min(original_values), max(original_values)
+    display_scores = []
+    if max_score == min_score:
+        for hero, _ in original_scores: display_scores.append((hero, 50.5))
+    else:
+        for hero, original_score in original_scores:
+            display_score = (original_score - min_score) / (max_score - min_score) * 99 + 1
+            display_scores.append((hero, display_score))
+    return display_scores
+
+def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg", weighting="equal"):
+    """Рассчитывает рейтинг героев против указанной команды врагов."""
+    if not enemy_team: raise ValueError("Список вражеских героев не может быть пустым")
+    hero_scores = []
+    for hero, matchups in matchups_data.items():
+        total_weighted_difference, total_weight, found_matchups = 0, 0, 0
+        for enemy in enemy_team:
+            for matchup in matchups:
+                if matchup["opponent"].lower() == enemy.lower():
+                    try:
+                        difference = -float(matchup["difference"].replace('%', '').strip())
+                        weight = 1
+                        if weighting == "matches" and "matches" in matchup:
+                            weight = int(matchup["matches"].replace(',', ''))
+                        total_weighted_difference += difference * weight
+                        total_weight += weight
+                        found_matchups += 1
+                        break
+                    except (ValueError, KeyError): continue
+        if found_matchups > 0:
+            rating = (total_weighted_difference / total_weight * len(enemy_team)) if method == "sum" else total_weighted_difference / total_weight
+            hero_scores.append((hero, rating))
+    hero_scores.sort(key=lambda x: x[1], reverse=True)
+    return hero_scores
+
+# --- ОСНОВНОЙ БЛОК ВЫПОЛНЕНИЯ ---
+
 if __name__ == "__main__":
-    file_database="database/marvel_rivals_stats_20251017-202023.json"
-    # Загружаем данные
+    file_database = "database/marvel_rivals_stats_20251017-202023.json"
+    
+    # Запрашиваем название карты
+    map_name = "KRAKOA"
+
+    # Загружаем все необходимые данные
     matchups_data = load_matchups_data(file_database)
     hero_stats = load_hero_stats(file_database)
     hero_roles = load_hero_roles_from_file()
+    teamups_data = load_teamups_data(file_database)
+    full_data_for_maps = load_full_data_for_maps(file_database) if map_name else None
     
-    if matchups_data and hero_stats and hero_roles:
+    if not all([matchups_data, hero_stats, hero_roles, teamups_data]):
+        print("Не удалось загрузить одну из частей данных. Проверьте файлы.")
+    else:
         print("=" * 50)
-        enemy_team = [
-        "Spider Man"
-        ]
+        enemy_team = ["Spider Man"]
         num_count = 50
-        print(f"Поиск оптимальной команды против {len(enemy_team)} врагов")
+        print(f"Поиск оптимальной команды против {len(enemy_team)} врагов: {', '.join(enemy_team)}")
         
         hero_scores = calculate_team_counters(enemy_team, matchups_data, hero_roles)
-        
-        # Рассчитываем абсолютные значения для всех героев (с нормализацией для отображения)
         absolute_scores = absolute_with_context(hero_scores, hero_stats)
-        
-        # Сортируем по абсолютным значениям (сохраняем исходный порядок)
         absolute_scores.sort(key=lambda x: x[1], reverse=True)
         
+        # --- ЧАСТЬ 1: РАСЧЕТ БЕЗ УЧЕТА СИНЕРГИЙ ---
+        print(f"\n{'='*20} РАСЧЕТ БЕЗ УЧЕТА СИНЕРГИЙ {'='*20}")
         print(f"\nТоп-{num_count} героев против команды врагов:")
-        
         for i, (hero, absolute_score) in enumerate(absolute_scores[:num_count], 1):
             role = hero_roles.get(hero, "Unknown")
             print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f}")
         
-        # Выбираем оптимальную команду на основе абсолютных значений
-        optimal_team = select_optimal_team(absolute_scores, hero_roles)
-        print(f"\nОптимальная команда из 6 героев:")
-        
-        for i, hero in enumerate(optimal_team, 1):
+        optimal_team_standard = select_optimal_team(absolute_scores, hero_roles, teamups_data=None)
+        print(f"\nОптимальная команда (без синергий):")
+        for i, hero in enumerate(optimal_team_standard, 1):
             role = hero_roles.get(hero, "Unknown")
-            # Находим абсолютное значение для отображения
             absolute_score = next((score for h, score in absolute_scores if h == hero), 0)
             print(f"{i}. {hero} ({role}): {absolute_score:.2f}")
-        
-        # Проверяем условия
-        vanguard_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Vanguard")
-        strategist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Strategist")
-        duelist_count = sum(1 for hero in optimal_team if hero_roles.get(hero) == "Duelist")
-        
-        print(f"\nПроверка условий:")
-        print(f"- Авангардов: {vanguard_count} (должно быть >= 1)")
-        print(f"- Стратегов: {strategist_count} (должно быть 2-3)")
-        print(f"- Дуэлянтов: {duelist_count} (остальные)")
-        print(f"- Всего: {vanguard_count + strategist_count + duelist_count} героев")
-        
-        # ====== НОВЫЙ УЛУЧШЕННЫЙ СПИСОК ======
-        print(f"\n{'='*50}")
-        print("УЛУЧШЕННЫЙ СПИСОК (оптимальная команда + остальные по баллам):")
-        
-        # Создаем улучшенный список
-        improved_list = []
-        
-        # 1. Добавляем оптимальную команду (первые 6 героев)
-        for hero in optimal_team:
-            absolute_score = next((score for h, score in absolute_scores if h == hero), 0)
-            improved_list.append((hero, absolute_score))
-        
-        # 2. Добавляем оставшихся героев (начиная с 7-го места), отсортированных по баллам
-        # Создаем множество имен героев из оптимальной команды для быстрой проверки
-        optimal_team_set = set(optimal_team)
-        
-        # Фильтруем normalized_scores, исключая героев из оптимальной команды
-        remaining_heroes = [(hero, score) for hero, score in absolute_scores if hero not in optimal_team_set]
-        
-        # Добавляем оставшихся героев в улучшенный список
-        improved_list.extend(remaining_heroes)
-        
-        # Выводим улучшенный список (ограничиваем первыми 41 позициями)
-        print(f"\nТоп-41 героев (улучшенный список):")
-        for i, (hero, absolute_score) in enumerate(improved_list[:41], 1):
+
+        # --- ЧАСТЬ 2: РАСЧЕТ С УЧЕТОМ СИНЕРГИЙ ---
+        print(f"\n\n{'='*20} РАСЧЕТ С УЧЕТОМ СИНЕРГИЙ {'='*20}")
+        optimal_team_synergy = select_optimal_team(absolute_scores, hero_roles, teamups_data=teamups_data)
+        print(f"\nОптимальная команда (с учетом синергий):")
+        for i, hero in enumerate(optimal_team_synergy, 1):
             role = hero_roles.get(hero, "Unknown")
-            # Для первых 6 героев добавляем пометку "ОПТИМАЛЬНАЯ КОМАНДА"
-            if i <= 6:
-                print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f} [ОПТИМАЛЬНАЯ КОМАНДА]")
-            else:
-                print(f"{i:2d}. {hero:<20} ({role:<11}): {absolute_score:6.2f}")
+            absolute_score = next((score for h, score in absolute_scores if h == hero), 0)
+            print(f"{i}. {hero} ({role}): {absolute_score:.2f}")
+            
+        print(f"\nАНАЛИЗ СИНЕРГИЙ:")
+        optimal_team_synergy_set = set(optimal_team_synergy)
+        found_teamups = []
+        try:
+            with open(file_database, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for teamup in data.get("teamups", []):
+                    if set(teamup["heroes"]).issubset(optimal_team_synergy_set):
+                        found_teamups.append(f"{', '.join(teamup['heroes'])} ({teamup['tier']}-тир)")
+        except: pass
+
+        if found_teamups:
+            for teamup in found_teamups: print(f"  - {teamup}")
+        else:
+            print("  - Не найдено известных тимапов.")
+
+        # --- ЧАСТЬ 3: РАСЧЕТ С УЧЕТОМ КАРТЫ ---
+        if map_name and full_data_for_maps:
+            print(f"\n\n{'='*20} РАСЧЕТ С УЧЕТОМ КАРТЫ: {map_name.upper()} {'='*20}")
+            
+            map_adjusted_scores = []
+            for hero, base_score in absolute_scores:
+                map_bonus = get_map_score(full_data_for_maps, hero, map_name)
+                final_score = base_score + map_bonus
+                map_adjusted_scores.append((hero, final_score, map_bonus))
+            
+            map_adjusted_scores.sort(key=lambda x: x[1], reverse=True)
+
+            print(f"\nТоп-{num_count} героев с учетом бонуса за карту:")
+            for i, (hero, final_score, bonus) in enumerate(map_adjusted_scores[:num_count], 1):
+                role = hero_roles.get(hero, "Unknown")
+                print(f"{i:2d}. {hero:<20} ({role:<11}): {final_score:6.2f} (+{bonus:.2f})")
+            
+            optimal_team_map = select_optimal_team([(h, s) for h, s, _ in map_adjusted_scores], hero_roles)
+            print(f"\nОптимальная команда (с учетом карты):")
+            for i, hero in enumerate(optimal_team_map, 1):
+                role = hero_roles.get(hero, "Unknown")
+                # Находим итоговый балл для отображения
+                final_score_display = next((score for h, score, _ in map_adjusted_scores if h == hero), 0)
+                bonus_display = next((bonus for h, _, bonus in map_adjusted_scores if h == hero), 0)
+                print(f"{i}. {hero} ({role}): {final_score_display:.2f} (+{bonus_display:.2f})")
+        elif map_name:
+            print(f"\n\n{'='*20} РАСЧЕТ С УЧЕТОМ КАРТЫ: {map_name.upper()} {'='*20}")
+            print(f"Не удалось найти данные для карты '{map_name}' или файл с данными о картах отсутствует.")
