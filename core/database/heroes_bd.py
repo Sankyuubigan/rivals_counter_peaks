@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 from typing import List, Dict, Any, Tuple
+
 # --- Управление путями к ресурсам ---
 def resource_path(relative_path: str) -> str:
     """Определяет абсолютный путь к ресурсу, работая как в режиме разработки, так и в собранном .exe."""
@@ -14,6 +15,7 @@ def resource_path(relative_path: str) -> str:
         # ИСПРАВЛЕНИЕ: Правильно определяем базовый путь для ресурсов
         base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     return os.path.join(base_path, relative_path)
+
 # --- Загрузка данных ---
 def _load_json_data(file_path: str) -> Any:
     """Безопасно загружает данные из JSON файла."""
@@ -27,17 +29,40 @@ def _load_json_data(file_path: str) -> Any:
     except (json.JSONDecodeError, IOError) as e:
         logging.error(f"Ошибка при чтении файла {full_path}: {e}")
         return None
+
 # --- Глобальные переменные с данными ---
 # Эти переменные инициализируются один раз при импорте модуля.
-# ИСПРАВЛЕНО: Правильные пути к файлам данных
-STATS_DATA = _load_json_data("database/marvel_rivals_stats_20251017-180727.json") or {}
-COMPOSITIONS_DATA = _load_json_data("database/heroes_compositions.json") or {}
+# ИСПРАВЛЕНО: Загружаем все данные из одного основного файла
+FULL_DATA = _load_json_data("database/marvel_rivals_stats_20251017-202023.json") or {}
 ROLES_DATA = _load_json_data("database/roles.json") or {}
+
+# ИЗМЕНЕНИЕ: Извлекаем данные о героях из новой структуры
+STATS_DATA = FULL_DATA.get("heroes", {})
+
+# ИЗМЕНЕНИЕ: Генерируем данные о композициях из раздела 'teamups'
+teamups_list = FULL_DATA.get("teamups", [])
+generated_compositions = {}
+for teamup in teamups_list:
+    heroes_in_teamup = teamup.get("heroes", [])
+    if len(heroes_in_teamup) >= 2:
+        for i in range(len(heroes_in_teamup)):
+            hero1 = heroes_in_teamup[i]
+            if hero1 not in generated_compositions:
+                generated_compositions[hero1] = []
+            for j in range(len(heroes_in_teamup)):
+                if i == j: continue
+                hero2 = heroes_in_teamup[j]
+                if hero2 not in generated_compositions[hero1]:
+                    generated_compositions[hero1].append(hero2)
+COMPOSITIONS_DATA = generated_compositions
+
+
 # --- Формирование основных структур данных ---
 heroes: List[str] = sorted(list(STATS_DATA.keys()))
 heroes_counters: Dict[str, Dict[str, List[str]]] = {} # Будет заполнено при необходимости
 heroes_compositions: Dict[str, List[str]] = COMPOSITIONS_DATA
 hero_roles: Dict[str, List[str]] = ROLES_DATA
+
 # Извлечение данных о матчапах и статистике из общей структуры
 matchups_data: Dict[str, List[Dict[str, Any]]] = {hero: data.get("opponents", []) for hero, data in STATS_DATA.items()}
 hero_stats_data: Dict[str, Dict[str, Any]] = {}
@@ -51,9 +76,12 @@ for hero, data in STATS_DATA.items():
     except (KeyError, ValueError, AttributeError) as e:
         logging.warning(f"Не удалось обработать статистику для героя '{hero}': {e}. Используются значения по умолчанию.")
         hero_stats_data[hero] = {"win_rate": 0.5, "pick_rate": 0.0, "matches": 0}
+
 logging.info(f"База данных инициализирована. Загружено героев: {len(heroes)}")
+
 # --- Логика расчета ---
 SYNERGY_BONUS = 2.0  # Бонус за синергию
+
 def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
     """Рассчитывает рейтинг героев против указанной команды врагов."""
     if not enemy_team: return []
@@ -85,10 +113,12 @@ def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_
             hero_scores[hero] = total_difference / found_matchups # Среднее преимущество
             
     # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по имени.
-    return sorted(hero_scores.items(), key=lambda item: item[1], reverse=True)
+    return sorted(hero_scores.items(), key=lambda item: item, reverse=True)
+
 def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict) -> List[str]:
     """Выбирает оптимальную команду из 6 героев с учетом ограничений на роли и синергии."""
     if not sorted_heroes or not hero_roles: return []
+    
     # Разделяем героев по ролям
     roles_map = {hero: role for role, heroes_in_role in hero_roles.items() for hero in heroes_in_role}
     vanguards, duelists, strategists = [], [], []
@@ -98,10 +128,12 @@ def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict
         if role == "Vanguard": vanguards.append((hero, score))
         elif role == "Duelist": duelists.append((hero, score))
         elif role == "Strategist": strategists.append((hero, score))
+        
     # Возможные комбинации ролей (V, S, D), где V>=1, 2<=S<=3, V+S+D=6
     possible_combinations = [(v, s, 6 - v - s) for v in range(1, 5) for s in range(2, 4) if 6 - v - s >= 0]
     
     best_team, best_score = [], float('-inf')
+    
     for v_count, s_count, d_count in possible_combinations:
         if len(vanguards) >= v_count and len(strategists) >= s_count and len(duelists) >= d_count:
             team_candidates = vanguards[:v_count] + strategists[:s_count] + duelists[:d_count]
@@ -122,6 +154,7 @@ def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict
                 best_team = team_names
     
     return best_team
+
 def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> List[Tuple[str, float]]:
     """Применяет контекст общей силы героя к его рейтингу."""
     absolute_scores = []
@@ -132,4 +165,4 @@ def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> 
         absolute_scores.append((hero, absolute_score))
         
     # ИСПРАВЛЕНИЕ: Сортируем по значению (score), а не по всему кортежу.
-    return sorted(absolute_scores, key=lambda item: item[1], reverse=True)
+    return sorted(absolute_scores, key=lambda item: item, reverse=True)

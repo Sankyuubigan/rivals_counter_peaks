@@ -212,13 +212,50 @@ def calculate_team_counters(enemy_team, matchups_data, hero_roles, method="avg",
     hero_scores.sort(key=lambda x: x[1], reverse=True)
     return hero_scores
 
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ВЫВОДА СПИСКА ГЕРОЕВ ---
+
+def log_hero_list(optimal_team, all_heroes_scores, hero_roles, title="Список героев"):
+    """
+    Выводит в лог дополнительный список героев, где сначала идет оптимальная команда 6 героев,
+    а затем все остальные по баллам по убыванию.
+    
+    Args:
+        optimal_team: Список из 6 героев оптимальной команды
+        all_heroes_scores: Список всех героев с их баллами [(hero, score), ...]
+        hero_roles: Словарь с ролями героев {hero: role}
+        title: Заголовок для вывода
+    """
+    print(f"\n{'='*20} {title} {'='*20}")
+    
+    # Создаем словарь для быстрого доступа к баллам героев
+    scores_dict = {hero: score for hero, score in all_heroes_scores}
+    
+    # Сначала выводим оптимальную команду
+    print("\nОптимальная команда:")
+    for i, hero in enumerate(optimal_team, 1):
+        role = hero_roles.get(hero, "Unknown")
+        score = scores_dict.get(hero, 0)
+        print(f"{i}. {hero} ({role}): {score:.2f}")
+    
+    # Создаем список всех героев, не входящих в оптимальную команду
+    other_heroes = [(hero, score) for hero, score in all_heroes_scores if hero not in optimal_team]
+    
+    # Сортируем остальных героев по баллам по убыванию
+    other_heroes.sort(key=lambda x: x[1], reverse=True)
+    
+    # Выводим остальных героев
+    print("\nОстальные герои (по убыванию баллов):")
+    for i, (hero, score) in enumerate(other_heroes, 1):
+        role = hero_roles.get(hero, "Unknown")
+        print(f"{i}. {hero} ({role}): {score:.2f}")
+
 # --- ОСНОВНОЙ БЛОК ВЫПОЛНЕНИЯ ---
 
 if __name__ == "__main__":
     file_database = "database/marvel_rivals_stats_20251017-202023.json"
     
     # Запрашиваем название карты
-    map_name = "KRAKOA"
+    map_name = ""
 
     # Загружаем все необходимые данные
     matchups_data = load_matchups_data(file_database)
@@ -252,6 +289,9 @@ if __name__ == "__main__":
             role = hero_roles.get(hero, "Unknown")
             absolute_score = next((score for h, score in absolute_scores if h == hero), 0)
             print(f"{i}. {hero} ({role}): {absolute_score:.2f}")
+        
+        # Выводим дополнительный список героев для расчета без синергий
+        log_hero_list(optimal_team_standard, absolute_scores, hero_roles, "ПОЛНЫЙ СПИСОК ГЕРОЕВ (БЕЗ СИНЕРГИЙ)")
 
         # --- ЧАСТЬ 2: РАСЧЕТ С УЧЕТОМ СИНЕРГИЙ ---
         print(f"\n\n{'='*20} РАСЧЕТ С УЧЕТОМ СИНЕРГИЙ {'='*20}")
@@ -277,6 +317,9 @@ if __name__ == "__main__":
             for teamup in found_teamups: print(f"  - {teamup}")
         else:
             print("  - Не найдено известных тимапов.")
+        
+        # Выводим дополнительный список героев для расчета с синергиями
+        log_hero_list(optimal_team_synergy, absolute_scores, hero_roles, "ПОЛНЫЙ СПИСОК ГЕРОЕВ (С СИНЕРГИЯМИ)")
 
         # --- ЧАСТЬ 3: РАСЧЕТ С УЧЕТОМ КАРТЫ ---
         if map_name and full_data_for_maps:
@@ -303,6 +346,10 @@ if __name__ == "__main__":
                 final_score_display = next((score for h, score, _ in map_adjusted_scores if h == hero), 0)
                 bonus_display = next((bonus for h, _, bonus in map_adjusted_scores if h == hero), 0)
                 print(f"{i}. {hero} ({role}): {final_score_display:.2f} (+{bonus_display:.2f})")
+            
+            # Выводим дополнительный список героев для расчета с учетом карты
+            map_scores_only = [(h, s) for h, s, _ in map_adjusted_scores]
+            log_hero_list(optimal_team_map, map_scores_only, hero_roles, f"ПОЛНЫЙ СПИСОК ГЕРОЕВ (С УЧЕТОМ КАРТЫ {map_name.upper()})")
         elif map_name:
             print(f"\n\n{'='*20} РАСЧЕТ С УЧЕТОМ КАРТЫ: {map_name.upper()} {'='*20}")
             print(f"Не удалось найти данные для карты '{map_name}' или файл с данными о картах отсутствует.")
