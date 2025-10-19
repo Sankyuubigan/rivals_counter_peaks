@@ -6,7 +6,7 @@
 
 
 
-- у меня проблема с логами. мне нужно для дебага чтобы отображалось сначала пороговое значение, затем топ 15 персонажей отсортированных по уверенности. даже если они не прошли порог, они должны в логах отобразиться, чтобы я видел и мог откорректировать пороговое значение в коде. а щас видишь тупо только 5 героев показывает в логах. нихуя не понятно. в файл core\hero_recognition_system.py добавь логи.
+
 19:43:31.651 - INFO - [hotkey_manager.py:105] - _on_tab_press - [HotkeyManager] TAB pressed
 19:43:31.652 - INFO - [main_window_refactored.py:174] - _on_hotkey_pressed - [MainWindow] Executing action: enter_tab_mode
 19:43:31.652 - INFO - [hotkey_manager.py:139] - start_recognition_timer_in_main_thread - [HotkeyManager] Starting recognition timer in main thread
