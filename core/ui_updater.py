@@ -45,8 +45,14 @@ class UiUpdater(QObject):
             self.mw.counter_pick_layout.addWidget(self.mw.right_panel_widget, stretch=1)
             
             # Настройка делегата и сигналов
-            delegate_instance = delegate.HotkeyFocusDelegate(self.mw)
-            self.mw.right_list_widget.setItemDelegate(delegate_instance)
+            # ИСПРАВЛЕНИЕ: НЕ переустанавливаем делегат, так как RoleBorderDelegate уже установлен в RightPanel
+            logging.info(f"[UI-Updater] Current delegate: {self.mw.right_list_widget.itemDelegate()}")
+            logging.info(f"[UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate")
+
+            # Используем существующий делегат для сигналов
+            delegate_instance = self.mw.right_list_widget.itemDelegate()
+            if hasattr(delegate_instance, 'mw'):
+                delegate_instance.mw = self.mw  # Устанавливаем ссылку на главное окно если нужно
             self.mw.right_list_widget.itemSelectionChanged.connect(self.mw.action_controller.handle_selection_changed)
             self.mw.right_list_widget.customContextMenuRequested.connect(self.mw.action_controller.show_priority_context_menu)
         

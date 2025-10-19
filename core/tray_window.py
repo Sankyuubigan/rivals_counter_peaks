@@ -2,14 +2,21 @@ import logging
 import os
 import time
 from typing import TYPE_CHECKING, Dict, List, Tuple
-from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QProgressBar, 
-                               QScrollArea, QFrame, QLabel)
+from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QProgressBar,
+                                QScrollArea, QFrame, QLabel)
 from PySide6.QtCore import Qt, Slot, QRect, QSize, QTimer, QObject
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QColor, QPixmap
 from core.event_bus import event_bus
 from core.horizontal_list import IconWithRatingWidget, is_invalid_pixmap
 from info.translations import get_text
 from core.image_manager import SIZES
+
+# Цвета рамок для ролей героев
+ROLE_COLORS = {
+    "Duelist": QColor("#FF4500"),    # Ярко-оранжевый цвет для дуэлистов
+    "Vanguard": QColor("#0066CC"),   # Ярко-синий цвет для авангарда
+    "Strategist": QColor("#00AA00")  # Ярко-зеленый цвет для стратегов
+}
 
 if TYPE_CHECKING:
     from main_window_refactored import MainWindowRefactored
@@ -19,7 +26,7 @@ class TrayWindow(QMainWindow):
     def __init__(self, main_window: 'MainWindowRefactored'):
         super().__init__()
         self.main_window = main_window
-        self.logic = main_window.logic 
+        self.logic = main_window.logic
         self.image_manager = main_window.image_manager
         self._initialized = False
         self._restored_geometry = False
@@ -31,14 +38,30 @@ class TrayWindow(QMainWindow):
         self._update_timer = QTimer(self)
         self._update_timer.setSingleShot(True)
         self._update_timer.timeout.connect(self._process_pending_update)
-        
+
         self.map_images: Dict[str, QPixmap] = {}
         self._load_map_images()
-        
+
         self._setup_window_properties()
         self._create_ui()
         self._connect_signals()
         logging.info("[TrayWindow] Инициализация завершена.")
+
+    def get_hero_role(self, hero_name: str) -> str:
+        """
+        Получает роль героя из данных ролей.
+
+        Args:
+            hero_name (str): Название героя
+
+        Returns:
+            str: Роль героя (Duelist, Vanguard, Strategist) или пустая строка если роль не найдена
+        """
+        from core.database.heroes_bd import ROLES_DATA
+        for role, heroes_in_role in ROLES_DATA.items():
+            if hero_name in heroes_in_role:
+                return role
+        return ""
 
     def _setup_window_properties(self):
         self.setWindowTitle("Rivals Counter Peaks - TAB Mode")
@@ -228,14 +251,22 @@ class TrayWindow(QMainWindow):
             if not widget:
                 pixmap = images.get(hero_name)
                 if is_invalid_pixmap(pixmap): continue
-                
+
                 rating = scores.get(hero_name, 0) if scores else 0
                 is_effective = hero_name in (effective or [])
                 tooltip = f"{hero_name}: {rating:.1f}" if not is_enemy else hero_name
                 widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
                 widget.setFixedSize(pixmap.size().width() + 4, pixmap.size().height() + 4)
+
+                # Получаем роль героя и устанавливаем рамку
+                hero_role = self.get_hero_role(hero_name)
+                if hero_role:
+                    border_color = ROLE_COLORS.get(hero_role)
+                    if border_color:
+                        widget.set_border(border_color, 3)  # Устанавливаем рамку толщиной 3px
+
                 widget_cache[hero_name] = widget
-            
+
             widget.setVisible(True)
             layout.addWidget(widget)
             
