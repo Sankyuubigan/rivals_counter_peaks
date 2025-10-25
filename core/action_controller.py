@@ -2,7 +2,6 @@
 import logging
 import time
 from PySide6.QtCore import Slot, Qt, QPoint
-from PySide6.QtWidgets import QAbstractItemView, QMessageBox, QApplication, QMenu
 from core import utils
 import cv2
 import os
@@ -166,7 +165,7 @@ class ActionController:
 
     @Slot()
     def handle_copy_team(self):
-        utils_gui.copy_to_clipboard(self.mw.logic)
+        utils_gui.copy_to_clipboard(self.mw.logic, show_message=False) # ИСПРАВЛЕНИЕ: Передаем флаг, чтобы не показывать сообщение
 
     @Slot()
     def handle_cycle_map(self):

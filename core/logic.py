@@ -63,6 +63,21 @@ class CounterpickLogic:
             
         logging.info(f"Переключена карта на: {self.selected_map or 'Без карты'}")
 
+    def set_map_by_name(self, map_name: str | None):
+        """Устанавливает карту по имени. Если None, сбрасывает выбор."""
+        if map_name is None:
+            self.selected_map = None
+            self.current_map_index = -1
+        else:
+            if map_name in self.available_maps:
+                self.selected_map = map_name
+                self.current_map_index = self.available_maps.index(map_name)
+            else:
+                logging.warning(f"[Logic] Попытка установить несуществующую карту: {map_name}")
+                return
+        
+        logging.info(f"Карта установлена на: {self.selected_map or 'Без карты'}")
+
     def set_selection(self, desired_selection_set):
         logging.debug(f"[Logic] set_selection called with set: {desired_selection_set}")
         current_selection_list = list(self.selected_heroes)

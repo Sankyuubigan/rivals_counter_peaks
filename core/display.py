@@ -1,7 +1,7 @@
 # File: core/display.py
 from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QBrush
 # ИСПРАВЛЕНО: Исправлен путь импорта
 from core.database.heroes_bd import heroes_counters
 from info.translations import get_text
@@ -82,10 +82,11 @@ def generate_counterpick_display(logic, result_frame, left_images, small_images,
         
         bg_color_str, border_style = "background-color: transparent;", "border: none;"
         text_color_qcolor = default_text_color
-        if is_enemy: 
-            bg_color_str, border_style, text_color_qcolor = f"background-color: {enemy_bg_color.name()};", f"border: 1px solid {enemy_border_color.name()};", enemy_text_color
-        elif is_effective: 
+        # ИСПРАВЛЕНИЕ: Приоритет у оптимальной команды, а не у врагов.
+        if is_effective: 
             bg_color_str, border_style, text_color_qcolor = f"background-color: {effective_bg_color.name()};", f"border: 1px solid {effective_border_color.name()};", effective_text_color
+        elif is_enemy: 
+            bg_color_str, border_style, text_color_qcolor = f"background-color: {enemy_bg_color.name()};", f"border: 1px solid {enemy_border_color.name()};", enemy_text_color
         
         counter_frame.setStyleSheet(f"QFrame {{ {bg_color_str} {border_style} border-radius: 3px; }}")
         img_label = QLabel()
