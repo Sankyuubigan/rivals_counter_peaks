@@ -255,7 +255,7 @@ if __name__ == "__main__":
     file_database = "database/marvel_rivals_stats_20251017-202023.json"
     
     # Запрашиваем название карты
-    map_name = ""
+    map_name = "MIDTOWN"
 
     # Загружаем все необходимые данные
     matchups_data = load_matchups_data(file_database)
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         print("Не удалось загрузить одну из частей данных. Проверьте файлы.")
     else:
         print("=" * 50)
-        enemy_team = ["Spider Man"]
+        enemy_team = ["Black Panther", "Jeff The Land Shark", "Magneto", "Star Lord", "Rocket Raccoon", "Moon Knight"]
         num_count = 50
         print(f"Поиск оптимальной команды против {len(enemy_team)} врагов: {', '.join(enemy_team)}")
         

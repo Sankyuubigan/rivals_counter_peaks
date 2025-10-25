@@ -223,9 +223,12 @@ class HeroRecognitionSystem:
             Список распознанных героев
         """
         logging.info(f"Размер области распознавания: {roi_image.width}x{roi_image.height}")
-        
+
         # Этап 1: Находим всех кандидатов с улучшенным методом
         candidate_squares = self.method_fast_projection(roi_image)
+
+        # Логирование параметров распознавания
+        logging.info(f"Параметры распознавания: порог уверенности = {CONFIDENCE_THRESHOLD}, количество кандидатов = {len(candidate_squares)}")
         logging.info(f"Найдено {len(candidate_squares)} уникальных кандидатов для распознавания")
         
         if not candidate_squares:
@@ -240,18 +243,56 @@ class HeroRecognitionSystem:
             
         # Этап 3: Сопоставление результатов
         all_detections = []
+        all_candidates = []  # Сохраняем всех кандидатов для логирования
+
         for i, embedding in enumerate(all_embeddings):
             best_hero, confidence = self.get_best_match(embedding)
-            
-            if best_hero and confidence >= CONFIDENCE_THRESHOLD:
+
+            if best_hero:
                 x, y, w, h = candidate_squares[i]
-                all_detections.append({
+                candidate_info = {
                     'hero': best_hero,
                     'confidence': confidence,
                     'position': (x, y),
                     'size': (w, h)
-                })
-        
+                }
+                all_candidates.append(candidate_info)
+
+                if confidence >= CONFIDENCE_THRESHOLD:
+                    all_detections.append(candidate_info)
+
+        # Логирование топ 15 кандидатов по уверенности до применения порога
+        if all_candidates:
+            logging.info(f"=== ТОП 15 КАНДИДАТОВ ПО УВЕРЕННОСТИ (до применения порога {CONFIDENCE_THRESHOLD}) ===")
+            sorted_candidates = sorted(all_candidates, key=lambda x: x['confidence'], reverse=True)
+            top_15 = sorted_candidates[:15]
+
+            for i, candidate in enumerate(top_15, 1):
+                status = "ВЫШЕ ПОРОГА" if candidate['confidence'] >= CONFIDENCE_THRESHOLD else "НИЖЕ ПОРОГА"
+                logging.info(f"  {i:2d}. {self.normalize_hero_name_for_display(candidate['hero']):20s} "
+                           f"(уверенность: {candidate['confidence']:.3f}) - {status}")
+
+            if len(sorted_candidates) > 15:
+                logging.info(f"      ... и еще {len(sorted_candidates) - 15} кандидатов с меньшей уверенностью")
+        else:
+            logging.info("Не найдено ни одного кандидата для распознавания")
+
+        # Детальная статистика после фильтрации
+        rejected_candidates = [c for c in all_candidates if c['confidence'] < CONFIDENCE_THRESHOLD]
+        logging.info(f"=== СТАТИСТИКА ФИЛЬТРАЦИИ ===")
+        logging.info(f"Всего кандидатов до фильтрации: {len(all_candidates)}")
+        logging.info(f"Прошло порог (>= {CONFIDENCE_THRESHOLD}): {len(all_detections)}")
+        logging.info(f"Отброшено (< {CONFIDENCE_THRESHOLD}): {len(rejected_candidates)}")
+
+        if rejected_candidates:
+            logging.info("Детальная информация об отброшенных кандидатах:")
+            sorted_rejected = sorted(rejected_candidates, key=lambda x: x['confidence'], reverse=True)
+            for i, candidate in enumerate(sorted_rejected[:10], 1):  # Показываем топ 10 отброшенных
+                logging.info(f"  {i:2d}. {self.normalize_hero_name_for_display(candidate['hero']):20s} "
+                           f"(уверенность: {candidate['confidence']:.3f}) - ОТБРОШЕН")
+            if len(rejected_candidates) > 10:
+                logging.info(f"      ... и еще {len(rejected_candidates) - 10} отброшенных кандидатов")
+
         logging.info(f"Всего найдено {len(all_detections)} детекций с уверенностью >= {CONFIDENCE_THRESHOLD}")
         
         # Этап 4: Применяем NMS для удаления пересекающихся детекций
