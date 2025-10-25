@@ -68,7 +68,9 @@ class UiUpdater(QObject):
                 logging.info(f"[TIME-LOG] {delta:.3f}s: UiUpdater started logic update.")
 
             counter_scores = self.mw.logic.calculate_counter_scores()
-            effective_team = self.mw.logic.calculate_effective_team(counter_scores)
+            # ИСПРАВЛЕНИЕ: Убираем лишний вызов calculate_effective_team.
+            # Она уже вызывается внутри calculate_counter_scores.
+            effective_team = self.mw.logic.effective_team
             self._update_counterpick_display(counter_scores, effective_team)
             self.update_list_item_selection_states()
             self._update_priority_labels()

@@ -2,7 +2,7 @@
 import os
 import logging
 from collections import deque
-from typing import List
+from typing import List, Dict, Tuple
 from core.database.heroes_bd import (
     heroes, heroes_counters, matchups_data, hero_stats_data,
     calculate_team_counters, absolute_with_context, select_optimal_team,
@@ -37,8 +37,6 @@ class CounterpickLogic:
                 logging.error(f"Директория с картами не найдена: {maps_dir}")
                 return []
             
-            # ИСПРАВЛЕНИЕ: os.path.splitext(f) возвращает ('ИМЯ', '.расширение').
-            # Берем только первую часть (имя) и формируем чистый список строк.
             map_names = [
                 os.path.splitext(f)[0]
                 for f in os.listdir(maps_dir)
@@ -57,7 +55,6 @@ class CounterpickLogic:
         
         self.current_map_index += 1
         
-        # Если вышли за пределы списка, возвращаемся к состоянию "без карты" (-1)
         if self.current_map_index >= len(self.available_maps):
             self.current_map_index = -1
             self.selected_map = None
@@ -72,12 +69,10 @@ class CounterpickLogic:
         
         new_deque = deque(maxlen=TEAM_SIZE)
         
-        # Сохраняем существующих героев, которые есть в новом выборе
         for hero in current_selection_list:
             if hero in desired_selection_set:
                 new_deque.append(hero)
         
-        # Добавляем новых героев
         for hero_to_add in desired_selection_set:
             if hero_to_add not in new_deque:
                  if len(new_deque) < TEAM_SIZE:
@@ -89,15 +84,18 @@ class CounterpickLogic:
         self.priority_heroes.intersection_update(set(self.selected_heroes)) 
         self.effective_team = [] 
         logging.debug(f"[Logic] Selection updated. New selection: {list(self.selected_heroes)}")
+        
     def clear_all(self):
         self.selected_heroes.clear()
         self.priority_heroes.clear()
         self.effective_team = []
+        
     def set_priority(self, hero):
         if hero not in self.selected_heroes: return
         if hero in self.priority_heroes: self.priority_heroes.discard(hero)
         else: self.priority_heroes.add(hero)
         self.effective_team = []
+        
     def get_selected_heroes_text(self):
         count = len(self.selected_heroes)
         heroes_list = list(self.selected_heroes)
@@ -105,42 +103,60 @@ class CounterpickLogic:
         if not heroes_list: return get_text('selected_none', language=lang, max_team_size=TEAM_SIZE)
         else: return f"{get_text('selected_some', language=lang)} ({count}/{TEAM_SIZE}): {', '.join(heroes_list)}"
 
-    def calculate_counter_scores(self):
-        if not self.selected_heroes: return {}
+    def calculate_counter_scores(self) -> Dict[str, float]:
+        """
+        Рассчитывает и возвращает финальные баллы героев для отображения в UI.
+        """
+        if not self.selected_heroes: 
+            logging.warning("[Logic] calculate_counter_scores: No heroes selected.")
+            return {}
         enemy_team = list(self.selected_heroes)
+        logging.info(f"[Logic] calculate_counter_scores: Enemy team: {enemy_team}")
 
-        # Базовый расчет без карты
-        hero_scores_with_context = absolute_with_context(
-            calculate_team_counters(enemy_team, matchups_data),
-            hero_stats_data
-        )
+        # 1. Получаем "сырые" баллы преимущества против врагов для ВСЕХ героев
+        # ИСПРАВЛЕНИЕ: Устанавливаем is_tier_list_calc=True, чтобы не отсекать героев
+        raw_scores_tuples = calculate_team_counters(enemy_team, matchups_data, is_tier_list_calc=True)
+        logging.info(f"[Logic] calculate_counter_scores: Raw scores (top 10): {raw_scores_tuples[:10]}")
 
+        # 2. Применяем контекстные модификаторы (винрейт)
+        hero_scores_with_context = absolute_with_context(raw_scores_tuples, hero_stats_data)
         final_scores = {hero: score for hero, score in hero_scores_with_context}
+        logging.info(f"[Logic] calculate_counter_scores: Scores after context (top 10): {sorted(final_scores.items(), key=lambda item: item[1], reverse=True)[:10]}")
 
-        # Если выбрана карта, добавляем бонус
+        # 3. Добавляем бонус за карту
         if self.selected_map:
-            logging.info(f"Применяется бонус за карту: {self.selected_map}")
+            logging.info(f"[Logic] calculate_counter_scores: Applying map bonus for: {self.selected_map}")
             for hero in final_scores:
                 map_bonus = get_map_score(hero, self.selected_map)
                 if map_bonus > 0:
                     final_scores[hero] += map_bonus
-                    logging.debug(f"Бонус для {hero}: +{map_bonus:.2f} -> итого {final_scores[hero]:.2f}")
+                    logging.debug(f"[Logic] Map bonus for {hero}: +{map_bonus:.2f} -> new total: {final_scores[hero]:.2f}")
+        
+        sorted_final_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
+        logging.info(f"[Logic] calculate_counter_scores: Final scores for UI (top 10): {sorted_final_scores[:10]}")
 
-        # ИСПРАВЛЕНИЕ: Сортируем результаты по убыванию рейтинга
-        sorted_scores = dict(sorted(final_scores.items(), key=lambda item: item[1], reverse=True))
-        logging.debug(f"Отсортированные рейтинги героев: {list(sorted_scores.items())[:5]}")
+        # 4. Рассчитываем оптимальную команду на основе финальных баллов
+        self.calculate_effective_team(sorted_final_scores)
 
-        return sorted_scores
+        # 5. Возвращаем финальные баллы для UI
+        return dict(sorted_final_scores)
 
-    def calculate_effective_team(self, counter_scores):
-        if not counter_scores:
+    def calculate_effective_team(self, sorted_heroes_with_scores: List[Tuple[str, float]]) -> List[str]:
+        """
+        Рассчитывает и сохраняет оптимальную команду на основе предоставленных финальных баллов.
+        """
+        logging.info(f"[Logic] calculate_effective_team: Starting calculation with {len(sorted_heroes_with_scores)} heroes.")
+        if not sorted_heroes_with_scores:
             self.effective_team = []
             return []
-        # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
-        sorted_candidates = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
-        optimal_team = select_optimal_team(sorted_candidates, hero_roles)
-        self.effective_team = [hero for hero in optimal_team if hero not in self.selected_heroes]
+        
+        optimal_team = select_optimal_team(sorted_heroes_with_scores, hero_roles)
+        # ИСПРАВЛЕНИЕ: Убираем некорректную фильтрацию врагов из оптимальной команды.
+        # Теперь оптимальная команда будет включать врагов, если они являются лучшим выбором.
+        self.effective_team = optimal_team
+        logging.info(f"[Logic] calculate_effective_team: Optimal team found: {self.effective_team}")
         return self.effective_team
+        
     def calculate_tier_list_scores(self) -> dict[str, float]:
         logging.info("[Logic] Calculating tier list scores...")
         hero_scores_tuples = calculate_team_counters(
