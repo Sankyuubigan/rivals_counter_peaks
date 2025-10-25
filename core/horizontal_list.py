@@ -10,7 +10,7 @@ class IconWithRatingWidget(QWidget):
     def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, is_enemy: bool, tooltip: str, parent=None):
         super().__init__(parent)
         self.pixmap = pixmap
-        self.rating_text = f"{math.ceil(rating) if rating > 0 else math.floor(rating)}"
+        self.rating_text = f"{rating:.1f}"
         self.is_in_effective_team = is_in_effective_team
         self.is_enemy = is_enemy
         self.setToolTip(tooltip)
@@ -25,6 +25,14 @@ class IconWithRatingWidget(QWidget):
         self.fm = QFontMetrics(self.font)
         self.border_pen = QPen(Qt.PenStyle.NoPen)
         self.border_width = 1
+        
+    def update_rating(self, rating: float, tooltip: str = None):
+        """Обновляет рейтинг и подсказку виджета."""
+        self.rating_text = f"{rating:.1f}"
+        if tooltip is not None:
+            self.setToolTip(tooltip)
+        self.update()  # Перерисовываем виджет с новым рейтингом
+        
     def set_border(self, color: QColor, width: int):
         self.border_pen = QPen(color, width)
         self.border_width = width

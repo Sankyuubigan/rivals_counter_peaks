@@ -266,6 +266,15 @@ class TrayWindow(QMainWindow):
                         widget.set_border(border_color, 3)  # Устанавливаем рамку толщиной 3px
 
                 widget_cache[hero_name] = widget
+            else:
+                # ИСПРАВЛЕНИЕ: Обновляем рейтинг и статус эффективности существующего виджета
+                rating = scores.get(hero_name, 0) if scores else 0
+                is_effective = hero_name in (effective or [])
+                tooltip = f"{hero_name}: {rating:.1f}" if not is_enemy else hero_name
+                widget.update_rating(rating, tooltip)
+                # Обновляем статус эффективности, чтобы цвет рейтинга изменился
+                widget.is_in_effective_team = is_effective
+                widget.update() # Принудительно перерисовываем для изменения цвета
 
             widget.setVisible(True)
             layout.addWidget(widget)
