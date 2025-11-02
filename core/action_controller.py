@@ -175,3 +175,31 @@ class ActionController:
         # Полное обновление UI необходимо, так как все оценки героев изменятся
         if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
             self.mw.ui_updater.update_ui_after_logic_change()
+            
+    @Slot()
+    def handle_cycle_map_forward(self):
+        """Переключает на следующую карту и инициирует обновление UI."""
+        logging.info("ActionController: Handling cycle map forward request.")
+        self.mw.logic.cycle_next_map()
+        # Полное обновление UI необходимо, так как все оценки героев изменятся
+        if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+            self.mw.ui_updater.update_ui_after_logic_change()
+            
+    @Slot()
+    def handle_cycle_map_backward(self):
+        """Переключает на предыдущую карту и инициирует обновление UI."""
+        logging.info("ActionController: Handling cycle map backward request.")
+        self.mw.logic.cycle_previous_map()
+        # Полное обновление UI необходимо, так как все оценки героев изменятся
+        if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+            self.mw.ui_updater.update_ui_after_logic_change()
+            
+    @Slot()
+    def handle_reset_map(self):
+        """Сбрасывает карту и очищает выбор героев."""
+        logging.info("ActionController: Handling reset map request.")
+        self.mw.logic.reset_map()
+        self.mw.logic.clear_all()
+        # Полное обновление UI необходимо, так как все оценки героев изменятся
+        if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+            self.mw.ui_updater.update_ui_after_logic_change()

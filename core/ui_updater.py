@@ -67,10 +67,14 @@ class UiUpdater(QObject):
                 delta = time.time() - start_time
                 logging.info(f"[TIME-LOG] {delta:.3f}s: UiUpdater started logic update.")
 
-            counter_scores = self.mw.logic.calculate_counter_scores()
-            # ИСПРАВЛЕНИЕ: Убираем лишний вызов calculate_effective_team.
-            # Она уже вызывается внутри calculate_counter_scores.
-            effective_team = self.mw.logic.effective_team
+            # ИСПРАВЛЕНИЕ: Если враги не выбраны, используем тир-лист с учетом карты
+            if not self.mw.logic.selected_heroes:
+                counter_scores = self.mw.logic.calculate_tier_list_scores_with_map(self.mw.logic.selected_map)
+                effective_team = []
+            else:
+                counter_scores = self.mw.logic.calculate_counter_scores()
+                effective_team = self.mw.logic.effective_team
+                
             self._update_counterpick_display(counter_scores, effective_team)
             self.update_list_item_selection_states()
             self._update_priority_labels()

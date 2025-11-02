@@ -6,11 +6,15 @@ DEFAULT_HOTKEYS = {
     "move_cursor_down": "tab+down",
     "move_cursor_left": "tab+left",
     "move_cursor_right": "tab+right",
-    "toggle_selection": "tab+num_0",
-    "recognize_heroes": "tab+num_divide",
-    "clear_all": "tab+num_subtract",
-    "copy_team": "tab+num_1",
-    "debug_capture": "tab+num_3",
+    "toggle_selection": "tab+2",
+    "recognize_heroes": "tab+/",
+    "clear_all": "tab+subtract",
+    "copy_team": "tab+1",
+    "debug_capture": "tab+3",
+    # ИЗМЕНЕНИЕ: Новые хоткеи для управления картой с цифрами по умолчанию
+    "cycle_map_forward": "tab+8",  # Tab + 8 для следующей карты
+    "cycle_map_backward": "tab+9",  # Tab + 9 для предыдущей карты
+    "reset_map": "tab+0",  # Tab + 0 для сброса карты
 }
 
 # Конфигурация действий для горячих клавиш
@@ -24,4 +28,8 @@ HOTKEY_ACTIONS_CONFIG = {
     "clear_all": {"desc_key": "hotkey_desc_clear", "signal_name": "action_clear_all", "suppress": True},
     "copy_team": {"desc_key": "hotkey_desc_copy_team", "signal_name": "action_copy_team", "suppress": True},
     "debug_capture": {"desc_key": "hotkey_desc_debug_screenshot", "signal_name": "action_debug_capture", "suppress": True},
+    # ИЗМЕНЕНИЕ: Новые действия для управления картой
+    "cycle_map_forward": {"desc_key": "hotkey_desc_cycle_map_forward", "signal_name": "action_cycle_map_forward", "suppress": True},
+    "cycle_map_backward": {"desc_key": "hotkey_desc_cycle_map_backward", "signal_name": "action_cycle_map_backward", "suppress": True},
+    "reset_map": {"desc_key": "hotkey_desc_reset_map", "signal_name": "action_reset_map", "suppress": True},
 }

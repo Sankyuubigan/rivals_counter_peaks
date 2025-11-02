@@ -62,6 +62,29 @@ class CounterpickLogic:
             self.selected_map = self.available_maps[self.current_map_index]
             
         logging.info(f"Переключена карта на: {self.selected_map or 'Без карты'}")
+        
+    def cycle_previous_map(self):
+        """Переключает на предыдущую карту в списке, включая опцию "без карты"."""
+        if not self.available_maps:
+            return
+        
+        self.current_map_index -= 1
+        
+        if self.current_map_index < -1:
+            self.current_map_index = len(self.available_maps) - 1
+            self.selected_map = self.available_maps[self.current_map_index]
+        elif self.current_map_index == -1:
+            self.selected_map = None
+        else:
+            self.selected_map = self.available_maps[self.current_map_index]
+            
+        logging.info(f"Переключена карта на: {self.selected_map or 'Без карты'}")
+
+    def reset_map(self):
+        """Сбрасывает выбор карты."""
+        self.selected_map = None
+        self.current_map_index = -1
+        logging.info("Карта сброшена (выбрана опция 'Без карты')")
 
     def set_map_by_name(self, map_name: str | None):
         """Устанавливает карту по имени. Если None, сбрасывает выбор."""
@@ -181,3 +204,21 @@ class CounterpickLogic:
         )
         hero_scores_with_context = absolute_with_context(hero_scores_tuples, hero_stats_data)
         return {hero: score for hero, score in hero_scores_with_context}
+        
+    def calculate_tier_list_scores_with_map(self, map_name: str | None = None) -> dict[str, float]:
+        """
+        Рассчитывает тир-лист с учетом бонуса за карту.
+        """
+        logging.info(f"[Logic] Calculating tier list scores with map: {map_name}")
+        hero_scores = self.calculate_tier_list_scores()
+        
+        # Добавляем бонус за карту, если она выбрана
+        if map_name:
+            logging.info(f"[Logic] Applying map bonus for: {map_name}")
+            for hero in hero_scores:
+                map_bonus = get_map_score(hero, map_name)
+                if map_bonus > 0:
+                    hero_scores[hero] += map_bonus
+                    logging.debug(f"[Logic] Map bonus for {hero}: +{map_bonus:.2f} -> new total: {hero_scores[hero]:.2f}")
+        
+        return hero_scores

@@ -42,6 +42,12 @@ class TrayModeManager(QObject):
             # Показываем окно напрямую в главном потоке
             self._tray_window.show_tray()
             self._pending_show = False
+            
+            # ИЗМЕНЕНИЕ: Принудительно обновляем UI при открытии трей-окна
+            # Это гарантирует, что рейтинг будет показан даже без распознанных героев
+            if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
+                self.mw.ui_updater.update_ui_after_logic_change()
+            
             # Уведомляем об окончании обновления UI
             self.ui_updated.emit()
 

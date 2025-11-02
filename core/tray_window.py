@@ -215,20 +215,31 @@ class TrayWindow(QMainWindow):
         # Обновление информации о карте
         self._update_map_display(selected_map)
         
-        # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
-        sorted_counters = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
-        heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
+        # ИСПРАВЛЕНИЕ: Если враги не выбраны, используем тир-лист с учетом карты
+        if not selected_heroes:
+            # Получаем тир-лист с учетом карты
+            tier_scores = self.logic.calculate_tier_list_scores_with_map(selected_map)
+            # ИСПРАВЛЕНИЕ: Сортируем по очкам (второй элемент кортежа)
+            sorted_counters = sorted(tier_scores.items(), key=lambda item: item[1], reverse=True)
+            heroes_to_display = [h for h, s in sorted_counters if s > 0]
+        else:
+            # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
+            sorted_counters = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
+            heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
 
         if selected_heroes != self._last_enemy_list:
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
             self._last_enemy_list = selected_heroes
 
         if heroes_to_display != self._last_counter_list:
-            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=counter_scores, effective=effective_team)
+            # Используем соответствующий набор счетов в зависимости от того, есть ли враги
+            scores = counter_scores if selected_heroes else (self.logic.calculate_tier_list_scores_with_map(selected_map) if selected_map else self.logic.calculate_tier_list_scores())
+            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team)
             self._last_counter_list = heroes_to_display
             
         self.enemies_container.setVisible(bool(selected_heroes))
-        self.counters_scroll_area.setVisible(bool(heroes_to_display))
+        # ИСПРАВЛЕНИЕ: Нижний список всегда показывается, даже если враги не выбраны
+        self.counters_scroll_area.setVisible(True)
 
         if start_time:
             delta_end = time.time() - start_time

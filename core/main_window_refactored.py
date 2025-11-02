@@ -160,6 +160,10 @@ class MainWindowRefactored(QMainWindow):
             "enter_tab_mode": self.tab_mode_manager.enable,
             "exit_tab_mode": self.tab_mode_manager.disable,
             "cycle_map": self.action_controller.handle_cycle_map,
+            # ИЗМЕНЕНИЕ: Новые действия для управления картой
+            "cycle_map_forward": self.action_controller.handle_cycle_map_forward,
+            "cycle_map_backward": self.action_controller.handle_cycle_map_backward,
+            "reset_map": self.action_controller.handle_reset_map,
             "move_cursor_up": lambda: self.action_controller.handle_move_cursor('up'),
             "move_cursor_down": lambda: self.action_controller.handle_move_cursor('down'),
             "move_cursor_left": lambda: self.action_controller.handle_move_cursor('left'),

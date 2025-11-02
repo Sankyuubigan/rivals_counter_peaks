@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt, Signal, Slot
 from info.translations import get_text
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG, DEFAULT_HOTKEYS
 from core.app_settings_manager import AppSettingsManager, DEFAULT_SAVE_SCREENSHOT, DEFAULT_SCREENSHOT_PATH, DEFAULT_MIN_RECOGNIZED_HEROES
+from core.ui_components.hotkey_capture_widget import HotkeyCaptureWidget
+
 class SettingsWindow(QWidget):
     """Виджет настроек, предназначенный для встраивания во вкладку."""
     settings_applied_signal = Signal()
@@ -15,7 +17,7 @@ class SettingsWindow(QWidget):
         self.parent_window = parent 
         
         self.temp_hotkeys = {}
-        self.hotkey_action_widgets = {}
+        self.hotkey_widgets = {}
         self._init_ui()
         self._load_settings_and_populate_ui()
     def _init_ui(self):
@@ -81,6 +83,11 @@ class SettingsWindow(QWidget):
         title_label = QLabel(f"<b>{get_text('sw_hotkeys_tab_title')}</b>")
         layout.addWidget(title_label)
         
+        info_label = QLabel("Примечание: Для действий в режиме TAB требуется зажать клавишу TAB и нажать дополнительную клавишу")
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: gray; font-size: 10px; margin: 5px;")
+        layout.addWidget(info_label)
+        
         self.hotkeys_grid_layout = QGridLayout()
         layout.addLayout(self.hotkeys_grid_layout)
     def _load_settings_and_populate_ui(self):
@@ -97,22 +104,29 @@ class SettingsWindow(QWidget):
         for i in reversed(range(self.hotkeys_grid_layout.count())): 
             widget = self.hotkeys_grid_layout.itemAt(i).widget()
             if widget: widget.setParent(None)
-        self.hotkey_action_widgets.clear()
+        self.hotkey_widgets.clear()
+        
         for row, (action_id, config) in enumerate(HOTKEY_ACTIONS_CONFIG.items()):
             desc = get_text(config['desc_key'])
             hotkey = self.temp_hotkeys.get(action_id, "")
-            display_hotkey = self._normalize_hotkey_for_display(hotkey)
-            desc_label = QLabel(desc)
-            hotkey_label = QLabel(f"<code>{display_hotkey}</code>")
-            hotkey_label.setTextFormat(Qt.TextFormat.RichText)
             
-            # ИЗМЕНЕНИЕ: Кнопка "Изменить" удалена, т.к. виджет для захвата удален.
-            # В будущем здесь можно будет реализовать новый механизм.
+            desc_label = QLabel(desc)
+            desc_label.setWordWrap(True)
+            
+            # Создаем виджет для захвата хоткея
+            hotkey_widget = HotkeyCaptureWidget(hotkey)
+            hotkey_widget.hotkey_changed.connect(lambda hk, aid=action_id: self._on_hotkey_changed(aid, hk))
             
             self.hotkeys_grid_layout.addWidget(desc_label, row, 0)
-            self.hotkeys_grid_layout.addWidget(hotkey_label, row, 1)
+            self.hotkeys_grid_layout.addWidget(hotkey_widget, row, 1)
             
-            self.hotkey_action_widgets[action_id] = {'hotkey_label': hotkey_label}
+            self.hotkey_widgets[action_id] = hotkey_widget
+            
+    def _on_hotkey_changed(self, action_id: str, hotkey: str):
+        """Обрабатывает изменение хоткея"""
+        self.temp_hotkeys[action_id] = hotkey
+        logging.info(f"Hotkey changed for {action_id}: {hotkey}")
+        
     def _normalize_hotkey_for_display(self, internal_str: str) -> str:
         if not internal_str: return get_text('hotkey_not_set')
         return " + ".join(p.strip().capitalize() for p in internal_str.split('+'))
@@ -138,6 +152,10 @@ class SettingsWindow(QWidget):
         self.app_settings_manager.set_save_screenshot_flag(self.save_screenshots_checkbox.isChecked())
         self.app_settings_manager.set_screenshot_path(self.temp_screenshot_path)
         self.app_settings_manager.set_min_recognized_heroes(self.min_heroes_spinbox.value())
+        
+        # Перерегистрируем хоткеи после применения настроек
+        if hasattr(self.parent_window, 'hotkey_manager'):
+            self.parent_window.hotkey_manager.reregister_hotkeys()
         
         self.settings_applied_signal.emit()
         QMessageBox.information(self, "Success", get_text("sw_settings_applied_msg"))
