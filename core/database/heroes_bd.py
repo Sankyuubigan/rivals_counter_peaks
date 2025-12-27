@@ -31,7 +31,7 @@ def _load_json_data(file_path: str) -> Any:
         return None
 
 # --- Глобальные переменные с данными ---
-FULL_DATA = _load_json_data("database/marvel_rivals_stats_20251017-202023.json") or {}
+FULL_DATA = _load_json_data("database/marvel_rivals_stats_20251122-202738.json") or {}
 ROLES_DATA = _load_json_data("database/roles.json") or {}
 STATS_DATA = FULL_DATA.get("heroes", {})
 
