@@ -252,7 +252,7 @@ def log_hero_list(optimal_team, all_heroes_scores, hero_roles, title="Списо
 # --- ОСНОВНОЙ БЛОК ВЫПОЛНЕНИЯ ---
 
 if __name__ == "__main__":
-    file_database = "database/marvel_rivals_stats_20251122-202738.json"
+    file_database = "database/marvel_rivals_stats_20251229-074503.json"
     
     # Запрашиваем название карты
     map_name = "MIDTOWN"
