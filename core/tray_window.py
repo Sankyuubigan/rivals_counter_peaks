@@ -143,6 +143,13 @@ class TrayWindow(QMainWindow):
             self.map_image_label.setPixmap(self.map_images[selected_map])
             self.map_name_label.setText(selected_map)
             self.map_display_widget.setVisible(True)
+        elif selected_map: 
+            # Карта есть, но картинки для нее нет (например новая карта)
+            empty_pixmap = QPixmap(64, 36)
+            empty_pixmap.fill(QColor(60, 60, 60, 150))
+            self.map_image_label.setPixmap(empty_pixmap)
+            self.map_name_label.setText(selected_map)
+            self.map_display_widget.setVisible(True)
         else:
             empty_pixmap = QPixmap(64, 36)
             empty_pixmap.fill(QColor(60, 60, 60, 150))

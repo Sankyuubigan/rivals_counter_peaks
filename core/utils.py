@@ -1,6 +1,7 @@
 # File: core/utils.py
 import os
 import sys
+import json
 from core.database.heroes_bd import heroes_counters, heroes 
 import logging
 import re
@@ -27,6 +28,18 @@ def normalize_hero_name(name: str) -> str:
             normalized = normalized[:-len(suffix)]
             
     normalized = re.sub(r'[-_]+', ' ', normalized).strip()
+    
+    # Алиасы для базовых сокращений (Дедпула убрали, чтобы он искался как 3 разных героя)
+    aliases = {
+        "mr fantastic": "mister fantastic",
+        "mr. fantastic": "mister fantastic",
+        "dr strange": "doctor strange",
+        "dr. strange": "doctor strange"
+    }
+    
+    if normalized in aliases:
+        normalized = aliases[normalized]
+        
     for hero_canonical in heroes:
         if hero_canonical.lower() == normalized:
             return hero_canonical
@@ -38,6 +51,47 @@ def normalize_hero_name(name: str) -> str:
     
     final_name = capitalized_attempt if capitalized_attempt else name 
     return final_name
+
+def log_game_entities(map_name: str, seen_heroes: list):
+    """
+    Логирует уникальные карты и героев (ID -> Имя) в JSON файл для маппинга.
+    Пропускает те, которые уже есть в файле.
+    """
+    log_file = resource_path("game_entities_dict.json")
+    
+    try:
+        if os.path.exists(log_file):
+            with open(log_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        else:
+            data = {"maps":[], "heroes": {}}
+    except Exception as e:
+        logging.error(f"Failed to read {log_file}: {e}")
+        data = {"maps":[], "heroes": {}}
+
+    changed = False
+    
+    # Обработка карты
+    if map_name and map_name not in data["maps"]:
+        data["maps"].append(map_name)
+        changed = True
+        
+    # Обработка героев
+    if seen_heroes:
+        for hero in seen_heroes:
+            h_id = str(hero.get("id", ""))
+            h_name = str(hero.get("name", ""))
+            if h_id and h_name and h_id != "unknown":
+                if h_id not in data["heroes"] or data["heroes"][h_id] != h_name:
+                    data["heroes"][h_id] = h_name
+                    changed = True
+                    
+    if changed:
+        try:
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logging.error(f"Failed to write {log_file}: {e}")
 
 def validate_heroes():
     logging.info("[VALIDATION] Validating hero data structures...")

@@ -18,7 +18,7 @@ from core.mode_manager import ModeManager
 from core.tab_mode_manager import TrayModeManager
 from core.event_bus import event_bus
 from core.log_handler import QLogHandler
-from core.utils import normalize_hero_name
+from core.utils import normalize_hero_name, log_game_entities
 from core.overwolf_server import OverwolfServer
 from core.left_panel import create_left_panel
 from core.right_panel import RightPanel
@@ -149,7 +149,6 @@ class MainWindowRefactored(QMainWindow):
 
     @Slot(dict)
     def _on_overwolf_data(self, data: dict):
-        # Если это отладочное сообщение из app.js, просто выводим его в консоль
         if data.get("type") == "debug":
             logging.info(f"[OW DEBUG] {data.get('data')}")
             return
@@ -157,6 +156,10 @@ class MainWindowRefactored(QMainWindow):
         start_time = time.time()
         map_name = data.get("map")
         enemy_heroes = data.get("enemy_heroes",[])
+        seen_heroes = data.get("seen_heroes",[])
+        
+        # Логируем уникальные сущности в отдельный файл для маппинга
+        log_game_entities(map_name, seen_heroes)
         
         logging.info(f"[Overwolf] Получены сырые данные. Карта: '{map_name}', Враги: {enemy_heroes}")
         

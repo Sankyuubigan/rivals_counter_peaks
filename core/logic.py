@@ -31,7 +31,6 @@ class CounterpickLogic:
     def _load_available_maps(self) -> List[str]:
         maps_set = set()
         try:
-            # Берем карты из статистики первого попавшегося героя в STATS_DATA
             if STATS_DATA:
                 first_hero_data = next(iter(STATS_DATA.values()))
                 for map_info in first_hero_data.get("maps",[]):
@@ -45,7 +44,6 @@ class CounterpickLogic:
         except Exception as e:
             logging.error(f"[Logic] Ошибка при извлечении карт из базы данных: {e}")
             
-        # Fallback на случай, если в БД нет информации
         try:
             maps_dir = resource_path("resources/maps")
             if not os.path.isdir(maps_dir): return[]
@@ -81,14 +79,13 @@ class CounterpickLogic:
         self.current_map_index = -1
 
     def set_map_by_name(self, map_name: str | None):
-        if map_name is None:
+        if map_name is None or map_name.lower() == "none" or map_name == "":
             self.selected_map = None
             self.current_map_index = -1
         else:
             logging.info(f"[Logic] Получена карта от Overwolf: '{map_name}'")
             map_name_lower = map_name.lower().strip()
             
-            # Маппинг названий из игры в названия из базы данных
             map_mapping = {
                 "birnin t'challa": "INTERGALACTIC EMPIRE OF WAKANDA",
                 "birnin t'challa 1": "INTERGALACTIC EMPIRE OF WAKANDA",
@@ -113,10 +110,8 @@ class CounterpickLogic:
             
             mapped_name = map_mapping.get(map_name_lower, map_name_lower)
             
-            # Сначала ищем точное совпадение
             matched_map = next((m for m in self.available_maps if m.lower() == mapped_name.lower()), None)
             
-            # Если не нашли, попробуем частичное совпадение
             if not matched_map:
                 for m in self.available_maps:
                     if mapped_name.lower() in m.lower() or m.lower() in mapped_name.lower():
@@ -129,7 +124,9 @@ class CounterpickLogic:
                 logging.info(f"[Logic] Карта успешно распознана и выбрана: '{matched_map}'")
             else:
                 logging.warning(f"[Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: '{map_name}' (mapped to '{mapped_name}'). Доступные карты в БД: {self.available_maps}")
-                return
+                # Мы не добавляем карту в БД автоматически, чтобы не плодить дубликаты.
+                # Но для UI устанавливаем ее, чтобы она отображалась.
+                self.selected_map = map_name.title()
 
     def set_selection(self, desired_selection_set):
         current_selection_list = list(self.selected_heroes)

@@ -1,0 +1,22 @@
+{
+    "maps": [
+        "Central park"
+    ],
+    "heroes": {
+        "1031": "LUNA SNOW",
+        "1024": "HELA",
+        "1035": "VENOM",
+        "1045": "NAMOR",
+        "1054": "PHOENIX",
+        "1058": "GAMBIT",
+        "1044": "BLADE",
+        "1047": "JEFF THE LAND SHARK",
+        "1030": "MOON KNIGHT",
+        "1018": "DOCTOR STRANGE",
+        "1033": "BLACK WIDOW",
+        "1050": "INVISIBLE WOMAN",
+        "1016": "LOKI",
+        "1029": "MAGIK",
+        "1046": "ADAM WARLOCK"
+    }
+}

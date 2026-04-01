@@ -1,14 +1,17 @@
+// МГНОВЕННЫЕ ОБНОВЛЕНИЯ + УМНЫЙ ПОЛЛИНГ (БЕЗ СПАМА В ЛОГАХ)
 let ws = null;
-let currentMap = null;
-let enemyRoster = {};
-const GAME_CLASS_ID = 24890;
-// Добавили 'roster' в список запрашиваемых фичей на всякий случай
-const g_interestedInFeatures =['match_info', 'game_info', 'roster']; 
+let logQueue = [];
 
-let logQueue =[];
+const REQUIRED_FEATURES =['match_info', 'game_info'];
+
+let matchState = {
+    rosters: {},
+    map: null,
+    gameType: "unknown",
+    gameMode: "unknown"
+};
 
 function logToPython(msg) {
-    console.log(msg);
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({type: "debug", data: msg}));
     } else {
@@ -27,222 +30,124 @@ function flushLogQueue() {
 
 function connectWebSocket() {
     ws = new WebSocket('ws://localhost:8765');
-    
     ws.onopen = () => {
-        console.log("Connected to Python");
         flushLogQueue();
-        logToPython("Overwolf JS script connected to Python!");
-        sendDataToPython();
-        checkGameRunningAndRegister();
+        logToPython("=== CONNECTED TO PYTHON ===");
+        init();
     };
-
-    ws.onclose = () => {
-        setTimeout(connectWebSocket, 3000);
-    };
-    ws.onerror = (err) => {};
+    ws.onclose = () => setTimeout(connectWebSocket, 3000);
 }
 
-function checkGameRunningAndRegister() {
-    overwolf.games.getRunningGameInfo(function(res) {
-        if (res && (res.classId === GAME_CLASS_ID || Math.floor(res.classId / 10) === GAME_CLASS_ID)) {
-            logToPython("Marvel Rivals is running. Registering features...");
-            registerFeatures();
-        }
-    });
-}
-
-connectWebSocket();
-
-function sendDataToPython() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: "update",
-            map: currentMap,
-            enemy_heroes: Object.values(enemyRoster)
-        }));
-    }
-}
-
-function processMatchInfo(matchInfo) {
+// Эта функция обновляет кэш и возвращает TRUE, только если что-то РЕАЛЬНО изменилось
+function updateStateFromInfo(info) {
+    if (!info) return false;
     let changed = false;
-    if (!matchInfo) return false;
-
-    if (matchInfo.map !== undefined) {
-        let newMap = matchInfo.map;
-        if (currentMap !== newMap) {
-            currentMap = newMap;
+    
+    if (info.match_info) {
+        let mi = info.match_info;
+        
+        if (mi.map !== undefined && matchState.map !== mi.map) {
+            matchState.map = mi.map;
             changed = true;
         }
-    }
-
-    // 1. Сначала определяем, в какой команде находится сам игрок (local player)
-    let localTeam = null;
-    for (const key in matchInfo) {
-        if (key.startsWith('roster_') && matchInfo[key] && matchInfo[key] !== "null") {
-            try {
-                let p = typeof matchInfo[key] === 'string' ? JSON.parse(matchInfo[key]) : matchInfo[key];
-                if (p.is_local === true || p.is_local === "true") {
-                    localTeam = p.team;
-                }
-            } catch(e) {}
+        if (mi.game_type !== undefined && matchState.gameType !== mi.game_type) {
+            matchState.gameType = mi.game_type;
         }
-    }
-
-    // 2. Теперь обрабатываем всех игроков
-    for (const key in matchInfo) {
-        if (key.startsWith('roster_')) {
-            if (matchInfo[key] === null || matchInfo[key] === "null" || matchInfo[key] === "") {
-                if (enemyRoster[key]) {
-                    logToPython(`Player left or slot cleared: ${key}`);
-                    delete enemyRoster[key];
-                    changed = true;
-                }
-                continue;
-            }
-
-            try {
-                let p = typeof matchInfo[key] === 'string' ? JSON.parse(matchInfo[key]) : matchInfo[key];
-                
-                if (p.character_name === undefined && p.is_teammate === undefined && p.team === undefined) {
-                    continue;
-                }
-
-                // Логика определения врага: если номер команды отличается от нашего
-                let isEnemy = false;
-                if (localTeam !== null && p.team !== undefined) {
-                    isEnemy = (String(p.team) !== String(localTeam));
-                } else if (p.is_teammate !== undefined) {
-                    isEnemy = (p.is_teammate === false || p.is_teammate === "false" || p.is_teammate === 0 || p.is_teammate === "0");
+        if (mi.game_mode !== undefined && matchState.gameMode !== mi.game_mode) {
+            matchState.gameMode = mi.game_mode;
+        }
+        
+        for (let key in mi) {
+            if (key.startsWith('roster_')) {
+                let val = mi[key];
+                if (val === null || val === "null" || val === "") {
+                    if (matchState.rosters[key]) {
+                        delete matchState.rosters[key];
+                        changed = true;
+                    }
                 } else {
-                    isEnemy = enemyRoster[key] !== undefined;
+                    try {
+                        let parsed = typeof val === 'string' ? JSON.parse(val) : val;
+                        let oldHero = matchState.rosters[key] ? matchState.rosters[key].character_name : null;
+                        let newHero = parsed.character_name;
+                        
+                        matchState.rosters[key] = parsed;
+                        
+                        // Сравниваем старого и нового героя. Если изменился - фиксируем
+                        if (oldHero !== newHero) {
+                            changed = true;
+                        }
+                    } catch(e) {}
                 }
-                
-                let hero = p.character_name;
-                if (hero && hero.includes('***')) {
-                    hero = null;
-                }
-                
-                // ДЕБАГ: Логируем каждого уникального игрока, чтобы видеть, что присылает игра
-                if (!window._loggedPlayers) window._loggedPlayers = {};
-                let logKey = key + "_" + hero + "_" + p.team + "_" + p.is_teammate;
-                if (!window._loggedPlayers[logKey] && hero) {
-                    logToPython(`[ROSTER DEBUG] Slot: ${key}, Hero: ${hero}, Team: ${p.team}, LocalTeam: ${localTeam}, is_teammate: ${p.is_teammate}, isEnemy_calc: ${isEnemy}`);
-                    window._loggedPlayers[logKey] = true;
-                }
-                
-                if (isEnemy && hero) {
-                    if (enemyRoster[key] !== hero) {
-                        logToPython(`Enemy detected in ${key}: ${hero}`);
-                        enemyRoster[key] = hero;
-                        changed = true;
-                    }
-                } else if (!isEnemy) {
-                    if (enemyRoster[key]) {
-                        delete enemyRoster[key];
-                        changed = true;
-                    }
-                }
-            } catch(e) {
-                logToPython("Error parsing roster key " + key + ": " + e);
             }
         }
     }
     return changed;
 }
 
-let isFeaturesRegistered = false;
-let pollingInterval = null;
-
-function startPolling() {
-    if (pollingInterval) return;
-    logToPython("Starting getInfo polling fallback (every 5s)...");
-    pollingInterval = setInterval(() => {
-        if (isFeaturesRegistered) {
-            overwolf.games.events.getInfo(function(infoData) {
-                if (infoData && infoData.res && infoData.res.match_info) {
-                    if (processMatchInfo(infoData.res.match_info)) {
-                        sendDataToPython();
-                    }
-                }
+function sendDataToPython() {
+    let enemyHeroes = [];
+    let seenHeroes =[];
+    
+    for (let key in matchState.rosters) {
+        let r = matchState.rosters[key];
+        if (r.character_name) {
+            seenHeroes.push({
+                id: r.character_id || "unknown",
+                name: r.character_name
             });
+            
+            if (r.is_teammate === false) {
+                enemyHeroes.push(r.character_name);
+            }
         }
-    }, 5000);
-}
+    }
 
-function stopPolling() {
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        logToPython("Stopped getInfo polling.");
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            map: matchState.map,
+            enemy_heroes: enemyHeroes,
+            seen_heroes: seenHeroes
+        }));
     }
 }
 
-function registerFeatures() {
-    if (isFeaturesRegistered) return;
+function init() {
+    overwolf.games.events.setRequiredFeatures(REQUIRED_FEATURES, function(result) {
+        logToPython("=== setRequiredFeatures === " + JSON.stringify(result));
+    });
     
-    overwolf.games.events.setRequiredFeatures(g_interestedInFeatures, function(info) {
-        logToPython("setRequiredFeatures response: " + JSON.stringify(info));
-        if (info.status === "success") {
-            isFeaturesRegistered = true;
-            startPolling(); 
-            
-            overwolf.games.events.getInfo(function(infoData) {
-                logToPython("Initial getInfo response: " + JSON.stringify(infoData));
-                if (infoData && infoData.res && infoData.res.match_info) {
-                    if (processMatchInfo(infoData.res.match_info)) {
-                        sendDataToPython();
-                    }
+    // 1. Слушаем моментальные изменения (срабатывает сразу при смене героя)
+    overwolf.games.events.onInfoUpdates2.addListener(function(info) {
+        if (info && info.info) {
+            if (updateStateFromInfo(info.info)) {
+                logToPython(`=== INSTANT UPDATE: Map: ${matchState.map} ===`);
+                sendDataToPython();
+            }
+        }
+    });
+
+    // 2. Умный поллинг каждые 5 секунд. Спасает, если мы пропустили старт матча.
+    // Если данные не изменились - функция updateStateFromInfo вернет false и логов не будет!
+    setInterval(() => {
+        overwolf.games.events.getInfo(function(info) {
+            if (info && info.res) {
+                if (updateStateFromInfo(info.res)) {
+                    logToPython(`=== POLLING UPDATE: Map: ${matchState.map} ===`);
+                    sendDataToPython();
                 }
-            });
-        } else {
-            logToPython("Failed to register features. Retrying in 2s...");
-            setTimeout(registerFeatures, 2000);
+            }
+        });
+    }, 5000);
+
+    // 3. Первичный запрос при запуске
+    overwolf.games.events.getInfo(function(info) {
+        if (info && info.res) {
+            updateStateFromInfo(info.res);
+            logToPython(`=== INITIAL STATE: Map: ${matchState.map} ===`);
+            sendDataToPython();
         }
     });
 }
 
-overwolf.games.onGameInfoUpdated.addListener(function(res) {
-    if (res && res.gameInfo && res.gameInfo.isRunning) {
-        if (res.gameInfo.classId === GAME_CLASS_ID || Math.floor(res.gameInfo.classId / 10) === GAME_CLASS_ID) {
-            if (!isFeaturesRegistered) {
-                logToPython("Marvel Rivals started or updated.");
-                registerFeatures();
-            }
-        }
-    } else if (res && res.gameInfo && !res.gameInfo.isRunning) {
-        if (res.gameInfo.classId === GAME_CLASS_ID || Math.floor(res.gameInfo.classId / 10) === GAME_CLASS_ID) {
-            logToPython("Marvel Rivals closed.");
-            isFeaturesRegistered = false;
-            stopPolling();
-            enemyRoster = {};
-            currentMap = null;
-            sendDataToPython();
-        }
-    }
-});
-
-overwolf.games.events.onInfoUpdates2.addListener(function(info) {
-    if (info.feature === "match_info" && info.info && info.info.match_info) {
-        if (processMatchInfo(info.info.match_info)) {
-            sendDataToPython();
-        }
-    }
-});
-
-overwolf.games.events.onNewEvents.addListener(function(info) {
-    if (info.events && info.events.length > 0) {
-        for (let i = 0; i < info.events.length; i++) {
-            let eventName = info.events[i].name;
-            if (eventName === "match_start" || eventName === "round_start") {
-                logToPython("Event " + eventName + " detected. Requesting full info...");
-                overwolf.games.events.getInfo(function(infoData) {
-                    if (infoData && infoData.res && infoData.res.match_info) {
-                        if (processMatchInfo(infoData.res.match_info)) {
-                            sendDataToPython();
-                        }
-                    }
-                });
-            }
-        }
-    }
-});
+connectWebSocket();
