@@ -1,12 +1,8 @@
 Markdown
-Pillow
 PySide6
 global_hotkeys
-mss
-numpy
-onnxruntime
-opencv-python-headless
 pyinstaller
 pyperclip
 psutil
 tabulate
+websockets

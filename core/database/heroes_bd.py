@@ -12,7 +12,6 @@ def resource_path(relative_path: str) -> str:
     try:
         base_path = sys._MEIPASS
     except AttributeError:
-        # ИСПРАВЛЕНИЕ: Правильно определяем базовый путь для ресурсов
         base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     return os.path.join(base_path, relative_path)
 
@@ -30,20 +29,33 @@ def _load_json_data(file_path: str) -> Any:
         logging.error(f"Ошибка при чтении файла {full_path}: {e}")
         return None
 
+def _get_latest_db_file() -> str:
+    """Автоматически находит самый свежий файл базы данных."""
+    db_dir = resource_path("database")
+    try:
+        if os.path.exists(db_dir):
+            files =[f for f in os.listdir(db_dir) if f.startswith("marvel_rivals_stats_") and f.endswith(".json")]
+            if files:
+                latest_file = sorted(files)[-1]  # Сортировка по имени (там дата) даст самый новый
+                logging.info(f"Актуальный файл БД: {latest_file}")
+                return f"database/{latest_file}"
+    except Exception as e:
+        logging.error(f"Ошибка при поиске БД: {e}")
+    # Возвращаем дефолтный, если ничего не найдено
+    return "database/marvel_rivals_stats_20260401-122707.json"
+
 # --- Глобальные переменные с данными ---
-FULL_DATA = _load_json_data("database/marvel_rivals_stats_20251229-074503.json") or {}
+# Теперь мы загружаем самый свежий файл автоматически!
+FULL_DATA = _load_json_data(_get_latest_db_file()) or {}
 ROLES_DATA = _load_json_data("database/roles.json") or {}
 STATS_DATA = FULL_DATA.get("heroes", {})
 
-# --- НОВАЯ ЛОГИКА ДЛЯ СИНЕРГИЙ (из test_manual_raiting.py) ---
-# ИСПРАВЛЕНИЕ: Более надежная загрузка синергий
-teamups_list = FULL_DATA.get("teamups", [])
+# --- НОВАЯ ЛОГИКА ДЛЯ СИНЕРГИЙ ---
+teamups_list = FULL_DATA.get("teamups",[])
 TEAMUPS_DATA = {}
-# Используем frozenset для быстрого поиска, но нормализуем имена героев
 for teamup in teamups_list:
-    heroes_in_teamup = teamup.get("heroes", [])
+    heroes_in_teamup = teamup.get("heroes",[])
     if heroes_in_teamup:
-        # Нормализуем имена героев, чтобы избежать проблем с пробелами, регистром и т.д.
         normalized_heroes = frozenset(str(hero).strip() for hero in heroes_in_teamup)
         if len(normalized_heroes) > 1:
             TEAMUPS_DATA[normalized_heroes] = teamup
@@ -53,7 +65,7 @@ heroes: List[str] = sorted(list(STATS_DATA.keys()))
 heroes_counters: Dict[str, Dict[str, List[str]]] = {}
 hero_roles: Dict[str, List[str]] = ROLES_DATA
 
-matchups_data: Dict[str, List[Dict[str, Any]]] = {hero: data.get("opponents", []) for hero, data in STATS_DATA.items()}
+matchups_data: Dict[str, List[Dict[str, Any]]] = {hero: data.get("opponents",[]) for hero, data in STATS_DATA.items()}
 hero_stats_data: Dict[str, Dict[str, Any]] = {}
 for hero, data in STATS_DATA.items():
     try:
@@ -69,18 +81,14 @@ for hero, data in STATS_DATA.items():
 logging.info(f"База данных инициализирована. Загружено героев: {len(heroes)}, тимапов: {len(TEAMUPS_DATA)}")
 
 # --- Логика расчета ---
-# ИЗМЕНЕНИЕ: Бонус за синергию как в эталонном файле
 SYNERGY_BONUS = 10.0
 
 def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score: float = 20) -> float:
-    """
-    Рассчитывает балл для конкретной карты конкретного героя, адаптировано из test_manual_raiting.py.
-    """
     hero_data = STATS_DATA.get(hero_name)
     if not hero_data: return 0
-    maps_list = hero_data.get('maps', [])
+    maps_list = hero_data.get('maps',[])
     if not maps_list: return 0
-    win_rates = []
+    win_rates =[]
     target_map_wr = None
     for map_info in maps_list:
         try:
@@ -97,8 +105,7 @@ def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score
     return round(score, 2)
 
 def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
-    """Рассчитывает рейтинг героев против указанной команды врагов."""
-    if not enemy_team: return []
+    if not enemy_team: return[]
     hero_scores = {}
     for hero, matchups in matchups_data.items():
         if not is_tier_list_calc and hero in enemy_team: continue
@@ -115,75 +122,50 @@ def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_
                     break
         if found_matchups > 0:
             hero_scores[hero] = total_difference / found_matchups
-    # ИСПРАВЛЕНИЕ: Возвращена правильная сортировка по очкам (второй элемент кортежа)
-    return sorted(hero_scores.items(), key=lambda item: item, reverse=True)
+    return sorted(hero_scores.items(), key=lambda item: item[1], reverse=True)
 
 def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict) -> List[str]:
-    """
-    Выбирает оптимальную команду из 6 героев с учетом ограничений на роли и синергии.
-    Логика адаптирована из test_manual_raiting.py.
-    """
-    logging.info(f"[DB] select_optimal_team: Starting with {len(sorted_heroes)} heroes.")
     if not sorted_heroes or not hero_roles: 
-        logging.warning("[DB] select_optimal_team: No heroes or roles data provided.")
-        return []
+        return[]
     
     roles_map = {hero: role for role, heroes_in_role in hero_roles.items() for hero in heroes_in_role}
-    vanguards, duelists, strategists = [], [], []
+    vanguards, duelists, strategists = [], [],[]
     for hero, score in sorted_heroes:
         role = roles_map.get(hero)
         if role == "Vanguard": vanguards.append((hero, score))
         elif role == "Duelist": duelists.append((hero, score))
         elif role == "Strategist": strategists.append((hero, score))
-        else:
-            logging.warning(f"[DB] select_optimal_team: Hero '{hero}' has no role or unknown role.")
 
-    logging.info(f"[DB] select_optimal_team: Parsed heroes - Vanguards: {len(vanguards)}, Duelists: {len(duelists)}, Strategists: {len(strategists)}")
-        
-    possible_combinations = [(v, s, 6 - v - s) for v in range(1, 5) for s in range(2, 4) if 6 - v - s >= 0]
-    best_team, best_score = [], float('-inf')
+    possible_combinations =[(v, s, 6 - v - s) for v in range(1, 5) for s in range(2, 4) if 6 - v - s >= 0]
+    best_team, best_score =[], float('-inf')
     
     for v_count, s_count, d_count in possible_combinations:
         if len(vanguards) >= v_count and len(strategists) >= s_count and len(duelists) >= d_count:
             team_candidates = vanguards[:v_count] + strategists[:s_count] + duelists[:d_count]
-            
             base_score = sum(s for h, s in team_candidates)
-            # ИСПРАВЛЕНИЕ: Нормализуем имена героев в команде для проверки синергий
             team_names_set = {str(hero).strip() for hero, score in team_candidates}
             
             synergy_score = 0
-            found_synergies = []
             for teamup_heroes_set, teamup_data in TEAMUPS_DATA.items():
                 if teamup_heroes_set.issubset(team_names_set):
                     synergy_score += SYNERGY_BONUS
-                    found_synergies.append(teamup_data.get("heroes", []))
             
             total_score = base_score + synergy_score
             team_names = [h for h, s in team_candidates]
-            logging.info(f"[DB] select_optimal_team: Testing team {team_names} (V:{v_count}, S:{s_count}, D:{d_count}). Base: {base_score:.2f}, Synergy: {synergy_score:.2f} ({found_synergies}), Total: {total_score:.2f}")
 
             if total_score > best_score:
                 best_score = total_score
                 best_team = team_names
-                logging.info(f"[DB] select_optimal_team: New best team found with score {best_score:.2f}")
     
     if not best_team:
-        logging.warning("[DB] select_optimal_team: Could not form a valid team. Falling back.")
-        # Fallback logic
-        best_team = [h for h, s in sorted_heroes[:6]]
+        best_team =[h for h, s in sorted_heroes[:6]]
 
-    logging.info(f"[DB] select_optimal_team: Final best team: {best_team} with score {best_score:.2f}")
     return best_team
 
 def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> List[Tuple[str, float]]:
-    """
-    Применяет контекст общей силы героя к его рейтингу и нормализует результат.
-    Логика полностью соответствует функции из тестового скрипта.
-    """
-    original_scores = []
+    original_scores =[]
     for hero, score in scores:
         if hero in hero_stats:
-            # В тестовом скрипте винрейт приходит как строка "50.0%", здесь уже как float 0.5
             overall_winrate = hero_stats[hero]["win_rate"] * 100
         else: 
             overall_winrate = 50.0
@@ -191,15 +173,14 @@ def absolute_with_context(scores: List[Tuple[str, float]], hero_stats: Dict) -> 
         absolute_score = (100 + score) * context_factor
         original_scores.append((hero, absolute_score))
     
-    if not original_scores: return []
+    if not original_scores: return[]
     original_values = [score for _, score in original_scores]
     min_score, max_score = min(original_values), max(original_values)
-    display_scores = []
+    display_scores =[]
     if max_score == min_score:
         for hero, _ in original_scores: display_scores.append((hero, 50.5))
     else:
         for hero, original_score in original_scores:
-            # Эта формула нормализации была ключевой разницей
             display_score = (original_score - min_score) / (max_score - min_score) * 99 + 1
             display_scores.append((hero, display_score))
     return sorted(display_scores, key=lambda item: item[1], reverse=True)

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "type": "WebApp",
+  "meta": {
+    "name": "Marvel Rivals Counter Picks",
+    "version": "1.0.0",
+    "minimum-overwolf-version": "0.200.0.0",
+    "author": "Sankyuubigan",
+    "description": "Передает данные из Marvel Rivals в локальное Python-приложение",
+    "icon": "icon.png"
+  },
+  "permissions":[
+    "GameInfo",
+    "GameEvents",
+    "Websocket"
+  ],
+  "data": {
+    "start_window": "background",
+    "windows": {
+      "background": {
+        "file": "index.html",
+        "is_background_page": true
+      }
+    },
+    "game_events": [
+      24316
+    ]
+  }
+}

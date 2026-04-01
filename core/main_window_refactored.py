@@ -13,7 +13,6 @@ from core.logic import CounterpickLogic
 from core.app_settings_manager import AppSettingsManager
 from core.image_manager import ImageManager
 from core.hotkey_manager import HotkeyManager
-from core.recognition import RecognitionManager
 from core.action_controller import ActionController
 from core.ui_updater import UiUpdater
 from core.mode_manager import ModeManager
@@ -21,6 +20,7 @@ from core.tab_mode_manager import TrayModeManager
 from core.event_bus import event_bus
 from core.log_handler import QLogHandler
 from core.utils import normalize_hero_name
+from core.overwolf_server import OverwolfServer
 # UI панели и вкладки
 from core.left_panel import create_left_panel
 from core.right_panel import RightPanel
@@ -56,10 +56,6 @@ class InfoTab(QWidget):
             self.text_browser.setText(f"Error loading content: {e}")
 
 class MainWindowRefactored(QMainWindow):
-    """
-    Основное окно приложения, построенное по модульному принципу.
-    """
-    
     def __init__(self, logic_instance: CounterpickLogic, log_handler: QLogHandler, app_version: str = "1.0.0"):
         super().__init__()
         logging.info("Initializing MainWindowRefactored...")
@@ -72,7 +68,6 @@ class MainWindowRefactored(QMainWindow):
         self.image_manager = ImageManager(project_root)
         self.hotkey_manager = HotkeyManager(self.settings_manager)
         self.mode_manager = ModeManager(self)
-        self.recognition_manager = RecognitionManager(self, self.logic, None, self.settings_manager)
         self.tab_mode_manager = TrayModeManager(self)
         
         self.action_controller = ActionController(self)
@@ -86,10 +81,12 @@ class MainWindowRefactored(QMainWindow):
         self._connect_signals()
         self._load_initial_state()
         
-        # Запускаем асинхронную загрузку моделей
-        self.recognition_manager.start_async_model_load()
-        self.status_bar.showMessage(get_text("status_loading_models", default_text="Загрузка моделей..."))
+        # Запускаем локальный сервер для Overwolf
+        self.overwolf_server = OverwolfServer(port=8765, parent=self)
+        self.overwolf_server.data_received.connect(self._on_overwolf_data)
+        self.overwolf_server.start()
         
+        self.status_bar.showMessage(get_text("status_ready", default_text="Ожидание данных от Overwolf..."))
         logging.info("MainWindowRefactored initialized successfully.")
         
     def _init_ui(self):
@@ -114,8 +111,6 @@ class MainWindowRefactored(QMainWindow):
         
         if self.log_handler and hasattr(self.log_handler, 'message_logged'):
             self.log_handler.message_logged.connect(self.log_tab.append_log)
-        else:
-            logging.warning("Log handler was not provided or is invalid.")
         self.about_tab = InfoTab("information")
         self.tab_widget.addTab(self.about_tab, get_text("about_program", default_text="О программе"))
         self.author_tab = InfoTab("author")
@@ -124,7 +119,6 @@ class MainWindowRefactored(QMainWindow):
         self.setStatusBar(self.status_bar)
         
     def _create_counter_pick_tab(self):
-        """Создает содержимое для основной вкладки 'Контрпики'."""
         self.counter_pick_tab = QWidget()
         self.counter_pick_layout = QHBoxLayout(self.counter_pick_tab)
         self.counter_pick_layout.setContentsMargins(0, 0, 0, 0)
@@ -133,9 +127,6 @@ class MainWindowRefactored(QMainWindow):
         
     def _connect_signals(self):
         self.hotkey_manager.hotkey_triggered.connect(self._on_hotkey_pressed)
-        self.recognition_manager.recognition_complete_signal.connect(self._on_recognition_complete)
-        self.recognition_manager.models_ready_signal.connect(self._on_models_ready)
-        logging.info("[MainWindow] Connected to hotkey_manager and recognition_manager signals")
         
     def _load_initial_state(self):
         self.ui_updater.update_interface_for_mode(self.mode)
@@ -143,24 +134,10 @@ class MainWindowRefactored(QMainWindow):
         
     @Slot(str)
     def _on_hotkey_pressed(self, action_id: str):
-        logging.debug(f"Hotkey event received: {action_id}")
-        
-        if action_id == "start_recognition_timer":
-            self.hotkey_manager.start_recognition_timer_in_main_thread()
-            return
-
-        # ИЗМЕНЕНИЕ: Замеряем время при нажатии на распознавание
-        if action_id == "recognize_heroes":
-            start_time = time.time()
-            logging.info(f"[TIME-LOG] 0.000s: Hotkey 'recognize_heroes' pressed. Emitting signal.")
-            self.recognition_manager.recognize_heroes_signal.emit(start_time)
-            return
-            
         actions = {
             "enter_tab_mode": self.tab_mode_manager.enable,
             "exit_tab_mode": self.tab_mode_manager.disable,
             "cycle_map": self.action_controller.handle_cycle_map,
-            # ИЗМЕНЕНИЕ: Новые действия для управления картой
             "cycle_map_forward": self.action_controller.handle_cycle_map_forward,
             "cycle_map_backward": self.action_controller.handle_cycle_map_backward,
             "reset_map": self.action_controller.handle_reset_map,
@@ -171,43 +148,34 @@ class MainWindowRefactored(QMainWindow):
             "toggle_selection": self.action_controller.handle_toggle_selection,
             "clear_all": self.action_controller.handle_clear_all,
             "copy_team": self.action_controller.handle_copy_team,
-            "debug_capture": self.action_controller.handle_debug_capture,
         }
         
         action = actions.get(action_id)
-        if action:
-            logging.info(f"[MainWindow] Executing action: {action_id}")
-            action()
-        else:
-            logging.warning(f"[MainWindow] Unknown action_id: {action_id}")
-            
-    @Slot(list, float)
-    def _on_recognition_complete(self, recognized_heroes: list, start_time: float):
-        delta = time.time() - start_time
-        logging.info(f"[TIME-LOG] {delta:.3f}s: MainWindow received recognition results.")
-        
-        if not recognized_heroes:
-            logging.info("[MainWindow] No heroes recognized. Skipping selection update.")
-            return
+        if action: action()
 
-        normalized_heroes = {normalize_hero_name(h) for h in recognized_heroes if h}
-        self.logic.set_selection(normalized_heroes)
-        self.ui_updater.update_ui_after_logic_change(start_time=start_time)
+    @Slot(dict)
+    def _on_overwolf_data(self, data: dict):
+        """Слот, принимающий данные от игры через Overwolf"""
+        start_time = time.time()
+        map_name = data.get("map")
+        enemy_heroes = data.get("enemy_heroes",[])
         
-    @Slot(bool)
-    def _on_models_ready(self, success: bool):
-        """Слот для обработки сигнала о готовности моделей."""
-        if success:
-            self.status_bar.showMessage(get_text("status_ready", default_text="Готово"), 5000)
-        else:
-            self.status_bar.showMessage(get_text("status_models_error", default_text="Ошибка загрузки моделей! Распознавание недоступно."), 0)
+        # Обновляем карту
+        if map_name and map_name != self.logic.selected_map:
+            self.logic.set_map_by_name(map_name)
+
+        # Обновляем врагов
+        normalized_heroes = {normalize_hero_name(h) for h in enemy_heroes if h}
+        if set(self.logic.selected_heroes) != normalized_heroes:
+            self.logic.set_selection(normalized_heroes)
+            
+        self.ui_updater.update_ui_after_logic_change(start_time=start_time)
             
     def closeEvent(self, event: QCloseEvent):
         logging.info("Closing application...")
         if hasattr(self, 'tab_mode_manager') and self.tab_mode_manager._tray_window:
              self.tab_mode_manager._tray_window._save_geometry()
         self.hotkey_manager.stop()
-        self.recognition_manager.stop_recognition()
         self.settings_manager.save_settings()
         QApplication.instance().quit()
         super().closeEvent(event)
