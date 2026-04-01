@@ -8,7 +8,6 @@ import time
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTextBrowser, QStatusBar, QApplication)
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QCloseEvent
-# Основные компоненты и менеджеры
 from core.logic import CounterpickLogic
 from core.app_settings_manager import AppSettingsManager
 from core.image_manager import ImageManager
@@ -21,7 +20,6 @@ from core.event_bus import event_bus
 from core.log_handler import QLogHandler
 from core.utils import normalize_hero_name
 from core.overwolf_server import OverwolfServer
-# UI панели и вкладки
 from core.left_panel import create_left_panel
 from core.right_panel import RightPanel
 from core.settings_window import SettingsWindow
@@ -31,7 +29,6 @@ import markdown
 from core.tier_list_tab import TierListTab
 
 class InfoTab(QWidget):
-    """Виджет-вкладка для отображения markdown контента."""
     def __init__(self, md_file_base_name: str, parent=None):
         super().__init__(parent)
         self.md_file_base_name = md_file_base_name
@@ -43,7 +40,6 @@ class InfoTab(QWidget):
     def update_content(self):
         lang_code = "ru" 
         md_filename = f"{self.md_file_base_name}_{lang_code}.md"
-        
         try:
             from core.utils import resource_path
             md_filepath = resource_path(os.path.join('info', md_filename))
@@ -52,13 +48,11 @@ class InfoTab(QWidget):
             html = markdown.markdown(md_content)
             self.text_browser.setHtml(html)
         except Exception as e:
-            logging.error(f"Failed to load info tab content for {self.md_file_base_name}: {e}")
             self.text_browser.setText(f"Error loading content: {e}")
 
 class MainWindowRefactored(QMainWindow):
     def __init__(self, logic_instance: CounterpickLogic, log_handler: QLogHandler, app_version: str = "1.0.0"):
         super().__init__()
-        logging.info("Initializing MainWindowRefactored...")
         self.logic = logic_instance
         self.app_version = app_version
         self.logic.main_window = self
@@ -84,10 +78,11 @@ class MainWindowRefactored(QMainWindow):
         # Запускаем локальный сервер для Overwolf
         self.overwolf_server = OverwolfServer(port=8765, parent=self)
         self.overwolf_server.data_received.connect(self._on_overwolf_data)
+        self.overwolf_server.client_connected.connect(lambda: self.status_bar.showMessage("Overwolf: Подключен (Ожидание матча...)"))
+        self.overwolf_server.client_disconnected.connect(lambda: self.status_bar.showMessage("Overwolf: Отключен (Запустите расширение)"))
         self.overwolf_server.start()
         
-        self.status_bar.showMessage(get_text("status_ready", default_text="Ожидание данных от Overwolf..."))
-        logging.info("MainWindowRefactored initialized successfully.")
+        self.status_bar.showMessage("Overwolf: Ожидание подключения...")
         
     def _init_ui(self):
         self.setWindowTitle(f"Rivals Counter Peaks v{self.app_version}")
@@ -130,7 +125,6 @@ class MainWindowRefactored(QMainWindow):
         
     def _load_initial_state(self):
         self.ui_updater.update_interface_for_mode(self.mode)
-        self.status_bar.showMessage(f"v{self.app_version}")
         
     @Slot(str)
     def _on_hotkey_pressed(self, action_id: str):
@@ -155,24 +149,35 @@ class MainWindowRefactored(QMainWindow):
 
     @Slot(dict)
     def _on_overwolf_data(self, data: dict):
-        """Слот, принимающий данные от игры через Overwolf"""
+        # Если это отладочное сообщение из app.js, просто выводим его в консоль
+        if data.get("type") == "debug":
+            logging.info(f"[OW DEBUG] {data.get('data')}")
+            return
+
         start_time = time.time()
         map_name = data.get("map")
         enemy_heroes = data.get("enemy_heroes",[])
         
-        # Обновляем карту
+        logging.info(f"[Overwolf] Получены сырые данные. Карта: '{map_name}', Враги: {enemy_heroes}")
+        
         if map_name and map_name != self.logic.selected_map:
             self.logic.set_map_by_name(map_name)
 
-        # Обновляем врагов
-        normalized_heroes = {normalize_hero_name(h) for h in enemy_heroes if h}
+        normalized_heroes = set()
+        for h in enemy_heroes:
+            if h:
+                norm_h = normalize_hero_name(h)
+                normalized_heroes.add(norm_h)
+                if norm_h != h:
+                     logging.info(f"[Overwolf] Герой '{h}' распознан как '{norm_h}'")
+                     
+        logging.info(f"[Overwolf] Итоговый список распознанных врагов: {list(normalized_heroes)}")
+                     
         if set(self.logic.selected_heroes) != normalized_heroes:
             self.logic.set_selection(normalized_heroes)
-            
-        self.ui_updater.update_ui_after_logic_change(start_time=start_time)
+            self.ui_updater.update_ui_after_logic_change(start_time=start_time)
             
     def closeEvent(self, event: QCloseEvent):
-        logging.info("Closing application...")
         if hasattr(self, 'tab_mode_manager') and self.tab_mode_manager._tray_window:
              self.tab_mode_manager._tray_window._save_geometry()
         self.hotkey_manager.stop()

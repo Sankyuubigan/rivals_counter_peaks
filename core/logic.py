@@ -1,12 +1,12 @@
-# File: core/logic.py
 import os
+import json
 import logging
 from collections import deque
 from typing import List, Dict, Tuple
 from core.database.heroes_bd import (
     heroes, heroes_counters, matchups_data, hero_stats_data,
     calculate_team_counters, absolute_with_context, select_optimal_team,
-    hero_roles, get_map_score
+    hero_roles, get_map_score, STATS_DATA
 )
 from core.utils import resource_path
 from info.translations import get_text, DEFAULT_LANGUAGE as global_default_language
@@ -17,59 +17,57 @@ class CounterpickLogic:
     def __init__(self, app_version="unknown"):
         self.selected_heroes = deque(maxlen=TEAM_SIZE)
         self.priority_heroes = set()
-        self.effective_team = []
+        self.effective_team =[]
         self.DEFAULT_LANGUAGE = global_default_language
         self.APP_VERSION = app_version
         
-        # Новые атрибуты для управления картами
         self.available_maps: List[str] = self._load_available_maps()
-        self.current_map_index: int = -1  # -1 означает "карта не выбрана"
+        self.current_map_index: int = -1  
         self.selected_map: str | None = None
         
         logging.info(f"[Logic] Initialized. APP_VERSION set to: '{self.APP_VERSION}'")
         self.main_window = None
 
     def _load_available_maps(self) -> List[str]:
-        """Загружает названия карт из директории resources/maps."""
+        maps_set = set()
+        try:
+            # Берем карты из статистики первого попавшегося героя в STATS_DATA
+            if STATS_DATA:
+                first_hero_data = next(iter(STATS_DATA.values()))
+                for map_info in first_hero_data.get("maps",[]):
+                    map_name = map_info.get("map_name")
+                    if map_name:
+                        maps_set.add(map_name)
+            
+            if maps_set:
+                logging.info(f"[Logic] Успешно загружен список карт из базы данных: {len(maps_set)} шт.")
+                return sorted(list(maps_set))
+        except Exception as e:
+            logging.error(f"[Logic] Ошибка при извлечении карт из базы данных: {e}")
+            
+        # Fallback на случай, если в БД нет информации
         try:
             maps_dir = resource_path("resources/maps")
-            if not os.path.isdir(maps_dir):
-                logging.error(f"Директория с картами не найдена: {maps_dir}")
-                return []
-            
-            map_names = [
-                os.path.splitext(f)[0]
-                for f in os.listdir(maps_dir)
-                if f.lower().endswith('.png')
-            ]
-            logging.info(f"Загружено {len(map_names)} карт: {map_names}")
+            if not os.path.isdir(maps_dir): return[]
+            map_names = [os.path.splitext(f)[0] for f in os.listdir(maps_dir) if f.lower().endswith('.png')]
+            logging.info(f"[Logic] Загружен список карт из папки resources/maps (fallback): {len(map_names)} шт.")
             return sorted(map_names)
         except Exception as e:
-            logging.error(f"Не удалось загрузить названия карт: {e}")
-            return []
+            logging.error(f"[Logic] Ошибка при загрузке карт из папки (fallback): {e}")
+            return[]
 
     def cycle_next_map(self):
-        """Переключает на следующую карту в списке, включая опцию "без карты"."""
-        if not self.available_maps:
-            return
-        
+        if not self.available_maps: return
         self.current_map_index += 1
-        
         if self.current_map_index >= len(self.available_maps):
             self.current_map_index = -1
             self.selected_map = None
         else:
             self.selected_map = self.available_maps[self.current_map_index]
-            
-        logging.info(f"Переключена карта на: {self.selected_map or 'Без карты'}")
         
     def cycle_previous_map(self):
-        """Переключает на предыдущую карту в списке, включая опцию "без карты"."""
-        if not self.available_maps:
-            return
-        
+        if not self.available_maps: return
         self.current_map_index -= 1
-        
         if self.current_map_index < -1:
             self.current_map_index = len(self.available_maps) - 1
             self.selected_map = self.available_maps[self.current_map_index]
@@ -77,40 +75,68 @@ class CounterpickLogic:
             self.selected_map = None
         else:
             self.selected_map = self.available_maps[self.current_map_index]
-            
-        logging.info(f"Переключена карта на: {self.selected_map or 'Без карты'}")
 
     def reset_map(self):
-        """Сбрасывает выбор карты."""
         self.selected_map = None
         self.current_map_index = -1
-        logging.info("Карта сброшена (выбрана опция 'Без карты')")
 
     def set_map_by_name(self, map_name: str | None):
-        """Устанавливает карту по имени. Если None, сбрасывает выбор."""
         if map_name is None:
             self.selected_map = None
             self.current_map_index = -1
         else:
-            if map_name in self.available_maps:
-                self.selected_map = map_name
-                self.current_map_index = self.available_maps.index(map_name)
+            logging.info(f"[Logic] Получена карта от Overwolf: '{map_name}'")
+            map_name_lower = map_name.lower().strip()
+            
+            # Маппинг названий из игры в названия из базы данных
+            map_mapping = {
+                "birnin t'challa": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "birnin t'challa 1": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "birnin t'challa 2": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "birnin t'challa 3": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "hall of djalia": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "hall of djaalia": "INTERGALACTIC EMPIRE OF WAKANDA",
+                "celestial husk": "KLYNTAR",
+                "symbiotic surface": "KLYNTAR",
+                "yggdrasill path": "YGGSGARD",
+                "yggdrasil path": "YGGSGARD",
+                "royal palace": "YGGSGARD",
+                "shin-shibuya": "TOKYO 2099",
+                "spider-islands": "TOKYO 2099",
+                "spider islands": "TOKYO 2099",
+                "hell's heaven 1": "HELLFIRE GALA",
+                "hell's heaven 2": "HELLFIRE GALA",
+                "hell's heaven 3": "HELLFIRE GALA",
+                "midtown оборона": "EMPIRE OF ETERNAL NIGHT",
+                "midtown атака": "EMPIRE OF ETERNAL NIGHT"
+            }
+            
+            mapped_name = map_mapping.get(map_name_lower, map_name_lower)
+            
+            # Сначала ищем точное совпадение
+            matched_map = next((m for m in self.available_maps if m.lower() == mapped_name.lower()), None)
+            
+            # Если не нашли, попробуем частичное совпадение
+            if not matched_map:
+                for m in self.available_maps:
+                    if mapped_name.lower() in m.lower() or m.lower() in mapped_name.lower():
+                        matched_map = m
+                        break
+            
+            if matched_map:
+                self.selected_map = matched_map
+                self.current_map_index = self.available_maps.index(matched_map)
+                logging.info(f"[Logic] Карта успешно распознана и выбрана: '{matched_map}'")
             else:
-                logging.warning(f"[Logic] Попытка установить несуществующую карту: {map_name}")
+                logging.warning(f"[Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: '{map_name}' (mapped to '{mapped_name}'). Доступные карты в БД: {self.available_maps}")
                 return
-        
-        logging.info(f"Карта установлена на: {self.selected_map or 'Без карты'}")
 
     def set_selection(self, desired_selection_set):
-        logging.debug(f"[Logic] set_selection called with set: {desired_selection_set}")
         current_selection_list = list(self.selected_heroes)
-        
         new_deque = deque(maxlen=TEAM_SIZE)
-        
         for hero in current_selection_list:
             if hero in desired_selection_set:
                 new_deque.append(hero)
-        
         for hero_to_add in desired_selection_set:
             if hero_to_add not in new_deque:
                  if len(new_deque) < TEAM_SIZE:
@@ -120,19 +146,18 @@ class CounterpickLogic:
                     new_deque.append(hero_to_add)
         self.selected_heroes = new_deque
         self.priority_heroes.intersection_update(set(self.selected_heroes)) 
-        self.effective_team = [] 
-        logging.debug(f"[Logic] Selection updated. New selection: {list(self.selected_heroes)}")
+        self.effective_team =[] 
         
     def clear_all(self):
         self.selected_heroes.clear()
         self.priority_heroes.clear()
-        self.effective_team = []
+        self.effective_team =[]
         
     def set_priority(self, hero):
         if hero not in self.selected_heroes: return
         if hero in self.priority_heroes: self.priority_heroes.discard(hero)
         else: self.priority_heroes.add(hero)
-        self.effective_team = []
+        self.effective_team =[]
         
     def get_selected_heroes_text(self):
         count = len(self.selected_heroes)
@@ -142,61 +167,32 @@ class CounterpickLogic:
         else: return f"{get_text('selected_some', language=lang)} ({count}/{TEAM_SIZE}): {', '.join(heroes_list)}"
 
     def calculate_counter_scores(self) -> Dict[str, float]:
-        """
-        Рассчитывает и возвращает финальные баллы героев для отображения в UI.
-        """
-        if not self.selected_heroes: 
-            logging.warning("[Logic] calculate_counter_scores: No heroes selected.")
-            return {}
+        if not self.selected_heroes: return {}
         enemy_team = list(self.selected_heroes)
-        logging.info(f"[Logic] calculate_counter_scores: Enemy team: {enemy_team}")
 
-        # 1. Получаем "сырые" баллы преимущества против врагов для ВСЕХ героев
-        # ИСПРАВЛЕНИЕ: Устанавливаем is_tier_list_calc=True, чтобы не отсекать героев
         raw_scores_tuples = calculate_team_counters(enemy_team, matchups_data, is_tier_list_calc=True)
-        logging.info(f"[Logic] calculate_counter_scores: Raw scores (top 10): {raw_scores_tuples[:10]}")
-
-        # 2. Применяем контекстные модификаторы (винрейт)
         hero_scores_with_context = absolute_with_context(raw_scores_tuples, hero_stats_data)
         final_scores = {hero: score for hero, score in hero_scores_with_context}
-        logging.info(f"[Logic] calculate_counter_scores: Scores after context (top 10): {sorted(final_scores.items(), key=lambda item: item[1], reverse=True)[:10]}")
 
-        # 3. Добавляем бонус за карту
         if self.selected_map:
-            logging.info(f"[Logic] calculate_counter_scores: Applying map bonus for: {self.selected_map}")
             for hero in final_scores:
                 map_bonus = get_map_score(hero, self.selected_map)
                 if map_bonus > 0:
                     final_scores[hero] += map_bonus
-                    logging.debug(f"[Logic] Map bonus for {hero}: +{map_bonus:.2f} -> new total: {final_scores[hero]:.2f}")
         
         sorted_final_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
-        logging.info(f"[Logic] calculate_counter_scores: Final scores for UI (top 10): {sorted_final_scores[:10]}")
-
-        # 4. Рассчитываем оптимальную команду на основе финальных баллов
         self.calculate_effective_team(sorted_final_scores)
-
-        # 5. Возвращаем финальные баллы для UI
         return dict(sorted_final_scores)
 
     def calculate_effective_team(self, sorted_heroes_with_scores: List[Tuple[str, float]]) -> List[str]:
-        """
-        Рассчитывает и сохраняет оптимальную команду на основе предоставленных финальных баллов.
-        """
-        logging.info(f"[Logic] calculate_effective_team: Starting calculation with {len(sorted_heroes_with_scores)} heroes.")
         if not sorted_heroes_with_scores:
             self.effective_team = []
-            return []
-        
+            return[]
         optimal_team = select_optimal_team(sorted_heroes_with_scores, hero_roles)
-        # ИСПРАВЛЕНИЕ: Убираем некорректную фильтрацию врагов из оптимальной команды.
-        # Теперь оптимальная команда будет включать врагов, если они являются лучшим выбором.
         self.effective_team = optimal_team
-        logging.info(f"[Logic] calculate_effective_team: Optimal team found: {self.effective_team}")
         return self.effective_team
         
     def calculate_tier_list_scores(self) -> dict[str, float]:
-        logging.info("[Logic] Calculating tier list scores...")
         hero_scores_tuples = calculate_team_counters(
             enemy_team=heroes,
             matchups_data=matchups_data,
@@ -206,19 +202,10 @@ class CounterpickLogic:
         return {hero: score for hero, score in hero_scores_with_context}
         
     def calculate_tier_list_scores_with_map(self, map_name: str | None = None) -> dict[str, float]:
-        """
-        Рассчитывает тир-лист с учетом бонуса за карту.
-        """
-        logging.info(f"[Logic] Calculating tier list scores with map: {map_name}")
         hero_scores = self.calculate_tier_list_scores()
-        
-        # Добавляем бонус за карту, если она выбрана
         if map_name:
-            logging.info(f"[Logic] Applying map bonus for: {map_name}")
             for hero in hero_scores:
                 map_bonus = get_map_score(hero, map_name)
                 if map_bonus > 0:
                     hero_scores[hero] += map_bonus
-                    logging.debug(f"[Logic] Map bonus for {hero}: +{map_bonus:.2f} -> new total: {hero_scores[hero]:.2f}")
-        
         return hero_scores

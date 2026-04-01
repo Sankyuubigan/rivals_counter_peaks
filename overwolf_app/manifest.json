@@ -22,8 +22,12 @@
         "is_background_page": true
       }
     },
-    "game_events": [
-      24316
+    "game_targeting": {
+      "type": "dedicated",
+      "game_ids": [24890]
+    },
+    "game_events":[
+      24890
     ]
   }
 }

@@ -6,8 +6,9 @@ import logging
 from PySide6.QtCore import QThread, Signal, QObject
 
 class OverwolfServerWorker(QObject):
-    """Рабочий класс для обработки WebSocket соединения в отдельном потоке."""
     data_received = Signal(dict)
+    client_connected = Signal()
+    client_disconnected = Signal()
 
     def __init__(self, port=8765):
         super().__init__()
@@ -16,34 +17,35 @@ class OverwolfServerWorker(QObject):
 
     async def handler(self, websocket):
         logging.info(f"[OverwolfServer] Overwolf клиент подключился: {websocket.remote_address}")
+        self.client_connected.emit()
         try:
             async for message in websocket:
                 try:
                     data = json.loads(message)
-                    logging.debug(f"[OverwolfServer] Получены данные: {data}")
                     self.data_received.emit(data)
                 except json.JSONDecodeError:
                     logging.error(f"[OverwolfServer] Получен некорректный JSON: {message}")
         except websockets.exceptions.ConnectionClosed:
             logging.info("[OverwolfServer] Overwolf клиент отключился")
+        finally:
+            self.client_disconnected.emit()
 
     async def start_server(self):
         self.loop = asyncio.get_running_loop()
         try:
             async with websockets.serve(self.handler, "localhost", self.port):
                 logging.info(f"[OverwolfServer] WebSocket сервер запущен на ws://localhost:{self.port}")
-                await asyncio.Future()  # Работаем бесконечно
+                await asyncio.Future()
         except Exception as e:
             logging.error(f"[OverwolfServer] Ошибка запуска сервера: {e}")
 
 class OverwolfServer(QThread):
-    """Поток, в котором крутится asyncio event loop для WebSocket сервера."""
     def __init__(self, port=8765, parent=None):
         super().__init__(parent)
         self.worker = OverwolfServerWorker(port)
-        # Пробрасываем сигнал наверх
         self.data_received = self.worker.data_received
+        self.client_connected = self.worker.client_connected
+        self.client_disconnected = self.worker.client_disconnected
 
     def run(self):
-        # Запускаем асинхронный цикл в отдельном потоке Qt
         asyncio.run(self.worker.start_server())
