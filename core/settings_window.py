@@ -1,6 +1,6 @@
 import logging
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                               QGridLayout, QLabel, QScrollArea, QMessageBox, QFrame)
+                               QGridLayout, QLabel, QScrollArea, QMessageBox, QFrame, QComboBox)
 from PySide6.QtCore import Qt, Signal, Slot
 from info.translations import get_text
 from core.hotkey_config import HOTKEY_ACTIONS_CONFIG, DEFAULT_HOTKEYS
@@ -27,6 +27,7 @@ class SettingsWindow(QWidget):
         scroll_content = QWidget()
         content_layout = QVBoxLayout(scroll_content)
         
+        self._create_algorithm_settings(content_layout)
         self._create_hotkeys_settings(content_layout)
         
         content_layout.addStretch(1)
@@ -55,10 +56,37 @@ class SettingsWindow(QWidget):
         
         self.hotkeys_grid_layout = QGridLayout()
         layout.addLayout(self.hotkeys_grid_layout)
+
+    def _create_algorithm_settings(self, layout: QVBoxLayout):
+        """Создаёт секцию настройки алгоритма подбора контрпиков."""
+        title_label = QLabel(f"<b>{get_text('algorithm_setting', default_text='Алгоритм подбора контрпиков')}</b>")
+        layout.addWidget(title_label)
+
+        algo_layout = QHBoxLayout()
+        algo_label = QLabel(get_text("algorithm_setting", default_text="Алгоритм:"))
+        self.algorithm_combo = QComboBox()
+        self.algorithm_combo.addItem(get_text("algorithm_statistics", default_text="Статистика"), "statistics")
+        self.algorithm_combo.addItem(get_text("algorithm_manual", default_text="Ручной"), "manual")
+        self.algorithm_combo.setToolTip(get_text("algorithm_setting_desc", default_text="Статистика — автоматический подбор на основе данных matchups. Ручной — выбор контрпиков вручную (в разработке)"))
+
+        algo_layout.addWidget(algo_label)
+        algo_layout.addWidget(self.algorithm_combo)
+        algo_layout.addStretch(1)
+        layout.addLayout(algo_layout)
+
+        desc_label = QLabel(get_text("algorithm_setting_desc", default_text="Статистика — автоматический подбор на основе данных matchups. Ручной — выбор контрпиков вручную (в разработке)"))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 10px; margin: 5px;")
+        layout.addWidget(desc_label)
         
     def _load_settings_and_populate_ui(self):
         self.temp_hotkeys = self.app_settings_manager.get_hotkeys()
         self._populate_hotkey_list_ui()
+        # Загружаем текущий алгоритм
+        current_algo = self.app_settings_manager.get_algorithm()
+        index = self.algorithm_combo.findData(current_algo)
+        if index >= 0:
+            self.algorithm_combo.setCurrentIndex(index)
         
     def _populate_hotkey_list_ui(self):
         for i in reversed(range(self.hotkeys_grid_layout.count())): 
@@ -88,7 +116,21 @@ class SettingsWindow(QWidget):
     @Slot()
     def _apply_settings(self):
         self.app_settings_manager.set_hotkeys(self.temp_hotkeys)
+        # Сохраняем выбранный алгоритм
+        selected_algo = self.algorithm_combo.currentData()
+        self.app_settings_manager.set_algorithm(selected_algo)
         if hasattr(self.parent_window, 'hotkey_manager'):
             self.parent_window.hotkey_manager.reregister_hotkeys()
         self.settings_applied_signal.emit()
         QMessageBox.information(self, "Success", get_text("sw_settings_applied_msg"))
+
+    def update_language_and_theme(self):
+        """Обновляет тексты при смене языка."""
+        # Обновляем заголовки
+        for i in reversed(range(self.main_layout.count())):
+            widget = self.main_layout.itemAt(i).widget()
+            # Пропускаем скролл и кнопки
+        # Обновляем алгоритм
+        self.algorithm_combo.setItemText(0, get_text("algorithm_statistics", default_text="Статистика"))
+        self.algorithm_combo.setItemText(1, get_text("algorithm_manual", default_text="Ручной"))
+        self.algorithm_combo.setToolTip(get_text("algorithm_setting_desc", default_text=""))

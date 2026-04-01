@@ -48,5 +48,18 @@
     "copy_error_detailed": "Ошибка копирования: {e}",
     "no_data_to_copy": "Нет данных для копирования",
     "tier_list_refresh_button": "Обновить",
-    "tier_list_no_data": "Не удалось рассчитать тир-лист"
+    "tier_list_no_data": "Не удалось рассчитать тир-лист",
+    "tier_list_description": "Мета героев для высоких рангов. Показывает, кто лучше всего контрит других. Данные основаны на статистике сайта rivalsmeta.com.",
+    "tier_list_copy_button": "Копировать рейтинг",
+    "tier_list_select_map": "Выбрать карту для меты",
+    "no_map_option": "Без карты",
+    "select_map_tooltip": "Выбрать карту для бонуса к рейтингу",
+    "favorite_heroes_tab_title": "Избранные герои",
+    "favorite_heroes_description": "Выберите героев, за которых вы могли бы или хотели бы отыграть",
+    "favorite_heroes_copy_button": "Копировать избранных",
+    "favorite_heroes_clear_button": "Очистить избранных",
+    "algorithm_setting": "Алгоритм подбора контрпиков",
+    "algorithm_statistics": "Статистика",
+    "algorithm_manual": "Ручной",
+    "algorithm_setting_desc": "Статистика — автоматический подбор на основе данных matchups. Ручной — выбор контрпиков вручную (в разработке)"
 }

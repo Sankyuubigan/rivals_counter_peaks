@@ -48,6 +48,9 @@ class AppearanceManager:
         if hasattr(self.mw, 'tier_list_tab') and hasattr(self.mw.tier_list_tab, 'update_language_and_theme'):
              self.mw.tier_list_tab.update_language_and_theme()
 
+        if hasattr(self.mw, 'favorite_heroes_tab') and hasattr(self.mw.favorite_heroes_tab, 'update_theme'):
+             self.mw.favorite_heroes_tab.update_theme()
+
         # Обновление правой панели (если она создана)
         if hasattr(self.mw, 'right_panel_instance') and self.mw.right_panel_instance:
             self.mw.right_panel_instance.update_language()

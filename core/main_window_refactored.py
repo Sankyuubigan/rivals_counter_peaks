@@ -27,6 +27,7 @@ from core.dialogs import LogDialog
 from info.translations import get_text
 import markdown
 from core.tier_list_tab import TierListTab
+from core.favorite_heroes_tab import FavoriteHeroesTab
 
 class InfoTab(QWidget):
     def __init__(self, md_file_base_name: str, parent=None):
@@ -99,6 +100,8 @@ class MainWindowRefactored(QMainWindow):
         self._create_counter_pick_tab()
         self.tier_list_tab = TierListTab(self.logic, self.image_manager, self)
         self.tab_widget.addTab(self.tier_list_tab, get_text("tier_list_tab_title", default_text="Тир-лист"))
+        self.favorite_heroes_tab = FavoriteHeroesTab(self.image_manager, self.settings_manager, self)
+        self.tab_widget.addTab(self.favorite_heroes_tab, get_text("favorite_heroes_tab_title", default_text="Избранные герои"))
         self.settings_tab = SettingsWindow(self.settings_manager, self)
         self.tab_widget.addTab(self.settings_tab, get_text("sw_settings_tab_title", default_text="Настройки"))
         self.log_tab = LogDialog(self)

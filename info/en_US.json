@@ -48,5 +48,18 @@
     "copy_error_detailed": "Copy error: {e}",
     "no_data_to_copy": "No data to copy",
     "tier_list_refresh_button": "Refresh",
-    "tier_list_no_data": "Failed to calculate tier list"
+    "tier_list_no_data": "Failed to calculate tier list",
+    "tier_list_description": "Hero meta for high ranks. Shows who counters others best. Data based on rivalsmeta.com statistics.",
+    "tier_list_copy_button": "Copy Rating",
+    "tier_list_select_map": "Select map for meta",
+    "no_map_option": "No map",
+    "select_map_tooltip": "Select map for rating bonus",
+    "favorite_heroes_tab_title": "Favorite Heroes",
+    "favorite_heroes_description": "Select heroes you could play or would like to learn",
+    "favorite_heroes_copy_button": "Copy Favorites",
+    "favorite_heroes_clear_button": "Clear Favorites",
+    "algorithm_setting": "Counter Pick Algorithm",
+    "algorithm_statistics": "Statistics",
+    "algorithm_manual": "Manual",
+    "algorithm_setting_desc": "Statistics — automatic selection based on matchup data. Manual — manual counter pick selection (in development)"
 }

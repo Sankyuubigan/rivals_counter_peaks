@@ -18,6 +18,8 @@ DEFAULT_HOTKEYS = {
     "copy_team": "tab+num_1",
 }
 DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 80}
+DEFAULT_FAVORITE_HEROES = []
+DEFAULT_ALGORITHM = "statistics"  # "statistics" или "manual"
 
 class AppSettingsManager:
     def __init__(self):
@@ -48,7 +50,9 @@ class AppSettingsManager:
             THEME_KEY: DEFAULT_THEME,
             LANGUAGE_KEY: DEFAULT_LANGUAGE,
             HOTKEYS_KEY: DEFAULT_HOTKEYS,
-            TAB_WINDOW_GEOMETRY_KEY: DEFAULT_TAB_GEOMETRY
+            TAB_WINDOW_GEOMETRY_KEY: DEFAULT_TAB_GEOMETRY,
+            FAVORITE_HEROES_KEY: DEFAULT_FAVORITE_HEROES,
+            ALGORITHM_KEY: DEFAULT_ALGORITHM,
         }
         changed = False
         for key, default_value in defaults.items():
@@ -97,3 +101,15 @@ class AppSettingsManager:
     def set_tab_geometry(self, geometry: Dict[str, int], save: bool = True): self.set_setting(TAB_WINDOW_GEOMETRY_KEY, geometry.copy(), save)
     def get_tab_window_geometry(self) -> Dict[str, int]: return self.get_tab_geometry()
     def set_tab_window_geometry(self, geometry: Dict[str, int], save: bool = True): self.set_tab_geometry(geometry, save)
+    
+    def get_favorite_heroes(self) -> list:
+        return self.get_setting(FAVORITE_HEROES_KEY, DEFAULT_FAVORITE_HEROES).copy()
+    
+    def set_favorite_heroes(self, heroes: list, save: bool = True):
+        self.set_setting(FAVORITE_HEROES_KEY, list(heroes), save)
+    
+    def get_algorithm(self) -> str:
+        return self.get_setting(ALGORITHM_KEY, DEFAULT_ALGORITHM)
+    
+    def set_algorithm(self, algorithm: str, save: bool = True):
+        self.set_setting(ALGORITHM_KEY, algorithm, save)
