@@ -49,6 +49,26 @@ def _get_latest_db_file() -> str:
 FULL_DATA = _load_json_data(_get_latest_db_file()) or {}
 STATS_DATA = FULL_DATA.get("heroes", {})
 
+# --- Загрузка маппинга имён карт (img_map_xxx -> читаемое имя) ---
+def _load_map_name_mapping() -> Dict[str, str]:
+    """Загружает маппинг имён карт из game_entities_dict.json."""
+    mapping_path = resource_path("database/game_entities_dict.json")
+    try:
+        if os.path.exists(mapping_path):
+            with open(mapping_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get("map_filename_to_name", {})
+    except Exception as e:
+        logging.error(f"Ошибка при загрузке маппинга карт: {e}")
+    return {}
+
+MAP_NAME_MAPPING = _load_map_name_mapping()
+
+def resolve_map_name(raw_map_name: str) -> str:
+    """Преобразует сырое имя карты (img_map_xxx) в читаемое название.
+    Если маппинг не найден — возвращает исходное значение."""
+    return MAP_NAME_MAPPING.get(raw_map_name, raw_map_name)
+
 # --- Извлекаем роли из основного файла БД ---
 ROLES_DATA: Dict[str, List[str]] = {}
 for hero, data in STATS_DATA.items():
@@ -102,7 +122,9 @@ def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score
         try:
             wr = float(map_info['win_rate'].replace('%', ''))
             win_rates.append(wr)
-            if map_info['map_name'] == map_name:
+            # Применяем маппинг к сырому имени карты из БД
+            db_map_name = resolve_map_name(map_info['map_name'])
+            if db_map_name == map_name:
                 target_map_wr = wr
         except (KeyError, ValueError): continue
     if target_map_wr is None or not win_rates: return 0

@@ -18,3 +18,4 @@ __pycache__
 *.pyc
 *.pyo
 /scraper.log
+/app.log

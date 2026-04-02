@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 from core.database.heroes_bd import (
     heroes, heroes_counters, matchups_data, hero_stats_data,
     calculate_team_counters, absolute_with_context, select_optimal_team,
-    hero_roles, get_map_score, STATS_DATA
+    hero_roles, get_map_score, STATS_DATA, resolve_map_name
 )
 from core.utils import resource_path
 from info.translations import get_text, DEFAULT_LANGUAGE as global_default_language
@@ -34,9 +34,10 @@ class CounterpickLogic:
             if STATS_DATA:
                 first_hero_data = next(iter(STATS_DATA.values()))
                 for map_info in first_hero_data.get("maps",[]):
-                    map_name = map_info.get("map_name")
-                    if map_name:
-                        maps_set.add(map_name)
+                    raw_map_name = map_info.get("map_name")
+                    if raw_map_name:
+                        # Применяем маппинг: img_map_xxx -> читаемое имя
+                        maps_set.add(resolve_map_name(raw_map_name))
             
             if maps_set:
                 logging.info(f"[Logic] Успешно загружен список карт из базы данных: {len(maps_set)} шт.")
@@ -86,29 +87,45 @@ class CounterpickLogic:
             logging.info(f"[Logic] Получена карта от Overwolf: '{map_name}'")
             map_name_lower = map_name.lower().strip()
             
+            # Маппинг Overwolf-имён на читаемые названия карт (совпадают с map_filename_to_name)
             map_mapping = {
-                "birnin t'challa": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "birnin t'challa 1": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "birnin t'challa 2": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "birnin t'challa 3": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "hall of djalia": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "hall of djaalia": "INTERGALACTIC EMPIRE OF WAKANDA",
-                "celestial husk": "KLYNTAR",
-                "symbiotic surface": "KLYNTAR",
-                "yggdrasill path": "YGGSGARD",
-                "yggdrasil path": "YGGSGARD",
-                "royal palace": "YGGSGARD",
-                "shin-shibuya": "TOKYO 2099",
-                "spider-islands": "TOKYO 2099",
-                "spider islands": "TOKYO 2099",
-                "hell's heaven 1": "HELLFIRE GALA",
-                "hell's heaven 2": "HELLFIRE GALA",
-                "hell's heaven 3": "HELLFIRE GALA",
-                "midtown оборона": "EMPIRE OF ETERNAL NIGHT",
-                "midtown атака": "EMPIRE OF ETERNAL NIGHT"
+                "birnin t'challa": "Birnin T'Challa",
+                "birnin t'challa 1": "Birnin T'Challa",
+                "birnin t'challa 2": "Birnin T'Challa",
+                "birnin t'challa 3": "Birnin T'Challa",
+                "hall of djalia": "Hall Of Djalia",
+                "hall of djaalia": "Hall Of Djalia",
+                "celestial husk": "Celestial Husk",
+                "symbiotic surface": "Symbiotic Surface",
+                "yggdrasill path": "Yggdrasill Path",
+                "yggdrasil path": "Yggdrasill Path",
+                "royal palace": "Yggdrasill Path",
+                "shin-shibuya": "Shin-Shibuya",
+                "spider-islands": "Spider-Islands",
+                "spider islands": "Spider-Islands",
+                "hell's heaven 1": "Hell's Heaven",
+                "hell's heaven 2": "Hell's Heaven",
+                "hell's heaven 3": "Hell's Heaven",
+                "midtown оборона": "Midtown",
+                "midtown атака": "Midtown",
+                # Также поддерживаем img_map_xxx форматы на случай если придут сырые
+                "img_map_practicerance": "Birnin T'Challa",
+                "img_map_celestial_heart": "Celestial Husk",
+                "img_map_krakoa_carousel": "Krakoa",
+                "img_map_hellfiregala_arakko": "Arakko",
+                "img_map_hydracharterisbase": "Hell's Heaven",
+                "img_map_museum_collectorpark": "Museum of Contemplation",
+                "img_map_yggdrasil": "Yggdrasill Path",
+                "img_map_tokyowebworld_spiderisland": "Spider-Islands",
+                "img_map_midtown": "Midtown",
+                "img_map_klyntar_ruins": "Symbiotic Surface",
+                "img_map_kunlun_heartoftiandu": "Heart Of Heaven",
+                "img_map_centralpark": "Central Park",
+                "img_map_hallofdialia": "Hall Of Djalia",
+                "img_map_tokyowebworld_metropolis": "Shin-Shibuya",
             }
             
-            mapped_name = map_mapping.get(map_name_lower, map_name_lower)
+            mapped_name = map_mapping.get(map_name_lower, map_name.title())
             
             matched_map = next((m for m in self.available_maps if m.lower() == mapped_name.lower()), None)
             
@@ -124,9 +141,7 @@ class CounterpickLogic:
                 logging.info(f"[Logic] Карта успешно распознана и выбрана: '{matched_map}'")
             else:
                 logging.warning(f"[Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: '{map_name}' (mapped to '{mapped_name}'). Доступные карты в БД: {self.available_maps}")
-                # Мы не добавляем карту в БД автоматически, чтобы не плодить дубликаты.
-                # Но для UI устанавливаем ее, чтобы она отображалась.
-                self.selected_map = map_name.title()
+                self.selected_map = mapped_name
 
     def set_selection(self, desired_selection_set):
         current_selection_list = list(self.selected_heroes)

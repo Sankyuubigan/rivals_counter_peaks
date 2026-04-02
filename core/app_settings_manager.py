@@ -21,6 +21,8 @@ DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 80}
 DEFAULT_FAVORITE_HEROES = []
 DEFAULT_ALGORITHM = "statistics"  # "statistics" или "manual"
 DEFAULT_FAVORITES_FIRST = True
+DEFAULT_TRAY_HIDE_ALLIES = False
+DEFAULT_TRAY_SHOW_RATING = False
 
 class AppSettingsManager:
     def __init__(self):
@@ -55,6 +57,8 @@ class AppSettingsManager:
             FAVORITE_HEROES_KEY: DEFAULT_FAVORITE_HEROES,
             ALGORITHM_KEY: DEFAULT_ALGORITHM,
             FAVORITES_FIRST_KEY: DEFAULT_FAVORITES_FIRST,
+            TRAY_HIDE_ALLIES_KEY: DEFAULT_TRAY_HIDE_ALLIES,
+            TRAY_SHOW_RATING_KEY: DEFAULT_TRAY_SHOW_RATING,
         }
         changed = False
         for key, default_value in defaults.items():
@@ -121,3 +125,15 @@ class AppSettingsManager:
     
     def set_favorites_first(self, value: bool, save: bool = True):
         self.set_setting(FAVORITES_FIRST_KEY, value, save)
+    
+    def get_tray_hide_allies(self) -> bool:
+        return self.get_setting(TRAY_HIDE_ALLIES_KEY, DEFAULT_TRAY_HIDE_ALLIES)
+    
+    def set_tray_hide_allies(self, value: bool, save: bool = True):
+        self.set_setting(TRAY_HIDE_ALLIES_KEY, value, save)
+    
+    def get_tray_show_rating(self) -> bool:
+        return self.get_setting(TRAY_SHOW_RATING_KEY, DEFAULT_TRAY_SHOW_RATING)
+    
+    def set_tray_show_rating(self, value: bool, save: bool = True):
+        self.set_setting(TRAY_SHOW_RATING_KEY, value, save)

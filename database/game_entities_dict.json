@@ -14,7 +14,10 @@
         "Spider-Islands",
         "Symbiotic Surface",
         "Yggdrasill Path",
-        "Shin-shibuya"
+        "Shin-shibuya",
+        "Heart of heaven",
+        "UNKNOWN",
+        "Spider-islands"
     ],
     "map_filename_to_name": {
         "img_map_practicerance": "Birnin T'Challa",
@@ -67,6 +70,14 @@
         "1038": "SCARLET WITCH",
         "10572": "DEADPOOL DUELIST",
         "1026": "BLACK PANTHER",
-        "10573": "DEADPOOL STRATEGIST"
+        "10573": "DEADPOOL STRATEGIST",
+        "1028": "ULTRON",
+        "1036": "SPIDER-MAN",
+        "1043": "STAR-LORD",
+        "1020": "MANTIS",
+        "1017": "HUMAN TORCH",
+        "1048": "PSYLOCKE",
+        "1011": "BRUCE BANNER",
+        "1023": "ROCKET RACCOON"
     }
 }

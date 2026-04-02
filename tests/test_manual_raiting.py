@@ -1,4 +1,24 @@
 import json
+import os
+
+# --- Загрузка маппинга карт ---
+def _load_map_name_mapping():
+    """Загружает маппинг имён карт из game_entities_dict.json."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    mapping_path = os.path.join(project_root, "database", "game_entities_dict.json")
+    try:
+        if os.path.exists(mapping_path):
+            with open(mapping_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get("map_filename_to_name", {})
+    except Exception:
+        pass
+    return {}
+
+MAP_NAME_MAPPING = _load_map_name_mapping()
+
+def resolve_map_name(raw_map_name: str) -> str:
+    return MAP_NAME_MAPPING.get(raw_map_name, raw_map_name)
 
 # --- ФУНКЦИИ ЗАГРУЗКИ ДАННЫХ ---
 
@@ -108,7 +128,9 @@ def get_map_score(full_data, hero_name, map_name, min_score=0, max_score=20):
         try:
             wr = float(map_info['win_rate'].replace('%', ''))
             win_rates.append(wr)
-            if map_info['map_name'] == map_name:
+            # Применяем маппинг к сырому имени карты из БД
+            db_map_name = resolve_map_name(map_info['map_name'])
+            if db_map_name == map_name:
                 target_map_wr = wr
         except (KeyError, ValueError): continue
 

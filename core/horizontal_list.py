@@ -20,7 +20,7 @@ class IconWithRatingWidget(QWidget):
             self.setMinimumSize(pixmap.size())
         
         self.font = QFont()
-        self.font.setPointSize(8)  # Уменьшаем размер шрифта для лучшего вида в маленьком окне
+        self.font.setPointSize(4)  # Маленький размер шрифта для рейтинга на иконках
         self.font.setBold(True)
         self.fm = QFontMetrics(self.font)
         self.border_pen = QPen(Qt.PenStyle.NoPen)
@@ -30,6 +30,9 @@ class IconWithRatingWidget(QWidget):
         self._highlighted = False
         self._highlight_color = QColor()
         self._highlight_outer_color = QColor()
+        
+        # Показывать ли рейтинг (по умолчанию True, для трея можно выключить)
+        self.show_rating = True
         
     def update_rating(self, rating: float, tooltip: str = None):
         """Обновляет рейтинг и подсказку виджета."""
@@ -99,20 +102,20 @@ class IconWithRatingWidget(QWidget):
             painter.setPen(inner_pen)
             inner_rect = widget_rect.adjusted(inner_width / 2, inner_width / 2, -inner_width / 2, -inner_width / 2)
             painter.drawRoundedRect(inner_rect, 3, 3)
-        if not self.is_enemy:
+        if not self.is_enemy and self.show_rating:
             painter.setFont(self.font)
             text_width = self.fm.horizontalAdvance(self.rating_text)
             text_height = self.fm.height()
-            padding_x, padding_y = 2, 1  # Уменьшаем отступы для компактности
+            padding_x, padding_y = 1, 0  # Минимальные отступы для компактности
             
             # Размещаем рейтинг в правом нижнем углу иконки
-            bg_rect = QRect(widget_rect.width() - (text_width + 2 * padding_x) - 2,
-                            widget_rect.height() - (text_height + 2 * padding_y) - 2,
+            bg_rect = QRect(widget_rect.width() - (text_width + 2 * padding_x) - 1,
+                            widget_rect.height() - (text_height + 2 * padding_y) - 1,
                             text_width + 2 * padding_x,
                             text_height + 2 * padding_y)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(QColor(255, 255, 255, 200)))
-            painter.drawRoundedRect(bg_rect, 4, 4)
+            painter.drawRoundedRect(bg_rect, 2, 2)
             
             text_color = QColor("darkGreen") if self.is_in_effective_team else QColor("blue")
             painter.setPen(QPen(text_color))

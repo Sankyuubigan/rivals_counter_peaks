@@ -226,11 +226,12 @@ class TrayWindow(QMainWindow):
         self.enemies_layout.setSpacing(2)
         enemies_frame_layout.addWidget(self.enemies_container)
 
-        # Порядок: Союзники → Карта → Враги (всё компактно в ряд)
+        # Порядок: Союзники (лево) → Карта (центр) → Враги (право)
         top_layout.addWidget(self.allies_frame)
-        top_layout.addWidget(self.map_display_widget)
-        top_layout.addWidget(self.enemies_frame)
         top_layout.addStretch()
+        top_layout.addWidget(self.map_display_widget)
+        top_layout.addStretch()
+        top_layout.addWidget(self.enemies_frame)
 
         # === НИЖНЯЯ СТРОКА: Контрпики ===
         self.counters_scroll_area = QScrollArea()
@@ -302,6 +303,15 @@ class TrayWindow(QMainWindow):
             heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
             # Применяем сортировку "сначала избранные"
             heroes_to_display = self._apply_favorites_first(heroes_to_display, counter_scores)
+        
+        # Фильтруем союзных героев из списка контрпиков, если включена настройка
+        try:
+            hide_allies = self.main_window.settings_manager.get_tray_hide_allies()
+        except Exception:
+            hide_allies = False
+        if hide_allies:
+            ally_set = set(ally_heroes)
+            heroes_to_display = [h for h in heroes_to_display if h not in ally_set]
 
         if selected_heroes != self._last_enemy_list:
             logging.info(f"[Tray] Обновление врагов: {selected_heroes}")
@@ -316,14 +326,18 @@ class TrayWindow(QMainWindow):
         if heroes_to_display != self._last_counter_list:
             scores = counter_scores if selected_heroes else (self.logic.calculate_tier_list_scores_with_map(selected_map) if selected_map else self.logic.calculate_tier_list_scores())
             recommended_role = self.get_recommended_role(ally_heroes)
-            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team, recommended_role=recommended_role)
+            try:
+                show_rating = self.main_window.settings_manager.get_tray_show_rating()
+            except Exception:
+                show_rating = False
+            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team, recommended_role=recommended_role, show_rating=show_rating)
             self._last_counter_list = heroes_to_display
             
         self.enemies_frame.setVisible(bool(selected_heroes))
         self.allies_frame.setVisible(bool(ally_heroes))
         self.counters_scroll_area.setVisible(True)
 
-    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None):
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None, show_rating: bool = False):
         for widget in widget_cache.values(): widget.setVisible(False)
         while layout.count():
             item = layout.takeAt(0)
@@ -346,6 +360,7 @@ class TrayWindow(QMainWindow):
                     tooltip = hero_name
                 widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
                 widget.setFixedSize(pixmap.size().width() + 4, pixmap.size().height() + 4)
+                widget.show_rating = show_rating
                 hero_role = self.get_hero_role(hero_name)
                 if hero_role and ROLE_COLORS.get(hero_role):
                     widget.set_border(ROLE_COLORS.get(hero_role), 3)
@@ -361,6 +376,7 @@ class TrayWindow(QMainWindow):
                     tooltip = hero_name
                 widget.update_rating(rating, tooltip)
                 widget.is_in_effective_team = is_effective
+                widget.show_rating = show_rating
                 widget.update()
             
             # Подсветка рекомендуемой роли (только для контрпиков)
