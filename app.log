@@ -1,0 +1,408 @@
+04:57:39.230 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+04:57:39.231 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+04:57:39.314 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-031716.json
+04:57:39.318 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+04:57:39.487 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+04:57:39.487 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+04:57:39.503 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+04:57:39.503 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+04:57:39.503 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+04:57:39.504 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+04:57:39.504 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+04:57:39.504 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+04:57:39.504 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+04:57:39.510 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+04:57:39.510 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+04:57:39.510 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+04:57:39.511 - INFO - [logic.py:42] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 9 шт.
+04:57:39.511 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+04:57:39.511 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+04:57:39.511 - INFO - [main.py:113] - <module> - Создание MainWindow...
+04:57:39.511 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+04:57:39.526 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+04:57:39.557 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+04:57:39.563 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+04:57:39.568 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+04:57:39.602 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+04:57:39.604 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+04:57:39.605 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+04:57:39.606 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x1cf3256eda0) at 0x000001CF34EB7D00>
+04:57:39.606 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+04:57:39.607 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+04:57:39.613 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+04:57:39.617 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+04:57:39.736 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+04:57:39.737 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+04:57:39.737 - INFO - [main.py:124] - <module> - Window ID: 34475560
+04:57:39.737 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+04:57:39.738 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+04:57:39.755 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+04:57:39.755 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+04:57:39.773 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+04:57:39.773 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+04:57:39.773 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+04:57:39.990 - INFO - [server.py:531] - send_response - connection open
+04:57:39.990 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('127.0.0.1', 28174)
+04:57:39.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+04:57:39.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+04:57:39.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: Midtown ===
+04:57:39.993 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Midtown', Враги: [], Союзники: []
+04:57:39.993 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Midtown'
+04:57:39.993 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Midtown' (mapped to 'midtown'). Доступные карты в БД: ['EMPIRE OF ETERNAL NIGHT', 'HELLFIRE GALA', 'HYDRA CHARTERIS BASE', 'INTERGALACTIC EMPIRE OF WAKANDA', "K'UN-LUN", 'KLYNTAR', 'MUSEUM OF CONTEMPLATION', 'TOKYO 2099', 'YGGSGARD']
+04:57:39.993 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+04:57:39.994 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+04:57:39.994 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+04:57:50.157 - INFO - [server.py:531] - send_response - connection open
+04:57:50.158 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 28207, 0, 0)
+04:57:50.159 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+04:57:50.249 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+04:57:50.250 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: Midtown ===
+04:57:50.251 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Midtown', Враги: [], Союзники: []
+04:57:50.251 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+04:57:50.252 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+04:57:50.252 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:01:12.042 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+05:01:17.180 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+05:01:17.180 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+05:01:17.255 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-031716.json
+05:01:17.258 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+05:01:17.406 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+05:01:17.406 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+05:01:17.420 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+05:01:17.420 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+05:01:17.420 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+05:01:17.420 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+05:01:17.421 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+05:01:17.421 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+05:01:17.421 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+05:01:17.427 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+05:01:17.427 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+05:01:17.427 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+05:01:17.427 - INFO - [logic.py:42] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 9 шт.
+05:01:17.428 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+05:01:17.428 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+05:01:17.428 - INFO - [main.py:113] - <module> - Создание MainWindow...
+05:01:17.429 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+05:01:17.445 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+05:01:17.464 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+05:01:17.472 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:01:17.479 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:01:17.513 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+05:01:17.515 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+05:01:17.516 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+05:01:17.516 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x18818766ba0) at 0x000001881AB1FFC0>
+05:01:17.517 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+05:01:17.517 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:01:17.524 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:01:17.527 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+05:01:17.651 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+05:01:17.651 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+05:01:17.651 - INFO - [main.py:124] - <module> - Window ID: 78777612
+05:01:17.652 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+05:01:17.653 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+05:01:17.670 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+05:01:17.673 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+05:01:17.689 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+05:01:17.689 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+05:01:17.690 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+05:01:20.462 - INFO - [server.py:531] - send_response - connection open
+05:01:20.463 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 28258, 0, 0)
+05:01:20.463 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+05:01:20.464 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+05:01:20.465 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: Midtown ===
+05:01:20.465 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Midtown', Враги: [], Союзники: []
+05:01:20.466 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Midtown'
+05:01:20.466 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Midtown' (mapped to 'midtown'). Доступные карты в БД: ['EMPIRE OF ETERNAL NIGHT', 'HELLFIRE GALA', 'HYDRA CHARTERIS BASE', 'INTERGALACTIC EMPIRE OF WAKANDA', "K'UN-LUN", 'KLYNTAR', 'MUSEUM OF CONTEMPLATION', 'TOKYO 2099', 'YGGSGARD']
+05:01:20.466 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:01:20.466 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+05:01:20.466 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:01:50.206 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:01:50.207 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: []
+05:01:50.208 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:01:50.208 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:01:50.208 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:01:50.208 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+05:01:50.209 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:01:50.283 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:01:50.284 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:01:50.291 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:01:50.292 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:01:50.299 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:10.217 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:10.218 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['MAGIK', 'WHITE FOX']
+05:02:10.218 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:10.218 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:10.219 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:10.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:10.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:10.219 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Magik', 'White Fox']
+05:02:10.219 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:10.278 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:10.278 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:10.284 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:10.285 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Magik', 'White Fox']
+05:02:10.480 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:10.481 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:10.481 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:10.481 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:10.482 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:10.482 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:10.482 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:10.482 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:10.483 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Magik', 'The Punisher', 'White Fox']
+05:02:10.483 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:10.541 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'The Punisher', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:10.542 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:10.548 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:10.548 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Magik', 'The Punisher', 'White Fox']
+05:02:25.206 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:25.206 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['NAMOR', 'THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:25.207 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:25.207 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:25.207 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:25.207 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:25.207 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:25.208 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:25.208 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:25.208 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Magik', 'The Punisher', 'Namor', 'White Fox']
+05:02:25.208 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:25.282 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'Namor', 'The Punisher', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:25.282 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:25.289 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:25.289 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Magik', 'Namor', 'The Punisher', 'White Fox']
+05:02:30.212 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:30.213 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['NAMOR', 'THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:30.213 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:30.213 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:30.213 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:30.214 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:30.214 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:30.214 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:30.214 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:30.215 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Magik', 'The Punisher', 'Namor', 'White Fox']
+05:02:30.215 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:30.273 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'Namor', 'The Punisher', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:30.273 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:30.279 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:35.467 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:35.468 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['THOR', 'NAMOR', 'THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:35.468 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:35.469 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:35.469 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:35.469 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:02:35.469 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:35.470 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:35.470 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:35.470 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:35.470 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Namor', 'Magik', 'White Fox', 'The Punisher', 'Thor']
+05:02:35.470 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:35.527 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'Namor', 'The Punisher', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:35.528 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:35.536 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:35.537 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Magik', 'Namor', 'The Punisher', 'Thor', 'White Fox']
+05:02:40.210 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:40.211 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['PENI PARKER', 'NAMOR', 'THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:40.211 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:40.212 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:40.212 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:40.212 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+05:02:40.212 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:40.212 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:40.213 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:40.213 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:40.213 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Namor', 'Peni Parker', 'Magik', 'White Fox', 'The Punisher']
+05:02:40.213 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:40.270 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Magik', 'Namor', 'Peni Parker', 'The Punisher', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:40.271 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:40.280 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:40.281 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Magik', 'Namor', 'Peni Parker', 'The Punisher', 'White Fox']
+05:02:45.216 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:45.217 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['PENI PARKER', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'MAGIK', 'WHITE FOX']
+05:02:45.217 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:45.218 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:45.218 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:45.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+05:02:45.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:45.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:02:45.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:45.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+05:02:45.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:45.219 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'Peni Parker', 'Magik', 'White Fox', 'The Punisher']
+05:02:45.220 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:45.277 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Invisible Woman', 'Magik', 'Namor', 'Peni Parker', 'The Punisher', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:45.278 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:45.285 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:45.286 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Invisible Woman', 'Magik', 'Namor', 'Peni Parker', 'The Punisher', 'White Fox']
+05:02:50.207 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:02:50.208 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['PENI PARKER', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:02:50.209 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:02:50.209 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:02:50.209 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:02:50.210 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+05:02:50.210 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:02:50.210 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:02:50.211 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:02:50.211 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:02:50.211 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:02:50.212 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'Peni Parker', 'White Fox', 'The Thing', 'The Punisher']
+05:02:50.212 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:02:50.283 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Invisible Woman', 'Namor', 'Peni Parker', 'The Punisher', 'The Thing', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:02:50.284 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:02:50.291 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:02:50.291 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Invisible Woman', 'Namor', 'Peni Parker', 'The Punisher', 'The Thing', 'White Fox']
+05:03:15.472 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:03:15.473 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:03:15.473 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:03:15.474 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:03:15.474 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:03:15.474 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:03:15.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:03:15.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:03:15.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:03:15.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:03:15.476 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:03:15.476 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:03:15.476 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:03:15.548 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:03:15.549 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:03:15.556 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:03:15.556 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: ['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox']
+05:03:35.220 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:03:35.220 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: ['WINTER SOLDIER', 'DAREDEVIL', 'ROGUE', 'CAPTAIN AMERICA', 'LUNA SNOW', 'ADAM WARLOCK'], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:03:35.221 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:03:35.221 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:03:35.221 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WINTER SOLDIER' распознан как 'Winter Soldier'
+05:03:35.222 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DAREDEVIL' распознан как 'Daredevil'
+05:03:35.222 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+05:03:35.222 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'CAPTAIN AMERICA' распознан как 'Captain America'
+05:03:35.222 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+05:03:35.223 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ADAM WARLOCK' распознан как 'Adam Warlock'
+05:03:35.223 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Winter Soldier', 'Luna Snow']
+05:03:35.223 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:03:35.224 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:03:35.224 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:03:35.224 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:03:35.224 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:03:35.225 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:03:35.225 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:03:35.225 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Winter Soldier', 'Luna Snow'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:03:35.225 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Winter Soldier', 'Luna Snow'], is_tier_list_calc=True
+05:03:35.227 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:03:35.227 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'Adam Warlock', 'White Fox', 'Mister Fantastic', 'Black Widow']
+05:03:35.295 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=['Adam Warlock', 'Captain America', 'Daredevil', 'Luna Snow', 'Rogue', 'Winter Soldier'], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:03:35.296 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: ['Adam Warlock', 'Captain America', 'Daredevil', 'Luna Snow', 'Rogue', 'Winter Soldier']
+05:04:30.213 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:04:30.214 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: ['WINTER SOLDIER', 'DAREDEVIL', 'ROGUE', 'MAGNETO', 'LUNA SNOW', 'ADAM WARLOCK'], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:04:30.216 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:04:30.216 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:04:30.216 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WINTER SOLDIER' распознан как 'Winter Soldier'
+05:04:30.216 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DAREDEVIL' распознан как 'Daredevil'
+05:04:30.217 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+05:04:30.217 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGNETO' распознан как 'Magneto'
+05:04:30.217 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+05:04:30.217 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ADAM WARLOCK' распознан как 'Adam Warlock'
+05:04:30.217 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Winter Soldier', 'Luna Snow']
+05:04:30.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:04:30.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:04:30.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:04:30.218 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:04:30.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:04:30.219 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:04:30.219 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:04:30.219 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Winter Soldier', 'Luna Snow'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:04:30.219 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Winter Soldier', 'Luna Snow'], is_tier_list_calc=True
+05:04:30.221 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:04:30.221 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'Adam Warlock', 'White Fox', 'Black Widow', 'Squirrel Girl']
+05:04:30.272 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=['Adam Warlock', 'Daredevil', 'Luna Snow', 'Magneto', 'Rogue', 'Winter Soldier'], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:04:30.273 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: ['Adam Warlock', 'Daredevil', 'Luna Snow', 'Magneto', 'Rogue', 'Winter Soldier']
+05:04:50.472 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:04:50.473 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: ['GAMBIT', 'DAREDEVIL', 'ROGUE', 'MAGNETO', 'LUNA SNOW', 'ADAM WARLOCK'], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:04:50.473 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:04:50.473 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:04:50.473 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'GAMBIT' распознан как 'Gambit'
+05:04:50.474 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DAREDEVIL' распознан как 'Daredevil'
+05:04:50.474 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+05:04:50.474 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGNETO' распознан как 'Magneto'
+05:04:50.474 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+05:04:50.475 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ADAM WARLOCK' распознан как 'Adam Warlock'
+05:04:50.475 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Luna Snow', 'Gambit']
+05:04:50.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:04:50.475 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:04:50.476 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:04:50.476 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:04:50.476 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:04:50.476 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:04:50.476 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:04:50.477 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Luna Snow', 'Gambit'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:04:50.477 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Daredevil', 'Rogue', 'Magneto', 'Adam Warlock', 'Luna Snow', 'Gambit'], is_tier_list_calc=True
+05:04:50.478 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:04:50.479 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'Adam Warlock', 'White Fox', 'Black Widow', 'Mister Fantastic']
+05:04:50.548 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=['Adam Warlock', 'Daredevil', 'Gambit', 'Luna Snow', 'Magneto', 'Rogue'], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:04:50.549 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: ['Adam Warlock', 'Daredevil', 'Gambit', 'Luna Snow', 'Magneto', 'Rogue']
+05:05:35.468 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:05:35.469 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: ['GAMBIT', 'DAREDEVIL', 'ROGUE', 'CAPTAIN AMERICA', 'LUNA SNOW', 'ADAM WARLOCK'], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:05:35.469 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:05:35.470 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:05:35.470 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'GAMBIT' распознан как 'Gambit'
+05:05:35.470 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DAREDEVIL' распознан как 'Daredevil'
+05:05:35.470 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+05:05:35.470 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'CAPTAIN AMERICA' распознан как 'Captain America'
+05:05:35.471 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+05:05:35.471 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ADAM WARLOCK' распознан как 'Adam Warlock'
+05:05:35.471 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit']
+05:05:35.471 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:05:35.472 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:05:35.472 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:05:35.472 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:05:35.472 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:05:35.473 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:05:35.473 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:05:35.473 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:05:35.474 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Captain America', 'Daredevil', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit'], is_tier_list_calc=True
+05:05:35.475 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:05:35.475 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Black Widow']
+05:05:35.544 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=['Adam Warlock', 'Captain America', 'Daredevil', 'Gambit', 'Luna Snow', 'Rogue'], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:05:35.545 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: ['Adam Warlock', 'Captain America', 'Daredevil', 'Gambit', 'Luna Snow', 'Rogue']
+05:05:40.211 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:05:40.212 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: ['GAMBIT', 'DAREDEVIL', 'ROGUE', 'ANGELA', 'LUNA SNOW', 'ADAM WARLOCK'], Союзники: ['THOR', 'NAMOR', 'INVISIBLE WOMAN', 'THE PUNISHER', 'THE THING', 'WHITE FOX']
+05:05:40.213 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:05:40.213 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:05:40.213 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'GAMBIT' распознан как 'Gambit'
+05:05:40.213 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DAREDEVIL' распознан как 'Daredevil'
+05:05:40.213 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+05:05:40.214 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ANGELA' распознан как 'Angela'
+05:05:40.214 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+05:05:40.214 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ADAM WARLOCK' распознан как 'Adam Warlock'
+05:05:40.214 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Daredevil', 'Angela', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit']
+05:05:40.215 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+05:05:40.215 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'NAMOR' распознан как 'Namor'
+05:05:40.215 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+05:05:40.215 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+05:05:40.216 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE THING' распознан как 'The Thing'
+05:05:40.216 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+05:05:40.216 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Namor', 'White Fox', 'The Thing', 'The Punisher', 'Thor']
+05:05:40.217 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Daredevil', 'Angela', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:05:40.217 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Daredevil', 'Angela', 'Rogue', 'Adam Warlock', 'Luna Snow', 'Gambit'], is_tier_list_calc=True
+05:05:40.218 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:05:40.219 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Adam Warlock', 'Ultron', 'White Fox', 'Mister Fantastic', 'Black Widow']
+05:05:40.272 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=['Adam Warlock', 'Angela', 'Daredevil', 'Gambit', 'Luna Snow', 'Rogue'], союзники=['Invisible Woman', 'Namor', 'The Punisher', 'The Thing', 'Thor', 'White Fox'], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:05:40.273 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: ['Adam Warlock', 'Angela', 'Daredevil', 'Gambit', 'Luna Snow', 'Rogue']
+05:07:45.219 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Hall of Djalia ===
+05:07:45.219 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: []
+05:07:45.220 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:07:45.220 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:07:45.220 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:07:45.220 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+05:07:45.221 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:07:45.279 - INFO - [tray_window.py:246] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:07:45.280 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:07:45.286 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:07:45.287 - INFO - [tray_window.py:263] - _process_pending_update - [Tray] Обновление врагов: []
+05:07:45.288 - INFO - [tray_window.py:268] - _process_pending_update - [Tray] Обновление союзников: []
+05:07:45.288 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:07:45.296 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:09:20.351 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+05:10:10.357 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+05:10:10.358 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+05:10:10.431 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-031716.json
+05:10:10.434 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33

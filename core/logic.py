@@ -215,7 +215,9 @@ class CounterpickLogic:
         Используется треем для Overwolf-данных, не затрагивая главную вкладку.
         """
         if not enemy_team:
+            logging.info(f"[Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат")
             return {}, []
+        logging.info(f"[Logic] calculate_counter_scores_for_team: враги={enemy_team}, карта={map_name}")
         raw_scores_tuples = calculate_team_counters(enemy_team, matchups_data, is_tier_list_calc=True)
         hero_scores_with_context = absolute_with_context(raw_scores_tuples, hero_stats_data)
         final_scores = {hero: score for hero, score in hero_scores_with_context}
@@ -226,4 +228,5 @@ class CounterpickLogic:
                     final_scores[hero] += map_bonus
         sorted_final_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
         optimal_team = select_optimal_team(sorted_final_scores, hero_roles)
+        logging.info(f"[Logic] calculate_counter_scores_for_team: рассчитано {len(final_scores)} героев, оптимальная команда={optimal_team}")
         return dict(sorted_final_scores), optimal_team

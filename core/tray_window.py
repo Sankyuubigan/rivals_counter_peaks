@@ -3,7 +3,7 @@ import os
 import time
 from typing import TYPE_CHECKING, Dict, List, Tuple
 from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout,
-                                QScrollArea, QFrame, QLabel)
+                                QScrollArea, QFrame, QLabel, QSizePolicy)
 from PySide6.QtCore import Qt, Slot, QRect, QSize, QTimer, QObject
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QColor, QPixmap
 from core.event_bus import event_bus
@@ -29,8 +29,10 @@ class TrayWindow(QMainWindow):
         self._initialized = False
         self._restored_geometry = False
         self.enemy_widgets: Dict[str, IconWithRatingWidget] = {}
+        self.ally_widgets: Dict[str, IconWithRatingWidget] = {}
         self.counter_widgets: Dict[str, IconWithRatingWidget] = {}
         self._last_enemy_list: List[str] =[]
+        self._last_ally_list: List[str] =[]
         self._last_counter_list: List[str] =[]
         self._pending_update = False
         self._update_timer = QTimer(self)
@@ -111,13 +113,41 @@ class TrayWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(0)
+        layout.setSpacing(2)
 
+        # === ВЕРХНЯЯ СТРОКА: Союзники | Карта | Враги ===
         top_container = QWidget()
         top_layout = QHBoxLayout(top_container)
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.setSpacing(5)
 
+        # --- Фрейм СОЮЗНИКОВ (синяя рамка + подпись) ---
+        self.allies_frame = QFrame()
+        self.allies_frame.setObjectName("allies_frame")
+        self.allies_frame.setStyleSheet("""
+            #allies_frame {
+                border: 2px solid #4488ff;
+                border-radius: 4px;
+                background-color: rgba(30, 50, 80, 120);
+            }
+        """)
+        self.allies_frame.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        allies_frame_layout = QVBoxLayout(self.allies_frame)
+        allies_frame_layout.setContentsMargins(3, 2, 3, 2)
+        allies_frame_layout.setSpacing(1)
+
+        self.allies_label = QLabel(get_text("allies_label", "Союзники"))
+        self.allies_label.setAlignment(Qt.AlignCenter)
+        self.allies_label.setStyleSheet("color: #66aaff; font-size: 9px; font-weight: bold;")
+        allies_frame_layout.addWidget(self.allies_label)
+
+        self.allies_container = QWidget()
+        self.allies_layout = QHBoxLayout(self.allies_container)
+        self.allies_layout.setContentsMargins(0, 0, 0, 0)
+        self.allies_layout.setSpacing(2)
+        allies_frame_layout.addWidget(self.allies_container)
+
+        # --- Карта ---
         self.map_display_widget = QWidget()
         map_display_layout = QVBoxLayout(self.map_display_widget)
         map_display_layout.setContentsMargins(0, 0, 0, 0)
@@ -129,28 +159,53 @@ class TrayWindow(QMainWindow):
         map_display_layout.addWidget(self.map_name_label)
         self.map_display_widget.setVisible(False)
 
+        # --- Фрейм ВРАГОВ (красная рамка + подпись) ---
+        self.enemies_frame = QFrame()
+        self.enemies_frame.setObjectName("enemies_frame")
+        self.enemies_frame.setStyleSheet("""
+            #enemies_frame {
+                border: 2px solid #ff4444;
+                border-radius: 4px;
+                background-color: rgba(80, 30, 30, 120);
+            }
+        """)
+        self.enemies_frame.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        enemies_frame_layout = QVBoxLayout(self.enemies_frame)
+        enemies_frame_layout.setContentsMargins(3, 2, 3, 2)
+        enemies_frame_layout.setSpacing(1)
+
+        self.enemies_label = QLabel(get_text("enemies_label", "Враги"))
+        self.enemies_label.setAlignment(Qt.AlignCenter)
+        self.enemies_label.setStyleSheet("color: #ff8888; font-size: 9px; font-weight: bold;")
+        enemies_frame_layout.addWidget(self.enemies_label)
+
         self.enemies_container = QWidget()
         self.enemies_layout = QHBoxLayout(self.enemies_container)
-        self.enemies_layout.setContentsMargins(0,0,0,0)
+        self.enemies_layout.setContentsMargins(0, 0, 0, 0)
         self.enemies_layout.setSpacing(2)
-        
-        top_layout.addWidget(self.map_display_widget)
-        top_layout.addWidget(self.enemies_container, 1)
+        enemies_frame_layout.addWidget(self.enemies_container)
 
+        # Порядок: Союзники → Карта → Враги (всё компактно в ряд)
+        top_layout.addWidget(self.allies_frame)
+        top_layout.addWidget(self.map_display_widget)
+        top_layout.addWidget(self.enemies_frame)
+        top_layout.addStretch()
+
+        # === НИЖНЯЯ СТРОКА: Контрпики ===
         self.counters_scroll_area = QScrollArea()
         self.counters_scroll_area.setWidgetResizable(True)
         self.counters_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.counters_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.counters_scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.counters_scroll_area.setStyleSheet("background: transparent; border: none;")
-        self.counters_scroll_area.setFixedHeight(50) 
-        
+        self.counters_scroll_area.setFixedHeight(50)
+
         scroll_content_widget = QWidget()
         self.counters_layout = QHBoxLayout(scroll_content_widget)
-        self.counters_layout.setContentsMargins(0,0,0,0)
+        self.counters_layout.setContentsMargins(0, 0, 0, 0)
         self.counters_layout.setSpacing(2)
         self.counters_scroll_area.setWidget(scroll_content_widget)
-        
+
         layout.addWidget(top_container)
         layout.addWidget(self.counters_scroll_area)
 
@@ -186,9 +241,12 @@ class TrayWindow(QMainWindow):
         data = self._pending_data
         
         selected_heroes = sorted(data.get("selected_heroes",[]))
+        ally_heroes = sorted(data.get("ally_heroes",[]))
         counter_scores = data.get("counter_scores", {})
         effective_team = data.get("effective_team",[])
         selected_map = data.get("selected_map")
+        
+        logging.info(f"[Tray] Обновление UI: враги={selected_heroes}, союзники={ally_heroes}, карта={selected_map}")
         
         self._update_map_display(selected_map)
         
@@ -205,24 +263,30 @@ class TrayWindow(QMainWindow):
             heroes_to_display = self._apply_favorites_first(heroes_to_display, counter_scores)
 
         if selected_heroes != self._last_enemy_list:
+            logging.info(f"[Tray] Обновление врагов: {selected_heroes}")
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
             self._last_enemy_list = selected_heroes
+
+        if ally_heroes != self._last_ally_list:
+            logging.info(f"[Tray] Обновление союзников: {ally_heroes}")
+            self._update_layout(self.allies_layout, self.ally_widgets, ally_heroes, is_ally=True)
+            self._last_ally_list = ally_heroes
 
         if heroes_to_display != self._last_counter_list:
             scores = counter_scores if selected_heroes else (self.logic.calculate_tier_list_scores_with_map(selected_map) if selected_map else self.logic.calculate_tier_list_scores())
             self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team)
             self._last_counter_list = heroes_to_display
             
-        self.enemies_container.setVisible(bool(selected_heroes))
+        self.enemies_frame.setVisible(bool(selected_heroes))
+        self.allies_frame.setVisible(bool(ally_heroes))
         self.counters_scroll_area.setVisible(True)
 
-    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool, scores: Dict = None, effective: List = None):
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None):
         for widget in widget_cache.values(): widget.setVisible(False)
         while layout.count():
             item = layout.takeAt(0)
             if item.widget(): item.widget().setParent(None)
 
-        if is_enemy: layout.addStretch(1)
         images = self.image_manager.get_specific_images('min', 'horizontal')
         
         for hero_name in hero_list:
@@ -232,7 +296,12 @@ class TrayWindow(QMainWindow):
                 if is_invalid_pixmap(pixmap): continue
                 rating = scores.get(hero_name, 0) if scores else 0
                 is_effective = hero_name in (effective or[])
-                tooltip = f"{hero_name}: {rating:.1f}" if not is_enemy else hero_name
+                if is_ally:
+                    tooltip = hero_name
+                elif not is_enemy:
+                    tooltip = f"{hero_name}: {rating:.1f}"
+                else:
+                    tooltip = hero_name
                 widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
                 widget.setFixedSize(pixmap.size().width() + 4, pixmap.size().height() + 4)
                 hero_role = self.get_hero_role(hero_name)
@@ -242,14 +311,17 @@ class TrayWindow(QMainWindow):
             else:
                 rating = scores.get(hero_name, 0) if scores else 0
                 is_effective = hero_name in (effective or[])
-                tooltip = f"{hero_name}: {rating:.1f}" if not is_enemy else hero_name
+                if is_ally:
+                    tooltip = hero_name
+                elif not is_enemy:
+                    tooltip = f"{hero_name}: {rating:.1f}"
+                else:
+                    tooltip = hero_name
                 widget.update_rating(rating, tooltip)
                 widget.is_in_effective_team = is_effective
                 widget.update()
             widget.setVisible(True)
             layout.addWidget(widget)
-            
-        if not is_enemy: layout.addStretch(1)
 
     def show_tray(self):
         if not self._restored_geometry:

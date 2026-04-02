@@ -2,7 +2,8 @@
     "maps": [
         "Central park",
         "Social",
-        "Midtown"
+        "Midtown",
+        "Hall of Djalia"
     ],
     "heroes": {
         "1031": "LUNA SNOW",
@@ -32,6 +33,9 @@
         "1034": "IRON MAN",
         "1051": "THE THING",
         "1032": "SQUIRREL GIRL",
-        "1041": "WINTER SOLDIER"
+        "1041": "WINTER SOLDIER",
+        "1039": "THOR",
+        "1065": "ROGUE",
+        "1056": "ANGELA"
     }
 }

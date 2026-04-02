@@ -159,25 +159,38 @@ class MainWindowRefactored(QMainWindow):
         start_time = time.time()
         map_name = data.get("map")
         enemy_heroes = data.get("enemy_heroes",[])
+        ally_heroes = data.get("ally_heroes",[])
         seen_heroes = data.get("seen_heroes",[])
         
         # Логируем уникальные сущности в отдельный файл для маппинга
         log_game_entities(map_name, seen_heroes)
         
-        logging.info(f"[Overwolf] Получены сырые данные. Карта: '{map_name}', Враги: {enemy_heroes}")
+        logging.info(f"[Overwolf] Получены сырые данные. Карта: '{map_name}', Враги: {enemy_heroes}, Союзники: {ally_heroes}")
         
         if map_name and map_name != self.logic.selected_map:
             self.logic.set_map_by_name(map_name)
 
+        # Нормализуем врагов
         normalized_heroes = set()
         for h in enemy_heroes:
             if h:
                 norm_h = normalize_hero_name(h)
                 normalized_heroes.add(norm_h)
                 if norm_h != h:
-                     logging.info(f"[Overwolf] Герой '{h}' распознан как '{norm_h}'")
+                     logging.info(f"[Overwolf] Враг '{h}' распознан как '{norm_h}'")
                      
         logging.info(f"[Overwolf] Итоговый список распознанных врагов: {list(normalized_heroes)}")
+
+        # Нормализуем союзников
+        normalized_ally_heroes = set()
+        for h in ally_heroes:
+            if h:
+                norm_h = normalize_hero_name(h)
+                normalized_ally_heroes.add(norm_h)
+                if norm_h != h:
+                     logging.info(f"[Overwolf] Союзник '{h}' распознан как '{norm_h}'")
+                     
+        logging.info(f"[Overwolf] Итоговый список распознанных союзников: {list(normalized_ally_heroes)}")
                      
         # ИСПРАВЛЕНИЕ: НЕ модифицируем logic.selected_heroes — это ломает главную вкладку.
         # Трей и главная вкладка теперь полностью независимы.
@@ -189,6 +202,7 @@ class MainWindowRefactored(QMainWindow):
         # Эмитим СОБЫТИЕ ТОЛЬКО ДЛЯ ТРЕЯ — главная вкладка НЕ обновляется
         event_bus.emit("overwolf_update", {
             "selected_heroes": list(normalized_heroes),
+            "ally_heroes": list(normalized_ally_heroes),
             "counter_scores": counter_scores,
             "effective_team": effective_team,
             "selected_map": self.logic.selected_map

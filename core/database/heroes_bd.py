@@ -114,6 +114,7 @@ def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score
 
 def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
     if not enemy_team: return[]
+    logging.info(f"[DB] calculate_team_counters: входная команда врагов={enemy_team}, is_tier_list_calc={is_tier_list_calc}")
     hero_scores = {}
     for hero, matchups in matchups_data.items():
         if not is_tier_list_calc and hero in enemy_team: continue
@@ -130,6 +131,7 @@ def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_
                     break
         if found_matchups > 0:
             hero_scores[hero] = total_difference / found_matchups
+    logging.info(f"[DB] calculate_team_counters: рассчитаны очки для {len(hero_scores)} героев")
     return sorted(hero_scores.items(), key=lambda item: item[1], reverse=True)
 
 def select_optimal_team(sorted_heroes: List[Tuple[str, float]], hero_roles: Dict) -> List[str]:

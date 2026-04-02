@@ -6,16 +6,23 @@ import os
 # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
 import logging 
 import datetime
-import time                                                                             
+import time
+
+# Определяем пути ДО настройки логирования (чтобы FileHandler мог использовать project_root)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+core_dir = os.path.dirname(__file__)
+
 logging.basicConfig(level=logging.INFO, # ИЗМЕНЕНО: Устанавливаем уровень INFO по умолчанию
                     format='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(funcName)s - %(message)s',
-                    datefmt='%H:%M:%S')
+                    datefmt='%H:%M:%S',
+                    handlers=[
+                        logging.StreamHandler(),
+                        logging.FileHandler(os.path.join(project_root, 'app.log'), encoding='utf-8', mode='a')
+                    ])
 # ИСПРАВЛЕНИЕ: Отключаем избыточное логирование от numba
 logging.getLogger('numba').setLevel(logging.WARNING)
 logging.info("[Main] Начало работы main.py (после отладочного блока)")
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path: sys.path.insert(0, project_root)
-core_dir = os.path.dirname(__file__)
 if core_dir not in sys.path: sys.path.insert(0, core_dir)
 try:    
     now = datetime.datetime.now()

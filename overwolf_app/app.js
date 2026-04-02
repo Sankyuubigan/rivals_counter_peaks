@@ -87,6 +87,7 @@ function updateStateFromInfo(info) {
 
 function sendDataToPython() {
     let enemyHeroes = [];
+    let allyHeroes = [];
     let seenHeroes =[];
     
     for (let key in matchState.rosters) {
@@ -99,6 +100,8 @@ function sendDataToPython() {
             
             if (r.is_teammate === false) {
                 enemyHeroes.push(r.character_name);
+            } else if (r.is_teammate === true) {
+                allyHeroes.push(r.character_name);
             }
         }
     }
@@ -107,6 +110,7 @@ function sendDataToPython() {
         ws.send(JSON.stringify({
             map: matchState.map,
             enemy_heroes: enemyHeroes,
+            ally_heroes: allyHeroes,
             seen_heroes: seenHeroes
         }));
     }
