@@ -50,6 +50,25 @@ class TrayWindow(QMainWindow):
             if hero_name in heroes_in_role: return role
         return ""
 
+    def _apply_favorites_first(self, hero_list: list, scores: dict) -> list:
+        """Сортирует список так, что избранные герои идут первыми (внутри каждой группы — по рейтингу)."""
+        try:
+            favorites_first = self.main_window.settings_manager.get_favorites_first()
+        except Exception:
+            favorites_first = False
+        if not favorites_first:
+            return hero_list
+        try:
+            favorites = set(self.main_window.settings_manager.get_favorite_heroes())
+        except Exception:
+            favorites = set()
+        if not favorites:
+            return hero_list
+        fav_heroes = [(h, s) for h, s in sorted(scores.items(), key=lambda x: x[1], reverse=True) if h in favorites]
+        non_fav_heroes = [(h, s) for h, s in sorted(scores.items(), key=lambda x: x[1], reverse=True) if h not in favorites]
+        result = [h for h, s in fav_heroes] + [h for h, s in non_fav_heroes]
+        return result
+
     def _setup_window_properties(self):
         self.setWindowTitle("Rivals Counter Peaks - TAB Mode")
         self.setMinimumSize(400, 100)
@@ -172,10 +191,14 @@ class TrayWindow(QMainWindow):
         if not selected_heroes:
             tier_scores = self.logic.calculate_tier_list_scores_with_map(selected_map)
             sorted_counters = sorted(tier_scores.items(), key=lambda item: item[1], reverse=True)
-            heroes_to_display =[h for h, s in sorted_counters if s > 0]
+            heroes_to_display = [h for h, s in sorted_counters if s > 0]
+            # Применяем сортировку "сначала избранные"
+            heroes_to_display = self._apply_favorites_first(heroes_to_display, tier_scores)
         else:
             sorted_counters = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
-            heroes_to_display =[h for h, s in sorted_counters if s > 0 or h in effective_team]
+            heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
+            # Применяем сортировку "сначала избранные"
+            heroes_to_display = self._apply_favorites_first(heroes_to_display, counter_scores)
 
         if selected_heroes != self._last_enemy_list:
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)

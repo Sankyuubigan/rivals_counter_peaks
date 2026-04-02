@@ -20,6 +20,7 @@ DEFAULT_HOTKEYS = {
 DEFAULT_TAB_GEOMETRY = {"x": 100, "y": 100, "width": 800, "height": 80}
 DEFAULT_FAVORITE_HEROES = []
 DEFAULT_ALGORITHM = "statistics"  # "statistics" или "manual"
+DEFAULT_FAVORITES_FIRST = True
 
 class AppSettingsManager:
     def __init__(self):
@@ -53,6 +54,7 @@ class AppSettingsManager:
             TAB_WINDOW_GEOMETRY_KEY: DEFAULT_TAB_GEOMETRY,
             FAVORITE_HEROES_KEY: DEFAULT_FAVORITE_HEROES,
             ALGORITHM_KEY: DEFAULT_ALGORITHM,
+            FAVORITES_FIRST_KEY: DEFAULT_FAVORITES_FIRST,
         }
         changed = False
         for key, default_value in defaults.items():
@@ -113,3 +115,9 @@ class AppSettingsManager:
     
     def set_algorithm(self, algorithm: str, save: bool = True):
         self.set_setting(ALGORITHM_KEY, algorithm, save)
+    
+    def get_favorites_first(self) -> bool:
+        return self.get_setting(FAVORITES_FIRST_KEY, DEFAULT_FAVORITES_FIRST)
+    
+    def set_favorites_first(self, value: bool, save: bool = True):
+        self.set_setting(FAVORITES_FIRST_KEY, value, save)

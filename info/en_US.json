@@ -61,5 +61,7 @@
     "algorithm_setting": "Counter Pick Algorithm",
     "algorithm_statistics": "Statistics",
     "algorithm_manual": "Manual",
-    "algorithm_setting_desc": "Statistics — automatic selection based on matchup data. Manual — manual counter pick selection (in development)"
+    "algorithm_setting_desc": "Statistics — automatic selection based on matchup data. Manual — manual counter pick selection (in development)",
+    "favorites_first_checkbox": "Show favorite heroes first in counter picks",
+    "favorites_first_tooltip": "When enabled, favorite heroes are displayed first in tray (TAB mode)"
 }
