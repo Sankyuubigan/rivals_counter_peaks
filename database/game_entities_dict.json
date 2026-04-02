@@ -1,9 +1,19 @@
 {
     "maps": [
-        "Central park",
-        "Social",
+        "Arakko",
+        "Birnin T'Challa",
+        "Celestial Husk",
+        "Central Park",
+        "Hall Of Djalia",
+        "Heart Of Heaven",
+        "Hell's Heaven",
+        "Krakoa",
         "Midtown",
-        "Hall of Djalia"
+        "Museum of Contemplation",
+        "Shin-Shibuya",
+        "Spider-Islands",
+        "Symbiotic Surface",
+        "Yggdrasill Path"
     ],
     "heroes": {
         "1031": "LUNA SNOW",

@@ -57,7 +57,7 @@ def log_game_entities(map_name: str, seen_heroes: list):
     Логирует уникальные карты и героев (ID -> Имя) в JSON файл для маппинга.
     Пропускает те, которые уже есть в файле.
     """
-    log_file = resource_path("game_entities_dict.json")
+    log_file = resource_path("database/game_entities_dict.json")
     
     try:
         if os.path.exists(log_file):

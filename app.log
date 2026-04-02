@@ -406,3 +406,71 @@
 05:10:10.358 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
 05:10:10.431 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-031716.json
 05:10:10.434 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+05:10:58.810 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+05:10:58.810 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+05:10:58.879 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-031716.json
+05:10:58.881 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+05:10:59.025 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+05:10:59.025 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+05:10:59.039 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+05:10:59.040 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+05:10:59.040 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+05:10:59.040 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+05:10:59.040 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+05:10:59.040 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+05:10:59.041 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+05:10:59.045 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+05:10:59.046 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+05:10:59.046 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+05:10:59.046 - INFO - [logic.py:42] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 9 шт.
+05:10:59.046 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+05:10:59.047 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+05:10:59.047 - INFO - [main.py:113] - <module> - Создание MainWindow...
+05:10:59.047 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+05:10:59.061 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+05:10:59.077 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+05:10:59.082 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:10:59.089 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:10:59.119 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+05:10:59.121 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+05:10:59.122 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+05:10:59.123 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x2125ef14520) at 0x000002126187F1C0>
+05:10:59.123 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+05:10:59.124 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:10:59.131 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:10:59.134 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+05:10:59.243 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+05:10:59.244 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+05:10:59.244 - INFO - [main.py:124] - <module> - Window ID: 40175302
+05:10:59.244 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+05:10:59.246 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+05:10:59.261 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+05:10:59.262 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+05:10:59.279 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+05:10:59.279 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+05:10:59.280 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+05:11:03.541 - INFO - [server.py:531] - send_response - connection open
+05:11:03.541 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 28525, 0, 0)
+05:11:03.542 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+05:11:03.543 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+05:11:03.544 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: Hall of Djalia ===
+05:11:03.544 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Hall of Djalia', Враги: [], Союзники: []
+05:11:03.544 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Hall of Djalia'
+05:11:03.544 - INFO - [logic.py:124] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'INTERGALACTIC EMPIRE OF WAKANDA'
+05:11:03.545 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:11:03.545 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+05:11:03.545 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:11:03.602 - INFO - [tray_window.py:249] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:11:03.603 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:11:03.610 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:11:03.611 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:11:03.617 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:31:53.554 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: null ===
+05:31:53.555 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'None', Враги: [], Союзники: []
+05:31:53.555 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+05:31:53.555 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+05:31:53.556 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+05:31:53.615 - INFO - [tray_window.py:249] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=INTERGALACTIC EMPIRE OF WAKANDA
+05:31:53.615 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+05:31:53.622 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+05:35:55.548 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
