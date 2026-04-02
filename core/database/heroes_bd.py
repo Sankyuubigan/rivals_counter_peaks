@@ -47,8 +47,16 @@ def _get_latest_db_file() -> str:
 # --- Глобальные переменные с данными ---
 # Теперь мы загружаем самый свежий файл автоматически!
 FULL_DATA = _load_json_data(_get_latest_db_file()) or {}
-ROLES_DATA = _load_json_data("database/roles.json") or {}
 STATS_DATA = FULL_DATA.get("heroes", {})
+
+# --- Извлекаем роли из основного файла БД ---
+ROLES_DATA: Dict[str, List[str]] = {}
+for hero, data in STATS_DATA.items():
+    role = data.get("role")
+    if role:
+        if role not in ROLES_DATA:
+            ROLES_DATA[role] = []
+        ROLES_DATA[role].append(hero)
 
 # --- НОВАЯ ЛОГИКА ДЛЯ СИНЕРГИЙ ---
 teamups_list = FULL_DATA.get("teamups",[])

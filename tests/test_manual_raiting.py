@@ -45,15 +45,16 @@ def load_hero_stats(file_path):
         print(f"Ошибка при загрузке данных из {file_path}: {e}")
         return {}
 
-def load_hero_roles_from_file(file_path="database/roles.json"):
-    """Загружает роли героев из файла database/roles.json."""
+def load_hero_roles_from_file(file_path="database/marvel_rivals_stats_20260402-031716.json"):
+    """Загружает роли героев из основного JSON файла базы данных."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         hero_roles = {}
-        for role, heroes in data.items():
-            for hero in heroes:
-                hero_roles[hero] = role
+        heroes_data = data.get("heroes", {})
+        for hero_name, hero_data in heroes_data.items():
+            if isinstance(hero_data, dict) and "role" in hero_data:
+                hero_roles[hero_name] = hero_data["role"]
         return hero_roles
     except FileNotFoundError:
         print(f"Файл {file_path} не найден")
