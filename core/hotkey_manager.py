@@ -1,10 +1,8 @@
 # File: core/hotkey_manager.py
 import logging
-from typing import Dict
 from PySide6.QtCore import QObject, Signal
 from core.app_settings_manager import AppSettingsManager
 import threading
-import time
 
 class HotkeyManager(QObject):
     hotkey_triggered = Signal(str)

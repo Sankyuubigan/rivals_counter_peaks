@@ -1,6 +1,6 @@
 # File: core/appearance_manager.py
 import logging
-from PySide6.QtWidgets import QApplication, QDialog 
+from PySide6.QtWidgets import QApplication
 from info.translations import SUPPORTED_LANGUAGES, set_language as set_global_language, get_text
 from core.app_settings_manager import AppSettingsManager
 from info.translations import DEFAULT_LANGUAGE as DEFAULT_LANG_VALUE

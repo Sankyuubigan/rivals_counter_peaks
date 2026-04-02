@@ -29,16 +29,21 @@ def normalize_hero_name(name: str) -> str:
             
     normalized = re.sub(r'[-_]+', ' ', normalized).strip()
     
-    # Алиасы для базовых сокращений (Дедпула убрали, чтобы он искался как 3 разных героя)
+    # Алиасы: Overwolf-имена → каноничные имена из БД
     aliases = {
-        "mr fantastic": "mister fantastic",
-        "mr. fantastic": "mister fantastic",
-        "dr strange": "doctor strange",
-        "dr. strange": "doctor strange"
+        "bruce banner": "Hulk",
+        "deadpool duelist": "Deadpool (Duelist)",
+        "deadpool strategist": "Deadpool (Strategist)",
+        "deadpool vanguard": "Deadpool (Vanguard)",
     }
     
     if normalized in aliases:
-        normalized = aliases[normalized]
+        canonical = aliases[normalized]
+        # Алиас уже содержит каноничное имя из БД — проверяем и возвращаем
+        for hero_canonical in heroes:
+            if hero_canonical.lower() == canonical.lower():
+                return hero_canonical
+        return canonical
         
     for hero_canonical in heroes:
         if hero_canonical.lower() == normalized:

@@ -1,8 +1,9 @@
 # File: core/ui_updater.py
 import logging
 import time
-from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtCore import Signal, QObject
 from PySide6.QtGui import QColor, QBrush
+from PySide6.QtCore import Qt
 # Импортируем `create_left_panel` из правильного модуля `left_panel`.
 from core.left_panel import create_left_panel
 from core.right_panel import RightPanel, HERO_NAME_ROLE

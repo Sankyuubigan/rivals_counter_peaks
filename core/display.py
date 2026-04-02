@@ -1,7 +1,7 @@
 # File: core/display.py
 from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QVBoxLayout
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtGui import QColor
 # ИСПРАВЛЕНО: Исправлен путь импорта
 from core.database.heroes_bd import heroes_counters
 from info.translations import get_text

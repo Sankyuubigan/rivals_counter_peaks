@@ -1,6 +1,6 @@
 # File: core/action_controller.py
 import logging
-from PySide6.QtCore import Slot, Qt, QPoint
+from PySide6.QtCore import Slot, QPoint
 from core import utils_gui
 from info.translations import get_text
 from core.right_panel import HERO_NAME_ROLE

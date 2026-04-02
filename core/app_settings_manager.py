@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from core.app_settings_keys import *
 
 DEFAULT_THEME = "light"

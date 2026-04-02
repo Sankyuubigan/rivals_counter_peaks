@@ -17,7 +17,8 @@
         "Shin-shibuya",
         "Heart of heaven",
         "UNKNOWN",
-        "Spider-islands"
+        "Spider-islands",
+        "Birnin t'challa"
     ],
     "map_filename_to_name": {
         "img_map_practicerance": "Birnin T'Challa",
@@ -83,6 +84,8 @@
         "10571": "DEADPOOL VANGUARD",
         "1015": "STORM",
         "1040": "MISTER FANTASTIC",
-        "1021": "HAWKEYE"
+        "1021": "HAWKEYE",
+        "1052": "IRON FIST",
+        "1027": "GROOT"
     }
 }

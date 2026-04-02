@@ -1,10 +1,9 @@
 # File: core/favorite_heroes_tab.py
 import logging
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFrame,
-                               QPushButton, QLabel, QGridLayout, QAbstractItemView,
-                               QListWidget, QListWidgetItem, QListWidgetItem, QApplication, QCheckBox)
+                               QPushButton, QLabel, QGridLayout, QApplication, QCheckBox)
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QColor
+from PySide6.QtGui import QIcon
 from core.database.heroes_bd import heroes
 from core.image_manager import ImageManager
 from core.app_settings_manager import AppSettingsManager

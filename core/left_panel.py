@@ -1,5 +1,5 @@
 # File: core/left_panel.py
-from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QFrame, QScrollArea, QLabel, QVBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 

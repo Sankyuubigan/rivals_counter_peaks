@@ -1,8 +1,6 @@
 # File: core/ui_components/hotkey_capture_widget.py
-from PySide6.QtWidgets import QWidget, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QApplication
+from PySide6.QtWidgets import QWidget, QLineEdit, QPushButton, QHBoxLayout, QApplication
 from PySide6.QtCore import Qt, Signal, QTimer, QEvent
-from PySide6.QtGui import QKeyEvent, QFocusEvent
-import logging
 
 class HotkeyCaptureWidget(QWidget):
     """Виджет для захвата горячих клавиш"""

@@ -1,7 +1,7 @@
 # File: core/tier_list_tab.py
 import logging
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QScrollArea, QFrame, QPushButton,
-                               QHBoxLayout, QLabel, QSizePolicy, QComboBox, QApplication)
+                               QHBoxLayout, QLabel, QComboBox, QApplication)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from core.logic import CounterpickLogic

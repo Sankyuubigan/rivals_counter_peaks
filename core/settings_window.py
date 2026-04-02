@@ -1,4 +1,3 @@
-import logging
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                                QGridLayout, QLabel, QScrollArea, QMessageBox, QFrame, QComboBox, QCheckBox)
 from PySide6.QtCore import Qt, Signal, Slot

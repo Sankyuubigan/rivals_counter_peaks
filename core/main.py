@@ -6,7 +6,6 @@ import os
 # --- КОНЕЦ ОТЛАДОЧНОГО БЛОКА ---
 import logging 
 import datetime
-import time
 
 # Определяем пути ДО настройки логирования (чтобы FileHandler мог использовать project_root)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -83,7 +82,7 @@ if __name__ == "__main__":
     logging.info("Предварительная асинхронная загрузка ресурсов...")
     try:
         # Запускаем загрузку изображений в отдельном потоке
-        from PySide6.QtCore import QThread, QTimer, Signal, QObject
+        from PySide6.QtCore import QThread, Signal, QObject
         
         class ResourceLoader(QObject):
             loaded = Signal()

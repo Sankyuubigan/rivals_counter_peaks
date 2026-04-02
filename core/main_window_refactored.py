@@ -2,11 +2,10 @@
 Рефакторинговая версия MainWindow, использующая менеджеры, событийную модель и интерфейс на вкладках.
 """
 import logging
-import sys
 import os
 import time
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTextBrowser, QStatusBar, QApplication)
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot
 from PySide6.QtGui import QCloseEvent
 from core.logic import CounterpickLogic
 from core.app_settings_manager import AppSettingsManager
@@ -153,7 +152,7 @@ class MainWindowRefactored(QMainWindow):
     @Slot(dict)
     def _on_overwolf_data(self, data: dict):
         if data.get("type") == "debug":
-            logging.info(f"[OW DEBUG] {data.get('data')}")
+            logging.debug(f"[OW DEBUG] {data.get('data')}")
             return
 
         start_time = time.time()

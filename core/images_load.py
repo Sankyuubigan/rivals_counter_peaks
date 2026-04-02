@@ -6,7 +6,6 @@ import logging
 import os
 from PySide6.QtGui import QPixmap
 from typing import Dict, Tuple, Optional, List
-import numpy as np
 from core.image_manager import ImageManager
 
 _image_manager_instance: Optional[ImageManager] = None
@@ -23,7 +22,7 @@ def get_images_for_mode(mode: str = 'middle') -> Tuple[Dict[str, QPixmap], Dict[
     """Возвращает изображения для указанного режима через ImageManager."""
     return get_image_manager().get_images(mode)
 
-def load_hero_templates_cv2() -> Dict[str, List[np.ndarray]]:
+def load_hero_templates_cv2():
     """Загружает CV2 шаблоны через ImageManager."""
     return get_image_manager().get_cv2_templates()
 

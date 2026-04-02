@@ -1,11 +1,10 @@
 # File: core/right_panel.py
 from info import translations
 from PySide6.QtWidgets import QAbstractItemView, QFrame, QLabel, QListWidget, QListWidgetItem, QListView, QPushButton, QVBoxLayout, QWidget, QComboBox, QHBoxLayout
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
 from core.database.heroes_bd import heroes
 from core.images_load import is_invalid_pixmap, SIZES
-from core import images_load
 import logging
 
 TEAM_SIZE = 6

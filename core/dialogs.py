@@ -1,10 +1,9 @@
 # File: core/dialogs.py
-from PySide6.QtWidgets import (QDialog, QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout,
-                               QLabel, QFileDialog, QWidget)
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtWidgets import (QTextBrowser, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout,
+                               QFileDialog, QWidget)
+from PySide6.QtCore import Slot
 from info.translations import get_text
 import pyperclip
-import logging
 import datetime
 
 # LogDialog теперь QWidget, а не QDialog, для встраивания во вкладку

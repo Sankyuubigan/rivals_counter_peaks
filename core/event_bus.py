@@ -2,7 +2,7 @@
 Централизованная система событий для приложения
 """
 import logging
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable
 
 class EventBus:
     """

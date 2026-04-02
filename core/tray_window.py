@@ -1,10 +1,9 @@
 import logging
 import os
-import time
-from typing import TYPE_CHECKING, Dict, List, Tuple
+from typing import TYPE_CHECKING, Dict, List
 from PySide6.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QHBoxLayout,
                                 QScrollArea, QFrame, QLabel, QSizePolicy)
-from PySide6.QtCore import Qt, Slot, QRect, QSize, QTimer, QObject
+from PySide6.QtCore import Qt, QRect, QTimer
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QColor, QPixmap
 from core.event_bus import event_bus
 from core.horizontal_list import IconWithRatingWidget, is_invalid_pixmap

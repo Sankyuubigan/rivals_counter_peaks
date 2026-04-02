@@ -1,10 +1,8 @@
 # File: core/horizontal_list.py
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
-from PySide6.QtCore import QSize, Qt, QRect
+from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QBrush, QPixmap
 from core.images_load import is_invalid_pixmap
-import math
-import logging
 class IconWithRatingWidget(QWidget):
     """Виджет для отображения иконки героя с его рейтингом."""
     def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, is_enemy: bool, tooltip: str, parent=None):

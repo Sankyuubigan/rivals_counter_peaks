@@ -2,12 +2,9 @@
 import os
 import sys
 import logging
-import cv2
-import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from typing import Dict, List, Optional, Tuple
-from collections import defaultdict
+from typing import Dict, List, Tuple
 # ИСПРАВЛЕНО: Исправлен путь импорта
 from core.database.heroes_bd import heroes as ALL_HEROES
 SIZES = {
