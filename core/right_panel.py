@@ -172,10 +172,11 @@ class RightPanel(QWidget):
     def _apply_selected_stylesheet(self):
         # ИСПОЛЬЗУЕМ outline ВМЕСТО border — outline НЕ ВЛИЯЕТ НА ГЕОМЕТРИЮ ЭЛЕМЕНТА
         # и не вызывает пересчёт layout (ResizeMode.Adjust), что устраняет мерцание
+        # Красный фон + яркая белая обводка для максимальной видимости
         stylesheet = """
         QListWidget::item:selected {
-            background-color: #FFD700;
-            outline: 4px solid #FF4500;
+            background-color: #FF1744;
+            outline: 3px solid #FFFFFF;
             color: white;
         }
         """
