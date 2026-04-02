@@ -42,7 +42,7 @@ def _get_latest_db_file() -> str:
     except Exception as e:
         logging.error(f"Ошибка при поиске БД: {e}")
     # Возвращаем дефолтный, если ничего не найдено
-    return "database/marvel_rivals_stats_20260401-122707.json"
+    return "database/marvel_rivals_stats_20260402-031716.json"
 
 # --- Глобальные переменные с данными ---
 # Теперь мы загружаем самый свежий файл автоматически!

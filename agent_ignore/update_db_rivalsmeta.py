@@ -143,8 +143,16 @@ def get_heroes_list(page, season="1"):
                     let urlName = heroName.toLowerCase().replace(/[^a-z0-9\\s-]/g, '').replace(/\\s+/g, '-').replace(/^-+|-+$/g, '');
                     
                     let role = '';
-                    const roleImg = cells[1].querySelector('img');
-                    if (roleImg) role = roleImg.alt || roleImg.title || '';
+                    const roleImg = cells[1].querySelector('img.hero-class');
+                    if (roleImg) {
+                        // Роль извлекаем из имени файла в src, т.к. alt содержит имя героя (баг сайта)
+                        // Пример: /images/vanguard.png -> vanguard
+                        const src = roleImg.getAttribute('src') || '';
+                        const match = src.match(/\/images\/([a-z_-]+)\.png/i);
+                        if (match) {
+                            role = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+                        }
+                    }
                     if (!role) role = cells[1].textContent.trim();
                     
                     heroes.push({
