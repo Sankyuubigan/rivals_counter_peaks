@@ -2,6 +2,8 @@ import json
 import time
 import logging
 import random
+import re
+import os
 from playwright.sync_api import sync_playwright
 
 # Настройка логирования
@@ -14,6 +16,30 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("rivals_scraper")
+
+# Путь к файлу с маппингом (относительно корня проекта)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+GAME_ENTITIES_PATH = os.path.join(PROJECT_ROOT, "database", "game_entities_dict.json")
+
+
+def load_map_filename_mapping():
+    """Загружает маппинг img_filename -> correct_name из game_entities_dict.json."""
+    try:
+        with open(GAME_ENTITIES_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data.get("map_filename_to_name", {})
+    except Exception as e:
+        logger.error(f"Не удалось загрузить маппинг карт: {e}")
+        return {}
+
+
+def extract_map_filename(img_src):
+    """Извлекает имя файла карты (img_map_xxx) из src картинки."""
+    if not img_src:
+        return None
+    match = re.search(r'images/Map/(img_map_\w+)\.png', img_src)
+    return match.group(1) if match else None
 
 def init_browser(playwright):
     """Запускает браузер один раз для всей сессии."""
@@ -225,7 +251,7 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
 
     time.sleep(1)
 
-    # 2. MAPS
+    # 2. MAPS — сохраняем img_map_xxx как map_name
     maps_data = []
     url_maps = f"https://rivalsmeta.com/characters/{hero_url_name}/maps"
     if safe_goto(page, url_maps):
@@ -249,8 +275,13 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                                 const nameEl = row.querySelector('td .name') || row.querySelector('td:first-child');
                                 const cells = row.querySelectorAll('td');
                                 if (nameEl && cells.length >= 3) {
+                                    const mapImg = cells[0].querySelector('.image img');
+                                    const imgSrc = mapImg ? (mapImg.getAttribute('src') || '') : '';
+                                    // Извлекаем img_map_xxx из src
+                                    const match = imgSrc.match(/images\/Map\/(img_map_\w+)\.png/);
+                                    const mapFilename = match ? match[1] : '';
                                     allMaps.push({
-                                        map_name: nameEl.textContent.trim(),
+                                        map_name: mapFilename,
                                         matches: cells[1].textContent.trim(),
                                         win_rate: cells[2].textContent.trim()
                                     });

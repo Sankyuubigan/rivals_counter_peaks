@@ -15,6 +15,22 @@
         "Symbiotic Surface",
         "Yggdrasill Path"
     ],
+    "map_filename_to_name": {
+        "img_map_practicerance": "Birnin T'Challa",
+        "img_map_celestial_heart": "Celestial Husk",
+        "img_map_krakoa_carousel": "Krakoa",
+        "img_map_hellfiregala_arakko": "Arakko",
+        "img_map_hydracharterisbase": "Hell's Heaven",
+        "img_map_museum_collectorpark": "Museum of Contemplation",
+        "img_map_yggdrasil": "Yggdrasill Path",
+        "img_map_tokyowebworld_spiderisland": "Spider-Islands",
+        "img_map_midtown": "Midtown",
+        "img_map_klyntar_ruins": "Symbiotic Surface",
+        "img_map_kunlun_heartoftiandu": "Heart Of Heaven",
+        "img_map_centralpark": "Central Park",
+        "img_map_hallofdialia": "Hall Of Djalia",
+        "img_map_tokyowebworld_metropolis": "Shin-Shibuya"
+    },
     "heroes": {
         "1031": "LUNA SNOW",
         "1024": "HELA",
