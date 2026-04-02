@@ -474,3 +474,326 @@
 05:31:53.615 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
 05:31:53.622 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
 05:35:55.548 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+06:23:00.219 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+06:23:00.219 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+06:23:00.285 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+06:23:00.287 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+06:23:00.415 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+06:23:00.415 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+06:23:00.427 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+06:23:00.428 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+06:23:00.428 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+06:23:00.428 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+06:23:00.428 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+06:23:00.428 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+06:23:00.428 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+06:23:00.432 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+06:23:00.432 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+06:23:00.432 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+06:23:00.433 - INFO - [logic.py:42] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+06:23:00.433 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+06:23:00.433 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+06:23:00.433 - INFO - [main.py:113] - <module> - Создание MainWindow...
+06:23:00.433 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+06:23:00.446 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+06:23:00.459 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+06:23:00.464 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+06:23:00.470 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+06:23:00.496 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+06:23:00.497 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+06:23:00.498 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+06:23:00.499 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x25880734d40) at 0x00000258827F53C0>
+06:23:00.499 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+06:23:00.499 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+06:23:00.505 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+06:23:00.508 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+06:23:00.611 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+06:23:00.612 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+06:23:00.612 - INFO - [main.py:124] - <module> - Window ID: 231280040
+06:23:00.612 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+06:23:00.614 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+06:23:00.628 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+06:23:00.628 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+06:23:00.651 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+06:23:00.651 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+06:23:00.652 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+06:23:04.101 - INFO - [server.py:531] - send_response - connection open
+06:23:04.102 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 31900, 0, 0)
+06:23:04.102 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+06:23:04.103 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+06:23:04.103 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: null ===
+06:23:04.104 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'None', Враги: [], Союзники: []
+06:23:04.104 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+06:23:04.104 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+06:23:04.104 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+06:24:58.994 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+07:08:00.556 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+07:08:00.556 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+07:08:00.617 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+07:08:00.619 - INFO - [heroes_bd.py:89] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+07:08:00.746 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+07:08:00.747 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+07:08:00.762 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+07:08:00.763 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+07:08:00.763 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+07:08:00.763 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+07:08:00.763 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+07:08:00.763 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+07:08:00.764 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+07:08:00.768 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+07:08:00.768 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+07:08:00.768 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+07:08:00.768 - INFO - [logic.py:42] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+07:08:00.769 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+07:08:00.769 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+07:08:00.769 - INFO - [main.py:113] - <module> - Создание MainWindow...
+07:08:00.769 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+07:08:00.781 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+07:08:00.797 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+07:08:00.803 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:08:00.809 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:08:00.840 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+07:08:00.841 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+07:08:00.842 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+07:08:00.842 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x1f0e608b9a0) at 0x000001F0E8A990C0>
+07:08:00.842 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+07:08:00.843 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:08:00.849 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:08:00.852 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+07:08:00.959 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+07:08:00.959 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+07:08:00.960 - INFO - [main.py:124] - <module> - Window ID: 3541738
+07:08:00.960 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+07:08:00.961 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+07:08:00.974 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+07:08:00.975 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+07:08:00.992 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+07:08:00.992 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+07:08:00.992 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+07:08:01.043 - INFO - [server.py:531] - send_response - connection open
+07:08:01.044 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('127.0.0.1', 33680)
+07:08:01.045 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+07:08:01.116 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+07:08:01.117 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: null ===
+07:08:01.118 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'None', Враги: [], Союзники: []
+07:08:01.118 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:08:01.118 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+07:08:01.118 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:06.096 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:06.097 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: []
+07:09:06.097 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:06.098 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:06.098 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:06.098 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+07:09:06.098 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:06.162 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=Shin-Shibuya
+07:09:06.164 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:06.170 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:06.171 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:06.178 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:31.097 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:31.097 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: ['WHITE FOX', 'THE PUNISHER']
+07:09:31.098 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:31.098 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:31.098 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:31.099 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:09:31.099 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:09:31.099 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'White Fox']
+07:09:31.099 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:31.166 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:09:31.167 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:31.173 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:31.173 - INFO - [tray_window.py:312] - _process_pending_update - [Tray] Обновление союзников: ['The Punisher', 'White Fox']
+07:09:31.177 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:31.183 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:36.088 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:36.089 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: ['PENI PARKER', 'WHITE FOX', 'THE PUNISHER']
+07:09:36.089 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:36.089 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:36.090 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:36.090 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:09:36.090 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:09:36.090 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:09:36.090 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'White Fox', 'Peni Parker']
+07:09:36.091 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:36.148 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Peni Parker', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:09:36.149 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:36.155 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:36.156 - INFO - [tray_window.py:312] - _process_pending_update - [Tray] Обновление союзников: ['Peni Parker', 'The Punisher', 'White Fox']
+07:09:36.194 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:36.201 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:41.094 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:41.095 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: ['PENI PARKER', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH']
+07:09:41.096 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:41.096 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:41.096 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:41.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:09:41.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:09:41.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:09:41.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:09:41.098 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Scarlet Witch', 'White Fox', 'Peni Parker']
+07:09:41.098 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:41.166 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:09:41.166 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:41.173 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:41.174 - INFO - [tray_window.py:312] - _process_pending_update - [Tray] Обновление союзников: ['Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox']
+07:09:41.236 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:41.242 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:46.086 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:46.086 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH']
+07:09:46.087 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:46.087 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:46.087 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:46.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:09:46.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:09:46.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:09:46.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:09:46.089 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:09:46.089 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:09:46.089 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:46.146 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Doctor Strange', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:09:46.147 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:46.153 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:46.154 - INFO - [tray_window.py:312] - _process_pending_update - [Tray] Обновление союзников: ['Doctor Strange', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox']
+07:09:46.232 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:46.238 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:56.085 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:09:56.085 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: [], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:09:56.086 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:09:56.086 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:09:56.087 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+07:09:56.087 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:09:56.087 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:09:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:09:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:09:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:09:56.089 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:09:56.089 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:09:56.089 - INFO - [logic.py:218] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+07:09:56.149 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:09:56.150 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:56.157 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:09:56.157 - INFO - [tray_window.py:312] - _process_pending_update - [Tray] Обновление союзников: ['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox']
+07:09:56.274 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+07:09:56.282 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:10:56.084 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:10:56.085 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: ['THOR', 'JEFF THE LAND SHARK', 'DEADPOOL DUELIST', 'MAGIK', 'ROGUE', 'BLACK PANTHER'], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:10:56.086 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:10:56.086 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:10:56.086 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'THOR' распознан как 'Thor'
+07:10:56.086 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+07:10:56.087 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL DUELIST' распознан как 'Deadpool Duelist'
+07:10:56.087 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGIK' распознан как 'Magik'
+07:10:56.087 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+07:10:56.087 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK PANTHER' распознан как 'Black Panther'
+07:10:56.088 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik', 'Deadpool Duelist']
+07:10:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:10:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:10:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:10:56.088 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:10:56.089 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:10:56.089 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:10:56.089 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:10:56.090 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik', 'Deadpool Duelist'], карта=Shin-Shibuya
+07:10:56.090 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik', 'Deadpool Duelist'], is_tier_list_calc=True
+07:10:56.091 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:10:56.092 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Mister Fantastic', 'Namor', 'Iron Man']
+07:10:56.151 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=['Black Panther', 'Deadpool Duelist', 'Jeff The Land Shark', 'Magik', 'Rogue', 'Thor'], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:10:56.152 - INFO - [tray_window.py:307] - _process_pending_update - [Tray] Обновление врагов: ['Black Panther', 'Deadpool Duelist', 'Jeff The Land Shark', 'Magik', 'Rogue', 'Thor']
+07:11:16.095 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:11:16.096 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: ['THOR', 'JEFF THE LAND SHARK', 'DEADPOOL STRATEGIST', 'MAGIK', 'ROGUE', 'BLACK PANTHER'], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:11:16.096 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:11:16.097 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:11:16.097 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'THOR' распознан как 'Thor'
+07:11:16.098 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+07:11:16.098 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL STRATEGIST' распознан как 'Deadpool Strategist'
+07:11:16.098 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGIK' распознан как 'Magik'
+07:11:16.098 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+07:11:16.099 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK PANTHER' распознан как 'Black Panther'
+07:11:16.099 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Deadpool Strategist', 'Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik']
+07:11:16.099 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:11:16.099 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:11:16.100 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:11:16.100 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:11:16.100 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:11:16.100 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:11:16.100 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:11:16.101 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Deadpool Strategist', 'Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik'], карта=Shin-Shibuya
+07:11:16.101 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Deadpool Strategist', 'Black Panther', 'Rogue', 'Jeff The Land Shark', 'Thor', 'Magik'], is_tier_list_calc=True
+07:11:16.102 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:11:16.103 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Mister Fantastic', 'Namor', 'Iron Man']
+07:11:16.162 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=['Black Panther', 'Deadpool Strategist', 'Jeff The Land Shark', 'Magik', 'Rogue', 'Thor'], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:11:16.163 - INFO - [tray_window.py:307] - _process_pending_update - [Tray] Обновление врагов: ['Black Panther', 'Deadpool Strategist', 'Jeff The Land Shark', 'Magik', 'Rogue', 'Thor']
+07:12:01.091 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:12:01.092 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: ['THOR', 'WHITE FOX', 'DEADPOOL STRATEGIST', 'MAGIK', 'ROGUE', 'BLACK PANTHER'], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:12:01.092 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:12:01.092 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:12:01.093 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'THOR' распознан как 'Thor'
+07:12:01.093 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+07:12:01.094 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL STRATEGIST' распознан как 'Deadpool Strategist'
+07:12:01.094 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGIK' распознан как 'Magik'
+07:12:01.094 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+07:12:01.095 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK PANTHER' распознан как 'Black Panther'
+07:12:01.095 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Deadpool Strategist', 'Black Panther', 'Rogue', 'Thor', 'Magik', 'White Fox']
+07:12:01.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:12:01.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:12:01.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:12:01.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:12:01.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:12:01.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:12:01.097 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:12:01.097 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Deadpool Strategist', 'Black Panther', 'Rogue', 'Thor', 'Magik', 'White Fox'], карта=Shin-Shibuya
+07:12:01.097 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Deadpool Strategist', 'Black Panther', 'Rogue', 'Thor', 'Magik', 'White Fox'], is_tier_list_calc=True
+07:12:01.098 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:12:01.099 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Mister Fantastic', 'Namor', 'Iron Man']
+07:12:01.167 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=['Black Panther', 'Deadpool Strategist', 'Magik', 'Rogue', 'Thor', 'White Fox'], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:12:01.168 - INFO - [tray_window.py:307] - _process_pending_update - [Tray] Обновление врагов: ['Black Panther', 'Deadpool Strategist', 'Magik', 'Rogue', 'Thor', 'White Fox']
+07:12:11.093 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:12:11.094 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: ['THOR', 'WHITE FOX', 'INVISIBLE WOMAN', 'MAGIK', 'ROGUE', 'BLACK PANTHER'], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:12:11.094 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:12:11.095 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:12:11.095 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'THOR' распознан как 'Thor'
+07:12:11.095 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+07:12:11.096 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:12:11.096 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGIK' распознан как 'Magik'
+07:12:11.096 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+07:12:11.097 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK PANTHER' распознан как 'Black Panther'
+07:12:11.097 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Black Panther', 'Invisible Woman', 'Rogue', 'Thor', 'Magik', 'White Fox']
+07:12:11.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:12:11.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:12:11.098 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:12:11.098 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:12:11.098 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:12:11.098 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:12:11.099 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:12:11.099 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Black Panther', 'Invisible Woman', 'Rogue', 'Thor', 'Magik', 'White Fox'], карта=Shin-Shibuya
+07:12:11.099 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Black Panther', 'Invisible Woman', 'Rogue', 'Thor', 'Magik', 'White Fox'], is_tier_list_calc=True
+07:12:11.101 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:12:11.101 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Mister Fantastic', 'Namor', 'Scarlet Witch']
+07:12:11.164 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=['Black Panther', 'Invisible Woman', 'Magik', 'Rogue', 'Thor', 'White Fox'], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:12:11.165 - INFO - [tray_window.py:307] - _process_pending_update - [Tray] Обновление врагов: ['Black Panther', 'Invisible Woman', 'Magik', 'Rogue', 'Thor', 'White Fox']
+07:13:11.089 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Shin-shibuya ===
+07:13:11.089 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Shin-shibuya', Враги: ['MAGNETO', 'WHITE FOX', 'INVISIBLE WOMAN', 'MAGIK', 'ROGUE', 'BLACK PANTHER'], Союзники: ['PENI PARKER', 'DOCTOR STRANGE', 'WHITE FOX', 'THE PUNISHER', 'SCARLET WITCH', 'INVISIBLE WOMAN']
+07:13:11.090 - INFO - [logic.py:86] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Shin-shibuya'
+07:13:11.090 - WARNING - [logic.py:126] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'Shin-shibuya' (mapped to 'TOKYO 2099'). Доступные карты в БД: ['img_map_celestial_heart', 'img_map_centralpark', 'img_map_hallofdialia', 'img_map_hellfiregala_arakko', 'img_map_hydracharterisbase', 'img_map_klyntar_ruins', 'img_map_krakoa_carousel', 'img_map_kunlun_heartoftiandu', 'img_map_midtown', 'img_map_museum_collectorpark', 'img_map_practicerance', 'img_map_tokyowebworld_metropolis', 'img_map_tokyowebworld_spiderisland', 'img_map_yggdrasil']
+07:13:11.090 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGNETO' распознан как 'Magneto'
+07:13:11.090 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+07:13:11.091 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:13:11.091 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MAGIK' распознан как 'Magik'
+07:13:11.091 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+07:13:11.091 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK PANTHER' распознан как 'Black Panther'
+07:13:11.091 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Black Panther', 'Invisible Woman', 'Rogue', 'Magneto', 'Magik', 'White Fox']
+07:13:11.091 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'PENI PARKER' распознан как 'Peni Parker'
+07:13:11.092 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+07:13:11.092 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'WHITE FOX' распознан как 'White Fox'
+07:13:11.092 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THE PUNISHER' распознан как 'The Punisher'
+07:13:11.092 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SCARLET WITCH' распознан как 'Scarlet Witch'
+07:13:11.093 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+07:13:11.093 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['The Punisher', 'Invisible Woman', 'Scarlet Witch', 'Peni Parker', 'Doctor Strange', 'White Fox']
+07:13:11.093 - INFO - [logic.py:220] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Black Panther', 'Invisible Woman', 'Rogue', 'Magneto', 'Magik', 'White Fox'], карта=Shin-Shibuya
+07:13:11.093 - INFO - [heroes_bd.py:117] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Black Panther', 'Invisible Woman', 'Rogue', 'Magneto', 'Magik', 'White Fox'], is_tier_list_calc=True
+07:13:11.095 - INFO - [heroes_bd.py:134] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+07:13:11.095 - INFO - [logic.py:231] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['The Thing', 'Ultron', 'White Fox', 'Mister Fantastic', 'Scarlet Witch', 'Namor']
+07:13:11.150 - INFO - [tray_window.py:290] - _process_pending_update - [Tray] Обновление UI: враги=['Black Panther', 'Invisible Woman', 'Magik', 'Magneto', 'Rogue', 'White Fox'], союзники=['Doctor Strange', 'Invisible Woman', 'Peni Parker', 'Scarlet Witch', 'The Punisher', 'White Fox'], карта=Shin-Shibuya
+07:13:11.150 - INFO - [tray_window.py:307] - _process_pending_update - [Tray] Обновление врагов: ['Black Panther', 'Invisible Woman', 'Magik', 'Magneto', 'Rogue', 'White Fox']
+07:15:43.586 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---

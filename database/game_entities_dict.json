@@ -13,7 +13,8 @@
         "Shin-Shibuya",
         "Spider-Islands",
         "Symbiotic Surface",
-        "Yggdrasill Path"
+        "Yggdrasill Path",
+        "Shin-shibuya"
     ],
     "map_filename_to_name": {
         "img_map_practicerance": "Birnin T'Challa",
@@ -62,6 +63,10 @@
         "1041": "WINTER SOLDIER",
         "1039": "THOR",
         "1065": "ROGUE",
-        "1056": "ANGELA"
+        "1056": "ANGELA",
+        "1038": "SCARLET WITCH",
+        "10572": "DEADPOOL DUELIST",
+        "1026": "BLACK PANTHER",
+        "10573": "DEADPOOL STRATEGIST"
     }
 }

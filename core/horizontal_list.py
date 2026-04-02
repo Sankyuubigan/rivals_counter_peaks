@@ -26,6 +26,11 @@ class IconWithRatingWidget(QWidget):
         self.border_pen = QPen(Qt.PenStyle.NoPen)
         self.border_width = 1
         
+        # Подсветка роли (для tray window)
+        self._highlighted = False
+        self._highlight_color = QColor()
+        self._highlight_outer_color = QColor()
+        
     def update_rating(self, rating: float, tooltip: str = None):
         """Обновляет рейтинг и подсказку виджета."""
         self.rating_text = f"{rating:.1f}"
@@ -37,6 +42,24 @@ class IconWithRatingWidget(QWidget):
         self.border_pen = QPen(color, width)
         self.border_width = width
         self.update()
+    
+    def set_highlight(self, highlighted: bool, highlight_color: QColor = None, outer_color: QColor = None):
+        """Включает/выключает подсветку героя (жирная рамка для рекомендуемой роли).
+        
+        При highlight=True рисуется двойная рамка:
+          - Внешняя (6px) цвета outer_color (обычно цвет фона трея)
+          - Внутренняя (3px) цвета highlight_color (цвет роли)
+        Визуально это выглядит как рамка роли толщиной 6px, но размер виджета не меняется.
+        """
+        self._highlighted = highlighted
+        if highlighted:
+            self._highlight_color = highlight_color or QColor("#FFD700")
+            self._highlight_outer_color = outer_color or QColor(40, 40, 40, 200)
+        else:
+            self._highlight_color = QColor()
+            self._highlight_outer_color = QColor()
+        self.update()
+    
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -50,11 +73,32 @@ class IconWithRatingWidget(QWidget):
             y = (widget_rect.height() - pixmap_size.height()) // 2
             painter.drawPixmap(x, y, self.pixmap)
         
+        # --- Рамка роли (всегда рисуется) ---
         if self.border_pen.style() != Qt.PenStyle.NoPen:
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(self.border_pen)
             border_rect = widget_rect.adjusted(self.border_width / 2, self.border_width / 2, -self.border_width / 2, -self.border_width / 2)
             painter.drawRoundedRect(border_rect, 3, 3)
+        
+        # --- Подсветка рекомендуемой роли (двойная рамка) ---
+        if self._highlighted:
+            outer_width = 6
+            inner_width = 3
+            
+            # Внешняя рамка (6px) — цвет подсветки (роль)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            outer_pen = QPen(self._highlight_color, outer_width)
+            outer_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(outer_pen)
+            outer_rect = widget_rect.adjusted(outer_width / 2, outer_width / 2, -outer_width / 2, -outer_width / 2)
+            painter.drawRoundedRect(outer_rect, 4, 4)
+            
+            # Внутренняя рамка (3px) — цвет роли, чтобы сохранить оригинальный вид
+            inner_pen = QPen(self.border_pen.color() if self.border_pen.style() != Qt.PenStyle.NoPen else self._highlight_color, inner_width)
+            inner_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(inner_pen)
+            inner_rect = widget_rect.adjusted(inner_width / 2, inner_width / 2, -inner_width / 2, -inner_width / 2)
+            painter.drawRoundedRect(inner_rect, 3, 3)
         if not self.is_enemy:
             painter.setFont(self.font)
             text_width = self.fm.horizontalAdvance(self.rating_text)

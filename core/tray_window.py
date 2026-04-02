@@ -17,6 +17,9 @@ ROLE_COLORS = {
     "Strategist": QColor("#00AA00")  
 }
 
+# Идеальный состав команды: 2 Vanguard, 2 Duelist, 2 Strategist
+IDEAL_TEAM_COMPOSITION = {"Vanguard": 2, "Duelist": 2, "Strategist": 2}
+
 if TYPE_CHECKING:
     from main_window_refactored import MainWindowRefactored
 
@@ -50,6 +53,44 @@ class TrayWindow(QMainWindow):
         from core.database.heroes_bd import ROLES_DATA
         for role, heroes_in_role in ROLES_DATA.items():
             if hero_name in heroes_in_role: return role
+        return ""
+
+    def get_recommended_role(self, ally_heroes: List[str]) -> str:
+        """Определяет, какая роль нужна команде на основе состава союзников.
+        
+        Идеальный состав: 2 Vanguard, 2 Duelist, 2 Strategist.
+        Возвращает роль, которой больше всего не хватает до идеала.
+        Если все роли в идеале — возвращает пустую строку.
+        """
+        from core.database.heroes_bd import ROLES_DATA
+        
+        # Считаем роли в текущем составе союзников
+        role_counts = {"Vanguard": 0, "Duelist": 0, "Strategist": 0}
+        for hero in ally_heroes:
+            role = self.get_hero_role(hero)
+            if role in role_counts:
+                role_counts[role] += 1
+        
+        # Определяем, сколько не хватает каждой роли до идеала
+        # Приоритет: Vanguard (желательно 2), затем Duelist (желательно 2), затем Strategist (желательно 2)
+        needs = {}
+        for role, ideal_count in IDEAL_TEAM_COMPOSITION.items():
+            current = role_counts.get(role, 0)
+            if current < ideal_count:
+                needs[role] = ideal_count - current
+        
+        if not needs:
+            # Все роли в идеале — возвращаем пустую строку
+            return ""
+        
+        # Возвращаем роль с наибольшей нехваткой
+        # Приоритет при равной нехватке: Strategist > Vanguard > Duelist
+        priority_order = ["Strategist", "Vanguard", "Duelist"]
+        max_need = max(needs.values())
+        for role in priority_order:
+            if needs.get(role, 0) == max_need:
+                return role
+        
         return ""
 
     def _apply_favorites_first(self, hero_list: list, scores: dict) -> list:
@@ -274,14 +315,15 @@ class TrayWindow(QMainWindow):
 
         if heroes_to_display != self._last_counter_list:
             scores = counter_scores if selected_heroes else (self.logic.calculate_tier_list_scores_with_map(selected_map) if selected_map else self.logic.calculate_tier_list_scores())
-            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team)
+            recommended_role = self.get_recommended_role(ally_heroes)
+            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team, recommended_role=recommended_role)
             self._last_counter_list = heroes_to_display
             
         self.enemies_frame.setVisible(bool(selected_heroes))
         self.allies_frame.setVisible(bool(ally_heroes))
         self.counters_scroll_area.setVisible(True)
 
-    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None):
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None):
         for widget in widget_cache.values(): widget.setVisible(False)
         while layout.count():
             item = layout.takeAt(0)
@@ -320,6 +362,17 @@ class TrayWindow(QMainWindow):
                 widget.update_rating(rating, tooltip)
                 widget.is_in_effective_team = is_effective
                 widget.update()
+            
+            # Подсветка рекомендуемой роли (только для контрпиков)
+            if not is_enemy and not is_ally and recommended_role:
+                hero_role = self.get_hero_role(hero_name)
+                if hero_role == recommended_role and ROLE_COLORS.get(hero_role):
+                    widget.set_highlight(True, ROLE_COLORS[hero_role])
+                else:
+                    widget.set_highlight(False)
+            else:
+                widget.set_highlight(False)
+            
             widget.setVisible(True)
             layout.addWidget(widget)
 
