@@ -131,13 +131,21 @@ class TrayWindow(QMainWindow):
             from core.utils import resource_path
             maps_dir = resource_path("resources/maps")
             if not os.path.isdir(maps_dir): return
-            for map_name in self.logic.available_maps:
-                filename = f"{map_name}.png"
-                filepath = os.path.join(maps_dir, filename)
-                if os.path.exists(filepath):
+            # Загружаем все png файлы и маппим их lowercase имя -> pixmap
+            all_map_pixmaps = {}
+            for filename in os.listdir(maps_dir):
+                if filename.lower().endswith('.png'):
+                    filepath = os.path.join(maps_dir, filename)
                     pixmap = QPixmap(filepath)
                     if not pixmap.isNull():
-                        self.map_images[map_name] = pixmap.scaled(64, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        key = filename[:-4].lower()  # имя без .png, lowercase
+                        all_map_pixmaps[key] = pixmap.scaled(64, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+            # Для каждой карты из available_maps ищем совпадение case-insensitive
+            for map_name in self.logic.available_maps:
+                map_lower = map_name.lower()
+                if map_lower in all_map_pixmaps:
+                    self.map_images[map_name] = all_map_pixmaps[map_lower]
         except Exception as e:
             logging.error(f"Ошибка при загрузке изображений карт: {e}")
 
@@ -189,16 +197,27 @@ class TrayWindow(QMainWindow):
         allies_frame_layout.addWidget(self.allies_container)
 
         # --- Карта ---
-        self.map_display_widget = QWidget()
-        map_display_layout = QVBoxLayout(self.map_display_widget)
-        map_display_layout.setContentsMargins(0, 0, 0, 0)
+        self.map_frame = QFrame()
+        self.map_frame.setObjectName("map_frame")
+        self.map_frame.setStyleSheet("""
+            #map_frame {
+                border: 2px solid rgba(150, 150, 150, 100);
+                border-radius: 4px;
+                background-color: rgba(40, 40, 40, 80);
+            }
+        """)
+        self.map_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        map_frame_layout = QVBoxLayout(self.map_frame)
+        map_frame_layout.setContentsMargins(4, 3, 4, 3)
+        map_frame_layout.setSpacing(1)
+
         self.map_image_label = QLabel()
+        self.map_image_label.setAlignment(Qt.AlignCenter)
         self.map_name_label = QLabel()
         self.map_name_label.setAlignment(Qt.AlignCenter)
         self.map_name_label.setStyleSheet("color: white; font-size: 9px; font-weight: bold;")
-        map_display_layout.addWidget(self.map_image_label)
-        map_display_layout.addWidget(self.map_name_label)
-        self.map_display_widget.setVisible(False)
+        map_frame_layout.addWidget(self.map_image_label)
+        map_frame_layout.addWidget(self.map_name_label)
 
         # --- Фрейм ВРАГОВ (красная рамка + подпись) ---
         self.enemies_frame = QFrame()
@@ -229,7 +248,7 @@ class TrayWindow(QMainWindow):
         # Порядок: Союзники (лево) → Карта (центр) → Враги (право)
         top_layout.addWidget(self.allies_frame)
         top_layout.addStretch()
-        top_layout.addWidget(self.map_display_widget)
+        top_layout.addWidget(self.map_frame)
         top_layout.addStretch()
         top_layout.addWidget(self.enemies_frame)
 
@@ -258,24 +277,86 @@ class TrayWindow(QMainWindow):
         self._pending_update = True
         self._update_timer.start(50)
 
+    def _check_map_affects_scores(self, map_name: str) -> bool:
+        """Проверяет, влияет ли карта на расчёт рейтинга (есть ли герои с бонусом > 0)."""
+        from core.database.heroes_bd import get_map_score, STATS_DATA
+        if not map_name or not STATS_DATA:
+            return False
+        # Проверяем первых несколько героев — если хоть у одного есть бонус, карта влияет
+        for hero in list(STATS_DATA.keys())[:10]:
+            if get_map_score(hero, map_name) > 0:
+                return True
+        return False
+
     def _update_map_display(self, selected_map: str = None):
         if selected_map and selected_map in self.map_images:
             self.map_image_label.setPixmap(self.map_images[selected_map])
             self.map_name_label.setText(selected_map)
-            self.map_display_widget.setVisible(True)
-        elif selected_map: 
-            # Карта есть, но картинки для нее нет (например новая карта)
+            self.map_frame.setVisible(True)
+            # Проверяем влияет ли карта на расчёт
+            map_active = self._check_map_affects_scores(selected_map)
+            if map_active:
+                # Жёлтая рамка — карта найдена и влияет на рейтинг
+                self.map_frame.setStyleSheet("""
+                    #map_frame {
+                        border: 2px solid #FFD700;
+                        border-radius: 4px;
+                        background-color: rgba(60, 55, 20, 120);
+                    }
+                """)
+                self.map_name_label.setStyleSheet("color: #FFD700; font-size: 9px; font-weight: bold;")
+                logging.info(f"[Tray] Карта '{selected_map}' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)")
+            else:
+                # Серая рамка — карта есть, но данных по ней нет в БД
+                self.map_frame.setStyleSheet("""
+                    #map_frame {
+                        border: 2px solid rgba(150, 150, 150, 100);
+                        border-radius: 4px;
+                        background-color: rgba(40, 40, 40, 80);
+                    }
+                """)
+                self.map_name_label.setStyleSheet("color: white; font-size: 9px; font-weight: bold;")
+                logging.info(f"[Tray] Карта '{selected_map}' найдена, но нет данных о влиянии на рейтинг (серая рамка)")
+        elif selected_map:
+            # Карта есть, но картинки для нее нет
             empty_pixmap = QPixmap(64, 36)
             empty_pixmap.fill(QColor(60, 60, 60, 150))
             self.map_image_label.setPixmap(empty_pixmap)
             self.map_name_label.setText(selected_map)
-            self.map_display_widget.setVisible(True)
+            self.map_frame.setVisible(True)
+            map_active = self._check_map_affects_scores(selected_map)
+            if map_active:
+                self.map_frame.setStyleSheet("""
+                    #map_frame {
+                        border: 2px solid #FFD700;
+                        border-radius: 4px;
+                        background-color: rgba(60, 55, 20, 120);
+                    }
+                """)
+                self.map_name_label.setStyleSheet("color: #FFD700; font-size: 9px; font-weight: bold;")
+            else:
+                self.map_frame.setStyleSheet("""
+                    #map_frame {
+                        border: 2px solid rgba(150, 150, 150, 100);
+                        border-radius: 4px;
+                        background-color: rgba(40, 40, 40, 80);
+                    }
+                """)
+                self.map_name_label.setStyleSheet("color: white; font-size: 9px; font-weight: bold;")
         else:
             empty_pixmap = QPixmap(64, 36)
             empty_pixmap.fill(QColor(60, 60, 60, 150))
             self.map_image_label.setPixmap(empty_pixmap)
             self.map_name_label.setText(get_text("map_not_selected", "Карта не выбрана"))
-            self.map_display_widget.setVisible(True)
+            self.map_frame.setVisible(True)
+            self.map_frame.setStyleSheet("""
+                #map_frame {
+                    border: 2px solid rgba(150, 150, 150, 100);
+                    border-radius: 4px;
+                    background-color: rgba(40, 40, 40, 80);
+                }
+            """)
+            self.map_name_label.setStyleSheet("color: #888888; font-size: 9px; font-weight: bold;")
 
     def _process_pending_update(self):
         if not self._pending_update or not hasattr(self, '_pending_data'): return

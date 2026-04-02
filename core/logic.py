@@ -80,7 +80,7 @@ class CounterpickLogic:
         self.current_map_index = -1
 
     def set_map_by_name(self, map_name: str | None):
-        if map_name is None or map_name.lower() == "none" or map_name == "":
+        if map_name is None or map_name.lower() in ("none", "unknown", "") or map_name == "":
             self.selected_map = None
             self.current_map_index = -1
         else:
@@ -215,11 +215,14 @@ class CounterpickLogic:
         
     def calculate_tier_list_scores_with_map(self, map_name: str | None = None) -> dict[str, float]:
         hero_scores = self.calculate_tier_list_scores()
+        map_affected_count = 0
         if map_name:
             for hero in hero_scores:
                 map_bonus = get_map_score(hero, map_name)
                 if map_bonus > 0:
                     hero_scores[hero] += map_bonus
+                    map_affected_count += 1
+            logging.info(f"[Logic] calculate_tier_list_scores_with_map: карта='{map_name}', героев с бонусом={map_affected_count}")
         return hero_scores
 
     def calculate_counter_scores_for_team(self, enemy_team: list, map_name: str | None = None) -> Tuple[Dict[str, float], List[str]]:
@@ -237,10 +240,13 @@ class CounterpickLogic:
         hero_scores_with_context = absolute_with_context(raw_scores_tuples, hero_stats_data)
         final_scores = {hero: score for hero, score in hero_scores_with_context}
         if map_name:
+            map_affected_count = 0
             for hero in final_scores:
                 map_bonus = get_map_score(hero, map_name)
                 if map_bonus > 0:
                     final_scores[hero] += map_bonus
+                    map_affected_count += 1
+            logging.info(f"[Logic] calculate_counter_scores_for_team: карта='{map_name}', героев с бонусом={map_affected_count}")
         sorted_final_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
         optimal_team = select_optimal_team(sorted_final_scores, hero_roles)
         logging.info(f"[Logic] calculate_counter_scores_for_team: рассчитано {len(final_scores)} героев, оптимальная команда={optimal_team}")

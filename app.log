@@ -1976,3 +1976,999 @@
 08:26:29.124 - INFO - [tray_window.py:322] - _process_pending_update - [Tray] Обновление союзников: []
 08:26:29.125 - INFO - [heroes_bd.py:139] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
 08:26:29.131 - INFO - [heroes_bd.py:156] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+08:35:07.813 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+08:35:12.548 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+08:35:12.549 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+08:35:12.634 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+08:35:12.637 - INFO - [heroes_bd.py:109] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+08:35:12.807 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+08:35:12.807 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+08:35:12.831 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+08:35:12.831 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+08:35:12.831 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+08:35:12.831 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+08:35:12.832 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+08:35:12.832 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+08:35:12.833 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+08:35:12.838 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+08:35:12.838 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+08:35:12.839 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+08:35:12.839 - INFO - [logic.py:43] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+08:35:12.839 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+08:35:12.839 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+08:35:12.839 - INFO - [main.py:113] - <module> - Создание MainWindow...
+08:35:12.840 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+08:35:12.857 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+08:35:12.879 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+08:35:12.886 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+08:35:12.893 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+08:35:12.930 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+08:35:12.931 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+08:35:12.932 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+08:35:12.933 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x241ec216740) at 0x00000241EEB87180>
+08:35:12.933 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+08:35:12.933 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+08:35:12.940 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+08:35:12.944 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+08:35:13.072 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+08:35:13.072 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+08:35:13.072 - INFO - [main.py:124] - <module> - Window ID: 360451114
+08:35:13.073 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+08:35:13.074 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+08:35:13.090 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+08:35:13.090 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+08:35:13.109 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+08:35:13.110 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+08:35:13.110 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+08:35:13.230 - INFO - [server.py:531] - send_response - connection open
+08:35:13.230 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('127.0.0.1', 35532)
+08:35:13.231 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+08:35:13.231 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+08:35:13.232 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === INITIAL STATE: Map: null ===
+08:35:13.233 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'None', Враги: [], Союзники: []
+08:35:13.233 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+08:35:13.233 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+08:35:13.233 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+08:35:41.821 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+09:06:01.902 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+09:06:01.903 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+09:06:01.966 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+09:06:01.968 - INFO - [heroes_bd.py:109] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+09:06:02.084 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+09:06:02.084 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+09:06:02.097 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+09:06:02.097 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+09:06:02.097 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+09:06:02.097 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+09:06:02.097 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+09:06:02.097 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+09:06:02.097 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+09:06:02.101 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+09:06:02.101 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+09:06:02.101 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+09:06:02.101 - INFO - [logic.py:43] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+09:06:02.102 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+09:06:02.102 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+09:06:02.102 - INFO - [main.py:113] - <module> - Создание MainWindow...
+09:06:02.102 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:06:02.113 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:06:02.129 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+09:06:02.134 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:06:02.140 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:06:02.166 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+09:06:02.167 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+09:06:02.168 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+09:06:02.169 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x230266f7cd0) at 0x000002307F2A27C0>
+09:06:02.169 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+09:06:02.169 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:06:02.175 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:06:02.178 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+09:06:02.282 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+09:06:02.282 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+09:06:02.283 - INFO - [main.py:124] - <module> - Window ID: 394608
+09:06:02.283 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+09:06:02.284 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:06:02.298 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:06:02.298 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+09:06:02.316 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+09:06:02.316 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+09:06:02.316 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+09:06:03.987 - INFO - [server.py:531] - send_response - connection open
+09:06:03.988 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 37115, 0, 0)
+09:06:03.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: Social ===
+09:06:03.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: null ===
+09:06:03.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+09:06:03.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":false,"error":"Not in a game.","status":"error","reason":"Not in a game."}
+09:06:14.992 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+09:06:18.793 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+09:06:18.793 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+09:06:18.850 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+09:06:18.852 - INFO - [heroes_bd.py:109] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+09:06:18.958 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+09:06:18.958 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+09:06:18.971 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+09:06:18.971 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+09:06:18.971 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+09:06:18.971 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+09:06:18.971 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+09:06:18.971 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+09:06:18.971 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+09:06:18.975 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+09:06:18.975 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+09:06:18.975 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+09:06:18.975 - INFO - [logic.py:43] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+09:06:18.976 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+09:06:18.976 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+09:06:18.976 - INFO - [main.py:113] - <module> - Создание MainWindow...
+09:06:18.976 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:06:18.987 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:06:18.999 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+09:06:19.004 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:06:19.009 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:06:19.033 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+09:06:19.034 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+09:06:19.035 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+09:06:19.036 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x1ae9e6a5630) at 0x000001AEFFB883C0>
+09:06:19.036 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+09:06:19.036 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:06:19.042 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:06:19.044 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+09:06:19.138 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+09:06:19.138 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+09:06:19.138 - INFO - [main.py:124] - <module> - Window ID: 340134914
+09:06:19.139 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+09:06:19.140 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:06:19.152 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:06:19.152 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+09:06:19.167 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+09:06:19.167 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+09:06:19.167 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+09:06:19.343 - INFO - [server.py:531] - send_response - connection open
+09:06:19.343 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('127.0.0.1', 37125)
+09:06:19.344 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+09:06:19.345 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === setRequiredFeatures === {"success":false,"error":"Not in a game.","status":"error","reason":"Not in a game."}
+09:07:51.098 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:07:51.099 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: []
+09:07:51.100 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:07:51.100 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:07:51.100 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:07:51.101 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+09:07:51.101 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:07:51.162 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=Unknown
+09:07:51.164 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:07:51.170 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:07:51.170 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:07:51.171 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:07:51.179 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:07:51.179 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:13.236 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:13.237 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK']
+09:08:13.237 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:13.237 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:13.238 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:13.238 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:13.238 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Jeff The Land Shark']
+09:08:13.238 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:13.292 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Jeff The Land Shark'], карта=Unknown
+09:08:13.293 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:13.301 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:13.301 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:13.302 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Jeff The Land Shark']
+09:08:13.302 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:13.309 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:13.309 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:14.352 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:14.353 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK', 'EMMA FROST']
+09:08:14.353 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:14.353 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:14.353 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:14.354 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:14.354 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:14.354 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Jeff The Land Shark', 'Emma Frost']
+09:08:14.354 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:14.413 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Emma Frost', 'Jeff The Land Shark'], карта=Unknown
+09:08:14.414 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:14.420 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:14.420 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:14.421 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Emma Frost', 'Jeff The Land Shark']
+09:08:14.439 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:14.445 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:14.446 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:18.243 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:18.244 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK', 'LUNA SNOW', 'EMMA FROST']
+09:08:18.244 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:18.245 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:18.245 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:18.245 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:18.245 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'LUNA SNOW' распознан как 'Luna Snow'
+09:08:18.246 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:18.246 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Luna Snow', 'Jeff The Land Shark', 'Emma Frost']
+09:08:18.246 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:18.303 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Emma Frost', 'Jeff The Land Shark', 'Luna Snow'], карта=Unknown
+09:08:18.305 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:18.311 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:18.312 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:18.312 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Emma Frost', 'Jeff The Land Shark', 'Luna Snow']
+09:08:18.356 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:18.363 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:18.364 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:21.094 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:21.095 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK', 'LUNA SNOW', 'MAGIK', 'EMMA FROST']
+09:08:21.095 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:21.096 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:21.096 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:21.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:21.096 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'LUNA SNOW' распознан как 'Luna Snow'
+09:08:21.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+09:08:21.097 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:21.097 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Luna Snow', 'Jeff The Land Shark', 'Emma Frost', 'Magik']
+09:08:21.097 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:21.153 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Emma Frost', 'Jeff The Land Shark', 'Luna Snow', 'Magik'], карта=Unknown
+09:08:21.154 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:21.160 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:21.161 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:21.161 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Emma Frost', 'Jeff The Land Shark', 'Luna Snow', 'Magik']
+09:08:21.219 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:21.225 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:21.226 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:23.233 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:23.234 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK', 'LUNA SNOW', 'EMMA FROST']
+09:08:23.234 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:23.234 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:23.235 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:23.235 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:23.235 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'LUNA SNOW' распознан как 'Luna Snow'
+09:08:23.236 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:23.236 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Luna Snow', 'Jeff The Land Shark', 'Emma Frost']
+09:08:23.236 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:23.290 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Emma Frost', 'Jeff The Land Shark', 'Luna Snow'], карта=Unknown
+09:08:23.292 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:23.298 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:23.298 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:23.299 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Emma Frost', 'Jeff The Land Shark', 'Luna Snow']
+09:08:23.357 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:23.363 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:23.364 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:24.349 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:24.350 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['JEFF THE LAND SHARK', 'LUNA SNOW', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:08:24.350 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:24.350 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:24.351 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:24.351 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:24.351 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'LUNA SNOW' распознан как 'Luna Snow'
+09:08:24.351 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:08:24.352 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:24.352 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Luna Snow', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Emma Frost']
+09:08:24.352 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:24.413 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Elsa Bloodstone', 'Emma Frost', 'Jeff The Land Shark', 'Luna Snow'], карта=Unknown
+09:08:24.414 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:24.420 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:24.421 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:24.421 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Elsa Bloodstone', 'Emma Frost', 'Jeff The Land Shark', 'Luna Snow']
+09:08:24.480 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:24.486 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:24.486 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:27.015 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:27.016 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['MOON KNIGHT', 'JEFF THE LAND SHARK', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:08:27.016 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:27.017 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:27.017 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:27.017 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:08:27.017 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:27.018 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:08:27.018 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:27.018 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Emma Frost', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Moon Knight']
+09:08:27.018 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:27.071 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Elsa Bloodstone', 'Emma Frost', 'Jeff The Land Shark', 'Moon Knight'], карта=Unknown
+09:08:27.072 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:27.078 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:27.079 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:27.079 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Elsa Bloodstone', 'Emma Frost', 'Jeff The Land Shark', 'Moon Knight']
+09:08:27.127 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:27.134 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:27.135 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:29.356 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:29.357 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['INVISIBLE WOMAN', 'MOON KNIGHT', 'JEFF THE LAND SHARK', 'DEADPOOL STRATEGIST', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:08:29.357 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:29.357 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:29.357 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:29.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:08:29.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:08:29.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:29.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL STRATEGIST' распознан как 'Deadpool Strategist'
+09:08:29.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:08:29.359 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:29.359 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Deadpool Strategist', 'Emma Frost', 'Moon Knight']
+09:08:29.359 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:29.413 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Deadpool Strategist', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight'], карта=Unknown
+09:08:29.414 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:29.419 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:29.420 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:29.420 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Strategist', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight']
+09:08:29.489 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:29.495 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:29.496 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:37.029 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:08:37.030 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: ['INVISIBLE WOMAN', 'MOON KNIGHT', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:08:37.030 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:08:37.030 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:08:37.031 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:08:37.031 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:08:37.031 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:08:37.032 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:08:37.032 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:08:37.032 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:08:37.032 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:08:37.033 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Emma Frost', 'Moon Knight']
+09:08:37.033 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:08:37.090 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=['Deadpool Vanguard', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight'], карта=Unknown
+09:08:37.091 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:08:37.097 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:08:37.098 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:08:37.098 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight']
+09:09:38.238 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:09:38.239 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'MOON KNIGHT', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:09:38.240 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:09:38.240 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:09:38.241 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:09:38.241 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:09:38.241 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:09:38.242 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:09:38.242 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:09:38.242 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:09:38.242 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:09:38.243 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:09:38.243 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:09:38.243 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:09:38.243 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:09:38.244 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:09:38.244 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:09:38.244 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Emma Frost', 'Moon Knight']
+09:09:38.244 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:09:38.245 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:09:38.246 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:09:38.247 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:09:38.248 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:09:38.304 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight'], карта=Unknown
+09:09:38.305 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: ['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox']
+09:10:41.091 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:10:41.091 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'THOR', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'ELSA BLOODSTONE', 'EMMA FROST']
+09:10:41.092 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:10:41.092 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:10:41.092 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:10:41.092 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:10:41.093 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:10:41.093 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:10:41.093 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:10:41.094 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:10:41.094 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:10:41.094 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:10:41.094 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+09:10:41.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:10:41.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:10:41.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ELSA BLOODSTONE' распознан как 'Elsa Bloodstone'
+09:10:41.095 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:10:41.095 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Elsa Bloodstone', 'Emma Frost', 'Thor']
+09:10:41.096 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:10:41.096 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:10:41.097 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:10:41.098 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:10:41.098 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:10:41.167 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Thor'], карта=Unknown
+09:10:41.168 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Elsa Bloodstone', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Thor']
+09:11:43.246 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:11:43.246 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'THOR', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'MOON KNIGHT', 'EMMA FROST']
+09:11:43.246 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:11:43.247 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:11:43.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:11:43.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:11:43.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:11:43.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:11:43.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:11:43.248 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:11:43.248 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:11:43.248 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:11:43.248 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'THOR' распознан как 'Thor'
+09:11:43.248 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:11:43.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:11:43.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:11:43.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:11:43.249 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Emma Frost', 'Thor', 'Moon Knight']
+09:11:43.249 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:11:43.250 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:11:43.251 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:11:43.252 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:11:43.252 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:11:43.303 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight', 'Thor'], карта=Unknown
+09:11:43.304 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight', 'Thor']
+09:11:44.346 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:11:44.347 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'MOON KNIGHT', 'EMMA FROST']
+09:11:44.347 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:11:44.347 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:11:44.348 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:11:44.348 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:11:44.348 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:11:44.348 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:11:44.349 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:11:44.349 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:11:44.349 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:11:44.349 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:11:44.349 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:11:44.350 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:11:44.350 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:11:44.350 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:11:44.350 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:11:44.350 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Emma Frost', 'Moon Knight', 'Mister Fantastic']
+09:11:44.351 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:11:44.351 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:11:44.353 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:11:44.353 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:11:44.354 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:11:44.413 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Moon Knight'], карта=Unknown
+09:11:44.414 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Moon Knight']
+09:12:53.245 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:12:53.246 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'SQUIRREL GIRL', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'MOON KNIGHT', 'EMMA FROST']
+09:12:53.246 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:12:53.246 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:12:53.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:12:53.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:12:53.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:12:53.247 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:12:53.248 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:12:53.248 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:12:53.248 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:12:53.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:12:53.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'SQUIRREL GIRL' распознан как 'Squirrel Girl'
+09:12:53.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:12:53.249 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:12:53.250 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:12:53.250 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:12:53.250 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Emma Frost', 'Squirrel Girl', 'Moon Knight']
+09:12:53.250 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:12:53.250 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:12:53.252 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:12:53.252 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:12:53.253 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:12:53.305 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight', 'Squirrel Girl'], карта=Unknown
+09:12:53.306 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Moon Knight', 'Squirrel Girl']
+09:15:24.353 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:15:24.354 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: ['STORM', 'WHITE FOX', 'INVISIBLE WOMAN', 'DEADPOOL VANGUARD', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK'], Союзники: ['INVISIBLE WOMAN', 'MISTER FANTASTIC', 'JEFF THE LAND SHARK', 'DEADPOOL VANGUARD', 'MOON KNIGHT', 'EMMA FROST']
+09:15:24.354 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:15:24.355 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:15:24.355 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:15:24.355 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'WHITE FOX' распознан как 'White Fox'
+09:15:24.355 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:15:24.356 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:15:24.356 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:15:24.356 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:15:24.357 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic']
+09:15:24.357 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'INVISIBLE WOMAN' распознан как 'Invisible Woman'
+09:15:24.357 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:15:24.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'JEFF THE LAND SHARK' распознан как 'Jeff The Land Shark'
+09:15:24.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'DEADPOOL VANGUARD' распознан как 'Deadpool Vanguard'
+09:15:24.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MOON KNIGHT' распознан как 'Moon Knight'
+09:15:24.358 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'EMMA FROST' распознан как 'Emma Frost'
+09:15:24.358 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Emma Frost', 'Moon Knight', 'Mister Fantastic']
+09:15:24.359 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], карта=Unknown
+09:15:24.359 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Invisible Woman', 'Deadpool Vanguard', 'Jeff The Land Shark', 'Storm', 'White Fox', 'Mister Fantastic'], is_tier_list_calc=True
+09:15:24.360 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:15:24.361 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Unknown', героев с бонусом=0
+09:15:24.361 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Adam Warlock', 'Mister Fantastic', 'Squirrel Girl', 'Black Widow']
+09:15:24.414 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Deadpool Vanguard', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Storm', 'White Fox'], союзники=['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Moon Knight'], карта=Unknown
+09:15:24.415 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Deadpool Vanguard', 'Emma Frost', 'Invisible Woman', 'Jeff The Land Shark', 'Mister Fantastic', 'Moon Knight']
+09:15:51.090 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === POLLING UPDATE: Map: UNKNOWN ===
+09:15:51.091 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'UNKNOWN', Враги: [], Союзники: []
+09:15:51.091 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'UNKNOWN'
+09:15:51.091 - WARNING - [logic.py:143] - set_map_by_name - [Logic] ВНИМАНИЕ: Overwolf прислал неизвестную карту: 'UNKNOWN' (mapped to 'Unknown'). Доступные карты в БД: ['Arakko', "Birnin T'Challa", 'Celestial Husk', 'Central Park', 'Hall Of Djalia', 'Heart Of Heaven', "Hell's Heaven", 'Krakoa', 'Midtown', 'Museum of Contemplation', 'Shin-Shibuya', 'Spider-Islands', 'Symbiotic Surface', 'Yggdrasill Path']
+09:15:51.092 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:15:51.092 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+09:15:51.092 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:15:51.150 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=Unknown
+09:15:51.151 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:15:51.157 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:15:51.157 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:15:51.158 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: []
+09:15:51.158 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: []
+09:15:51.159 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:15:51.164 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:15:51.165 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Unknown', героев с бонусом=0
+09:26:50.387 - INFO - [server.py:531] - send_response - connection open
+09:26:50.387 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 38549, 0, 0)
+09:26:50.388 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: WebSocket connection opened successfully
+09:26:50.388 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: connectWebSocket() called, attempting to connect to ws://localhost:8765
+09:26:50.389 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+09:26:50.389 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === INIT STARTED ===
+09:26:50.389 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Calling setRequiredFeatures with: ["match_info","game_info"]
+09:26:50.468 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures callback received: {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+09:26:50.468 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures succeeded, proceeding to setup event listeners
+09:26:50.469 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: setupEventListeners() called
+09:27:03.455 - INFO - [main.py:167] - <module> - --- Приложение завершено с кодом: 0 ---
+09:27:10.643 - INFO - [main.py:24] - <module> - [Main] Начало работы main.py (после отладочного блока)
+09:27:10.644 - INFO - [main.py:30] - <module> - [Main] Application display version set to: 26.04.02 (generated from date)
+09:27:10.727 - INFO - [heroes_bd.py:40] - _get_latest_db_file - Актуальный файл БД: marvel_rivals_stats_20260402-062050.json
+09:27:10.730 - INFO - [heroes_bd.py:109] - <module> - База данных инициализирована. Загружено героев: 50, тимапов: 33
+09:27:10.887 - INFO - [main.py:47] - <module> - [LOG] core/main.py: __main__ block started
+09:27:10.887 - INFO - [main.py:50] - <module> - Создание нового QApplication...
+09:27:10.903 - INFO - [main.py:57] - <module> - QApplication.quitOnLastWindowClosed set to False
+09:27:10.903 - INFO - [main.py:65] - <module> - GUI Log Handler initialized and added to root logger.
+09:27:10.903 - INFO - [main.py:66] - <module> - [LOG] Запуск валидации героев...
+09:27:10.904 - INFO - [utils.py:97] - validate_heroes - [VALIDATION] Validating hero data structures...
+09:27:10.904 - INFO - [utils.py:120] - validate_heroes - [VALIDATION] Validation successful.
+09:27:10.904 - INFO - [main.py:72] - <module> - Валидация героев прошла успешно.
+09:27:10.905 - INFO - [main.py:79] - <module> - Приложение запущено с правами администратора.
+09:27:10.909 - INFO - [main.py:80] - <module> - Используется стиль по умолчанию: windowsvista
+09:27:10.909 - INFO - [main.py:83] - <module> - Предварительная асинхронная загрузка ресурсов...
+09:27:10.909 - INFO - [main.py:103] - <module> - Создание экземпляра CounterpickLogic...
+09:27:10.910 - INFO - [logic.py:43] - _load_available_maps - [Logic] Успешно загружен список карт из базы данных: 14 шт.
+09:27:10.910 - INFO - [logic.py:28] - __init__ - [Logic] Initialized. APP_VERSION set to: '26.04.02'
+09:27:10.910 - INFO - [main.py:106] - <module> - Logic instance created. App version from logic: 26.04.02
+09:27:10.910 - INFO - [main.py:113] - <module> - Создание MainWindow...
+09:27:10.911 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:27:10.923 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:27:10.942 - INFO - [mode_manager.py:10] - __init__ - [ModeManager] Initialized. Default mode is 'middle'.
+09:27:10.948 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:27:10.955 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:27:10.991 - INFO - [ui_updater.py:24] - update_interface_for_mode - UiUpdater: update_interface_for_mode for mode 'middle'
+09:27:10.993 - INFO - [right_panel.py:100] - _populate_list_widget - [RightPanel] Cleared list widget for mode middle
+09:27:10.994 - INFO - [right_panel.py:127] - _populate_list_widget - [RightPanel] List populated with 50 items.
+09:27:10.995 - INFO - [ui_updater.py:48] - update_interface_for_mode - [UI-Updater] Current delegate: <PySide6.QtWidgets.QStyledItemDelegate(0x19ce7b970b0) at 0x0000019CEA6643C0>
+09:27:10.995 - INFO - [ui_updater.py:49] - update_interface_for_mode - [UI-Updater] RoleBorderDelegate is preserved, not overriding with HotkeyFocusDelegate
+09:27:10.995 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:27:11.003 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:27:11.006 - INFO - [main.py:118] - <module> - MainWindow instance created. Calling show()...
+09:27:11.128 - INFO - [main.py:120] - <module> - MainWindow.show() called.
+09:27:11.129 - INFO - [main.py:122] - <module> - Окно стало видимым после вызова show().
+09:27:11.129 - INFO - [main.py:124] - <module> - Window ID: 329364
+09:27:11.130 - INFO - [main.py:156] - <module> - Запуск главного цикла приложения (app.exec())...
+09:27:11.131 - INFO - [image_manager.py:37] - _load_original_images - Loading original hero images...
+09:27:11.149 - INFO - [image_manager.py:53] - _load_original_images - Loaded 50 original images.
+09:27:11.150 - INFO - [main.py:143] - on_resources_loaded - Асинхронная загрузка ресурсов завершена.
+09:27:11.172 - INFO - [server.py:341] - wrap - server listening on [::1]:8765
+09:27:11.172 - INFO - [server.py:341] - wrap - server listening on 127.0.0.1:8765
+09:27:11.172 - INFO - [overwolf_server.py:37] - start_server - [OverwolfServer] WebSocket сервер запущен на ws://localhost:8765
+09:27:11.866 - INFO - [server.py:531] - send_response - connection open
+09:27:11.867 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 38563, 0, 0)
+09:27:11.868 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: WebSocket connection opened successfully
+09:27:11.868 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: WebSocket connection closed (code: 1006, reason: none)
+09:27:11.868 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Scheduling reconnect in 3000ms...
+09:27:11.869 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: connectWebSocket() called, attempting to connect to ws://localhost:8765
+09:27:11.869 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] ERROR: WebSocket error occurred: {"isTrusted":true}
+09:27:11.869 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: WebSocket connection closed (code: 1006, reason: none)
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Scheduling reconnect in 3000ms...
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: connectWebSocket() called, attempting to connect to ws://localhost:8765
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === INIT STARTED ===
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Calling setRequiredFeatures with: ["match_info","game_info"]
+09:27:11.870 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures callback received: {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+09:27:11.871 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures succeeded, proceeding to setup event listeners
+09:27:11.871 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: setupEventListeners() called
+09:31:12.885 - INFO - [server.py:531] - send_response - connection open
+09:31:12.885 - INFO - [overwolf_server.py:19] - handler - [OverwolfServer] Overwolf клиент подключился: ('::1', 38717, 0, 0)
+09:31:12.887 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: WebSocket connection opened successfully
+09:31:12.887 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: connectWebSocket() called, attempting to connect to ws://localhost:8765
+09:31:12.887 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] === CONNECTED TO PYTHON ===
+09:31:12.887 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === INIT STARTED ===
+09:31:12.887 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Calling setRequiredFeatures with: ["match_info","game_info"]
+09:31:12.973 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures callback received: {"success":true,"status":"success","supportedFeatures":["game_info","match_info"]}
+09:31:12.973 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: setRequiredFeatures succeeded, proceeding to setup event listeners
+09:31:12.974 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: setupEventListeners() called
+09:31:12.976 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Added onInfoUpdates2 listener
+09:31:12.976 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Starting polling interval (every 5000ms)
+09:31:12.976 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Requesting initial game info via getInfo()
+09:31:12.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: getInfo() returned data with keys: gep_internal, match_info, game_info
+09:31:12.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:12.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Map changed from "null" to "Arakko"
+09:31:12.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: GameType changed from "unknown" to "Quick match"
+09:31:12.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: GameMode changed from "unknown" to "Convoy"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_0" hero changed from "null" to "LUNA SNOW"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_1" hero changed from "null" to "MISTER FANTASTIC"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_2" hero changed from "null" to "STORM"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_3" hero changed from "null" to "MAGIK"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_4" hero changed from "null" to "DEADPOOL STRATEGIST"
+09:31:12.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_5" hero changed from "null" to "ADAM WARLOCK"
+09:31:12.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_6" hero changed from "null" to "BRUCE BANNER"
+09:31:12.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_7" hero changed from "null" to "CLOAK & DAGGER"
+09:31:12.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_8" hero changed from "null" to "MAGNETO"
+09:31:12.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_9" hero changed from "null" to "ROGUE"
+09:31:12.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_10" hero changed from "null" to "CAPTAIN AMERICA"
+09:31:12.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_11" hero changed from "null" to "HAWKEYE"
+09:31:12.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=true, rosters count: 12
+09:31:12.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === INITIAL STATE: Map: Arakko, GameType: Quick match, GameMode: Convoy, Rosters: 12 ===
+09:31:12.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: sendDataToPython - map: Arakko, allies: 6, enemies: 6, seen: 12
+09:31:12.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Sending data to Python (payload size: 642 bytes)
+09:31:12.984 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Arakko', Враги: ['LUNA SNOW', 'MISTER FANTASTIC', 'STORM', 'DEADPOOL STRATEGIST', 'BRUCE BANNER', 'ROGUE'], Союзники: ['MAGIK', 'ADAM WARLOCK', 'CLOAK & DAGGER', 'MAGNETO', 'CAPTAIN AMERICA', 'HAWKEYE']
+09:31:12.984 - INFO - [logic.py:87] - set_map_by_name - [Logic] Получена карта от Overwolf: 'Arakko'
+09:31:12.985 - INFO - [logic.py:141] - set_map_by_name - [Logic] Карта успешно распознана и выбрана: 'Arakko'
+09:31:12.985 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+09:31:12.985 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:31:12.986 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:31:12.986 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DEADPOOL STRATEGIST' распознан как 'Deadpool Strategist'
+09:31:12.986 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BRUCE BANNER' распознан как 'Bruce Banner'
+09:31:12.987 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+09:31:12.987 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Luna Snow', 'Mister Fantastic', 'Rogue', 'Deadpool Strategist', 'Storm', 'Bruce Banner']
+09:31:12.987 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+09:31:12.987 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ADAM WARLOCK' распознан как 'Adam Warlock'
+09:31:12.988 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CLOAK & DAGGER' распознан как 'Cloak & Dagger'
+09:31:12.988 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGNETO' распознан как 'Magneto'
+09:31:12.988 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CAPTAIN AMERICA' распознан как 'Captain America'
+09:31:12.988 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'HAWKEYE' распознан как 'Hawkeye'
+09:31:12.988 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Hawkeye', 'Captain America', 'Adam Warlock', 'Magik', 'Cloak & Dagger', 'Magneto']
+09:31:12.989 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Luna Snow', 'Mister Fantastic', 'Rogue', 'Deadpool Strategist', 'Storm', 'Bruce Banner'], карта=Arakko
+09:31:12.989 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Luna Snow', 'Mister Fantastic', 'Rogue', 'Deadpool Strategist', 'Storm', 'Bruce Banner'], is_tier_list_calc=True
+09:31:12.990 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:31:12.991 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Arakko', героев с бонусом=48
+09:31:12.991 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'Luna Snow', 'White Fox', 'Squirrel Girl', 'Black Widow', 'Mister Fantastic']
+09:31:13.057 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Bruce Banner', 'Deadpool Strategist', 'Luna Snow', 'Mister Fantastic', 'Rogue', 'Storm'], союзники=['Adam Warlock', 'Captain America', 'Cloak & Dagger', 'Hawkeye', 'Magik', 'Magneto'], карта=Arakko
+09:31:13.058 - INFO - [tray_window.py:308] - _update_map_display - [Tray] Карта 'Arakko' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)
+09:31:13.059 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: ['Bruce Banner', 'Deadpool Strategist', 'Luna Snow', 'Mister Fantastic', 'Rogue', 'Storm']
+09:31:13.062 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: ['Adam Warlock', 'Captain America', 'Cloak & Dagger', 'Hawkeye', 'Magik', 'Magneto']
+09:31:17.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:17.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:22.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:22.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:27.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:27.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:32.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:32.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:37.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:37.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:42.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:42.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:47.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:47.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:52.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:31:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:31:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_4" hero changed from "DEADPOOL STRATEGIST" to "ROCKET RACCOON"
+09:31:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=true, rosters count: 12
+09:31:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === POLLING UPDATE: Map: Arakko, GameType: Quick match, GameMode: Convoy ===
+09:31:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: sendDataToPython - map: Arakko, allies: 6, enemies: 6, seen: 12
+09:31:57.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Sending data to Python (payload size: 631 bytes)
+09:31:57.983 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Arakko', Враги: ['LUNA SNOW', 'MISTER FANTASTIC', 'STORM', 'ROCKET RACCOON', 'BRUCE BANNER', 'ROGUE'], Союзники: ['MAGIK', 'ADAM WARLOCK', 'CLOAK & DAGGER', 'MAGNETO', 'CAPTAIN AMERICA', 'HAWKEYE']
+09:31:57.984 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+09:31:57.984 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:31:57.984 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:31:57.984 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROCKET RACCOON' распознан как 'Rocket Raccoon'
+09:31:57.985 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BRUCE BANNER' распознан как 'Bruce Banner'
+09:31:57.985 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROGUE' распознан как 'Rogue'
+09:31:57.985 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Luna Snow', 'Mister Fantastic', 'Rogue', 'Storm', 'Rocket Raccoon', 'Bruce Banner']
+09:31:57.985 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+09:31:57.986 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ADAM WARLOCK' распознан как 'Adam Warlock'
+09:31:57.986 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CLOAK & DAGGER' распознан как 'Cloak & Dagger'
+09:31:57.986 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGNETO' распознан как 'Magneto'
+09:31:57.986 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CAPTAIN AMERICA' распознан как 'Captain America'
+09:31:57.986 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'HAWKEYE' распознан как 'Hawkeye'
+09:31:57.986 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Hawkeye', 'Captain America', 'Adam Warlock', 'Magik', 'Cloak & Dagger', 'Magneto']
+09:31:57.987 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Luna Snow', 'Mister Fantastic', 'Rogue', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], карта=Arakko
+09:31:57.987 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Luna Snow', 'Mister Fantastic', 'Rogue', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], is_tier_list_calc=True
+09:31:57.988 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:31:57.989 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Arakko', героев с бонусом=48
+09:31:57.989 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Doctor Strange', 'Luna Snow', 'White Fox', 'Mister Fantastic', 'Squirrel Girl', 'Scarlet Witch']
+09:31:58.054 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Bruce Banner', 'Luna Snow', 'Mister Fantastic', 'Rocket Raccoon', 'Rogue', 'Storm'], союзники=['Adam Warlock', 'Captain America', 'Cloak & Dagger', 'Hawkeye', 'Magik', 'Magneto'], карта=Arakko
+09:31:58.055 - INFO - [tray_window.py:308] - _update_map_display - [Tray] Карта 'Arakko' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)
+09:31:58.056 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: ['Bruce Banner', 'Luna Snow', 'Mister Fantastic', 'Rocket Raccoon', 'Rogue', 'Storm']
+09:32:02.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:02.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:07.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:07.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:12.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:12.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:17.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:17.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:22.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:22.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:27.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:27.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:32.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:32.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:37.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:37.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:42.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:42.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:47.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:47.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:32:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:32:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:02.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:02.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:07.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:07.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:12.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:12.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:17.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:17.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:22.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:27.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:27.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:32.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:32.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:37.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:37.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:42.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:42.994 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:47.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:47.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:52.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:33:57.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:33:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:02.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:02.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:07.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:07.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:12.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_9" hero changed from "ROGUE" to "DOCTOR STRANGE"
+09:34:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=true, rosters count: 12
+09:34:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === POLLING UPDATE: Map: Arakko, GameType: Quick match, GameMode: Convoy ===
+09:34:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: sendDataToPython - map: Arakko, allies: 6, enemies: 6, seen: 12
+09:34:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Sending data to Python (payload size: 649 bytes)
+09:34:12.988 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Arakko', Враги: ['LUNA SNOW', 'MISTER FANTASTIC', 'STORM', 'ROCKET RACCOON', 'BRUCE BANNER', 'DOCTOR STRANGE'], Союзники: ['MAGIK', 'ADAM WARLOCK', 'CLOAK & DAGGER', 'MAGNETO', 'CAPTAIN AMERICA', 'HAWKEYE']
+09:34:12.989 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+09:34:12.989 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'MISTER FANTASTIC' распознан как 'Mister Fantastic'
+09:34:12.989 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:34:12.989 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROCKET RACCOON' распознан как 'Rocket Raccoon'
+09:34:12.990 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BRUCE BANNER' распознан как 'Bruce Banner'
+09:34:12.990 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+09:34:12.990 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Luna Snow', 'Mister Fantastic', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner']
+09:34:12.990 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+09:34:12.990 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ADAM WARLOCK' распознан как 'Adam Warlock'
+09:34:12.991 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CLOAK & DAGGER' распознан как 'Cloak & Dagger'
+09:34:12.991 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGNETO' распознан как 'Magneto'
+09:34:12.991 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CAPTAIN AMERICA' распознан как 'Captain America'
+09:34:12.991 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'HAWKEYE' распознан как 'Hawkeye'
+09:34:12.992 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Hawkeye', 'Captain America', 'Adam Warlock', 'Magik', 'Cloak & Dagger', 'Magneto']
+09:34:12.992 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Luna Snow', 'Mister Fantastic', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], карта=Arakko
+09:34:12.993 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Luna Snow', 'Mister Fantastic', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], is_tier_list_calc=True
+09:34:12.994 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:34:12.995 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Arakko', героев с бонусом=48
+09:34:12.995 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'Luna Snow', 'White Fox', 'Mister Fantastic', 'Squirrel Girl', 'Scarlet Witch']
+09:34:13.056 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Bruce Banner', 'Doctor Strange', 'Luna Snow', 'Mister Fantastic', 'Rocket Raccoon', 'Storm'], союзники=['Adam Warlock', 'Captain America', 'Cloak & Dagger', 'Hawkeye', 'Magik', 'Magneto'], карта=Arakko
+09:34:13.057 - INFO - [tray_window.py:308] - _update_map_display - [Tray] Карта 'Arakko' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)
+09:34:13.057 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: ['Bruce Banner', 'Doctor Strange', 'Luna Snow', 'Mister Fantastic', 'Rocket Raccoon', 'Storm']
+09:34:17.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:17.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_1" hero changed from "MISTER FANTASTIC" to "BLACK WIDOW"
+09:34:17.994 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=true, rosters count: 12
+09:34:17.994 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === POLLING UPDATE: Map: Arakko, GameType: Quick match, GameMode: Convoy ===
+09:34:17.994 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: sendDataToPython - map: Arakko, allies: 6, enemies: 6, seen: 12
+09:34:17.994 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Sending data to Python (payload size: 639 bytes)
+09:34:17.995 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Arakko', Враги: ['LUNA SNOW', 'BLACK WIDOW', 'STORM', 'ROCKET RACCOON', 'BRUCE BANNER', 'DOCTOR STRANGE'], Союзники: ['MAGIK', 'ADAM WARLOCK', 'CLOAK & DAGGER', 'MAGNETO', 'CAPTAIN AMERICA', 'HAWKEYE']
+09:34:17.995 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'LUNA SNOW' распознан как 'Luna Snow'
+09:34:17.996 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BLACK WIDOW' распознан как 'Black Widow'
+09:34:17.996 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'STORM' распознан как 'Storm'
+09:34:17.997 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'ROCKET RACCOON' распознан как 'Rocket Raccoon'
+09:34:17.997 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'BRUCE BANNER' распознан как 'Bruce Banner'
+09:34:17.997 - INFO - [main_window_refactored.py:180] - _on_overwolf_data - [Overwolf] Враг 'DOCTOR STRANGE' распознан как 'Doctor Strange'
+09:34:17.997 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: ['Black Widow', 'Luna Snow', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner']
+09:34:17.997 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGIK' распознан как 'Magik'
+09:34:17.998 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'ADAM WARLOCK' распознан как 'Adam Warlock'
+09:34:17.998 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CLOAK & DAGGER' распознан как 'Cloak & Dagger'
+09:34:17.998 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'MAGNETO' распознан как 'Magneto'
+09:34:17.998 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'CAPTAIN AMERICA' распознан как 'Captain America'
+09:34:17.998 - INFO - [main_window_refactored.py:191] - _on_overwolf_data - [Overwolf] Союзник 'HAWKEYE' распознан как 'Hawkeye'
+09:34:17.999 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: ['Hawkeye', 'Captain America', 'Adam Warlock', 'Magik', 'Cloak & Dagger', 'Magneto']
+09:34:17.999 - INFO - [logic.py:238] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги=['Black Widow', 'Luna Snow', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], карта=Arakko
+09:34:17.999 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Black Widow', 'Luna Snow', 'Doctor Strange', 'Storm', 'Rocket Raccoon', 'Bruce Banner'], is_tier_list_calc=True
+09:34:18.000 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:34:18.001 - INFO - [logic.py:249] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: карта='Arakko', героев с бонусом=48
+09:34:18.001 - INFO - [logic.py:252] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: рассчитано 50 героев, оптимальная команда=['Thor', 'White Fox', 'Luna Snow', 'Black Widow', 'Squirrel Girl', 'Mister Fantastic']
+09:34:18.053 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=['Black Widow', 'Bruce Banner', 'Doctor Strange', 'Luna Snow', 'Rocket Raccoon', 'Storm'], союзники=['Adam Warlock', 'Captain America', 'Cloak & Dagger', 'Hawkeye', 'Magik', 'Magneto'], карта=Arakko
+09:34:18.054 - INFO - [tray_window.py:308] - _update_map_display - [Tray] Карта 'Arakko' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)
+09:34:18.054 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: ['Black Widow', 'Bruce Banner', 'Doctor Strange', 'Luna Snow', 'Rocket Raccoon', 'Storm']
+09:34:22.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:27.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:27.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:32.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:32.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:37.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:37.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 12
+09:34:42.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_0" cleared (was: LUNA SNOW)
+09:34:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_1" cleared (was: BLACK WIDOW)
+09:34:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_2" cleared (was: STORM)
+09:34:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_3" cleared (was: MAGIK)
+09:34:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_4" cleared (was: ROCKET RACCOON)
+09:34:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_5" cleared (was: ADAM WARLOCK)
+09:34:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_6" cleared (was: BRUCE BANNER)
+09:34:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_7" cleared (was: CLOAK & DAGGER)
+09:34:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_8" cleared (was: MAGNETO)
+09:34:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_9" cleared (was: DOCTOR STRANGE)
+09:34:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_10" cleared (was: CAPTAIN AMERICA)
+09:34:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: Roster "roster_11" cleared (was: HAWKEYE)
+09:34:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=true, rosters count: 0
+09:34:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: === POLLING UPDATE: Map: Arakko, GameType: Quick match, GameMode: Convoy ===
+09:34:42.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: sendDataToPython - map: Arakko, allies: 0, enemies: 0, seen: 0
+09:34:42.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] INFO: Sending data to Python (payload size: 68 bytes)
+09:34:42.982 - INFO - [main_window_refactored.py:168] - _on_overwolf_data - [Overwolf] Получены сырые данные. Карта: 'Arakko', Враги: [], Союзники: []
+09:34:42.982 - INFO - [main_window_refactored.py:182] - _on_overwolf_data - [Overwolf] Итоговый список распознанных врагов: []
+09:34:42.982 - INFO - [main_window_refactored.py:193] - _on_overwolf_data - [Overwolf] Итоговый список распознанных союзников: []
+09:34:42.983 - INFO - [logic.py:236] - calculate_counter_scores_for_team - [Logic] calculate_counter_scores_for_team: враги не выбраны, возвращаем пустой результат
+09:34:43.039 - INFO - [tray_window.py:372] - _process_pending_update - [Tray] Обновление UI: враги=[], союзники=[], карта=Arakko
+09:34:43.040 - INFO - [tray_window.py:308] - _update_map_display - [Tray] Карта 'Arakko' АКТИВНА — влияет на расчёт рейтинга (жёлтая рамка)
+09:34:43.040 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:34:43.046 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:34:43.047 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Arakko', героев с бонусом=48
+09:34:43.048 - INFO - [tray_window.py:398] - _process_pending_update - [Tray] Обновление врагов: []
+09:34:43.048 - INFO - [tray_window.py:403] - _process_pending_update - [Tray] Обновление союзников: []
+09:34:43.048 - INFO - [heroes_bd.py:141] - calculate_team_counters - [DB] calculate_team_counters: входная команда врагов=['Adam Warlock', 'Angela', 'Black Panther', 'Black Widow', 'Blade', 'Captain America', 'Cloak & Dagger', 'Daredevil', 'Deadpool (Duelist)', 'Deadpool (Strategist)', 'Deadpool (Vanguard)', 'Doctor Strange', 'Elsa Bloodstone', 'Emma Frost', 'Gambit', 'Groot', 'Hawkeye', 'Hela', 'Hulk', 'Human Torch', 'Invisible Woman', 'Iron Fist', 'Iron Man', 'Jeff The Land Shark', 'Loki', 'Luna Snow', 'Magik', 'Magneto', 'Mantis', 'Mister Fantastic', 'Moon Knight', 'Namor', 'Peni Parker', 'Phoenix', 'Psylocke', 'Rocket Raccoon', 'Rogue', 'Scarlet Witch', 'Spider Man', 'Squirrel Girl', 'Star Lord', 'Storm', 'The Punisher', 'The Thing', 'Thor', 'Ultron', 'Venom', 'White Fox', 'Winter Soldier', 'Wolverine'], is_tier_list_calc=True
+09:34:43.054 - INFO - [heroes_bd.py:158] - calculate_team_counters - [DB] calculate_team_counters: рассчитаны очки для 50 героев
+09:34:43.055 - INFO - [logic.py:225] - calculate_tier_list_scores_with_map - [Logic] calculate_tier_list_scores_with_map: карта='Arakko', героев с бонусом=48
+09:34:47.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:47.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:34:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:34:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:34:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:02.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:02.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:07.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:07.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:12.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:12.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:17.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:17.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:27.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:27.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:32.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:32.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:37.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:37.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:47.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:47.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:52.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:52.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:35:57.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:35:57.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:02.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:02.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:07.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:07.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:12.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:17.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:17.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:22.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:27.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:27.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:32.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:32.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:37.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:37.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:47.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:47.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:52.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:52.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:36:57.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:36:57.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:02.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:02.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:07.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:07.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:17.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:17.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:22.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:27.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:27.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:32.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:32.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:37.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:37.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:42.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:47.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:47.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:52.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:52.993 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:37:57.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:37:57.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:02.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:02.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:07.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:07.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:12.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:17.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:17.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:22.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:22.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:27.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:27.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:32.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:32.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:37.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:37.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:42.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:47.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:47.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:52.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:52.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:38:57.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:38:57.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:02.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:02.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:07.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:07.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:17.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:17.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:27.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:27.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:32.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:32.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:37.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:37.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:47.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:47.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:52.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:52.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:39:57.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:39:57.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:02.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:02.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:07.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:07.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:12.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:12.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:17.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:17.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:27.977 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:27.977 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:32.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:32.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:37.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:37.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:47.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:47.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:52.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:52.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:40:57.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:40:57.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:02.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:02.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:07.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:07.983 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:12.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:12.989 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:17.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:17.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:22.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:22.987 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:27.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:27.978 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:32.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:32.984 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:37.990 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:37.991 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:42.981 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:42.982 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:47.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:47.988 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:52.979 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:52.980 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:41:57.985 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:41:57.986 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0
+09:42:02.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo called with keys: gep_internal, match_info, game_info
+09:42:02.992 - INFO - [main_window_refactored.py:156] - _on_overwolf_data - [OW DEBUG] DEBUG: updateStateFromInfo returning changed=false, rosters count: 0

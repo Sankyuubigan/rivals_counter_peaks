@@ -132,7 +132,9 @@ def get_map_score(hero_name: str, map_name: str, min_score: float = 0, max_score
     max_wr = max(win_rates)
     if min_wr == max_wr: return float(min_score)
     score = min_score + (target_map_wr - min_wr) * (max_score - min_score) / (max_wr - min_wr)
-    return round(score, 2)
+    score = round(score, 2)
+    logging.debug(f"[MapScore] Герой '{hero_name}', карта '{map_name}': WR={target_map_wr}%, min={min_wr}%, max={max_wr}% → бонус={score}")
+    return score
 
 def calculate_team_counters(enemy_team: List[str], matchups_data: Dict, is_tier_list_calc: bool = False, **kwargs) -> List[Tuple[str, float]]:
     if not enemy_team: return[]
