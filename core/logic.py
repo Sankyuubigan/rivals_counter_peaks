@@ -206,3 +206,24 @@ class CounterpickLogic:
                 if map_bonus > 0:
                     hero_scores[hero] += map_bonus
         return hero_scores
+
+    def calculate_counter_scores_for_team(self, enemy_team: list, map_name: str | None = None) -> Tuple[Dict[str, float], List[str]]:
+        """
+        Рассчитывает контр-очки для произвольной команды врагов.
+        НЕ модифицирует состояние (selected_heroes, effective_team).
+        Возвращает (scores_dict, effective_team_list).
+        Используется треем для Overwolf-данных, не затрагивая главную вкладку.
+        """
+        if not enemy_team:
+            return {}, []
+        raw_scores_tuples = calculate_team_counters(enemy_team, matchups_data, is_tier_list_calc=True)
+        hero_scores_with_context = absolute_with_context(raw_scores_tuples, hero_stats_data)
+        final_scores = {hero: score for hero, score in hero_scores_with_context}
+        if map_name:
+            for hero in final_scores:
+                map_bonus = get_map_score(hero, map_name)
+                if map_bonus > 0:
+                    final_scores[hero] += map_bonus
+        sorted_final_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
+        optimal_team = select_optimal_team(sorted_final_scores, hero_roles)
+        return dict(sorted_final_scores), optimal_team

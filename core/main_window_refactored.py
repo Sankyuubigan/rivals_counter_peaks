@@ -179,9 +179,20 @@ class MainWindowRefactored(QMainWindow):
                      
         logging.info(f"[Overwolf] Итоговый список распознанных врагов: {list(normalized_heroes)}")
                      
-        if set(self.logic.selected_heroes) != normalized_heroes:
-            self.logic.set_selection(normalized_heroes)
-            self.ui_updater.update_ui_after_logic_change(start_time=start_time)
+        # ИСПРАВЛЕНИЕ: НЕ модифицируем logic.selected_heroes — это ломает главную вкладку.
+        # Трей и главная вкладка теперь полностью независимы.
+        # Рассчитываем контр-пики для Overwolf-данных БЕЗ изменения состояния.
+        counter_scores, effective_team = self.logic.calculate_counter_scores_for_team(
+            list(normalized_heroes), self.logic.selected_map
+        )
+        
+        # Эмитим СОБЫТИЕ ТОЛЬКО ДЛЯ ТРЕЯ — главная вкладка НЕ обновляется
+        event_bus.emit("overwolf_update", {
+            "selected_heroes": list(normalized_heroes),
+            "counter_scores": counter_scores,
+            "effective_team": effective_team,
+            "selected_map": self.logic.selected_map
+        })
             
     def closeEvent(self, event: QCloseEvent):
         if hasattr(self, 'tab_mode_manager') and self.tab_mode_manager._tray_window:

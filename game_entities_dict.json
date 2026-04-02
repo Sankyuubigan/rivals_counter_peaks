@@ -1,6 +1,8 @@
 {
     "maps": [
-        "Central park"
+        "Central park",
+        "Social",
+        "Midtown"
     ],
     "heroes": {
         "1031": "LUNA SNOW",
@@ -17,6 +19,19 @@
         "1050": "INVISIBLE WOMAN",
         "1016": "LOKI",
         "1029": "MAGIK",
-        "1046": "ADAM WARLOCK"
+        "1046": "ADAM WARLOCK",
+        "1042": "PENI PARKER",
+        "1060": "WHITE FOX",
+        "1014": "THE PUNISHER",
+        "1055": "DAREDEVIL",
+        "1059": "ELSA BLOODSTONE",
+        "1049": "WOLVERINE",
+        "1037": "MAGNETO",
+        "1022": "CAPTAIN AMERICA",
+        "1025": "CLOAK & DAGGER",
+        "1034": "IRON MAN",
+        "1051": "THE THING",
+        "1032": "SQUIRREL GIRL",
+        "1041": "WINTER SOLDIER"
     }
 }

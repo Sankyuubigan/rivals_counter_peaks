@@ -8,7 +8,6 @@ from core.left_panel import create_left_panel
 from core.right_panel import RightPanel, HERO_NAME_ROLE
 import core.delegate as delegate
 from core.horizontal_list import clear_layout as clear_layout_util
-from core.event_bus import event_bus
 import core.display as display
 
 class UiUpdater(QObject):
@@ -80,14 +79,10 @@ class UiUpdater(QObject):
             self._update_priority_labels()
             self._update_selected_heroes_label()
             
-            payload = {
-                "selected_heroes": list(self.mw.logic.selected_heroes),
-                "counter_scores": counter_scores,
-                "effective_team": effective_team,
-                "start_time": start_time,
-                "selected_map": self.mw.logic.selected_map
-            }
-            event_bus.emit("logic_updated", payload)
+            # ИСПРАВЛЕНИЕ: Убран event_bus.emit("logic_updated") — главная вкладка
+            # НЕ должна триггерить перерисовку трей-окна. Трей обновляется ТОЛЬКО
+            # от Overwolf через отдельное событие "overwolf_update".
+            # Это устраняет мерцание и циклические перерисовки между UI и треем.
             
             self.ui_updated.emit()
         except Exception as e:
@@ -106,11 +101,16 @@ class UiUpdater(QObject):
         if not hasattr(self.mw, 'right_list_widget'): return
         
         list_widget = self.mw.right_list_widget
+        # ИСПРАВЛЕНИЕ: Полностью отключаем перерисовку на время обновления
+        list_widget.setUpdatesEnabled(False)
         list_widget.blockSignals(True)
         current_logic_selection = set(self.mw.logic.selected_heroes)
         for hero, item in self.mw.hero_items.items():
-            item.setSelected(hero in current_logic_selection)
+            is_selected = hero in current_logic_selection
+            if item.isSelected() != is_selected:
+                item.setSelected(is_selected)
         list_widget.blockSignals(False)
+        list_widget.setUpdatesEnabled(True)
 
     def _update_priority_labels(self):
         if not hasattr(self.mw, 'hero_items'): return
@@ -121,9 +121,13 @@ class UiUpdater(QObject):
         for hero, item in self.mw.hero_items.items():
             is_priority = hero in self.mw.logic.priority_heroes
             if not item.isSelected():
-                item.setBackground(QBrush(priority_color) if is_priority else default_brush)
+                new_brush = QBrush(priority_color) if is_priority else default_brush
+                # ИСПРАВЛЕНИЕ: Не вызываем setBackground() если состояние не изменилось
+                if item.background().color() != new_brush.color():
+                    item.setBackground(new_brush)
             else:
-                item.setBackground(default_brush)
+                if item.background().color() != default_brush.color():
+                    item.setBackground(default_brush)
 
     def _update_selected_heroes_label(self):
         if hasattr(self.mw, 'right_panel_instance'):

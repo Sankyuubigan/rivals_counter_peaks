@@ -89,6 +89,10 @@ class RightPanel(QWidget):
         self.list_widget.setSpacing(4)
         self.list_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        # ИСПРАВЛЕНИЕ: Отключаем автоматическую прокрутку при выделении
+        # и убираем задержку перерисовки, чтобы устранить мерцание
+        self.list_widget.setAutoScroll(False)
+        self.list_widget.setAlternatingRowColors(False)
 
     def _populate_list_widget(self):
         self.hero_items.clear()
@@ -166,10 +170,12 @@ class RightPanel(QWidget):
         self.total_heroes_label.setText(f"Всего героев в базе: {len(heroes)}")
 
     def _apply_selected_stylesheet(self):
+        # ИСПОЛЬЗУЕМ outline ВМЕСТО border — outline НЕ ВЛИЯЕТ НА ГЕОМЕТРИЮ ЭЛЕМЕНТА
+        # и не вызывает пересчёт layout (ResizeMode.Adjust), что устраняет мерцание
         stylesheet = """
         QListWidget::item:selected {
             background-color: #FFD700;
-            border: 4px solid #FF4500;
+            outline: 4px solid #FF4500;
             color: white;
         }
         """

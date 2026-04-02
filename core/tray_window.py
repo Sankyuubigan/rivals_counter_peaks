@@ -42,7 +42,7 @@ class TrayWindow(QMainWindow):
 
         self._setup_window_properties()
         self._create_ui()
-        event_bus.subscribe("logic_updated", self._schedule_update)
+        event_bus.subscribe("overwolf_update", self._schedule_update)
 
     def get_hero_role(self, hero_name: str) -> str:
         from core.database.heroes_bd import ROLES_DATA
@@ -78,6 +78,10 @@ class TrayWindow(QMainWindow):
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WA_DontCreateNativeAncestors, True)
+        # ИСПРАВЛЕНИЕ: Устраняем мерцание на Windows DWM
+        self.setAttribute(Qt.WA_OpaquePaintEvent, False)
+        self.setAttribute(Qt.WA_PaintOnScreen, False)
+        self.setAttribute(Qt.WA_StaticContents, True)
 
     def _load_map_images(self):
         try:

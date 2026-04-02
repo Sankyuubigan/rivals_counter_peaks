@@ -33,8 +33,8 @@ class TrayModeManager(QObject):
             self._tray_window.show_tray()
             self._pending_show = False
             
-            if hasattr(self.mw, 'ui_updater') and self.mw.ui_updater:
-                self.mw.ui_updater.update_ui_after_logic_change()
+            # ИСПРАВЛЕНИЕ: НЕ вызываем update_ui_after_logic_change() — это вызывает
+            # перерисовку главной вкладки и мерцание. Трей обновляется через overwolf_update.
             self.ui_updated.emit()
 
     def disable(self):
