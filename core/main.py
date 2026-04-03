@@ -106,7 +106,7 @@ if __name__ == "__main__":
         except Exception as e:
             logging.error(f"Не удалось создать экземпляр CounterpickLogic: {e}", exc_info=True)
             QMessageBox.critical(None, "Критическая ошибка", f"Не удалось инициализировать игровую логику:\n{e}")
-            if app_created_now: app.quit() 
+            if app_created_now: app.quit()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
             sys.exit(1)
         
         logging.info("Создание MainWindow...")

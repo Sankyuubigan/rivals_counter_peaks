@@ -398,26 +398,33 @@ class TrayWindow(QMainWindow):
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
             self._last_enemy_list = selected_heroes
 
-        if ally_heroes != self._last_ally_list:
+        # Флаг: изменились ли союзники (нужно для обновления маркеров в контрпиках)
+        allies_changed = ally_heroes != self._last_ally_list
+
+        if allies_changed:
             logging.info(f"[Tray] Обновление союзников: {ally_heroes}")
             self._update_layout(self.allies_layout, self.ally_widgets, ally_heroes, is_ally=True)
             self._last_ally_list = ally_heroes
 
-        if heroes_to_display != self._last_counter_list:
+        # Обновляем контрпики если изменился список ИЛИ если изменились союзники (нужно обновить маркеры)
+        if heroes_to_display != self._last_counter_list or allies_changed:
             scores = counter_scores if selected_heroes else (self.logic.calculate_tier_list_scores_with_map(selected_map) if selected_map else self.logic.calculate_tier_list_scores())
             recommended_role = self.get_recommended_role(ally_heroes)
             try:
                 show_rating = self.main_window.settings_manager.get_tray_show_rating()
             except Exception:
                 show_rating = False
-            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team, recommended_role=recommended_role, show_rating=show_rating)
+            logging.info(f"[Tray] Контрпики: {heroes_to_display}")
+            logging.info(f"[Tray] Союзники для маркеров: {ally_heroes}")
+            logging.info(f"[Tray] hide_allies={hide_allies if 'hide_allies' in dir() else 'N/A'}")
+            self._update_layout(self.counters_layout, self.counter_widgets, heroes_to_display, is_enemy=False, scores=scores, effective=effective_team, recommended_role=recommended_role, show_rating=show_rating, ally_heroes=ally_heroes)
             self._last_counter_list = heroes_to_display
             
         self.enemies_frame.setVisible(bool(selected_heroes))
         self.allies_frame.setVisible(bool(ally_heroes))
         self.counters_scroll_area.setVisible(True)
 
-    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None, show_rating: bool = False):
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None, show_rating: bool = False, ally_heroes: List[str] = None):
         for widget in widget_cache.values(): widget.setVisible(False)
         while layout.count():
             item = layout.takeAt(0)
@@ -443,7 +450,7 @@ class TrayWindow(QMainWindow):
                 widget.show_rating = show_rating
                 hero_role = self.get_hero_role(hero_name)
                 if hero_role and ROLE_COLORS.get(hero_role):
-                    widget.set_border(ROLE_COLORS.get(hero_role), 3)
+                    widget.set_border(ROLE_COLORS.get(hero_role), 2)
                 widget_cache[hero_name] = widget
             else:
                 rating = scores.get(hero_name, 0) if scores else 0
@@ -457,17 +464,24 @@ class TrayWindow(QMainWindow):
                 widget.update_rating(rating, tooltip)
                 widget.is_in_effective_team = is_effective
                 widget.show_rating = show_rating
+                # Восстанавливаем рамку роли при обновлении из кэша
+                hero_role = self.get_hero_role(hero_name)
+                if hero_role and ROLE_COLORS.get(hero_role):
+                    widget.set_border(ROLE_COLORS.get(hero_role), 2)
                 widget.update()
             
-            # Подсветка рекомендуемой роли (только для контрпиков)
-            if not is_enemy and not is_ally and recommended_role:
+            # Маркеры для контрпиков: галочка (союзник) и ! (recommended role вместо утолщенной рамки)
+            if not is_enemy and not is_ally:
+                ally_set = set(ally_heroes or [])
                 hero_role = self.get_hero_role(hero_name)
-                if hero_role == recommended_role and ROLE_COLORS.get(hero_role):
-                    widget.set_highlight(True, ROLE_COLORS[hero_role])
-                else:
-                    widget.set_highlight(False)
+                is_recommended = recommended_role and hero_role == recommended_role
+                is_hero_ally = hero_name in ally_set
+                logging.debug(f"[Tray] Маркер для {hero_name}: is_hero_ally={is_hero_ally}, ally_set={ally_set}, is_recommended={is_recommended}")
+                widget.set_ally_marker(is_hero_ally)
+                widget.set_exclamation_marker(is_recommended and not is_hero_ally)
             else:
-                widget.set_highlight(False)
+                widget.set_ally_marker(False)
+                widget.set_exclamation_marker(False)
             
             widget.setVisible(True)
             layout.addWidget(widget)
