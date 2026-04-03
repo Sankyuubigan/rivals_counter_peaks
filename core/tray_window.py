@@ -111,6 +111,26 @@ class TrayWindow(QMainWindow):
         result = [h for h, s in fav_heroes] + [h for h, s in non_fav_heroes]
         return result
 
+    def _apply_priority_roles_first(self, hero_list: list, ally_heroes: list) -> list:
+        """Сортирует список так, что герои с приоритетной ролью (восклицательный знак) идут первыми."""
+        try:
+            priority_enabled = self.main_window.settings_manager.get_tray_priority_roles_first()
+        except Exception:
+            priority_enabled = False
+        if not priority_enabled:
+            return hero_list
+
+        recommended_role = self.get_recommended_role(ally_heroes)
+        if not recommended_role:
+            return hero_list
+
+        from core.database.heroes_bd import ROLES_DATA
+        priority_heroes = set(ROLES_DATA.get(recommended_role, []))
+
+        priority = [h for h in hero_list if h in priority_heroes]
+        non_priority = [h for h in hero_list if h not in priority_heroes]
+        return priority + non_priority
+
     def _setup_window_properties(self):
         self.setWindowTitle("Rivals Counter Peaks - TAB Mode")
         self.setMinimumSize(400, 100)
@@ -393,6 +413,9 @@ class TrayWindow(QMainWindow):
             ally_set = set(ally_heroes)
             heroes_to_display = [h for h in heroes_to_display if h not in ally_set]
 
+        # Применяем сортировку "сначала приоритетные роли"
+        heroes_to_display = self._apply_priority_roles_first(heroes_to_display, ally_heroes)
+
         if selected_heroes != self._last_enemy_list:
             logging.info(f"[Tray] Обновление врагов: {selected_heroes}")
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
@@ -442,7 +465,7 @@ class TrayWindow(QMainWindow):
                 if is_ally:
                     tooltip = hero_name
                 elif not is_enemy:
-                    tooltip = f"{hero_name}: {rating:.1f}"
+                    tooltip = f"{hero_name}: {rating:.0f}"
                 else:
                     tooltip = hero_name
                 widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
@@ -458,7 +481,7 @@ class TrayWindow(QMainWindow):
                 if is_ally:
                     tooltip = hero_name
                 elif not is_enemy:
-                    tooltip = f"{hero_name}: {rating:.1f}"
+                    tooltip = f"{hero_name}: {rating:.0f}"
                 else:
                     tooltip = hero_name
                 widget.update_rating(rating, tooltip)

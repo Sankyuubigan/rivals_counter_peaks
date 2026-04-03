@@ -23,6 +23,7 @@ DEFAULT_ALGORITHM = "statistics"  # "statistics" или "manual"
 DEFAULT_FAVORITES_FIRST = True
 DEFAULT_TRAY_HIDE_ALLIES = False
 DEFAULT_TRAY_SHOW_RATING = False
+DEFAULT_TRAY_PRIORITY_ROLES_FIRST = False
 
 class AppSettingsManager:
     def __init__(self):
@@ -59,6 +60,7 @@ class AppSettingsManager:
             FAVORITES_FIRST_KEY: DEFAULT_FAVORITES_FIRST,
             TRAY_HIDE_ALLIES_KEY: DEFAULT_TRAY_HIDE_ALLIES,
             TRAY_SHOW_RATING_KEY: DEFAULT_TRAY_SHOW_RATING,
+            TRAY_PRIORITY_ROLES_FIRST_KEY: DEFAULT_TRAY_PRIORITY_ROLES_FIRST,
         }
         changed = False
         for key, default_value in defaults.items():
@@ -137,3 +139,9 @@ class AppSettingsManager:
     
     def set_tray_show_rating(self, value: bool, save: bool = True):
         self.set_setting(TRAY_SHOW_RATING_KEY, value, save)
+    
+    def get_tray_priority_roles_first(self) -> bool:
+        return self.get_setting(TRAY_PRIORITY_ROLES_FIRST_KEY, DEFAULT_TRAY_PRIORITY_ROLES_FIRST)
+    
+    def set_tray_priority_roles_first(self, value: bool, save: bool = True):
+        self.set_setting(TRAY_PRIORITY_ROLES_FIRST_KEY, value, save)

@@ -1,7 +1,7 @@
 # File: core/favorite_heroes_tab.py
 import logging
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFrame,
-                               QPushButton, QLabel, QGridLayout, QApplication, QCheckBox)
+                               QPushButton, QLabel, QGridLayout, QApplication)
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 from core.database.heroes_bd import heroes
@@ -60,13 +60,6 @@ class FavoriteHeroesTab(QWidget):
         button_layout.addWidget(self.copy_button)
         button_layout.addWidget(self.clear_button)
         main_layout.addLayout(button_layout)
-
-        # --- Чекбокс "Сначала избранные" ---
-        self.favorites_first_checkbox = QCheckBox(get_text("favorites_first_checkbox", default_text="Сначала избранных героев в контрпиках"))
-        self.favorites_first_checkbox.setToolTip(get_text("favorites_first_tooltip", default_text="Когда включено, избранные герои отображаются первыми в трее (TAB режим)"))
-        self.favorites_first_checkbox.setChecked(self.settings_manager.get_favorites_first())
-        self.favorites_first_checkbox.stateChanged.connect(self._on_favorites_first_changed)
-        main_layout.addWidget(self.favorites_first_checkbox)
 
         # --- Заполняем сетку ---
         self._populate_grid()
@@ -161,12 +154,6 @@ class FavoriteHeroesTab(QWidget):
         # Сохраняем в конфиг
         self.settings_manager.set_favorite_heroes(list(self.favorites))
         logging.info(f"[FavoriteHeroes] Избранные: {self.favorites}")
-
-    def _on_favorites_first_changed(self, state):
-        """Сохраняет состояние чекбокса 'Сначала избранные'."""
-        enabled = state == Qt.CheckState.Checked.value
-        self.settings_manager.set_favorites_first(enabled)
-        logging.info(f"[FavoriteHeroes] Favorites first: {enabled}")
 
     def _copy_favorites_to_clipboard(self):
         """Копирует список избранных героев в буфер обмена."""

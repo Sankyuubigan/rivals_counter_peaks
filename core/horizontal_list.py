@@ -8,7 +8,7 @@ class IconWithRatingWidget(QWidget):
     def __init__(self, pixmap: QPixmap, rating: float, is_in_effective_team: bool, is_enemy: bool, tooltip: str, parent=None):
         super().__init__(parent)
         self.pixmap = pixmap
-        self.rating_text = f"{rating:.1f}"
+        self.rating_text = f"{rating:.0f}"
         self.is_in_effective_team = is_in_effective_team
         self.is_enemy = is_enemy
         self.setToolTip(tooltip)
@@ -18,7 +18,7 @@ class IconWithRatingWidget(QWidget):
             self.setMinimumSize(pixmap.size())
         
         self.font = QFont()
-        self.font.setPointSize(4)  # Маленький размер шрифта для рейтинга на иконках
+        self.font.setPointSize(7)  # Размер шрифта для рейтинга на иконках
         self.font.setBold(True)
         self.fm = QFontMetrics(self.font)
         self.border_pen = QPen(Qt.PenStyle.NoPen)
@@ -50,7 +50,7 @@ class IconWithRatingWidget(QWidget):
         
     def update_rating(self, rating: float, tooltip: str = None):
         """Обновляет рейтинг и подсказку виджета."""
-        self.rating_text = f"{rating:.1f}"
+        self.rating_text = f"{rating:.0f}"
         if tooltip is not None:
             self.setToolTip(tooltip)
         self.update()  # Перерисовываем виджет с новым рейтингом

@@ -103,6 +103,22 @@ class SettingsWindow(QWidget):
         )
         tray_layout.addWidget(self.tray_show_rating_checkbox)
         
+        self.tray_priority_roles_first_checkbox = QCheckBox(
+            get_text("tray_priority_roles_first", default_text="Сначала приоритетные герои")
+        )
+        self.tray_priority_roles_first_checkbox.setToolTip(
+            get_text("tray_priority_roles_first_desc", default_text="Отображать в списке контрпиков сначала героев с восклицательным знаком (приоритетные роли)")
+        )
+        tray_layout.addWidget(self.tray_priority_roles_first_checkbox)
+        
+        self.favorites_first_checkbox = QCheckBox(
+            get_text("favorites_first_checkbox", default_text="Сначала избранные герои")
+        )
+        self.favorites_first_checkbox.setToolTip(
+            get_text("favorites_first_tooltip", default_text="Когда включено, избранные герои отображаются первыми в трее (TAB режим)")
+        )
+        tray_layout.addWidget(self.favorites_first_checkbox)
+        
         layout.addLayout(tray_layout)
         
         desc_label = QLabel(get_text("tray_settings_desc", default_text="Настройки отображения окна, которое появляется при нажатии TAB"))
@@ -121,6 +137,8 @@ class SettingsWindow(QWidget):
         # Загружаем настройки трея
         self.tray_hide_allies_checkbox.setChecked(self.app_settings_manager.get_tray_hide_allies())
         self.tray_show_rating_checkbox.setChecked(self.app_settings_manager.get_tray_show_rating())
+        self.tray_priority_roles_first_checkbox.setChecked(self.app_settings_manager.get_tray_priority_roles_first())
+        self.favorites_first_checkbox.setChecked(self.app_settings_manager.get_favorites_first())
         
     def _populate_hotkey_list_ui(self):
         for i in reversed(range(self.hotkeys_grid_layout.count())): 
@@ -156,6 +174,8 @@ class SettingsWindow(QWidget):
         # Сохраняем настройки трея
         self.app_settings_manager.set_tray_hide_allies(self.tray_hide_allies_checkbox.isChecked())
         self.app_settings_manager.set_tray_show_rating(self.tray_show_rating_checkbox.isChecked())
+        self.app_settings_manager.set_tray_priority_roles_first(self.tray_priority_roles_first_checkbox.isChecked())
+        self.app_settings_manager.set_favorites_first(self.favorites_first_checkbox.isChecked())
         if hasattr(self.parent_window, 'hotkey_manager'):
             self.parent_window.hotkey_manager.reregister_hotkeys()
         self.settings_applied_signal.emit()
