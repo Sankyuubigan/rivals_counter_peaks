@@ -3,28 +3,60 @@
   "type": "WebApp",
   "meta": {
     "name": "Marvel Rivals Counter Picks",
-    "version": "1.0.0",
+    "version": "3.0.3",
     "minimum-overwolf-version": "0.200.0.0",
     "author": "Sankyuubigan",
-    "description": "Передает данные из Marvel Rivals в локальное Python-приложение",
+    "description": "Counter Picks Overlay for Marvel Rivals",
     "icon": "icon.png"
   },
   "permissions":[
     "GameInfo",
     "GameEvents",
-    "Websocket"
+    "Hotkeys",
+    "InputTracking"
   ],
   "data": {
     "start_window": "background",
     "windows": {
       "background": {
-        "file": "index.html",
+        "file": "background.html",
         "is_background_page": true
+      },
+      "desktop": {
+        "file": "windows/desktop/desktop.html",
+        "transparent": true,
+        "resizable": true,
+        "topmost": true,
+        "size": { "width": 1000, "height": 700 }
+      },
+      "in_game": {
+        "file": "windows/in_game/in_game.html",
+        "transparent": true,
+        "resizable": false,
+        "topmost": true,
+        "size": { "width": 800, "height": 180 },
+        "in_game_only": true,
+        "disable_rightclick": true
+      }
+    },
+    "hotkeys": {
+      "show_tray": {
+        "title": "Show Counter Picks Tray",
+        "action-type": "custom",
+        "default": "Tab",
+        "hold": true,
+        "passthrough": true
+      },
+      "toggle_desktop": {
+        "title": "Show/Hide Main Menu",
+        "action-type": "custom",
+        "default": "Alt+G",
+        "global": true
       }
     },
     "game_targeting": {
       "type": "dedicated",
-      "game_ids": [24890]
+      "game_ids":[24890]
     },
     "game_events":[
       24890

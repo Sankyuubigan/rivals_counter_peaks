@@ -1,0 +1,86 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+#tray-container {
+    background-color: rgba(40, 40, 40, 0.85);
+    border: 1px solid rgba(100, 100, 100, 0.6);
+    border-radius: 6px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 60px;
+}
+
+.bottom-row {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+}
+
+.box {
+    border-radius: 4px;
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.allies-box { border: 2px solid #4488ff; background-color: rgba(30, 50, 80, 0.7); min-width: 150px; }
+.enemies-box { border: 2px solid #ff4444; background-color: rgba(80, 30, 30, 0.7); min-width: 150px; }
+.map-box { border: 2px solid rgba(150, 150, 150, 0.5); background-color: rgba(40, 40, 40, 0.5); justify-content: center; min-width: 120px; }
+
+.box-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
+.allies-box .box-title { color: #66aaff; }
+.enemies-box .box-title { color: #ff8888; }
+.map-title { color: white; font-size: 11px; font-weight: bold; }
+
+.hero-list {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.hero-icon {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 2px solid #aaa;
+    background-size: cover;
+    background-position: center;
+}
+
+.hero-icon.effective { border-color: #00FF00; }
+
+.rating-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: rgba(255, 255, 255, 0.9);
+    color: blue;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* Скрываем скроллбар */
+.counters-scroll::-webkit-scrollbar { display: none; }

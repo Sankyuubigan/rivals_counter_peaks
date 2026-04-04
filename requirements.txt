@@ -1,8 +1,0 @@
-Markdown
-PySide6
-global_hotkeys
-pyinstaller
-pyperclip
-psutil
-tabulate
-websockets

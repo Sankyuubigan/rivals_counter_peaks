@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="in_game.css">
+    <title>In-Game Overlay</title>
+</head>
+<body>
+    <div id="tray-container">
+        <div class="top-row">
+            <div class="box allies-box">
+                <div class="box-title">Союзники</div>
+                <div id="allies-list" class="hero-list"></div>
+            </div>
+            
+            <div class="box map-box">
+                <div id="map-name" class="map-title">Ожидание матча...</div>
+            </div>
+            
+            <div class="box enemies-box">
+                <div class="box-title">Враги</div>
+                <div id="enemies-list" class="hero-list"></div>
+            </div>
+        </div>
+
+        <div class="bottom-row">
+            <div id="counters-list" class="hero-list counters-scroll"></div>
+        </div>
+    </div>
+    <script src="in_game.js"></script>
+</body>
+</html>
