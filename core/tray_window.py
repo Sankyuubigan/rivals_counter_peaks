@@ -32,9 +32,11 @@ class TrayWindow(QMainWindow):
         self._restored_geometry = False
         self.enemy_widgets: Dict[str, IconWithRatingWidget] = {}
         self.ally_widgets: Dict[str, IconWithRatingWidget] = {}
+        self.banned_widgets: Dict[str, IconWithRatingWidget] = {}
         self.counter_widgets: Dict[str, IconWithRatingWidget] = {}
         self._last_enemy_list: List[str] =[]
         self._last_ally_list: List[str] =[]
+        self._last_banned_list: List[str] =[]
         self._last_counter_list: List[str] =[]
         self._pending_update = False
         self._update_timer = QTimer(self)
@@ -287,6 +289,35 @@ class TrayWindow(QMainWindow):
         self.counters_scroll_area.setWidget(scroll_content_widget)
 
         layout.addWidget(top_container)
+
+        # === ФРЕЙМ ЗАБАНЕННЫХ ГЕРОЕВ (фиолетовая рамка) ===
+        self.banned_frame = QFrame()
+        self.banned_frame.setObjectName("banned_frame")
+        self.banned_frame.setStyleSheet("""
+            #banned_frame {
+                border: 2px solid #aa44ff;
+                border-radius: 4px;
+                background-color: rgba(60, 20, 80, 120);
+            }
+        """)
+        self.banned_frame.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        self.banned_frame.setVisible(False)
+        banned_frame_layout = QVBoxLayout(self.banned_frame)
+        banned_frame_layout.setContentsMargins(3, 2, 3, 2)
+        banned_frame_layout.setSpacing(1)
+
+        self.banned_label = QLabel(get_text("banned_label", "Баны"))
+        self.banned_label.setAlignment(Qt.AlignCenter)
+        self.banned_label.setStyleSheet("color: #cc88ff; font-size: 9px; font-weight: bold;")
+        banned_frame_layout.addWidget(self.banned_label)
+
+        self.banned_container = QWidget()
+        self.banned_layout = QHBoxLayout(self.banned_container)
+        self.banned_layout.setContentsMargins(0, 0, 0, 0)
+        self.banned_layout.setSpacing(2)
+        banned_frame_layout.addWidget(self.banned_container)
+
+        layout.addWidget(self.banned_frame)
         layout.addWidget(self.counters_scroll_area)
 
     def _schedule_update(self, data: dict):
@@ -384,23 +415,33 @@ class TrayWindow(QMainWindow):
         
         selected_heroes = sorted(data.get("selected_heroes",[]))
         ally_heroes = sorted(data.get("ally_heroes",[]))
+        banned_heroes = sorted(data.get("banned_heroes",[]))
         counter_scores = data.get("counter_scores", {})
         effective_team = data.get("effective_team",[])
         selected_map = data.get("selected_map")
         
-        logging.info(f"[Tray] Обновление UI: враги={selected_heroes}, союзники={ally_heroes}, карта={selected_map}")
+        logging.info(f"[Tray] Обновление UI: враги={selected_heroes}, союзники={ally_heroes}, баны={banned_heroes}, карта={selected_map}")
         
         self._update_map_display(selected_map)
         
+        # Фильтруем забаненных героев из списка контрпиков — они не должны рекомендоваться
+        banned_set = set(banned_heroes)
+
         if not selected_heroes:
             tier_scores = self.logic.calculate_tier_list_scores_with_map(selected_map)
             sorted_counters = sorted(tier_scores.items(), key=lambda item: item[1], reverse=True)
-            heroes_to_display = [h for h, s in sorted_counters if s > 0]
+            filtered_out = [h for h, s in sorted_counters if s > 0 and h in banned_set]
+            if filtered_out:
+                logging.info(f"[Tray] Забаненные герои исключены из контрпиков: {filtered_out}")
+            heroes_to_display = [h for h, s in sorted_counters if s > 0 and h not in banned_set]
             # Применяем сортировку "сначала избранные"
             heroes_to_display = self._apply_favorites_first(heroes_to_display, tier_scores)
         else:
             sorted_counters = sorted(counter_scores.items(), key=lambda item: item[1], reverse=True)
-            heroes_to_display = [h for h, s in sorted_counters if s > 0 or h in effective_team]
+            filtered_out = [h for h, s in sorted_counters if (s > 0 or h in effective_team) and h in banned_set]
+            if filtered_out:
+                logging.info(f"[Tray] Забаненные герои исключены из контрпиков: {filtered_out}")
+            heroes_to_display = [h for h, s in sorted_counters if (s > 0 or h in effective_team) and h not in banned_set]
             # Применяем сортировку "сначала избранные"
             heroes_to_display = self._apply_favorites_first(heroes_to_display, counter_scores)
         
@@ -420,6 +461,15 @@ class TrayWindow(QMainWindow):
             logging.info(f"[Tray] Обновление врагов: {selected_heroes}")
             self._update_layout(self.enemies_layout, self.enemy_widgets, selected_heroes, is_enemy=True)
             self._last_enemy_list = selected_heroes
+
+        # Обновление забаненных героев
+        if banned_heroes != self._last_banned_list:
+            logging.warning(f"[Tray] Обновление банов: {banned_heroes}")
+            self._update_layout(self.banned_layout, self.banned_widgets, banned_heroes, is_banned=True)
+            self._last_banned_list = banned_heroes
+            frame_visible = bool(banned_heroes)
+            self.banned_frame.setVisible(frame_visible)
+            logging.info(f"[Tray] Фрейм банов {'показан' if frame_visible else 'скрыт'}")
 
         # Флаг: изменились ли союзники (нужно для обновления маркеров в контрпиках)
         allies_changed = ally_heroes != self._last_ally_list
@@ -447,7 +497,7 @@ class TrayWindow(QMainWindow):
         self.allies_frame.setVisible(bool(ally_heroes))
         self.counters_scroll_area.setVisible(True)
 
-    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None, show_rating: bool = False, ally_heroes: List[str] = None):
+    def _update_layout(self, layout: QHBoxLayout, widget_cache: Dict, hero_list: List[str], is_enemy: bool = False, is_ally: bool = False, is_banned: bool = False, scores: Dict = None, effective: List = None, recommended_role: str = None, show_rating: bool = False, ally_heroes: List[str] = None):
         for widget in widget_cache.values(): widget.setVisible(False)
         while layout.count():
             item = layout.takeAt(0)
@@ -464,6 +514,8 @@ class TrayWindow(QMainWindow):
                 is_effective = hero_name in (effective or[])
                 if is_ally:
                     tooltip = hero_name
+                elif is_banned:
+                    tooltip = f"{hero_name} (забанен)"
                 elif not is_enemy:
                     tooltip = f"{hero_name}: {rating:.0f}"
                 else:
@@ -471,15 +523,21 @@ class TrayWindow(QMainWindow):
                 widget = IconWithRatingWidget(pixmap, rating, is_effective, is_enemy, tooltip, parent=self.centralWidget())
                 widget.setFixedSize(pixmap.size().width() + 4, pixmap.size().height() + 4)
                 widget.show_rating = show_rating
-                hero_role = self.get_hero_role(hero_name)
-                if hero_role and ROLE_COLORS.get(hero_role):
-                    widget.set_border(ROLE_COLORS.get(hero_role), 2)
+                if is_banned:
+                    # Фиолетовая рамка для забаненных
+                    widget.set_border(QColor("#aa44ff"), 2)
+                else:
+                    hero_role = self.get_hero_role(hero_name)
+                    if hero_role and ROLE_COLORS.get(hero_role):
+                        widget.set_border(ROLE_COLORS.get(hero_role), 2)
                 widget_cache[hero_name] = widget
             else:
                 rating = scores.get(hero_name, 0) if scores else 0
                 is_effective = hero_name in (effective or[])
                 if is_ally:
                     tooltip = hero_name
+                elif is_banned:
+                    tooltip = f"{hero_name} (забанен)"
                 elif not is_enemy:
                     tooltip = f"{hero_name}: {rating:.0f}"
                 else:
@@ -487,14 +545,17 @@ class TrayWindow(QMainWindow):
                 widget.update_rating(rating, tooltip)
                 widget.is_in_effective_team = is_effective
                 widget.show_rating = show_rating
-                # Восстанавливаем рамку роли при обновлении из кэша
-                hero_role = self.get_hero_role(hero_name)
-                if hero_role and ROLE_COLORS.get(hero_role):
-                    widget.set_border(ROLE_COLORS.get(hero_role), 2)
+                if is_banned:
+                    widget.set_border(QColor("#aa44ff"), 2)
+                else:
+                    # Восстанавливаем рамку роли при обновлении из кэша
+                    hero_role = self.get_hero_role(hero_name)
+                    if hero_role and ROLE_COLORS.get(hero_role):
+                        widget.set_border(ROLE_COLORS.get(hero_role), 2)
                 widget.update()
             
             # Маркеры для контрпиков: галочка (союзник) и ! (recommended role вместо утолщенной рамки)
-            if not is_enemy and not is_ally:
+            if not is_enemy and not is_ally and not is_banned:
                 ally_set = set(ally_heroes or [])
                 hero_role = self.get_hero_role(hero_name)
                 is_recommended = recommended_role and hero_role == recommended_role

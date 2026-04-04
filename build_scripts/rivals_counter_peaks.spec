@@ -61,7 +61,7 @@ exe = EXE(
     a.binaries,
     a.zipfiles,
     a.datas,[],
-    name='rivals_counter_peaks_26.04.02',
+    name='rivals_counter_peaks_26.04.03',
     icon=os.path.join(project_root, 'resources', 'logo.ico'),
     debug=False,
     console=False,

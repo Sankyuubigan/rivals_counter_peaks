@@ -8,7 +8,8 @@ let matchState = {
     rosters: {},
     map: null,
     gameType: "unknown",
-    gameMode: "unknown"
+    gameMode: "unknown",
+    bannedCharacters: []
 };
 
 function logToPython(msg) {
@@ -60,6 +61,9 @@ function updateStateFromInfo(info) {
     if (info.match_info) {
         let mi = info.match_info;
         
+        // Логируем все ключи из match_info для отладки
+        logToPython(`DEBUG: match_info keys: ${Object.keys(mi).join(', ')}`);
+        
         if (mi.map !== undefined && matchState.map !== mi.map) {
             logToPython(`DEBUG: Map changed from "${matchState.map}" to "${mi.map}"`);
             matchState.map = mi.map;
@@ -72,6 +76,23 @@ function updateStateFromInfo(info) {
         if (mi.game_mode !== undefined && matchState.gameMode !== mi.game_mode) {
             logToPython(`DEBUG: GameMode changed from "${matchState.gameMode}" to "${mi.game_mode}"`);
             matchState.gameMode = mi.game_mode;
+        }
+        
+        // Обработка забаненных персонажей
+        if (mi.banned_characters !== undefined) {
+            try {
+                let bannedData = typeof mi.banned_characters === 'string' ? JSON.parse(mi.banned_characters) : mi.banned_characters;
+                let bannedJson = JSON.stringify(bannedData);
+                let oldBannedJson = JSON.stringify(matchState.bannedCharacters);
+                if (bannedJson !== oldBannedJson) {
+                    let bannedNames = bannedData.map(b => b.character_name || "unknown");
+                    logToPython(`DEBUG: Banned characters changed to: ${bannedNames.join(', ')}`);
+                    matchState.bannedCharacters = bannedData;
+                    changed = true;
+                }
+            } catch(e) {
+                logToPython(`ERROR: Failed to parse banned_characters: ${e.message}. Raw value: ${mi.banned_characters}`);
+            }
         }
         
         for (let key in mi) {
@@ -110,6 +131,7 @@ function updateStateFromInfo(info) {
 function sendDataToPython() {
     let enemyHeroes = [];
     let allyHeroes = [];
+    let bannedHeroes = [];
     let seenHeroes =[];
     
     for (let key in matchState.rosters) {
@@ -127,14 +149,27 @@ function sendDataToPython() {
             }
         }
     }
+    
+    // Собираем забаненных героев
+    for (let b of matchState.bannedCharacters) {
+        if (b.character_name) {
+            bannedHeroes.push({
+                id: b.character_id || "unknown",
+                name: b.character_name,
+                is_teammate: b.is_teammate
+            });
+        }
+    }
 
-    logToPython(`DEBUG: sendDataToPython - map: ${matchState.map}, allies: ${allyHeroes.length}, enemies: ${enemyHeroes.length}, seen: ${seenHeroes.length}`);
+    let bannedNames = bannedHeroes.map(b => b.name).join(', ') || 'none';
+    logToPython(`DEBUG: sendDataToPython - map: ${matchState.map}, allies: ${allyHeroes.length}, enemies: ${enemyHeroes.length}, banned: ${bannedHeroes.length} (${bannedNames}), seen: ${seenHeroes.length}`);
 
     if (ws && ws.readyState === WebSocket.OPEN) {
         let payload = JSON.stringify({
             map: matchState.map,
             enemy_heroes: enemyHeroes,
             ally_heroes: allyHeroes,
+            banned_heroes: bannedHeroes,
             seen_heroes: seenHeroes
         });
         logToPython(`INFO: Sending data to Python (payload size: ${payload.length} bytes)`);

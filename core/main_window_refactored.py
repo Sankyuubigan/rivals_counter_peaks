@@ -152,7 +152,7 @@ class MainWindowRefactored(QMainWindow):
     @Slot(dict)
     def _on_overwolf_data(self, data: dict):
         if data.get("type") == "debug":
-            logging.debug(f"[OW DEBUG] {data.get('data')}")
+            logging.info(f"[OW DEBUG] {data.get('data')}")
             return
 
         start_time = time.time()
@@ -160,6 +160,7 @@ class MainWindowRefactored(QMainWindow):
         enemy_heroes = data.get("enemy_heroes",[])
         ally_heroes = data.get("ally_heroes",[])
         seen_heroes = data.get("seen_heroes",[])
+        banned_heroes_raw = data.get("banned_heroes",[])
         
         # Логируем уникальные сущности в отдельный файл для маппинга
         log_game_entities(map_name, seen_heroes)
@@ -177,7 +178,7 @@ class MainWindowRefactored(QMainWindow):
                 normalized_heroes.add(norm_h)
                 if norm_h != h:
                      logging.info(f"[Overwolf] Враг '{h}' распознан как '{norm_h}'")
-                     
+                      
         logging.info(f"[Overwolf] Итоговый список распознанных врагов: {list(normalized_heroes)}")
 
         # Нормализуем союзников
@@ -188,20 +189,43 @@ class MainWindowRefactored(QMainWindow):
                 normalized_ally_heroes.add(norm_h)
                 if norm_h != h:
                      logging.info(f"[Overwolf] Союзник '{h}' распознан как '{norm_h}'")
-                     
+                      
         logging.info(f"[Overwolf] Итоговый список распознанных союзников: {list(normalized_ally_heroes)}")
+        
+        # Нормализуем забаненных героев и логируем
+        normalized_banned_heroes = []
+        for b in banned_heroes_raw:
+            raw_name = b.get("name", "") if isinstance(b, dict) else str(b)
+            if raw_name:
+                norm_h = normalize_hero_name(raw_name)
+                is_teammate = b.get("is_teammate", None) if isinstance(b, dict) else None
+                ban_source = "наша команда" if is_teammate is True else ("команда врагов" if is_teammate is False else "неизвестно")
+                logging.info(f"[Overwolf] БАН: '{raw_name}' -> '{norm_h}' (забанен: {ban_source})")
+                normalized_banned_heroes.append(norm_h)
+        
+        if normalized_banned_heroes:
+            logging.warning(f"[Overwolf] Забаненные герои: {normalized_banned_heroes}")
+        else:
+            logging.debug(f"[Overwolf] Забаненных героев нет")
                      
         # ИСПРАВЛЕНИЕ: НЕ модифицируем logic.selected_heroes — это ломает главную вкладку.
         # Трей и главная вкладка теперь полностью независимы.
+        # Исключаем забаненных героев из списка врагов для расчёта
+        banned_set = set(normalized_banned_heroes)
+        active_enemy_heroes = [h for h in normalized_heroes if h not in banned_set]
+        if banned_set & normalized_heroes:
+            logging.info(f"[Overwolf] Исключены забаненные герои из расчёта: {banned_set & normalized_heroes}")
+        
         # Рассчитываем контр-пики для Overwolf-данных БЕЗ изменения состояния.
         counter_scores, effective_team = self.logic.calculate_counter_scores_for_team(
-            list(normalized_heroes), self.logic.selected_map
+            active_enemy_heroes, self.logic.selected_map
         )
         
         # Эмитим СОБЫТИЕ ТОЛЬКО ДЛЯ ТРЕЯ — главная вкладка НЕ обновляется
         event_bus.emit("overwolf_update", {
             "selected_heroes": list(normalized_heroes),
             "ally_heroes": list(normalized_ally_heroes),
+            "banned_heroes": normalized_banned_heroes,
             "counter_scores": counter_scores,
             "effective_team": effective_team,
             "selected_map": self.logic.selected_map
