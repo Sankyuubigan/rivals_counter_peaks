@@ -174,11 +174,27 @@ function openTab(tabId, btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Принудительно забираем фокус при загрузке окна, чтобы игра отдала курсор
+    window.focus();
+
     ['hide-allies', 'show-rating', 'priority-first', 'favorites-first'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
         cb.checked = localStorage.getItem(key) === 'true';
         cb.addEventListener('change', e => localStorage.setItem(key, e.target.checked));
+    });
+
+    // Настройка ширины трея
+    let twSlider = document.getElementById('setting-tray-width');
+    let twVal = document.getElementById('tray-width-val');
+    twSlider.value = localStorage.getItem('trayWidth') || 800;
+    twVal.innerText = twSlider.value;
+    twSlider.addEventListener('input', e => twVal.innerText = e.target.value);
+    twSlider.addEventListener('change', e => {
+        localStorage.setItem('trayWidth', e.target.value);
+        overwolf.windows.obtainDeclaredWindow("in_game", res => {
+            overwolf.windows.changeSize(res.window.id, parseInt(e.target.value), 180);
+        });
     });
 
     let langSelect = document.getElementById('setting-language');

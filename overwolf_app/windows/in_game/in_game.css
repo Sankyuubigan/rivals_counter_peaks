@@ -29,8 +29,9 @@ body, html {
 .bottom-row {
     flex-grow: 1;
     display: flex;
-    align-items: center;
-    overflow-x: auto;
+    align-items: flex-start; /* Для красивого переноса строк */
+    overflow: hidden;
+    padding-top: 5px;
 }
 
 .box {
@@ -58,6 +59,15 @@ body, html {
     align-items: center;
 }
 
+.counters-scroll {
+    flex-wrap: wrap; /* Позволяем переносить героев на новую строку */
+    justify-content: flex-start;
+    align-content: flex-start;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Полностью убираем скроллбар */
+}
+
 .hero-icon {
     position: relative;
     width: 40px;
@@ -68,7 +78,30 @@ body, html {
     background-position: center;
 }
 
-.hero-icon.effective { border-color: #00FF00; }
+/* Рамки ролей */
+.role-vanguard { border-color: #4488ff !important; }
+.role-duelist { border-color: #ff4444 !important; }
+.role-strategist { border-color: #44ff44 !important; }
+
+/* Значки статуса в левом нижнем углу */
+.status-badge {
+    position: absolute;
+    bottom: -4px;
+    left: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 0 3px rgba(0,0,0,0.8);
+}
+.status-ally { background-color: #22cc22; }
+.status-priority { background-color: #cc2222; }
 
 .rating-badge {
     position: absolute;
@@ -81,6 +114,3 @@ body, html {
     padding: 1px 3px;
     border-radius: 3px;
 }
-
-/* Скрываем скроллбар */
-.counters-scroll::-webkit-scrollbar { display: none; }

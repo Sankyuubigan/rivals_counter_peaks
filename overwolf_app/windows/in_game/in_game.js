@@ -11,18 +11,45 @@ function getHeroImage(name) {
     return `../../resources/heroes_icons/${formatted}_1.png`;
 }
 
-function createHeroIcon(name, rating = null, isEffective = false) {
+function getHeroRole(heroName) {
+    if (!bgWindow || !bgWindow.marvelLogic || !bgWindow.marvelLogic.heroRoles) return null;
+    let roles = bgWindow.marvelLogic.heroRoles;
+    for (let role in roles) {
+        if (roles[role].includes(heroName)) return role.toLowerCase();
+    }
+    return null;
+}
+
+function createHeroIcon(name, rating = null, isEffective = false, isAlly = false) {
     let div = document.createElement('div');
     div.className = 'hero-icon';
-    if (isEffective) div.classList.add('effective');
+    
+    // Рамка роли
+    let role = getHeroRole(name);
+    if (role) div.classList.add(`role-${role}`);
+    
     div.style.backgroundImage = `url('${getHeroImage(name)}')`;
     
+    // Значки статуса (Галочка / Восклицательный знак)
+    if (isAlly) {
+        let badge = document.createElement('div');
+        badge.className = 'status-badge status-ally';
+        badge.innerText = '✓';
+        div.appendChild(badge);
+    } else if (isEffective) {
+        let badge = document.createElement('div');
+        badge.className = 'status-badge status-priority';
+        badge.innerText = '!';
+        div.appendChild(badge);
+    }
+    
+    // Рейтинг
     let showRating = localStorage.getItem('showRating') === 'true';
     if (rating !== null && showRating) {
-        let badge = document.createElement('div');
-        badge.className = 'rating-badge';
-        badge.innerText = Math.round(rating);
-        div.appendChild(badge);
+        let rBadge = document.createElement('div');
+        rBadge.className = 'rating-badge';
+        rBadge.innerText = Math.round(rating);
+        div.appendChild(rBadge);
     }
     return div;
 }
@@ -79,12 +106,20 @@ function renderUI(data) {
     counters.forEach(([hero, score]) => {
         if (score > 0 || data.effective_team.includes(hero)) {
             let isEffective = data.effective_team.includes(hero);
-            countersList.appendChild(createHeroIcon(hero, score, isEffective));
+            let isAlly = data.ally_heroes.includes(hero);
+            countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly));
         }
     });
 }
 
-// При старте окна запрашиваем текущие данные у Background
+// При старте окна запрашиваем текущие данные у Background и применяем ширину
 if (bgWindow && bgWindow.latestData) {
     renderUI(bgWindow.latestData);
 }
+
+let tw = parseInt(localStorage.getItem('trayWidth')) || 800;
+overwolf.windows.getCurrentWindow(res => {
+    if (res.window.width !== tw) {
+        overwolf.windows.changeSize(res.window.id, tw, 180);
+    }
+});
