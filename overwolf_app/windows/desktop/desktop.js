@@ -88,7 +88,7 @@ function renderList(container, scores, effectiveTeam) {
     sorted.forEach(([hero, score], index) => {
         let row = document.createElement('div');
         row.className = 'hero-row';
-        if (effectiveTeam.includes(hero)) row.style.backgroundColor = '#d0e8ff';
+        if (effectiveTeam.includes(hero)) row.style.backgroundColor = '#45475a';
         
         let icon = document.createElement('div');
         icon.className = 'hero-icon';

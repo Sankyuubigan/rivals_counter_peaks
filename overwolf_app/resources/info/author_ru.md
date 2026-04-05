@@ -17,5 +17,3 @@ UQDKxUPol48B__NQvvTxKKFtr6PTwZH7i9BWWjVb9iFuNb7k
 
 C идеями и предложениями можете обращаться:
 https://t.me/dron_maredon
-
-

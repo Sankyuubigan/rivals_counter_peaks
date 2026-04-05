@@ -12,8 +12,7 @@
   "permissions":[
     "GameInfo",
     "GameEvents",
-    "Hotkeys",
-    "InputTracking"
+    "Hotkeys"
   ],
   "data": {
     "start_window": "background",
@@ -27,7 +26,7 @@
         "transparent": true,
         "resizable": true,
         "topmost": true,
-        "size": { "width": 1000, "height": 700 }
+        "size": { "width": 1000, "height": 950 }
       },
       "in_game": {
         "file": "windows/in_game/in_game.html",
@@ -44,6 +43,34 @@
         "title": "Show Counter Picks Tray",
         "action-type": "custom",
         "default": "Tab",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_left": {
+        "title": "Move Tray Left (hold Tab + Left)",
+        "action-type": "custom",
+        "default": "Left",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_up": {
+        "title": "Move Tray Up (hold Tab + Up)",
+        "action-type": "custom",
+        "default": "Up",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_right": {
+        "title": "Move Tray Right (hold Tab + Right)",
+        "action-type": "custom",
+        "default": "Right",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_down": {
+        "title": "Move Tray Down (hold Tab + Down)",
+        "action-type": "custom",
+        "default": "Down",
         "hold": true,
         "passthrough": true
       },

@@ -103,6 +103,10 @@ function processGameData() {
             }
         }
 
+        if (bannedHeroes.length > 0) {
+            console.log(`[BANS] Забаненные герои: ${bannedHeroes.join(', ')}`);
+        }
+
         let activeEnemies = enemyHeroes.filter(h => !bannedHeroes.includes(h));
         
         let result;
@@ -131,11 +135,19 @@ function processGameData() {
 }
 
 // === ХОТКЕИ И ПЕРЕМЕЩЕНИЕ ТРЕЯ ===
+let trayMoveInterval = null;
+
+// Универсальный обработчик onHold для ВСЕХ hold-хоткеев
 overwolf.settings.hotkeys.onHold.addListener((event) => {
+    console.log(`[HOTKEY onHold] name="${event.name}", state="${event.state}", isTabHeld=${isTabHeld}`);
+
+    // --- TAB (show_tray) ---
     if (event.name === "show_tray") {
         isTabHeld = (event.state === "down");
+        console.log(`[TAB] isTabHeld установлен в: ${isTabHeld}`);
         if (isTabHeld) {
             overwolf.windows.obtainDeclaredWindow("in_game", (res) => {
+                console.log(`[TAB] obtainDeclaredWindow in_game:`, JSON.stringify(res));
                 overwolf.windows.restore(res.window.id);
             });
         } else {
@@ -143,24 +155,52 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
                 overwolf.windows.hide(res.window.id);
             });
         }
+        return;
     }
-});
 
-// Перемещение трея стрелочками при зажатом TAB
-overwolf.games.inputTracking.onKeyDown.addListener((event) => {
-    if (isTabHeld) {
-        // 37=Влево, 38=Вверх, 39=Вправо, 40=Вниз
-        const step = 50;
-        if ([37, 38, 39, 40].includes(event.virtualKeycode)) {
+    // --- СТРЕЛКИ (перемещение трея) ---
+    const moveMap = {
+        "move_tray_left":  { dx: -50, dy: 0 },
+        "move_tray_up":    { dx: 0, dy: -50 },
+        "move_tray_right": { dx: 50, dy: 0 },
+        "move_tray_down":  { dx: 0, dy: 50 },
+    };
+
+    const move = moveMap[event.name];
+    if (!move) {
+        console.log(`[HOTKEY onHold] Неизвестный хоткей: ${event.name}, игнорируем`);
+        return;
+    }
+
+    console.log(`[MOVE] Хоткей стрелки обнаружен: ${event.name}, state: ${event.state}, isTabHeld: ${isTabHeld}`);
+
+    if (!isTabHeld) {
+        console.log(`[MOVE] ОТМЕНА: isTabHeld=false, перемещение заблокировано`);
+        return;
+    }
+
+    if (event.state === "down") {
+        console.log(`[MOVE] Запуск интервала перемещения для ${event.name}`);
+        if (trayMoveInterval) clearInterval(trayMoveInterval);
+        trayMoveInterval = setInterval(() => {
             overwolf.windows.obtainDeclaredWindow("in_game", (res) => {
-                let x = res.window.left;
-                let y = res.window.top;
-                if (event.virtualKeycode === 37) x -= step;
-                if (event.virtualKeycode === 38) y -= step;
-                if (event.virtualKeycode === 39) x += step;
-                if (event.virtualKeycode === 40) y += step;
-                overwolf.windows.changePosition(res.window.id, x, y);
+                if (!res || !res.window) {
+                    console.log(`[MOVE] ОШИБКА: obtainDeclaredWindow вернул null/undefined`);
+                    return;
+                }
+                let x = res.window.left + move.dx;
+                let y = res.window.top + move.dy;
+                console.log(`[MOVE] Перемещение: (${res.window.left},${res.window.top}) -> (${x},${y})`);
+                overwolf.windows.changePosition(res.window.id, x, y, (cbRes) => {
+                    console.log(`[MOVE] changePosition callback:`, JSON.stringify(cbRes));
+                });
             });
+        }, 100);
+    } else if (event.state === "up") {
+        console.log(`[MOVE] Остановка интервала перемещения для ${event.name}`);
+        if (trayMoveInterval) {
+            clearInterval(trayMoveInterval);
+            trayMoveInterval = null;
         }
     }
 });
