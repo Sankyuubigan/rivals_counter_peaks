@@ -205,16 +205,35 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
     }
 });
 
+// Агрессивная функция перехвата фокуса мыши
+function forceGrabFocus(winId) {
+    overwolf.windows.bringToFront(winId, true, () => {});
+    // Повторяем через небольшие промежутки, чтобы перебить захват игры
+    setTimeout(() => overwolf.windows.bringToFront(winId, true, () => {}), 150);
+    setTimeout(() => overwolf.windows.bringToFront(winId, true, () => {}), 350);
+}
+
 overwolf.settings.hotkeys.onPressed.addListener((event) => {
     if (event.name === "toggle_desktop") {
         overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
-            if (res.window.stateEx === "hidden" || res.window.stateEx === "closed") {
-                // Вызываем restore и bringToFront для перехвата курсора мыши
-                overwolf.windows.restore(res.window.id, () => {
-                    overwolf.windows.bringToFront(res.window.id, true, () => {});
+            let winId = res.window.id;
+            if (res.window.stateEx === "hidden" || res.window.stateEx === "closed" || res.window.stateEx === "minimized") {
+                overwolf.games.getRunningGameInfo((gameInfo) => {
+                    if (gameInfo && gameInfo.isRunning) {
+                        // Если игра запущена, максимизируем окно и агрессивно забираем фокус
+                        overwolf.windows.restore(winId, () => {
+                            overwolf.windows.maximize(winId, () => {
+                                forceGrabFocus(winId);
+                            });
+                        });
+                    } else {
+                        overwolf.windows.restore(winId, () => {
+                            forceGrabFocus(winId);
+                        });
+                    }
                 });
             } else {
-                overwolf.windows.hide(res.window.id);
+                overwolf.windows.hide(winId);
             }
         });
     }

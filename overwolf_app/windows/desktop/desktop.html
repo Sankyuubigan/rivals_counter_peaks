@@ -6,11 +6,31 @@
     <style>
         body {
             margin: 0; padding: 0; font-family: Arial, sans-serif;
-            background-color: rgba(30, 30, 46, 0.95); color: #cdd6f4;
+            background-color: #1e1e2e; color: #cdd6f4;
             display: flex; flex-direction: column; height: 100vh;
-            border: 1px solid #45475a;
             overflow: hidden;
         }
+        
+        /* Стили для полноэкранного режима с затемнением во время игры */
+        body.in-game-mode {
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #app-modal {
+            display: flex; flex-direction: column;
+            width: 100%; height: 100%;
+            background-color: #1e1e2e;
+        }
+        
+        body.in-game-mode #app-modal {
+            width: 1000px; height: 850px;
+            border: 1px solid #45475a;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            border-radius: 8px;
+        }
+
         .header {
             background-color: #181825; padding: 10px; text-align: center;
             font-size: 14px; border-bottom: 1px solid #45475a;
@@ -80,95 +100,97 @@
     </style>
 </head>
 <body>
-    <div class="header" id="header">
-        <span data-i18n="header_title">Rivals Counter Picks (Alt+G скрыть/показать)</span>
-        <button class="close-btn" id="close-btn">X</button>
-    </div>
+    <div id="app-modal">
+        <div class="header" id="header">
+            <span data-i18n="header_title">Rivals Counter Picks (Alt+G скрыть/показать)</span>
+            <button class="close-btn" id="close-btn">X</button>
+        </div>
 
-    <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('counterpicks', this)" data-i18n="tab_counterpicks">Контрпики</button>
-        <button class="tab-btn" onclick="openTab('tier-list', this)" data-i18n="tab_tier_list">Тир-лист</button>
-        <button class="tab-btn" onclick="openTab('favorites', this)" data-i18n="tab_favorites">Избранные герои</button>
-        <button class="tab-btn" onclick="openTab('settings', this)" data-i18n="tab_settings">Настройки</button>
-        <button class="tab-btn" onclick="openTab('logs', this)" data-i18n="tab_logs">Логи</button>
-        <button class="tab-btn" onclick="openTab('about', this)" data-i18n="tab_about">О программе</button>
-        <button class="tab-btn" onclick="openTab('author', this)" data-i18n="tab_author">Об авторе</button>
-    </div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('counterpicks', this)" data-i18n="tab_counterpicks">Контрпики</button>
+            <button class="tab-btn" onclick="openTab('tier-list', this)" data-i18n="tab_tier_list">Тир-лист</button>
+            <button class="tab-btn" onclick="openTab('favorites', this)" data-i18n="tab_favorites">Избранные герои</button>
+            <button class="tab-btn" onclick="openTab('settings', this)" data-i18n="tab_settings">Настройки</button>
+            <button class="tab-btn" onclick="openTab('logs', this)" data-i18n="tab_logs">Логи</button>
+            <button class="tab-btn" onclick="openTab('about', this)" data-i18n="tab_about">О программе</button>
+            <button class="tab-btn" onclick="openTab('author', this)" data-i18n="tab_author">Об авторе</button>
+        </div>
 
-    <!-- Вкладка Контрпики (Ручной режим) -->
-    <div id="counterpicks" class="tab-content active">
-        <div class="cp-container">
-            <div class="cp-left" id="cp-results">
-                <p style="color: #a6adc8; text-align: center;" data-i18n="select_enemies">Выберите врагов справа</p>
-            </div>
-            <div class="cp-right">
-                <select id="cp-map-select"><option value="" data-i18n="no_map">Без карты</option></select>
-                <div style="text-align: center; font-size: 11px; color: #a6adc8;" id="cp-heroes-count"></div>
-                <div class="heroes-grid" id="cp-heroes-grid"></div>
-                <div style="font-size: 11px; height: 32px; line-height: 16px; overflow: hidden; flex-shrink: 0;" id="cp-selected-text">Выбрано героев (0/6): </div>
-                <div style="display: flex; gap: 5px;">
-                    <button class="action-btn" style="flex:1;" onclick="clearManualSelection()" data-i18n="clear_all">Очистить все</button>
+        <!-- Вкладка Контрпики (Ручной режим) -->
+        <div id="counterpicks" class="tab-content active">
+            <div class="cp-container">
+                <div class="cp-left" id="cp-results">
+                    <p style="color: #a6adc8; text-align: center;" data-i18n="select_enemies">Выберите врагов справа</p>
+                </div>
+                <div class="cp-right">
+                    <select id="cp-map-select"><option value="" data-i18n="no_map">Без карты</option></select>
+                    <div style="text-align: center; font-size: 11px; color: #a6adc8;" id="cp-heroes-count"></div>
+                    <div class="heroes-grid" id="cp-heroes-grid"></div>
+                    <div style="font-size: 11px; height: 32px; line-height: 16px; overflow: hidden; flex-shrink: 0;" id="cp-selected-text">Выбрано героев (0/6): </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="action-btn" style="flex:1;" onclick="clearManualSelection()" data-i18n="clear_all">Очистить все</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Вкладка Тир-лист -->
-    <div id="tier-list" class="tab-content">
-        <p class="hint" data-i18n="tier_list_hint">Мета героев для высоких рангов. Показывает, кто лучше всего контрит других.</p>
-        <select id="tl-map-select" style="width: 200px; margin-bottom: 10px;"><option value="" data-i18n="no_map">Без карты</option></select>
-        <div id="tl-results" style="border: 1px solid #45475a; background: #181825; padding: 5px; height: 80%; overflow-y: auto;"></div>
-    </div>
-
-    <!-- Вкладка Избранное -->
-    <div id="favorites" class="tab-content">
-        <h3 data-i18n="favorites_title">Избранные герои</h3>
-        <p class="hint" data-i18n="favorites_hint">Выберите героев, за которых вы любите играть. Они будут отображаться первыми в трее.</p>
-        <div class="heroes-grid" id="favorites-grid" style="grid-template-columns: repeat(8, auto); justify-content: center; gap: 12px;"></div>
-    </div>
-
-    <!-- Вкладка Настройки -->
-    <div id="settings" class="tab-content">
-        <h3 data-i18n="settings_tray">Настройки внутриигрового трея (TAB)</h3>
-        <div style="margin-bottom: 10px;">
-            <label><span data-i18n="setting_language">Язык / Language</span>: 
-                <select id="setting-language">
-                    <option value="ru">Русский</option>
-                    <option value="en">English</option>
-                </select>
-            </label>
+        <!-- Вкладка Тир-лист -->
+        <div id="tier-list" class="tab-content">
+            <p class="hint" data-i18n="tier_list_hint">Мета героев для высоких рангов. Показывает, кто лучше всего контрит других.</p>
+            <select id="tl-map-select" style="width: 200px; margin-bottom: 10px;"><option value="" data-i18n="no_map">Без карты</option></select>
+            <div id="tl-results" style="border: 1px solid #45475a; background: #181825; padding: 5px; height: 80%; overflow-y: auto;"></div>
         </div>
-        <div style="margin-bottom: 10px;">
-            <label>
-                <span data-i18n="setting_tray_width">Ширина трея (px):</span> 
-                <input type="range" id="setting-tray-width" min="800" max="2400" step="50">
-                <span id="tray-width-val"></span>
-            </label>
-        </div>
-        <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-hide-allies"> <span data-i18n="setting_hide_allies">Не показывать союзных героев в списке контрпиков</span></label></div>
-        <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-show-rating"> <span data-i18n="setting_show_rating">Показывать числовой рейтинг на иконках</span></label></div>
-        <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-priority-first"> <span data-i18n="setting_priority_first">Сначала приоритетные роли (!)</span></label></div>
-        <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-favorites-first"> <span data-i18n="setting_favorites_first">Сначала избранные герои</span></label></div>
-    </div>
 
-    <!-- Вкладка Логи -->
-    <div id="logs" class="tab-content">
-        <div style="display: flex; gap: 5px;">
-            <button class="action-btn" onclick="refreshLogs()" data-i18n="refresh_logs">Обновить логи</button>
-            <button class="action-btn" onclick="copyLogs()" data-i18n="copy_logs">Копировать логи</button>
-            <span id="copy-log-msg" style="color: #a6adc8; align-self: center; display: none;" data-i18n="logs_copied">Логи скопированы!</span>
+        <!-- Вкладка Избранное -->
+        <div id="favorites" class="tab-content">
+            <h3 data-i18n="favorites_title">Избранные герои</h3>
+            <p class="hint" data-i18n="favorites_hint">Выберите героев, за которых вы любите играть. Они будут отображаться первыми в трее.</p>
+            <div class="heroes-grid" id="favorites-grid" style="grid-template-columns: repeat(8, auto); justify-content: center; gap: 12px;"></div>
         </div>
-        <textarea id="logs-area" readonly></textarea>
-    </div>
 
-    <!-- Инфо -->
-    <div id="about" class="tab-content">
-        <h3 data-i18n="about_title">О программе</h3>
-        <p data-i18n="about_text">Rivals Counter Peaks — это оверлей для Marvel Rivals, который помогает подбирать контрпики в реальном времени.</p>
-    </div>
-    <div id="author" class="tab-content">
-        <h3 data-i18n="author_title">Об авторе</h3>
-        <p data-i18n="author_text">Создано Sankyuubigan.</p>
+        <!-- Вкладка Настройки -->
+        <div id="settings" class="tab-content">
+            <h3 data-i18n="settings_tray">Настройки внутриигрового трея (TAB)</h3>
+            <div style="margin-bottom: 10px;">
+                <label><span data-i18n="setting_language">Язык / Language</span>: 
+                    <select id="setting-language">
+                        <option value="ru">Русский</option>
+                        <option value="en">English</option>
+                    </select>
+                </label>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>
+                    <span data-i18n="setting_tray_width">Ширина трея (px):</span> 
+                    <input type="range" id="setting-tray-width" min="800" max="2400" step="50">
+                    <span id="tray-width-val"></span>
+                </label>
+            </div>
+            <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-hide-allies"> <span data-i18n="setting_hide_allies">Не показывать союзных героев в списке контрпиков</span></label></div>
+            <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-show-rating"> <span data-i18n="setting_show_rating">Показывать числовой рейтинг на иконках</span></label></div>
+            <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-priority-first"> <span data-i18n="setting_priority_first">Сначала приоритетные роли (!)</span></label></div>
+            <div style="margin-bottom: 10px;"><label><input type="checkbox" id="setting-favorites-first"> <span data-i18n="setting_favorites_first">Сначала избранные герои</span></label></div>
+        </div>
+
+        <!-- Вкладка Логи -->
+        <div id="logs" class="tab-content">
+            <div style="display: flex; gap: 5px;">
+                <button class="action-btn" onclick="refreshLogs()" data-i18n="refresh_logs">Обновить логи</button>
+                <button class="action-btn" onclick="copyLogs()" data-i18n="copy_logs">Копировать логи</button>
+                <span id="copy-log-msg" style="color: #a6adc8; align-self: center; display: none;" data-i18n="logs_copied">Логи скопированы!</span>
+            </div>
+            <textarea id="logs-area" readonly></textarea>
+        </div>
+
+        <!-- Инфо -->
+        <div id="about" class="tab-content">
+            <h3 data-i18n="about_title">О программе</h3>
+            <p data-i18n="about_text">Rivals Counter Peaks — это оверлей для Marvel Rivals, который помогает подбирать контрпики в реальном времени.</p>
+        </div>
+        <div id="author" class="tab-content">
+            <h3 data-i18n="author_title">Об авторе</h3>
+            <p data-i18n="author_text">Создано Sankyuubigan.</p>
+        </div>
     </div>
 
     <script src="../../translations.js"></script>

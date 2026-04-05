@@ -23,20 +23,20 @@ body, html {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 60px;
+    height: 75px; /* Увеличена высота, чтобы иконки не вылезали */
 }
 
 .bottom-row {
     flex-grow: 1;
     display: flex;
-    align-items: flex-start; /* Для красивого переноса строк */
+    align-items: center; /* Центрирование по вертикали */
     overflow: hidden;
     padding-top: 5px;
 }
 
 .box {
     border-radius: 4px;
-    padding: 3px;
+    padding: 5px; /* Добавлен отступ внутри рамок */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -60,12 +60,14 @@ body, html {
 }
 
 .counters-scroll {
-    flex-wrap: wrap; /* Позволяем переносить героев на новую строку */
+    display: flex;
+    flex-wrap: nowrap; /* Строго в одну строку */
     justify-content: flex-start;
-    align-content: flex-start;
+    align-items: center;
     width: 100%;
     height: 100%;
-    overflow: hidden; /* Полностью убираем скроллбар */
+    overflow: hidden; /* Скрываем ползунок */
+    gap: 4px;
 }
 
 .hero-icon {

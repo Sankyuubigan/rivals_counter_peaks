@@ -173,9 +173,24 @@ function openTab(tabId, btn) {
     if (tabId === 'logs') refreshLogs();
 }
 
+// Слушатель изменения состояния окна для принудительного перехвата фокуса на уровне DOM
+overwolf.windows.onStateChanged.addListener((state) => {
+    if (state.window_name === "desktop" && (state.window_state === "normal" || state.window_state === "maximized")) {
+        setTimeout(() => window.focus(), 150);
+        setTimeout(() => window.focus(), 350);
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Принудительно забираем фокус при загрузке окна, чтобы игра отдала курсор
     window.focus();
+
+    overwolf.games.getRunningGameInfo((info) => {
+        if (info && info.isRunning) {
+            document.body.classList.add('in-game-mode');
+        } else {
+            document.body.classList.remove('in-game-mode');
+        }
+    });
 
     ['hide-allies', 'show-rating', 'priority-first', 'favorites-first'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
@@ -184,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cb.addEventListener('change', e => localStorage.setItem(key, e.target.checked));
     });
 
-    // Настройка ширины трея
     let twSlider = document.getElementById('setting-tray-width');
     let twVal = document.getElementById('tray-width-val');
     twSlider.value = localStorage.getItem('trayWidth') || 800;
@@ -220,7 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('header').addEventListener('mousedown', () => {
-        overwolf.windows.getCurrentWindow((res) => overwolf.windows.dragMove(res.window.id));
+        if (!document.body.classList.contains('in-game-mode')) {
+            overwolf.windows.getCurrentWindow((res) => overwolf.windows.dragMove(res.window.id));
+        }
     });
 
     initData();

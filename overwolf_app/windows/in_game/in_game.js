@@ -104,9 +104,11 @@ function renderUI(data) {
     }
 
     counters.forEach(([hero, score]) => {
-        if (score > 0 || data.effective_team.includes(hero)) {
-            let isEffective = data.effective_team.includes(hero);
-            let isAlly = data.ally_heroes.includes(hero);
+        let isAlly = data.ally_heroes.includes(hero);
+        let isEffective = data.effective_team.includes(hero);
+        
+        // Рендерим героя, если у него есть очки, либо он эффективный, либо он союзник (если союзники не скрыты настройкой)
+        if (score > 0 || isEffective || isAlly) {
             countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly));
         }
     });
