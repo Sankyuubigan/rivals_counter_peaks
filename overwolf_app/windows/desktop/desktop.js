@@ -1,9 +1,32 @@
 let bgWindow = overwolf.windows.getMainWindow();
-let manualSelectedEnemies =[];
+let manualSelectedEnemies = [];
 
 function getHeroImage(name) {
     let formatted = name.toLowerCase().replace(/[- ]/g, '_');
     return `../../resources/heroes_icons/${formatted}_1.png`;
+}
+
+function updateMapsOptions() {
+    let mapSelects = [document.getElementById('cp-map-select'), document.getElementById('tl-map-select')];
+    let cpVal = mapSelects[0].value;
+    let tlVal = mapSelects[1].value;
+    
+    mapSelects.forEach(sel => {
+        sel.innerHTML = `<option value="">${getTranslation('no_map')}</option>`;
+    });
+    
+    if (bgWindow.marvelLogic && bgWindow.marvelLogic.availableMaps) {
+        bgWindow.marvelLogic.availableMaps.forEach(map => {
+            mapSelects.forEach(sel => {
+                let opt = document.createElement('option');
+                opt.value = map; opt.innerText = map;
+                sel.appendChild(opt);
+            });
+        });
+    }
+    
+    mapSelects[0].value = cpVal;
+    mapSelects[1].value = tlVal;
 }
 
 function initData() {
@@ -12,25 +35,21 @@ function initData() {
         return;
     }
     
-    // Заполняем карты
-    let mapSelects = [document.getElementById('cp-map-select'), document.getElementById('tl-map-select')];
-    bgWindow.marvelLogic.availableMaps.forEach(map => {
-        mapSelects.forEach(sel => {
-            let opt = document.createElement('option');
-            opt.value = map; opt.innerText = map;
-            sel.appendChild(opt);
-        });
-    });
+    updateMapsOptions();
 
-    document.getElementById('cp-heroes-count').innerText = `Всего героев в базе: ${bgWindow.marvelLogic.allHeroes.length}`;
+    document.getElementById('cp-heroes-count').innerText = getTranslation('total_heroes', {count: bgWindow.marvelLogic.allHeroes.length});
 
     // Заполняем сетку ручного выбора
     let cpGrid = document.getElementById('cp-heroes-grid');
+    cpGrid.innerHTML = '';
     bgWindow.marvelLogic.allHeroes.forEach(hero => {
         let btn = document.createElement('button');
         btn.className = 'grid-btn';
         btn.style.backgroundImage = `url('${getHeroImage(hero)}')`;
         btn.title = hero;
+        if (manualSelectedEnemies.includes(hero)) {
+            btn.classList.add('selected');
+        }
         btn.onclick = () => {
             if (manualSelectedEnemies.includes(hero)) {
                 manualSelectedEnemies = manualSelectedEnemies.filter(h => h !== hero);
@@ -50,6 +69,7 @@ function initData() {
     document.getElementById('cp-map-select').addEventListener('change', updateManualCounterpicks);
     document.getElementById('tl-map-select').addEventListener('change', renderTierList);
 
+    updateManualCounterpicks();
     renderTierList();
     renderFavoritesGrid();
 }
@@ -57,10 +77,10 @@ function initData() {
 function updateManualCounterpicks() {
     let container = document.getElementById('cp-results');
     let map = document.getElementById('cp-map-select').value;
-    document.getElementById('cp-selected-text').innerText = `Выбрано героев (${manualSelectedEnemies.length}/6): ${manualSelectedEnemies.join(', ')}`;
+    document.getElementById('cp-selected-text').innerText = getTranslation('selected_heroes', {count: manualSelectedEnemies.length, heroes: manualSelectedEnemies.join(', ')});
     
     if (manualSelectedEnemies.length === 0) {
-        container.innerHTML = '<p style="color: gray; text-align: center;">Выберите героев справа</p>';
+        container.innerHTML = `<p style="color: gray; text-align: center;">${getTranslation('select_enemies')}</p>`;
         return;
     }
 
@@ -69,7 +89,7 @@ function updateManualCounterpicks() {
 }
 
 function clearManualSelection() {
-    manualSelectedEnemies =[];
+    manualSelectedEnemies = [];
     document.querySelectorAll('#cp-heroes-grid .grid-btn').forEach(b => b.classList.remove('selected'));
     updateManualCounterpicks();
 }
@@ -78,7 +98,7 @@ function renderTierList() {
     let container = document.getElementById('tl-results');
     let map = document.getElementById('tl-map-select').value;
     let scores = bgWindow.marvelLogic.calculateTierListScoresWithMap(map);
-    renderList(container, scores,[]);
+    renderList(container, scores, []);
 }
 
 function renderList(container, scores, effectiveTeam) {
@@ -95,7 +115,7 @@ function renderList(container, scores, effectiveTeam) {
         icon.style.backgroundImage = `url('${getHeroImage(hero)}')`;
         
         let text = document.createElement('div');
-        text.innerHTML = `<strong>${index + 1}. ${hero}</strong>: ${score.toFixed(1)} очков`;
+        text.innerHTML = `<strong>${index + 1}. ${hero}</strong>: ${score.toFixed(1)} ${getTranslation('points')}`;
         
         row.appendChild(icon);
         row.appendChild(text);
@@ -105,6 +125,7 @@ function renderList(container, scores, effectiveTeam) {
 
 function renderFavoritesGrid() {
     let grid = document.getElementById('favorites-grid');
+    grid.innerHTML = '';
     let savedFavorites = JSON.parse(localStorage.getItem('favoriteHeroes') || '[]');
 
     bgWindow.marvelLogic.allHeroes.forEach(hero => {
@@ -134,6 +155,16 @@ function refreshLogs() {
     }
 }
 
+function copyLogs() {
+    let logs = document.getElementById('logs-area').value;
+    if (!logs) return;
+    navigator.clipboard.writeText(logs).then(() => {
+        let msg = document.getElementById('copy-log-msg');
+        msg.style.display = 'inline';
+        setTimeout(() => msg.style.display = 'none', 2000);
+    });
+}
+
 function openTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -149,6 +180,24 @@ document.addEventListener('DOMContentLoaded', () => {
         cb.checked = localStorage.getItem(key) === 'true';
         cb.addEventListener('change', e => localStorage.setItem(key, e.target.checked));
     });
+
+    let langSelect = document.getElementById('setting-language');
+    if (langSelect) {
+        langSelect.value = localStorage.getItem('language') || 'ru';
+        langSelect.addEventListener('change', (e) => {
+            localStorage.setItem('language', e.target.value);
+            applyTranslations();
+            updateMapsOptions();
+            updateManualCounterpicks();
+            renderTierList();
+            let countEl = document.getElementById('cp-heroes-count');
+            if (countEl && bgWindow.marvelLogic) {
+                countEl.innerText = getTranslation('total_heroes', {count: bgWindow.marvelLogic.allHeroes.length});
+            }
+        });
+    }
+
+    applyTranslations();
 
     document.getElementById('close-btn').addEventListener('click', () => {
         overwolf.windows.getCurrentWindow((res) => overwolf.windows.hide(res.window.id));

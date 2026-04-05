@@ -28,7 +28,10 @@ function createHeroIcon(name, rating = null, isEffective = false) {
 }
 
 function renderUI(data) {
-    document.getElementById('map-name').innerText = data.map || "Карта не выбрана";
+    // Локализация
+    document.getElementById('lbl-allies').innerText = getTranslation('tray_allies');
+    document.getElementById('lbl-enemies').innerText = getTranslation('tray_enemies');
+    document.getElementById('map-name').innerText = data.map || getTranslation('tray_waiting');
 
     let alliesList = document.getElementById('allies-list');
     alliesList.innerHTML = '';
@@ -50,6 +53,11 @@ function renderUI(data) {
     
     if (hideAllies) {
         counters = counters.filter(([hero, score]) => !data.ally_heroes.includes(hero));
+    }
+
+    // Фильтрация забаненных героев
+    if (data.banned_heroes && data.banned_heroes.length > 0) {
+        counters = counters.filter(([hero, score]) => !data.banned_heroes.includes(hero));
     }
 
     if (priorityFirst) {
