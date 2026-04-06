@@ -1,6 +1,14 @@
 let bgWindow = overwolf.windows.getMainWindow();
 let manualSelectedEnemies = [];
 
+const origDesktopLog = console.log;
+console.log = function(...args) {
+    origDesktopLog.apply(console, args);
+    if (bgWindow && bgWindow.appLogs) {
+        bgWindow.appLogs.push(`[${new Date().toLocaleTimeString()}] [UI_LOG] ` + args.join(' '));
+    }
+};
+
 function getHeroImage(name) {
     let formatted = name.toLowerCase().replace(/[- ]/g, '_');
     return `../../resources/heroes_icons/${formatted}_1.png`;
@@ -39,7 +47,6 @@ function initData() {
 
     document.getElementById('cp-heroes-count').innerText = getTranslation('total_heroes', {count: bgWindow.marvelLogic.allHeroes.length});
 
-    // Заполняем сетку ручного выбора
     let cpGrid = document.getElementById('cp-heroes-grid');
     cpGrid.innerHTML = '';
     bgWindow.marvelLogic.allHeroes.forEach(hero => {
@@ -65,7 +72,6 @@ function initData() {
         cpGrid.appendChild(btn);
     });
 
-    // Обработчики карт
     document.getElementById('cp-map-select').addEventListener('change', updateManualCounterpicks);
     document.getElementById('tl-map-select').addEventListener('change', renderTierList);
 
@@ -151,7 +157,9 @@ function renderFavoritesGrid() {
 
 function refreshLogs() {
     if (bgWindow && bgWindow.appLogs) {
-        document.getElementById('logs-area').value = bgWindow.appLogs.join('\n');
+        let ta = document.getElementById('logs-area');
+        ta.value = bgWindow.appLogs.join('\n');
+        ta.scrollTop = ta.scrollHeight;
     }
 }
 
@@ -173,25 +181,7 @@ function openTab(tabId, btn) {
     if (tabId === 'logs') refreshLogs();
 }
 
-// Слушатель изменения состояния окна для принудительного перехвата фокуса на уровне DOM
-overwolf.windows.onStateChanged.addListener((state) => {
-    if (state.window_name === "desktop" && (state.window_state === "normal" || state.window_state === "maximized")) {
-        setTimeout(() => window.focus(), 150);
-        setTimeout(() => window.focus(), 350);
-    }
-});
-
 document.addEventListener('DOMContentLoaded', () => {
-    window.focus();
-
-    overwolf.games.getRunningGameInfo((info) => {
-        if (info && info.isRunning) {
-            document.body.classList.add('in-game-mode');
-        } else {
-            document.body.classList.remove('in-game-mode');
-        }
-    });
-
     ['hide-allies', 'show-rating', 'priority-first', 'favorites-first'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
@@ -234,9 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('header').addEventListener('mousedown', () => {
-        if (!document.body.classList.contains('in-game-mode')) {
-            overwolf.windows.getCurrentWindow((res) => overwolf.windows.dragMove(res.window.id));
-        }
+        overwolf.windows.getCurrentWindow((res) => overwolf.windows.dragMove(res.window.id));
     });
 
     initData();

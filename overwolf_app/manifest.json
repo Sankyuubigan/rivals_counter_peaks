@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "Marvel Rivals Counter Picks",
-    "version": "3.0.3",
+    "version": "3.0.5",
     "minimum-overwolf-version": "0.200.0.0",
     "author": "Sankyuubigan",
     "description": "Counter Picks Overlay for Marvel Rivals",
@@ -26,6 +26,17 @@
         "transparent": true,
         "resizable": true,
         "topmost": true,
+        "size": { "width": 1000, "height": 950 }
+      },
+      "desktop_in_game": {
+        "file": "windows/desktop/desktop.html",
+        "transparent": true,
+        "resizable": true,
+        "topmost": true,
+        "in_game_only": true,
+        "grab_keyboard_focus": true,
+        "focus_game_takeover": "ReleaseOnHidden",
+        "focus_game_takeover_release_hotkey": "toggle_desktop",
         "size": { "width": 1000, "height": 950 }
       },
       "in_game": {
@@ -78,7 +89,7 @@
         "title": "Show/Hide Main Menu",
         "action-type": "custom",
         "default": "Alt+G",
-        "global": true
+        "passthrough": false
       }
     },
     "game_targeting": {

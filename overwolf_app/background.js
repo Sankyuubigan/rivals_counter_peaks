@@ -1,5 +1,5 @@
 // === КАСТОМНЫЙ ЛОГГЕР ДЛЯ ВКЛАДКИ "ЛОГИ" ===
-window.appLogs = [];
+window.appLogs =[];
 const origLog = console.log;
 const origWarn = console.warn;
 const origError = console.error;
@@ -22,21 +22,19 @@ window.latestData = {
     map: null,
     enemy_heroes: [],
     ally_heroes: [],
-    banned_heroes: [],
+    banned_heroes:[],
     counter_scores: {},
-    effective_team: []
+    effective_team:[]
 };
 
-let matchState = { rosters: {}, map: null, bannedCharacters: [] };
+let matchState = { rosters: {}, map: null, bannedCharacters:[] };
 let isTabHeld = false;
+let isOurGameRunning = false;
 
 window.marvelLogic.init().then(() => {
     console.log("База данных успешно загружена. Героев:", window.marvelLogic.allHeroes.length);
-    // Принудительно запрашиваем стейт и запускаем обработку, чтобы трей не был пустым на старте
     overwolf.games.events.getInfo((info) => {
-        if (info && info.res) {
-            updateStateFromInfo(info.res);
-        }
+        if (info && info.res) updateStateFromInfo(info.res);
         processGameData();
     });
 });
@@ -53,16 +51,15 @@ function updateStateFromInfo(info) {
 
     if (mi.banned_characters !== undefined) {
         if (!mi.banned_characters || mi.banned_characters === "null") {
-            matchState.bannedCharacters = [];
+            matchState.bannedCharacters =[];
             changed = true;
         } else {
             try {
                 let bannedData = typeof mi.banned_characters === 'string' ? JSON.parse(mi.banned_characters) : mi.banned_characters;
-                matchState.bannedCharacters = Array.isArray(bannedData) ? bannedData : [];
+                matchState.bannedCharacters = Array.isArray(bannedData) ? bannedData :[];
                 changed = true;
             } catch(e) {
-                console.error("Ошибка парсинга банов:", e);
-                matchState.bannedCharacters = [];
+                matchState.bannedCharacters =[];
             }
         }
     }
@@ -90,7 +87,7 @@ function processGameData() {
     try {
         if (!window.marvelLogic.isReady) return;
 
-        let enemyHeroes = [], allyHeroes = [], bannedHeroes = [];
+        let enemyHeroes =[], allyHeroes = [], bannedHeroes =[];
         
         for (let key in matchState.rosters) {
             let r = matchState.rosters[key];
@@ -101,24 +98,19 @@ function processGameData() {
             }
         }
         
-        let safeBanned = Array.isArray(matchState.bannedCharacters) ? matchState.bannedCharacters : [];
+        let safeBanned = Array.isArray(matchState.bannedCharacters) ? matchState.bannedCharacters :[];
         for (let b of safeBanned) {
             if (b && b.character_name) {
                 bannedHeroes.push(window.marvelLogic.normalizeHeroName(b.character_name));
             }
         }
 
-        if (bannedHeroes.length > 0) {
-            console.log(`[BANS] Забаненные герои: ${bannedHeroes.join(', ')}`);
-        }
-
         let activeEnemies = enemyHeroes.filter(h => !bannedHeroes.includes(h));
         
         let result;
-        // Если врагов нет, показываем Тир-лист
         if (activeEnemies.length === 0) {
             let tierScores = window.marvelLogic.calculateTierListScoresWithMap(matchState.map);
-            result = { scores: tierScores, optimalTeam: [] };
+            result = { scores: tierScores, optimalTeam:[] };
         } else {
             result = window.marvelLogic.calculateCounterScoresForTeam(activeEnemies, matchState.map);
         }
@@ -132,7 +124,6 @@ function processGameData() {
             effective_team: result.optimalTeam
         };
 
-        // Отправляем данные в трей
         overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
     } catch (e) {
         console.error("Критическая ошибка в processGameData:", e);
@@ -146,7 +137,6 @@ let trayX = 0;
 let trayY = 0;
 
 overwolf.settings.hotkeys.onHold.addListener((event) => {
-    // --- TAB (show_tray) ---
     if (event.name === "show_tray") {
         isTabHeld = (event.state === "down");
         if (isTabHeld) {
@@ -155,7 +145,6 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
                 trayX = res.window.left;
                 trayY = res.window.top;
                 overwolf.windows.restore(inGameWindowId, () => {
-                    // При открытии трея всегда отправляем актуальные данные
                     overwolf.windows.sendMessage(inGameWindowId, "update_data", window.latestData, () => {});
                 });
             });
@@ -164,18 +153,12 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
                 clearInterval(trayMoveInterval);
                 trayMoveInterval = null;
             }
-            if (inGameWindowId) {
-                overwolf.windows.hide(inGameWindowId);
-            } else {
-                overwolf.windows.obtainDeclaredWindow("in_game", (res) => {
-                    overwolf.windows.hide(res.window.id);
-                });
-            }
+            if (inGameWindowId) overwolf.windows.hide(inGameWindowId);
+            else overwolf.windows.obtainDeclaredWindow("in_game", (res) => overwolf.windows.hide(res.window.id));
         }
         return;
     }
 
-    // --- СТРЕЛКИ (перемещение трея) ---
     const moveMap = {
         "move_tray_left":  { dx: -20, dy: 0 },
         "move_tray_up":    { dx: 0, dy: -20 },
@@ -185,7 +168,6 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
 
     const move = moveMap[event.name];
     if (!move) return;
-
     if (!isTabHeld) return;
 
     if (event.state === "down") {
@@ -205,45 +187,67 @@ overwolf.settings.hotkeys.onHold.addListener((event) => {
     }
 });
 
-// Агрессивная функция перехвата фокуса мыши
-function forceGrabFocus(winId) {
-    overwolf.windows.bringToFront(winId, true, () => {});
-    // Повторяем через небольшие промежутки, чтобы перебить захват игры
-    setTimeout(() => overwolf.windows.bringToFront(winId, true, () => {}), 150);
-    setTimeout(() => overwolf.windows.bringToFront(winId, true, () => {}), 350);
-}
-
+// Управление окном Desktop
 overwolf.settings.hotkeys.onPressed.addListener((event) => {
     if (event.name === "toggle_desktop") {
-        overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
+        let targetWindowName = isOurGameRunning ? "desktop_in_game" : "desktop";
+        console.log(`[HOTKEY] Вызван ${event.name}. Целевое окно: ${targetWindowName}`);
+
+        overwolf.windows.obtainDeclaredWindow(targetWindowName, (res) => {
+            if (!res || !res.window) return;
             let winId = res.window.id;
-            if (res.window.stateEx === "hidden" || res.window.stateEx === "closed" || res.window.stateEx === "minimized") {
-                overwolf.games.getRunningGameInfo((gameInfo) => {
-                    if (gameInfo && gameInfo.isRunning) {
-                        // Если игра запущена, максимизируем окно и агрессивно забираем фокус
-                        overwolf.windows.restore(winId, () => {
-                            overwolf.windows.maximize(winId, () => {
-                                forceGrabFocus(winId);
-                            });
-                        });
-                    } else {
-                        overwolf.windows.restore(winId, () => {
-                            forceGrabFocus(winId);
-                        });
-                    }
+            let state = res.window.stateEx;
+
+            // Если окно скрыто - восстанавливаем и забираем мышку
+            if (state === "hidden" || state === "closed" || state === "minimized") {
+                console.log(`[UI] Открываем ${targetWindowName}...`);
+                overwolf.windows.restore(winId, () => {
+                    overwolf.windows.bringToFront(winId, true, () => {
+                        console.log(`[FOCUS] Мышь перехвачена.`);
+                    });
                 });
             } else {
+                // Если окно уже отображается - скрываем его (мышь автоматически вернется в игру)
+                console.log(`[UI] Скрываем ${targetWindowName}...`);
                 overwolf.windows.hide(winId);
             }
         });
     }
 });
 
+// Слушаем старт и закрытие игры для закрытия неактуальных окон
+overwolf.games.onGameInfoUpdated.addListener((event) => {
+    if (event && event.runningChanged) {
+        let gameRunning = event.gameInfo && event.gameInfo.isRunning;
+        let classId = event.gameInfo ? event.gameInfo.classId : 0;
+        
+        if (gameRunning && classId === 24890) {
+            isOurGameRunning = true;
+            console.log("[GAME] Игра запущена. Прячем десктопное окно.");
+            overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
+                if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
+                    overwolf.windows.hide(res.window.id);
+                }
+            });
+        } else if (!gameRunning && isOurGameRunning) {
+            isOurGameRunning = false;
+            console.log("[GAME] Игра закрыта. Прячем in-game окно.");
+            overwolf.windows.obtainDeclaredWindow("desktop_in_game", (res) => {
+                if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
+                    overwolf.windows.hide(res.window.id);
+                }
+            });
+        }
+    }
+});
+
 // Запуск
 overwolf.games.getRunningGameInfo((gameInfo) => {
     if (gameInfo && gameInfo.isRunning && gameInfo.classId === 24890) {
-        console.log("Игра запущена, работаем в фоне.");
+        isOurGameRunning = true;
+        console.log("При старте приложения игра уже запущена.");
     } else {
+        isOurGameRunning = false;
         overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
             overwolf.windows.restore(res.window.id);
         });
