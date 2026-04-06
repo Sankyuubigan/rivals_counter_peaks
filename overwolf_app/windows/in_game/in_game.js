@@ -24,13 +24,11 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
     let div = document.createElement('div');
     div.className = 'hero-icon';
     
-    // Рамка роли
     let role = getHeroRole(name);
     if (role) div.classList.add(`role-${role}`);
     
     div.style.backgroundImage = `url('${getHeroImage(name)}')`;
     
-    // Значки статуса (Галочка / Восклицательный знак)
     if (isAlly) {
         let badge = document.createElement('div');
         badge.className = 'status-badge status-ally';
@@ -43,7 +41,6 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
         div.appendChild(badge);
     }
     
-    // Рейтинг
     let showRating = localStorage.getItem('showRating') === 'true';
     if (rating !== null && showRating) {
         let rBadge = document.createElement('div');
@@ -55,10 +52,32 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
 }
 
 function renderUI(data) {
-    // Локализация
     document.getElementById('lbl-allies').innerText = getTranslation('tray_allies');
     document.getElementById('lbl-enemies').innerText = getTranslation('tray_enemies');
+    
+    let mapContainer = document.getElementById('map-box-container');
+    let mapWarning = document.getElementById('map-not-found-warning');
+    
     document.getElementById('map-name').innerText = data.map || getTranslation('tray_waiting');
+
+    // Логика отображения карты (Картинка ставится всегда, если есть имя, а рамка - только если влияет на рейтинг)
+    if (data.map) {
+        let imgName = data.map.toUpperCase();
+        mapContainer.style.backgroundImage = `url('../../resources/maps/${imgName}.png')`;
+        
+        if (data.is_map_effective) {
+            mapContainer.classList.add('map-box-active');
+            mapWarning.style.display = 'none';
+        } else {
+            mapContainer.classList.remove('map-box-active');
+            mapWarning.style.display = 'block';
+            mapWarning.innerText = getTranslation('map_not_found');
+        }
+    } else {
+        mapContainer.style.backgroundImage = 'none';
+        mapContainer.classList.remove('map-box-active');
+        mapWarning.style.display = 'none';
+    }
 
     let alliesList = document.getElementById('allies-list');
     alliesList.innerHTML = '';
@@ -82,7 +101,6 @@ function renderUI(data) {
         counters = counters.filter(([hero, score]) => !data.ally_heroes.includes(hero));
     }
 
-    // Фильтрация забаненных героев
     if (data.banned_heroes && data.banned_heroes.length > 0) {
         counters = counters.filter(([hero, score]) => !data.banned_heroes.includes(hero));
     }
@@ -107,14 +125,12 @@ function renderUI(data) {
         let isAlly = data.ally_heroes.includes(hero);
         let isEffective = data.effective_team.includes(hero);
         
-        // Рендерим героя, если у него есть очки, либо он эффективный, либо он союзник (если союзники не скрыты настройкой)
         if (score > 0 || isEffective || isAlly) {
             countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly));
         }
     });
 }
 
-// При старте окна запрашиваем текущие данные у Background и применяем ширину
 if (bgWindow && bgWindow.latestData) {
     renderUI(bgWindow.latestData);
 }

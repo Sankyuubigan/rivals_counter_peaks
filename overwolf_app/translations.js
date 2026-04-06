@@ -31,7 +31,8 @@ const TRANSLATIONS = {
         "points": "очков",
         "tray_allies": "Союзники",
         "tray_enemies": "Враги",
-        "tray_waiting": "Ожидание матча..."
+        "tray_waiting": "Ожидание матча...",
+        "map_not_found": "Карта не найдена"
     },
     "en": {
         "tab_counterpicks": "Counter Picks",
@@ -65,7 +66,8 @@ const TRANSLATIONS = {
         "points": "points",
         "tray_allies": "Allies",
         "tray_enemies": "Enemies",
-        "tray_waiting": "Waiting for match..."
+        "tray_waiting": "Waiting for match...",
+        "map_not_found": "Map not found"
     }
 };
 

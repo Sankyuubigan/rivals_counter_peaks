@@ -53,8 +53,15 @@ class CounterpickLogic {
     }
 
     resolveMapName(rawName) {
-        if (this.gameEntities.map_filename_to_name && this.gameEntities.map_filename_to_name[rawName]) {
-            return this.gameEntities.map_filename_to_name[rawName];
+        if (!rawName) return rawName;
+        let lowerRaw = rawName.toLowerCase();
+        
+        if (this.gameEntities.map_filename_to_name) {
+            for (let key in this.gameEntities.map_filename_to_name) {
+                if (key.toLowerCase() === lowerRaw) {
+                    return this.gameEntities.map_filename_to_name[key];
+                }
+            }
         }
         return rawName;
     }
@@ -90,6 +97,25 @@ class CounterpickLogic {
         let capitalized = normalized.split(' ').map(p => p ? p[0].toUpperCase() + p.slice(1) : '').join(' ');
         found = this.allHeroes.find(h => h === capitalized);
         return found || capitalized || name;
+    }
+
+    // Жесткая проверка: влияет ли карта на формулу подсчета
+    doesMapAffectScores(mapName) {
+        if (!mapName) return false;
+        let lowerMap = mapName.toLowerCase();
+        
+        for (let hero of this.allHeroes) {
+            let heroData = this.statsData[hero];
+            if (heroData && heroData.maps) {
+                for (let m of heroData.maps) {
+                    let dbMapName = this.resolveMapName(m.map_name);
+                    if (dbMapName.toLowerCase() === lowerMap) {
+                        return true; // Карта найдена в статистике хотя бы одного героя
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     getMapScore(heroName, mapName, minScore = 0, maxScore = 20) {
@@ -254,26 +280,17 @@ class CounterpickLogic {
         
         let neededRoles = [];
         
-        // 1. Сначала смотреть Strategists: 2-3
         if (s < 2) {
             neededRoles.push("Strategist");
-        } 
-        // 2. Затем смотреть Vanguards: 1-2 
-        else if (v < 1) {
+        } else if (v < 1) {
             neededRoles.push("Vanguard");
-        } 
-        // 3. Затем смотреть Duelists 1-3 
-        else if (d < 1) {
+        } else if (d < 1) {
             neededRoles.push("Duelist");
-        } 
-        // 4. Если всё удовлетворяет минимальным требованиям, стремимся к 2-2-2
-        else {
+        } else {
             if (v < 2) neededRoles.push("Vanguard");
             if (d < 2) neededRoles.push("Duelist");
         }
         
-        // Если у нас уже идеальные 2-2-2 (или больше), просто предлагаем лучших контрпиков 
-        // из тех ролей, которых не перебор (меньше 3)
         if (neededRoles.length === 0) {
             if (v < 3) neededRoles.push("Vanguard");
             if (d < 3) neededRoles.push("Duelist");
@@ -287,11 +304,9 @@ class CounterpickLogic {
                 this.heroRoles[role].includes(h[0]) && 
                 !allyTeam.includes(h[0])
             );
-            // Убрали ограничение .slice(0, 3) — теперь берем ВСЕХ героев нужной роли
             recommended.push(...candidates.map(h => h[0]));
         }
         
-        // Если ничего не найдено (крайний случай)
         if (recommended.length === 0) {
             recommended = sortedHeroes.filter(h => !allyTeam.includes(h[0])).slice(0, 5).map(h => h[0]);
         }

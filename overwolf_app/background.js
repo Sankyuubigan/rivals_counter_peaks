@@ -20,6 +20,7 @@ const REQUIRED_FEATURES = ['match_info', 'game_info'];
 window.marvelLogic = new CounterpickLogic();
 window.latestData = {
     map: null,
+    is_map_effective: false,
     enemy_heroes: [],
     ally_heroes: [],
     banned_heroes:[],
@@ -105,30 +106,45 @@ function processGameData() {
             }
         }
 
-        // --- ЛОГИКА ОЧИСТКИ ТРЕЯ ВНЕ МАТЧА ---
+        let isMapEffective = false;
+        let finalMapName = matchState.map;
+
+        if (matchState.map) {
+            let resolvedMap = window.marvelLogic.resolveMapName(matchState.map);
+            let foundMap = window.marvelLogic.availableMaps.find(m => m.toLowerCase() === resolvedMap.toLowerCase());
+            
+            if (foundMap) {
+                finalMapName = foundMap;
+            } else {
+                finalMapName = resolvedMap;
+            }
+            
+            // Жесткая проверка: влияет ли карта на формулу
+            isMapEffective = window.marvelLogic.doesMapAffectScores(finalMapName);
+        }
+
         let isMatchEmpty = (enemyHeroes.length === 0 && allyHeroes.length === 0);
         
         if (isMatchEmpty) {
             let clearTrayOnEnd = localStorage.getItem('clearTray') === 'true';
             
             if (clearTrayOnEnd) {
-                // Полностью очищаем трей, если включена настройка
                 window.latestData = {
                     map: null,
+                    is_map_effective: false,
                     enemy_heroes: [],
                     ally_heroes: [],
                     banned_heroes: [],
-                    counter_scores: {}, // Пустой список внизу
+                    counter_scores: {},
                     effective_team: []
                 };
                 overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             } else {
-                // Если настройка выключена - оставляем данные прошлого матча.
-                // Исключение: если приложение только запустили и данных еще нет, покажем Тир-лист
                 if (Object.keys(window.latestData.counter_scores).length === 0) {
-                    let tierScores = window.marvelLogic.calculateTierListScoresWithMap(matchState.map);
+                    let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
                     window.latestData = {
-                        map: matchState.map,
+                        map: finalMapName,
+                        is_map_effective: isMapEffective,
                         enemy_heroes: [],
                         ally_heroes: [],
                         banned_heroes: [],
@@ -138,26 +154,26 @@ function processGameData() {
                     overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
                 }
             }
-            return; // Прерываем дальнейшие расчеты, пока не начнется новый матч
+            return;
         }
-        // ------------------------------------
 
         let activeEnemies = enemyHeroes.filter(h => !bannedHeroes.includes(h));
         
         let result;
         if (activeEnemies.length === 0) {
-            let tierScores = window.marvelLogic.calculateTierListScoresWithMap(matchState.map);
+            let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
             result = { 
                 scores: tierScores, 
                 optimalTeam: window.marvelLogic.getRecommendedHeroes(tierScores, allyHeroes) 
             };
         } else {
-            result = window.marvelLogic.calculateCounterScoresForTeam(activeEnemies, matchState.map);
+            result = window.marvelLogic.calculateCounterScoresForTeam(activeEnemies, finalMapName);
             result.optimalTeam = window.marvelLogic.getRecommendedHeroes(result.scores, allyHeroes);
         }
 
         window.latestData = {
-            map: matchState.map,
+            map: finalMapName,
+            is_map_effective: isMapEffective,
             enemy_heroes: enemyHeroes,
             ally_heroes: allyHeroes,
             banned_heroes: bannedHeroes,
@@ -239,7 +255,6 @@ overwolf.settings.hotkeys.onPressed.addListener((event) => {
             let winId = res.window.id;
             let state = res.window.stateEx;
 
-            // Если окно скрыто - восстанавливаем и забираем мышку
             if (state === "hidden" || state === "closed" || state === "minimized") {
                 console.log(`[UI] Открываем ${targetWindowName}...`);
                 overwolf.windows.restore(winId, () => {
@@ -248,7 +263,6 @@ overwolf.settings.hotkeys.onPressed.addListener((event) => {
                     });
                 });
             } else {
-                // Если окно уже отображается - скрываем его (мышь автоматически вернется в игру)
                 console.log(`[UI] Скрываем ${targetWindowName}...`);
                 overwolf.windows.hide(winId);
             }
@@ -256,7 +270,6 @@ overwolf.settings.hotkeys.onPressed.addListener((event) => {
     }
 });
 
-// Слушаем старт и закрытие игры для закрытия неактуальных окон
 overwolf.games.onGameInfoUpdated.addListener((event) => {
     if (event && event.runningChanged) {
         let gameRunning = event.gameInfo && event.gameInfo.isRunning;
@@ -282,7 +295,6 @@ overwolf.games.onGameInfoUpdated.addListener((event) => {
     }
 });
 
-// Запуск
 overwolf.games.getRunningGameInfo((gameInfo) => {
     if (gameInfo && gameInfo.isRunning && gameInfo.classId === 24890) {
         isOurGameRunning = true;

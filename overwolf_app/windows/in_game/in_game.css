@@ -46,12 +46,53 @@ body, html {
 
 .allies-box { border: 2px solid #4488ff; background-color: rgba(30, 50, 80, 0.7); min-width: 150px; }
 .enemies-box { border: 2px solid #ff4444; background-color: rgba(80, 30, 30, 0.7); min-width: 150px; }
-.map-box { border: 2px solid rgba(150, 150, 150, 0.5); background-color: rgba(40, 40, 40, 0.5); justify-content: center; min-width: 120px; }
+
+/* Стили блока карты */
+.map-box { 
+    border: 2px solid rgba(150, 150, 150, 0.5); 
+    background-color: rgba(40, 40, 40, 0.5); 
+    justify-content: center; 
+    min-width: 120px; 
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+/* Затемнение фона для читаемости текста */
+.map-box::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 0;
+    border-radius: 2px;
+}
+
+.map-box > * {
+    position: relative;
+    z-index: 1;
+}
+
+.map-box-active {
+    border-color: #ffd700 !important;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+}
+
+.map-not-found {
+    color: #ff4444;
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 2px;
+    text-align: center;
+    display: none;
+}
 
 .box-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
 .allies-box .box-title { color: #66aaff; }
 .enemies-box .box-title { color: #ff8888; }
-.map-title { color: white; font-size: 11px; font-weight: bold; }
+.map-title { color: white; font-size: 11px; font-weight: bold; text-align: center; }
 
 .hero-list {
     display: flex;
@@ -73,22 +114,20 @@ body, html {
 
 .hero-icon {
     position: relative;
-    flex: 0 0 40px; /* Жестко запрещает сужение и растягивание иконки */
+    flex: 0 0 40px;
     width: 40px;
     height: 40px;
     border-radius: 4px;
     border: 2px solid #aaa;
     background-size: cover;
     background-position: center;
-    box-sizing: border-box; /* Чтобы граница не добавлялась поверх 40px */
+    box-sizing: border-box;
 }
 
-/* Рамки ролей */
 .role-vanguard { border-color: #4488ff !important; }
 .role-duelist { border-color: #ff4444 !important; }
 .role-strategist { border-color: #44ff44 !important; }
 
-/* Значки статуса в левом нижнем углу */
 .status-badge {
     position: absolute;
     bottom: -4px;
