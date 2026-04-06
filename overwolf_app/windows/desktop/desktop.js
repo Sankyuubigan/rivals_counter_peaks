@@ -182,7 +182,7 @@ function openTab(tabId, btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    ['hide-allies', 'show-rating', 'priority-first', 'favorites-first'].forEach(id => {
+    ['hide-allies', 'show-rating', 'priority-first', 'favorites-first', 'clear-tray'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
         cb.checked = localStorage.getItem(key) === 'true';

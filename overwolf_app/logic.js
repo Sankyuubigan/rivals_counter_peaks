@@ -235,6 +235,70 @@ class CounterpickLogic {
         return bestTeam;
     }
 
+    getRecommendedHeroes(sortedScoresObj, allyTeam = []) {
+        let sortedHeroes = Object.entries(sortedScoresObj).sort((a, b) => b[1] - a[1]);
+        
+        let currentRoles = { Vanguard: 0, Duelist: 0, Strategist: 0 };
+        for (let hero of allyTeam) {
+            for (let r in this.heroRoles) {
+                if (this.heroRoles[r].includes(hero)) {
+                    currentRoles[r]++;
+                    break;
+                }
+            }
+        }
+
+        let v = currentRoles.Vanguard;
+        let d = currentRoles.Duelist;
+        let s = currentRoles.Strategist;
+        
+        let neededRoles = [];
+        
+        // 1. Сначала смотреть Strategists: 2-3
+        if (s < 2) {
+            neededRoles.push("Strategist");
+        } 
+        // 2. Затем смотреть Vanguards: 1-2 
+        else if (v < 1) {
+            neededRoles.push("Vanguard");
+        } 
+        // 3. Затем смотреть Duelists 1-3 
+        else if (d < 1) {
+            neededRoles.push("Duelist");
+        } 
+        // 4. Если всё удовлетворяет минимальным требованиям, стремимся к 2-2-2
+        else {
+            if (v < 2) neededRoles.push("Vanguard");
+            if (d < 2) neededRoles.push("Duelist");
+        }
+        
+        // Если у нас уже идеальные 2-2-2 (или больше), просто предлагаем лучших контрпиков 
+        // из тех ролей, которых не перебор (меньше 3)
+        if (neededRoles.length === 0) {
+            if (v < 3) neededRoles.push("Vanguard");
+            if (d < 3) neededRoles.push("Duelist");
+            if (s < 3) neededRoles.push("Strategist");
+        }
+        
+        let recommended = [];
+        for (let role of neededRoles) {
+            let candidates = sortedHeroes.filter(h => 
+                this.heroRoles[role] && 
+                this.heroRoles[role].includes(h[0]) && 
+                !allyTeam.includes(h[0])
+            );
+            // Убрали ограничение .slice(0, 3) — теперь берем ВСЕХ героев нужной роли
+            recommended.push(...candidates.map(h => h[0]));
+        }
+        
+        // Если ничего не найдено (крайний случай)
+        if (recommended.length === 0) {
+            recommended = sortedHeroes.filter(h => !allyTeam.includes(h[0])).slice(0, 5).map(h => h[0]);
+        }
+        
+        return [...new Set(recommended)];
+    }
+
     calculateCounterScoresForTeam(enemyTeam, mapName = null) {
         if (!enemyTeam || enemyTeam.length === 0) return { scores: {}, optimalTeam:[] };
 

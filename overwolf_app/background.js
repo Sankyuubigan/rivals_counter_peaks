@@ -105,14 +105,55 @@ function processGameData() {
             }
         }
 
+        // --- ЛОГИКА ОЧИСТКИ ТРЕЯ ВНЕ МАТЧА ---
+        let isMatchEmpty = (enemyHeroes.length === 0 && allyHeroes.length === 0);
+        
+        if (isMatchEmpty) {
+            let clearTrayOnEnd = localStorage.getItem('clearTray') === 'true';
+            
+            if (clearTrayOnEnd) {
+                // Полностью очищаем трей, если включена настройка
+                window.latestData = {
+                    map: null,
+                    enemy_heroes: [],
+                    ally_heroes: [],
+                    banned_heroes: [],
+                    counter_scores: {}, // Пустой список внизу
+                    effective_team: []
+                };
+                overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
+            } else {
+                // Если настройка выключена - оставляем данные прошлого матча.
+                // Исключение: если приложение только запустили и данных еще нет, покажем Тир-лист
+                if (Object.keys(window.latestData.counter_scores).length === 0) {
+                    let tierScores = window.marvelLogic.calculateTierListScoresWithMap(matchState.map);
+                    window.latestData = {
+                        map: matchState.map,
+                        enemy_heroes: [],
+                        ally_heroes: [],
+                        banned_heroes: [],
+                        counter_scores: tierScores,
+                        effective_team: window.marvelLogic.getRecommendedHeroes(tierScores, [])
+                    };
+                    overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
+                }
+            }
+            return; // Прерываем дальнейшие расчеты, пока не начнется новый матч
+        }
+        // ------------------------------------
+
         let activeEnemies = enemyHeroes.filter(h => !bannedHeroes.includes(h));
         
         let result;
         if (activeEnemies.length === 0) {
             let tierScores = window.marvelLogic.calculateTierListScoresWithMap(matchState.map);
-            result = { scores: tierScores, optimalTeam:[] };
+            result = { 
+                scores: tierScores, 
+                optimalTeam: window.marvelLogic.getRecommendedHeroes(tierScores, allyHeroes) 
+            };
         } else {
             result = window.marvelLogic.calculateCounterScoresForTeam(activeEnemies, matchState.map);
+            result.optimalTeam = window.marvelLogic.getRecommendedHeroes(result.scores, allyHeroes);
         }
 
         window.latestData = {
