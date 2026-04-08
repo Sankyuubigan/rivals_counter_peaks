@@ -5,7 +5,17 @@ const origWarn = console.warn;
 const origError = console.error;
 
 function formatLog(type, args) {
-    let msg = `[${new Date().toLocaleTimeString()}] [${type}] ` + Array.from(args).join(' ');
+    let parsedArgs = Array.from(args).map(arg => {
+        if (typeof arg === 'object') {
+            try {
+                return JSON.stringify(arg);
+            } catch(e) {
+                return String(arg);
+            }
+        }
+        return String(arg);
+    });
+    let msg = `[${new Date().toLocaleTimeString()}] [${type}] ` + parsedArgs.join(' ');
     window.appLogs.push(msg);
     if (window.appLogs.length > 1000) window.appLogs.shift();
 }
@@ -28,7 +38,13 @@ window.latestData = {
     effective_team:[]
 };
 
-let matchState = { rosters: {}, map: null, bannedCharacters:[] };
+let matchState = { 
+    rosters: {}, 
+    map: null, 
+    bannedCharacters:[],
+    lastRawBans: null,
+    lastProcessedBans: null
+};
 let isTabHeld = false;
 let isOurGameRunning = false;
 
@@ -40,28 +56,80 @@ window.marvelLogic.init().then(() => {
     });
 });
 
+// Непробиваемый парсер для банов
+function parseBannedCharacters(rawBans) {
+    if (rawBans === undefined || rawBans === null || rawBans === "" || rawBans === "null" || rawBans === "[]") {
+        return[];
+    }
+    
+    let parsed = rawBans;
+    let attempts = 0;
+    
+    // Пытаемся распарсить, если Overwolf прислал JSON внутри JSON'а
+    while (typeof parsed === 'string' && attempts < 3) {
+        try {
+            let tmp = JSON.parse(parsed);
+            if (typeof tmp === 'string' || typeof tmp === 'object') {
+                parsed = tmp;
+            } else {
+                break;
+            }
+        } catch(e) {
+            break;
+        }
+        attempts++;
+    }
+
+    if (Array.isArray(parsed)) {
+        return parsed;
+    } else if (typeof parsed === 'object' && parsed !== null) {
+        // Если прислали один объект вместо массива
+        if (parsed.character_id || parsed.character_name) {
+            return [parsed];
+        }
+        return Object.values(parsed);
+    } else if (typeof parsed === 'string') {
+        // Если прислали просто строку через запятую
+        return parsed.split(',').map(s => s.trim()).filter(s => s);
+    }
+    
+    return[];
+}
+
 function updateStateFromInfo(info) {
     if (!info || !info.match_info) return false;
+    
     let mi = info.match_info;
     let changed = false;
 
     if (mi.map !== undefined && matchState.map !== mi.map) {
         matchState.map = mi.map;
         changed = true;
+        if (mi.map === null || mi.map === "null" || mi.map === "") {
+            matchState.rosters = {};
+            matchState.bannedCharacters =[];
+            matchState.lastProcessedBans = null;
+            console.log("[MATCH_STATE] Карта сброшена, очищаем ростеры и баны.");
+        }
     }
 
-    if (mi.banned_characters !== undefined) {
-        if (!mi.banned_characters || mi.banned_characters === "null") {
-            matchState.bannedCharacters =[];
+    if (mi.hasOwnProperty('banned_characters')) {
+        let rawBans = mi.banned_characters;
+        
+        // Логируем сырые данные только если они изменились, чтобы не спамить каждые 5 сек
+        if (matchState.lastRawBans !== JSON.stringify(rawBans)) {
+            console.log("[RAW_BANS] Изменение сырых данных banned_characters:", rawBans);
+            matchState.lastRawBans = JSON.stringify(rawBans);
+        }
+
+        let parsed = parseBannedCharacters(rawBans);
+        let newBansStr = JSON.stringify(parsed);
+        let oldBansStr = JSON.stringify(matchState.bannedCharacters);
+        
+        if (newBansStr !== oldBansStr) {
+            matchState.bannedCharacters = parsed;
             changed = true;
-        } else {
-            try {
-                let bannedData = typeof mi.banned_characters === 'string' ? JSON.parse(mi.banned_characters) : mi.banned_characters;
-                matchState.bannedCharacters = Array.isArray(bannedData) ? bannedData :[];
-                changed = true;
-            } catch(e) {
-                matchState.bannedCharacters =[];
-            }
+            console.log("[MATCH_STATE] Список банов успешно обновлен:", newBansStr);
         }
     }
 
@@ -75,8 +143,11 @@ function updateStateFromInfo(info) {
                 }
             } else {
                 try {
-                    matchState.rosters[key] = typeof val === 'string' ? JSON.parse(val) : val;
-                    changed = true;
+                    let parsedVal = typeof val === 'string' ? JSON.parse(val) : val;
+                    if (JSON.stringify(matchState.rosters[key]) !== JSON.stringify(parsedVal)) {
+                        matchState.rosters[key] = parsedVal;
+                        changed = true;
+                    }
                 } catch(e) {}
             }
         }
@@ -101,9 +172,32 @@ function processGameData() {
         
         let safeBanned = Array.isArray(matchState.bannedCharacters) ? matchState.bannedCharacters :[];
         for (let b of safeBanned) {
-            if (b && b.character_name) {
-                bannedHeroes.push(window.marvelLogic.normalizeHeroName(b.character_name));
+            if (typeof b === 'string') {
+                bannedHeroes.push(window.marvelLogic.normalizeHeroName(b));
+            } else if (typeof b === 'object' && b !== null) {
+                if (b.character_name) {
+                    bannedHeroes.push(window.marvelLogic.normalizeHeroName(b.character_name));
+                } else if (b.character_id && window.marvelLogic.gameEntities && window.marvelLogic.gameEntities.heroes) {
+                    // Если Overwolf прислал только ID без имени
+                    let nameFromId = window.marvelLogic.gameEntities.heroes[b.character_id];
+                    if (nameFromId) {
+                        bannedHeroes.push(window.marvelLogic.normalizeHeroName(nameFromId));
+                    }
+                }
             }
+        }
+
+        // Убираем дубликаты и пустые значения
+        bannedHeroes = [...new Set(bannedHeroes)].filter(h => h);
+
+        // Логируем итоговый список банов при изменении
+        if (JSON.stringify(matchState.lastProcessedBans) !== JSON.stringify(bannedHeroes)) {
+            if (bannedHeroes.length > 0) {
+                console.log("[LOGIC] Итоговые забаненные герои (нормализованные):", bannedHeroes);
+            } else {
+                console.log("[LOGIC] Забаненных героев нет (пустой список).");
+            }
+            matchState.lastProcessedBans = bannedHeroes;
         }
 
         let isMapEffective = false;
@@ -119,7 +213,6 @@ function processGameData() {
                 finalMapName = resolvedMap;
             }
             
-            // Жесткая проверка: влияет ли карта на формулу
             isMapEffective = window.marvelLogic.doesMapAffectScores(finalMapName);
         }
 
@@ -134,26 +227,23 @@ function processGameData() {
                     is_map_effective: false,
                     enemy_heroes: [],
                     ally_heroes: [],
-                    banned_heroes: [],
+                    banned_heroes:[],
                     counter_scores: {},
-                    effective_team: []
+                    effective_team:[]
                 };
-                overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             } else {
-                if (Object.keys(window.latestData.counter_scores).length === 0) {
-                    let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
-                    window.latestData = {
-                        map: finalMapName,
-                        is_map_effective: isMapEffective,
-                        enemy_heroes: [],
-                        ally_heroes: [],
-                        banned_heroes: [],
-                        counter_scores: tierScores,
-                        effective_team: window.marvelLogic.getRecommendedHeroes(tierScores, [])
-                    };
-                    overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
-                }
+                let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
+                window.latestData = {
+                    map: finalMapName,
+                    is_map_effective: isMapEffective,
+                    enemy_heroes: [],
+                    ally_heroes:[],
+                    banned_heroes: bannedHeroes,
+                    counter_scores: tierScores,
+                    effective_team:[]
+                };
             }
+            overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             return;
         }
 
@@ -164,11 +254,11 @@ function processGameData() {
             let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
             result = { 
                 scores: tierScores, 
-                optimalTeam: window.marvelLogic.getRecommendedHeroes(tierScores, allyHeroes) 
+                optimalTeam: allyHeroes.length > 0 ? window.marvelLogic.getRecommendedHeroes(tierScores, allyHeroes, bannedHeroes) :[]
             };
         } else {
             result = window.marvelLogic.calculateCounterScoresForTeam(activeEnemies, finalMapName);
-            result.optimalTeam = window.marvelLogic.getRecommendedHeroes(result.scores, allyHeroes);
+            result.optimalTeam = allyHeroes.length > 0 ? window.marvelLogic.getRecommendedHeroes(result.scores, allyHeroes, bannedHeroes) :[];
         }
 
         window.latestData = {
@@ -310,8 +400,12 @@ overwolf.games.getRunningGameInfo((gameInfo) => {
 overwolf.games.events.setRequiredFeatures(REQUIRED_FEATURES, (result) => {
     if (result.success) {
         overwolf.games.events.onInfoUpdates2.addListener((info) => {
+            if (info && info.info && info.info.match_info && info.info.match_info.hasOwnProperty('banned_characters')) {
+                console.log("[EVENT] Обновление банов через onInfoUpdates2:", info.info.match_info.banned_characters);
+            }
             if (updateStateFromInfo(info.info)) processGameData();
         });
+        
         setInterval(() => {
             overwolf.games.events.getInfo((info) => {
                 if (info && info.res && updateStateFromInfo(info.res)) processGameData();

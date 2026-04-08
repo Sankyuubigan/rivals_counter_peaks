@@ -99,7 +99,6 @@ class CounterpickLogic {
         return found || capitalized || name;
     }
 
-    // Жесткая проверка: влияет ли карта на формулу подсчета
     doesMapAffectScores(mapName) {
         if (!mapName) return false;
         let lowerMap = mapName.toLowerCase();
@@ -110,7 +109,7 @@ class CounterpickLogic {
                 for (let m of heroData.maps) {
                     let dbMapName = this.resolveMapName(m.map_name);
                     if (dbMapName.toLowerCase() === lowerMap) {
-                        return true; // Карта найдена в статистике хотя бы одного героя
+                        return true;
                     }
                 }
             }
@@ -261,7 +260,7 @@ class CounterpickLogic {
         return bestTeam;
     }
 
-    getRecommendedHeroes(sortedScoresObj, allyTeam = []) {
+    getRecommendedHeroes(sortedScoresObj, allyTeam = [], bannedTeam = []) {
         let sortedHeroes = Object.entries(sortedScoresObj).sort((a, b) => b[1] - a[1]);
         
         let currentRoles = { Vanguard: 0, Duelist: 0, Strategist: 0 };
@@ -280,35 +279,36 @@ class CounterpickLogic {
         
         let neededRoles = [];
         
-        if (s < 2) {
-            neededRoles.push("Strategist");
-        } else if (v < 1) {
-            neededRoles.push("Vanguard");
-        } else if (d < 1) {
-            neededRoles.push("Duelist");
-        } else {
-            if (v < 2) neededRoles.push("Vanguard");
-            if (d < 2) neededRoles.push("Duelist");
-        }
+        if (s < 2) neededRoles.push("Strategist");
+        if (v < 2) neededRoles.push("Vanguard");
+        if (d < 2) neededRoles.push("Duelist");
         
-        if (neededRoles.length === 0) {
-            if (v < 3) neededRoles.push("Vanguard");
-            if (d < 3) neededRoles.push("Duelist");
-            if (s < 3) neededRoles.push("Strategist");
+        if (v >= 2 && d >= 2 && s >= 2) {
+            return [];
         }
         
         let recommended = [];
+        
+        if (allyTeam.length === 0) {
+            for (let role of ["Vanguard", "Duelist", "Strategist"]) {
+                let candidates = sortedHeroes.filter(h => 
+                    this.heroRoles[role] && 
+                    this.heroRoles[role].includes(h[0]) &&
+                    !bannedTeam.includes(h[0])
+                );
+                recommended.push(...candidates.map(h => h[0]));
+            }
+            return [...new Set(recommended)];
+        }
+        
         for (let role of neededRoles) {
             let candidates = sortedHeroes.filter(h => 
                 this.heroRoles[role] && 
                 this.heroRoles[role].includes(h[0]) && 
-                !allyTeam.includes(h[0])
+                !allyTeam.includes(h[0]) &&
+                !bannedTeam.includes(h[0])
             );
             recommended.push(...candidates.map(h => h[0]));
-        }
-        
-        if (recommended.length === 0) {
-            recommended = sortedHeroes.filter(h => !allyTeam.includes(h[0])).slice(0, 5).map(h => h[0]);
         }
         
         return [...new Set(recommended)];
