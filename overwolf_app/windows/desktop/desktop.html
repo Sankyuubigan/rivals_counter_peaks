@@ -38,6 +38,11 @@
         .tab-btn.active { border: 1px solid #45475a; border-bottom: 1px solid #1e1e2e; background-color: #1e1e2e; }
         .tab-content { flex: 1; padding: 10px; overflow-y: hidden; display: none; }
         .tab-content.active { display: block; }
+        .md-content { 
+            margin-top: 15px; padding: 10px; background: #181825; border: 1px solid #45475a; 
+            border-radius: 5px; overflow-y: auto; max-height: calc(100vh - 250px); 
+            white-space: pre-wrap; line-height: 1.5; font-size: 13px;
+        }
 
         /* Вкладка Контрпики */
         .cp-container { display: flex; height: 100%; gap: 10px; }
@@ -103,7 +108,6 @@
             <button class="tab-btn" onclick="openTab('settings', this)" data-i18n="tab_settings">Настройки</button>
             <button class="tab-btn" onclick="openTab('logs', this)" data-i18n="tab_logs">Логи</button>
             <button class="tab-btn" onclick="openTab('about', this)" data-i18n="tab_about">О программе</button>
-            <button class="tab-btn" onclick="openTab('author', this)" data-i18n="tab_author">Об авторе</button>
         </div>
 
         <!-- Вкладка Контрпики (Ручной режим) -->
@@ -175,12 +179,7 @@
 
         <!-- Инфо -->
         <div id="about" class="tab-content">
-            <h3 data-i18n="about_title">О программе</h3>
-            <p data-i18n="about_text">Rivals Counter Peaks — это оверлей для Marvel Rivals, который помогает подбирать контрпики в реальном времени.</p>
-        </div>
-        <div id="author" class="tab-content">
-            <h3 data-i18n="author_title">Об авторе</h3>
-            <p data-i18n="author_text">Создано Sankyuubigan.</p>
+            <div id="about-md-content" class="md-content"></div>
         </div>
     </div>
 

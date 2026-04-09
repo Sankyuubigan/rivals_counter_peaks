@@ -78,6 +78,21 @@ function initData() {
     updateManualCounterpicks();
     renderTierList();
     renderFavoritesGrid();
+    loadMdContent();
+}
+
+function loadMdContent() {
+    let lang = localStorage.getItem('language') || 'ru';
+    let infoFile = `../../resources/info/information_${lang}.md`;
+    
+    fetch(infoFile)
+        .then(res => res.text())
+        .then(text => {
+            // Убираем заголовок # о программе (или # About Program)
+            let content = text.replace(/^#\s*(о программе|About Program)\s*$/gim, '').trim();
+            document.getElementById('about-md-content').innerHTML = content;
+        })
+        .catch(err => console.log('Failed to load info MD:', err));
 }
 
 function updateManualCounterpicks() {
