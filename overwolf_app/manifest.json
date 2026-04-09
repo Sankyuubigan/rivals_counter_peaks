@@ -49,8 +49,24 @@
         "size": { "width": 800, "height": 180 },
         "in_game_only": true,
         "disable_rightclick": true
+      },
+      "notification": {
+        "file": "windows/notification/notification.html",
+        "transparent": true,
+        "resizable": false,
+        "topmost": true,
+        "in_game_only": true,
+        "size": { "width": 200, "height": 60 }
       }
     },
+    "launch_events":[
+      {
+        "event": "GameLaunch",
+        "event_data": {
+          "game_ids": [24890]
+        }
+      }
+    ],
     "hotkeys": {
       "show_tray": {
         "title": "Show Counter Picks Tray",
@@ -96,9 +112,9 @@
     },
     "game_targeting": {
       "type": "dedicated",
-      "game_ids":[24890]
+      "game_ids": [24890]
     },
-    "game_events":[
+    "game_events": [
       24890
     ]
   }

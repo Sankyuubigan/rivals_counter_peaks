@@ -25,14 +25,14 @@ console.warn = function() { formatLog('WARN', arguments); origWarn.apply(console
 console.error = function() { formatLog('ERROR', arguments); origError.apply(console, arguments); };
 
 // === ОСНОВНАЯ ЛОГИКА ===
-const REQUIRED_FEATURES = ['match_info', 'game_info'];
+const REQUIRED_FEATURES =['match_info', 'game_info'];
 
 window.marvelLogic = new CounterpickLogic();
 window.latestData = {
     map: null,
     is_map_effective: false,
-    enemy_heroes: [],
-    ally_heroes:[],
+    enemy_heroes:[],
+    ally_heroes: [],
     banned_heroes:[],
     counter_scores: {},
     effective_team:[]
@@ -83,13 +83,11 @@ function parseBannedCharacters(rawBans) {
     if (Array.isArray(parsed)) {
         return parsed;
     } else if (typeof parsed === 'object' && parsed !== null) {
-        // Если прислали один объект вместо массива
         if (parsed.character_id || parsed.character_name) {
             return [parsed];
         }
         return Object.values(parsed);
     } else if (typeof parsed === 'string') {
-        // Если прислали просто строку через запятую
         return parsed.split(',').map(s => s.trim()).filter(s => s);
     }
     
@@ -116,7 +114,6 @@ function updateStateFromInfo(info) {
     if (mi.hasOwnProperty('banned_characters')) {
         let rawBans = mi.banned_characters;
         
-        // Логируем сырые данные только если они изменились, чтобы не спамить каждые 5 сек
         if (matchState.lastRawBans !== JSON.stringify(rawBans)) {
             console.log("[RAW_BANS] Изменение сырых данных banned_characters:", rawBans);
             matchState.lastRawBans = JSON.stringify(rawBans);
@@ -159,7 +156,7 @@ function processGameData() {
     try {
         if (!window.marvelLogic.isReady) return;
 
-        let enemyHeroes =[], allyHeroes = [], bannedHeroes =[];
+        let enemyHeroes = [], allyHeroes = [], bannedHeroes =[];
         
         for (let key in matchState.rosters) {
             let r = matchState.rosters[key];
@@ -178,7 +175,6 @@ function processGameData() {
                 if (b.character_name) {
                     bannedHeroes.push(window.marvelLogic.normalizeHeroName(b.character_name));
                 } else if (b.character_id && window.marvelLogic.gameEntities && window.marvelLogic.gameEntities.heroes) {
-                    // Если Overwolf прислал только ID без имени
                     let nameFromId = window.marvelLogic.gameEntities.heroes[b.character_id];
                     if (nameFromId) {
                         bannedHeroes.push(window.marvelLogic.normalizeHeroName(nameFromId));
@@ -187,10 +183,8 @@ function processGameData() {
             }
         }
 
-        // Убираем дубликаты и пустые значения
         bannedHeroes = [...new Set(bannedHeroes)].filter(h => h);
 
-        // Логируем итоговый список банов при изменении
         if (JSON.stringify(matchState.lastProcessedBans) !== JSON.stringify(bannedHeroes)) {
             if (bannedHeroes.length > 0) {
                 console.log("[LOGIC] Итоговые забаненные герои (нормализованные):", bannedHeroes);
@@ -236,7 +230,7 @@ function processGameData() {
                 window.latestData = {
                     map: finalMapName,
                     is_map_effective: isMapEffective,
-                    enemy_heroes:[],
+                    enemy_heroes: [],
                     ally_heroes:[],
                     banned_heroes: bannedHeroes,
                     counter_scores: tierScores,
@@ -367,16 +361,24 @@ overwolf.games.onGameInfoUpdated.addListener((event) => {
         
         if (gameRunning && classId === 24890) {
             isOurGameRunning = true;
-            console.log("[GAME] Игра запущена. Прячем десктопное окно.");
+            console.log("[GAME] Игра запущена. Прячем десктопное окно и показываем уведомление.");
             overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
                 if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
                     overwolf.windows.hide(res.window.id);
                 }
             });
+            overwolf.windows.obtainDeclaredWindow("notification", (res) => {
+                overwolf.windows.restore(res.window.id);
+            });
         } else if (!gameRunning && isOurGameRunning) {
             isOurGameRunning = false;
-            console.log("[GAME] Игра закрыта. Прячем in-game окно.");
+            console.log("[GAME] Игра закрыта. Прячем in-game окно и уведомление.");
             overwolf.windows.obtainDeclaredWindow("desktop_in_game", (res) => {
+                if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
+                    overwolf.windows.hide(res.window.id);
+                }
+            });
+            overwolf.windows.obtainDeclaredWindow("notification", (res) => {
                 if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
                     overwolf.windows.hide(res.window.id);
                 }
@@ -389,23 +391,16 @@ overwolf.games.getRunningGameInfo((gameInfo) => {
     let gameRunning = (gameInfo && gameInfo.isRunning && gameInfo.classId === 24890);
     isOurGameRunning = gameRunning;
     
-    let isFirstRun = !localStorage.getItem('firstRun_bg');
-    
-    if (isFirstRun) {
-        localStorage.setItem('firstRun_bg', 'true');
-        console.log("Первый запуск приложения. Открываем окно принудительно.");
-        let targetWindowName = gameRunning ? "desktop_in_game" : "desktop";
-        overwolf.windows.obtainDeclaredWindow(targetWindowName, (res) => {
+    if (gameRunning) {
+        console.log("При старте приложения игра уже запущена. Показываем уведомление.");
+        overwolf.windows.obtainDeclaredWindow("notification", (res) => {
             overwolf.windows.restore(res.window.id);
         });
     } else {
-        if (gameRunning) {
-            console.log("При старте приложения игра уже запущена.");
-        } else {
-            overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
-                overwolf.windows.restore(res.window.id);
-            });
-        }
+        console.log("При старте приложения игра не запущена. Открываем десктоп.");
+        overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
+            overwolf.windows.restore(res.window.id);
+        });
     }
 });
 

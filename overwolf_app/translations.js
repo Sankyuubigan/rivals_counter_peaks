@@ -27,7 +27,8 @@ const TRANSLATIONS = {
         "tray_allies": "Союзники",
         "tray_enemies": "Враги",
         "tray_waiting": "Ожидание матча...",
-        "map_not_found": "Карта не найдена"
+        "map_not_found": "Карта не найдена",
+        "notif_show_hide": "Показать/Скрыть"
     },
     "en": {
         "tab_counterpicks": "Counter Picks",
@@ -57,7 +58,8 @@ const TRANSLATIONS = {
         "tray_allies": "Allies",
         "tray_enemies": "Enemies",
         "tray_waiting": "Waiting for match...",
-        "map_not_found": "Map not found"
+        "map_not_found": "Map not found",
+        "notif_show_hide": "Show/Hide App"
     }
 };
 
@@ -73,7 +75,6 @@ function getTranslation(key, params = {}) {
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         let key = el.getAttribute('data-i18n');
-        // Заменяем переносы строк на <br> для корректного отображения в HTML
         el.innerHTML = getTranslation(key).replace(/\n/g, '<br>');
     });
 }
