@@ -3,11 +3,13 @@
   "type": "WebApp",
   "meta": {
     "name": "Marvel Rivals Counter Picks",
-    "version": "3.0.5",
+    "version": "26.04.09",
     "minimum-overwolf-version": "0.200.0.0",
     "author": "Sankyuubigan",
     "description": "Counter Picks Overlay for Marvel Rivals",
-    "icon": "icon.png"
+    "icon": "IconMouseNormal.png",
+    "launcher_icon": "launcher_icon.ico",
+    "window_icon": "IconMouseOver.png"
   },
   "permissions":[
     "GameInfo",

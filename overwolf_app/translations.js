@@ -25,7 +25,7 @@ const TRANSLATIONS = {
         "setting_language": "Язык / Language",
         "refresh_logs": "Обновить логи",
         "about_title": "О программе",
-        "about_text": "Rivals Counter Peaks — это оверлей для Marvel Rivals, который помогает подбирать контрпики в реальном времени.",
+        "about_text": "Добро пожаловать в Rivals Counter Picks!\n\nЭто оверлей для Marvel Rivals, который помогает подбирать контрпики в реальном времени.\n\n🎮 Как использовать в игре:\n• Удерживайте TAB, чтобы показать внутриигровой трей с рекомендациями.\n• Чтобы переместить трей, удерживайте TAB и нажимайте Стрелки (Влево/Вправо/Вверх/Вниз).\n• Нажмите Alt+G, чтобы открыть/скрыть это главное окно с настройками в любой момент.\n\nОверлей автоматически считывает вражескую команду и карту, чтобы предложить лучших героев для победы!",
         "author_title": "Об авторе",
         "author_text": "Создано Sankyuubigan.",
         "points": "очков",
@@ -60,7 +60,7 @@ const TRANSLATIONS = {
         "setting_language": "Language / Язык",
         "refresh_logs": "Refresh Logs",
         "about_title": "About Program",
-        "about_text": "Rivals Counter Peaks is an overlay for Marvel Rivals that helps you pick counter heroes in real-time.",
+        "about_text": "Welcome to Rivals Counter Picks!\n\nThis is an overlay for Marvel Rivals that helps you pick counter heroes in real-time.\n\n🎮 How to use in-game:\n• Hold TAB to show the in-game tray with recommendations.\n• To move the tray, hold TAB and press the Arrow Keys (Left/Right/Up/Down).\n• Press Alt+G to show/hide this main window with settings at any time.\n\nThe overlay automatically reads the enemy team and map to suggest the best heroes for victory!",
         "author_title": "About Author",
         "author_text": "Created by Sankyuubigan.",
         "points": "points",
@@ -83,6 +83,7 @@ function getTranslation(key, params = {}) {
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         let key = el.getAttribute('data-i18n');
-        el.innerText = getTranslation(key);
+        // Заменяем переносы строк на <br> для корректного отображения в HTML
+        el.innerHTML = getTranslation(key).replace(/\n/g, '<br>');
     });
 }

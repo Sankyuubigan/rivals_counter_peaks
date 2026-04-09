@@ -1,11 +1,11 @@
 let bgWindow = overwolf.windows.getMainWindow();
-let manualSelectedEnemies = [];
+let manualSelectedEnemies =[];
 
 const origDesktopLog = console.log;
 console.log = function(...args) {
     origDesktopLog.apply(console, args);
     if (bgWindow && bgWindow.appLogs) {
-        bgWindow.appLogs.push(`[${new Date().toLocaleTimeString()}] [UI_LOG] ` + args.join(' '));
+        bgWindow.appLogs.push(`[${new Date().toLocaleTimeString()}][UI_LOG] ` + args.join(' '));
     }
 };
 
@@ -95,7 +95,7 @@ function updateManualCounterpicks() {
 }
 
 function clearManualSelection() {
-    manualSelectedEnemies = [];
+    manualSelectedEnemies =[];
     document.querySelectorAll('#cp-heroes-grid .grid-btn').forEach(b => b.classList.remove('selected'));
     updateManualCounterpicks();
 }
@@ -104,7 +104,7 @@ function renderTierList() {
     let container = document.getElementById('tl-results');
     let map = document.getElementById('tl-map-select').value;
     let scores = bgWindow.marvelLogic.calculateTierListScoresWithMap(map);
-    renderList(container, scores, []);
+    renderList(container, scores,[]);
 }
 
 function renderList(container, scores, effectiveTeam) {
@@ -181,8 +181,7 @@ function openTab(tabId, btn) {
     if (tabId === 'logs') refreshLogs();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    ['hide-allies', 'show-rating', 'priority-first', 'favorites-first', 'clear-tray'].forEach(id => {
+document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-rating', 'priority-first', 'favorites-first', 'clear-tray'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
         cb.checked = localStorage.getItem(key) === 'true';
@@ -218,6 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     applyTranslations();
+
+    // Проверка первого запуска для переключения на вкладку About
+    let isFirstRunDesktop = !localStorage.getItem('firstRun_desktop');
+    if (isFirstRunDesktop) {
+        localStorage.setItem('firstRun_desktop', 'true');
+        let aboutBtn = document.querySelector('.tab-btn[onclick*="about"]');
+        if (aboutBtn) openTab('about', aboutBtn);
+    }
 
     document.getElementById('close-btn').addEventListener('click', () => {
         overwolf.windows.getCurrentWindow((res) => overwolf.windows.hide(res.window.id));

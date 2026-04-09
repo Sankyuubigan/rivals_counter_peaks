@@ -32,7 +32,7 @@ window.latestData = {
     map: null,
     is_map_effective: false,
     enemy_heroes: [],
-    ally_heroes: [],
+    ally_heroes:[],
     banned_heroes:[],
     counter_scores: {},
     effective_team:[]
@@ -236,7 +236,7 @@ function processGameData() {
                 window.latestData = {
                     map: finalMapName,
                     is_map_effective: isMapEffective,
-                    enemy_heroes: [],
+                    enemy_heroes:[],
                     ally_heroes:[],
                     banned_heroes: bannedHeroes,
                     counter_scores: tierScores,
@@ -386,14 +386,26 @@ overwolf.games.onGameInfoUpdated.addListener((event) => {
 });
 
 overwolf.games.getRunningGameInfo((gameInfo) => {
-    if (gameInfo && gameInfo.isRunning && gameInfo.classId === 24890) {
-        isOurGameRunning = true;
-        console.log("При старте приложения игра уже запущена.");
-    } else {
-        isOurGameRunning = false;
-        overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
+    let gameRunning = (gameInfo && gameInfo.isRunning && gameInfo.classId === 24890);
+    isOurGameRunning = gameRunning;
+    
+    let isFirstRun = !localStorage.getItem('firstRun_bg');
+    
+    if (isFirstRun) {
+        localStorage.setItem('firstRun_bg', 'true');
+        console.log("Первый запуск приложения. Открываем окно принудительно.");
+        let targetWindowName = gameRunning ? "desktop_in_game" : "desktop";
+        overwolf.windows.obtainDeclaredWindow(targetWindowName, (res) => {
             overwolf.windows.restore(res.window.id);
         });
+    } else {
+        if (gameRunning) {
+            console.log("При старте приложения игра уже запущена.");
+        } else {
+            overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
+                overwolf.windows.restore(res.window.id);
+            });
+        }
     }
 });
 
