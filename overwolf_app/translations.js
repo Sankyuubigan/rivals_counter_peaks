@@ -64,8 +64,8 @@ const TRANSLATIONS = {
 };
 
 function getTranslation(key, params = {}) {
-    let lang = localStorage.getItem('language') || 'ru';
-    let text = TRANSLATIONS[lang] && TRANSLATIONS[lang][key] ? TRANSLATIONS[lang][key] : (TRANSLATIONS['ru'][key] || key);
+    let lang = localStorage.getItem('language') || 'en';
+    let text = TRANSLATIONS[lang] && TRANSLATIONS[lang][key] ? TRANSLATIONS[lang][key] : (TRANSLATIONS['en'][key] || key);
     for (let p in params) {
         text = text.replace(`{${p}}`, params[p]);
     }

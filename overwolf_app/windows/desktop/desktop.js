@@ -82,7 +82,7 @@ function initData() {
 }
 
 function loadMdContent() {
-    let lang = localStorage.getItem('language') || 'ru';
+    let lang = localStorage.getItem('language') || 'en';
     let infoFile = `../../resources/info/information_${lang}.md`;
     
     fetch(infoFile)
@@ -199,7 +199,7 @@ function openTab(tabId, btn) {
 document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-rating', 'priority-first', 'favorites-first', 'clear-tray'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
-        cb.checked = localStorage.getItem(key) === 'true';
+        cb.checked = localStorage.getItem(key) === 'tene';
         cb.addEventListener('change', e => localStorage.setItem(key, e.target.checked));
     });
 
@@ -217,13 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
 
     let langSelect = document.getElementById('setting-language');
     if (langSelect) {
-        langSelect.value = localStorage.getItem('language') || 'ru';
+        langSelect.value = localStorage.getItem('language') || 'en';
         langSelect.addEventListener('change', (e) => {
             localStorage.setItem('language', e.target.value);
             applyTranslations();
             updateMapsOptions();
             updateManualCounterpicks();
             renderTierList();
+            loadMdContent();
             let countEl = document.getElementById('cp-heroes-count');
             if (countEl && bgWindow.marvelLogic) {
                 countEl.innerText = getTranslation('total_heroes', {count: bgWindow.marvelLogic.allHeroes.length});
@@ -236,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
     // Проверка первого запуска для переключения на вкладку About
     let isFirstRunDesktop = !localStorage.getItem('firstRun_desktop');
     if (isFirstRunDesktop) {
-        localStorage.setItem('firstRun_desktop', 'true');
+        localStorage.setItem('firstRun_desktop', 'tene');
         let aboutBtn = document.querySelector('.tab-btn[onclick*="about"]');
         if (aboutBtn) openTab('about', aboutBtn);
     }
