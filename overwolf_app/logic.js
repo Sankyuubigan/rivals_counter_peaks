@@ -14,14 +14,31 @@ class CounterpickLogic {
 
     async init() {
         try {
-            const statsRes = await fetch('database/stats.json');
-            const fullData = await statsRes.json();
-            
+            // 1. СНАЧАЛА грузим словарь, чтобы узнать имя дефолтной базы
             const entitiesRes = await fetch('database/game_entities_dict.json');
             this.gameEntities = await entitiesRes.json();
+            
+            // Получаем имя базы данных из коробки
+            const defaultDbFileName = this.gameEntities.default_db_file || 'stats.json';
+
+            // 2. Проверяем, скачивал ли юзер что-то с Гитхаба
+            const activeDbName = localStorage.getItem('active_db_name') || 'local';
+            const savedDbs = JSON.parse(localStorage.getItem('saved_dbs') || '{}');
+            
+            let fullData;
+            if (activeDbName !== 'local' && savedDbs[activeDbName]) {
+                // Грузим пользовательскую скачанную базу
+                fullData = savedDbs[activeDbName];
+                console.log(`[DB] Загружена пользовательская база: ${activeDbName}`);
+            } else {
+                // Грузим дефолтную базу из коробки
+                const statsRes = await fetch(`database/stats/${defaultDbFileName}`);
+                fullData = await statsRes.json();
+                console.log(`[DB] Загружена база из коробки: ${defaultDbFileName}`);
+            }
 
             this.statsData = fullData.heroes || {};
-            this.teamupsData = fullData.teamups ||[];
+            this.teamupsData = fullData.teamups || [];
             this.allHeroes = Object.keys(this.statsData).sort();
 
             for (let hero of this.allHeroes) {

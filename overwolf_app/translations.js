@@ -28,7 +28,15 @@ const TRANSLATIONS = {
         "tray_enemies": "Враги",
         "tray_waiting": "Ожидание матча...",
         "map_not_found": "Карта не найдена",
-        "notif_show_hide": "Показать/Скрыть"
+        "notif_show_hide": "Показать/Скрыть",
+        "db_update_title": "Обновление базы данных (Мета)",
+        "db_check_github": "Проверить папку на GitHub",
+        "db_status_active": "Активна",
+        "db_status_downloaded": "Установлена",
+        "db_status_available": "Доступна для скачивания",
+        "db_btn_activate": "Активировать",
+        "db_btn_download": "Скачать",
+        "db_btn_delete": "Удалить"
     },
     "en": {
         "tab_counterpicks": "Counter Picks",
@@ -59,7 +67,15 @@ const TRANSLATIONS = {
         "tray_enemies": "Enemies",
         "tray_waiting": "Waiting for match...",
         "map_not_found": "Map not found",
-        "notif_show_hide": "Show/Hide App"
+        "notif_show_hide": "Show/Hide App",
+        "db_update_title": "Database Update (Meta)",
+        "db_check_github": "Check Folder on GitHub",
+        "db_status_active": "Active",
+        "db_status_downloaded": "Installed",
+        "db_status_available": "Available for Download",
+        "db_btn_activate": "Activate",
+        "db_btn_download": "Download",
+        "db_btn_delete": "Delete"
     }
 };
 

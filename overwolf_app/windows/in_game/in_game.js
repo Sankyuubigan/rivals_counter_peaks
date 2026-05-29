@@ -6,9 +6,83 @@ overwolf.windows.onMessageReceived.addListener((message) => {
     }
 });
 
-function getHeroImage(name) {
-    let formatted = name.toLowerCase().replace(/[- ]/g, '_');
-    return `../../resources/heroes_icons/${formatted}_1.png`;
+const imageCache = {};
+
+function applyHeroImage(element, heroName) {
+    if (!heroName) return;
+    let formatted = heroName.toLowerCase().replace(/[- ]/g, '_');
+    let localUrl = `../../resources/heroes_icons/${formatted}_1.png`;
+    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}_1.png`;
+
+    function setFallback() {
+        element.style.backgroundImage = 'none';
+        if (!element.querySelector('.hero-fallback-text')) {
+            let span = document.createElement('span');
+            span.className = 'hero-fallback-text';
+            span.innerText = heroName.substring(0, 5).toUpperCase();
+            element.appendChild(span);
+        }
+    }
+
+    if (imageCache[heroName] === 'not_found') {
+        setFallback();
+        return;
+    } else if (imageCache[heroName]) {
+        element.style.backgroundImage = `url('${imageCache[heroName]}')`;
+        return;
+    }
+
+    element.style.backgroundImage = `url('${localUrl}')`;
+    let img = new Image();
+    img.onload = () => { imageCache[heroName] = localUrl; };
+    img.onerror = () => {
+        let imgGit = new Image();
+        imgGit.onload = () => { 
+            imageCache[heroName] = githubUrl; 
+            element.style.backgroundImage = `url('${githubUrl}')`; 
+        };
+        imgGit.onerror = () => { 
+            imageCache[heroName] = 'not_found'; 
+            setFallback(); 
+        };
+        imgGit.src = githubUrl;
+    };
+    img.src = localUrl;
+}
+
+function applyMapImage(element, mapName) {
+    if (!mapName) {
+        element.style.backgroundImage = 'none';
+        return;
+    }
+    let imgName = mapName.toUpperCase();
+    let localUrl = `../../resources/maps/${imgName}.png`;
+    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/maps/${imgName}.png`;
+
+    if (imageCache['MAP_' + mapName] === 'not_found') {
+        element.style.backgroundImage = 'none';
+        return;
+    } else if (imageCache['MAP_' + mapName]) {
+        element.style.backgroundImage = `url('${imageCache['MAP_' + mapName]}')`;
+        return;
+    }
+
+    element.style.backgroundImage = `url('${localUrl}')`;
+    let img = new Image();
+    img.onload = () => { imageCache['MAP_' + mapName] = localUrl; };
+    img.onerror = () => {
+        let imgGit = new Image();
+        imgGit.onload = () => { 
+            imageCache['MAP_' + mapName] = githubUrl; 
+            element.style.backgroundImage = `url('${githubUrl}')`; 
+        };
+        imgGit.onerror = () => { 
+            imageCache['MAP_' + mapName] = 'not_found'; 
+            element.style.backgroundImage = 'none'; 
+        };
+        imgGit.src = githubUrl;
+    };
+    img.src = localUrl;
 }
 
 function getHeroRole(heroName) {
@@ -27,7 +101,7 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
     let role = getHeroRole(name);
     if (role) div.classList.add(`role-${role}`);
     
-    div.style.backgroundImage = `url('${getHeroImage(name)}')`;
+    applyHeroImage(div, name);
     
     if (isAlly) {
         let badge = document.createElement('div');
@@ -60,10 +134,8 @@ function renderUI(data) {
     
     document.getElementById('map-name').innerText = data.map || getTranslation('tray_waiting');
 
-    // Логика отображения карты (Картинка ставится всегда, если есть имя, а рамка - только если влияет на рейтинг)
     if (data.map) {
-        let imgName = data.map.toUpperCase();
-        mapContainer.style.backgroundImage = `url('../../resources/maps/${imgName}.png')`;
+        applyMapImage(mapContainer, data.map);
         
         if (data.is_map_effective) {
             mapContainer.classList.add('map-box-active');

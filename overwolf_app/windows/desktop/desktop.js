@@ -9,9 +9,48 @@ console.log = function(...args) {
     }
 };
 
-function getHeroImage(name) {
-    let formatted = name.toLowerCase().replace(/[- ]/g, '_');
-    return `../../resources/heroes_icons/${formatted}_1.png`;
+const imageCache = {};
+
+function applyHeroImage(element, heroName) {
+    if (!heroName) return;
+    let formatted = heroName.toLowerCase().replace(/[- ]/g, '_');
+    let localUrl = `../../resources/heroes_icons/${formatted}_1.png`;
+    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}_1.png`;
+
+    function setFallback() {
+        element.style.backgroundImage = 'none';
+        if (!element.querySelector('.hero-fallback-text')) {
+            let span = document.createElement('span');
+            span.className = 'hero-fallback-text';
+            span.innerText = heroName.substring(0, 5).toUpperCase();
+            element.appendChild(span);
+        }
+    }
+
+    if (imageCache[heroName] === 'not_found') {
+        setFallback();
+        return;
+    } else if (imageCache[heroName]) {
+        element.style.backgroundImage = `url('${imageCache[heroName]}')`;
+        return;
+    }
+
+    element.style.backgroundImage = `url('${localUrl}')`;
+    let img = new Image();
+    img.onload = () => { imageCache[heroName] = localUrl; };
+    img.onerror = () => {
+        let imgGit = new Image();
+        imgGit.onload = () => { 
+            imageCache[heroName] = githubUrl; 
+            element.style.backgroundImage = `url('${githubUrl}')`; 
+        };
+        imgGit.onerror = () => { 
+            imageCache[heroName] = 'not_found'; 
+            setFallback(); 
+        };
+        imgGit.src = githubUrl;
+    };
+    img.src = localUrl;
 }
 
 function updateMapsOptions() {
@@ -52,7 +91,7 @@ function initData() {
     bgWindow.marvelLogic.allHeroes.forEach(hero => {
         let btn = document.createElement('button');
         btn.className = 'grid-btn';
-        btn.style.backgroundImage = `url('${getHeroImage(hero)}')`;
+        applyHeroImage(btn, hero);
         btn.title = hero;
         if (manualSelectedEnemies.includes(hero)) {
             btn.classList.add('selected');
@@ -79,6 +118,7 @@ function initData() {
     renderTierList();
     renderFavoritesGrid();
     loadMdContent();
+    renderDbList();
 }
 
 function loadMdContent() {
@@ -88,7 +128,6 @@ function loadMdContent() {
     fetch(infoFile)
         .then(res => res.text())
         .then(text => {
-            // Убираем заголовок # о программе (или # About Program)
             let content = text.replace(/^#\s*(о программе|About Program)\s*$/gim, '').trim();
             document.getElementById('about-md-content').innerHTML = content;
         })
@@ -133,7 +172,7 @@ function renderList(container, scores, effectiveTeam) {
         
         let icon = document.createElement('div');
         icon.className = 'hero-icon';
-        icon.style.backgroundImage = `url('${getHeroImage(hero)}')`;
+        applyHeroImage(icon, hero);
         
         let text = document.createElement('div');
         text.innerHTML = `<strong>${index + 1}. ${hero}</strong>: ${score.toFixed(1)} ${getTranslation('points')}`;
@@ -152,7 +191,7 @@ function renderFavoritesGrid() {
     bgWindow.marvelLogic.allHeroes.forEach(hero => {
         let btn = document.createElement('button');
         btn.className = 'grid-btn';
-        btn.style.backgroundImage = `url('${getHeroImage(hero)}')`;
+        applyHeroImage(btn, hero);
         btn.title = hero;
         if (savedFavorites.includes(hero)) btn.classList.add('selected');
 
@@ -196,10 +235,127 @@ function openTab(tabId, btn) {
     if (tabId === 'logs') refreshLogs();
 }
 
+// --- ЛОГИКА ОБНОВЛЕНИЯ БАЗ ДАННЫХ ---
+const DB_GITHUB_API = "https://api.github.com/repos/Sankyuubigan/rivals_counter_peaks/contents/overwolf_app/database/stats?ref=master";
+
+function renderDbList(githubFiles = []) {
+    const container = document.getElementById('db-list-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const activeDbName = localStorage.getItem('active_db_name') || 'local';
+    const savedDbs = JSON.parse(localStorage.getItem('saved_dbs') || '{}');
+    
+    const builtInFileName = (bgWindow.marvelLogic && bgWindow.marvelLogic.gameEntities) 
+        ? bgWindow.marvelLogic.gameEntities.default_db_file 
+        : 'Встроенная база';
+
+    container.appendChild(createDbRowItem(builtInFileName + " (Из коробки)", 'local', null, activeDbName === 'local', true));
+
+    let allDbNames = new Set([...Object.keys(savedDbs), ...githubFiles.map(f => f.name)]);
+
+    allDbNames.forEach(fileName => {
+        if (fileName === 'local' || fileName === builtInFileName || !fileName.endsWith('.json')) return;
+        
+        let isDownloaded = !!savedDbs[fileName];
+        let isActive = activeDbName === fileName;
+        let gitFile = githubFiles.find(f => f.name === fileName);
+        let downloadUrl = gitFile ? gitFile.download_url : null;
+
+        container.appendChild(createDbRowItem(fileName, fileName, downloadUrl, isActive, isDownloaded));
+    });
+}
+
+function createDbRowItem(displayName, fileName, downloadUrl, isActive, isDownloaded) {
+    let row = document.createElement('div');
+    row.style.cssText = `display: flex; justify-content: space-between; align-items: center; background: ${isActive ? '#45475a' : '#1e1e2e'}; padding: 5px 10px; border-radius: 3px; border: 1px solid ${isActive ? '#89dceb' : '#45475a'};`;
+
+    let statusText = isActive ? getTranslation('db_status_active') : (isDownloaded ? getTranslation('db_status_downloaded') : getTranslation('db_status_available'));
+    
+    let infoDiv = document.createElement('div');
+    infoDiv.innerHTML = `<span style="font-size: 13px; color: #cdd6f4;">${displayName}</span> <br>
+                         <span style="font-size: 10px; color: ${isDownloaded ? '#a6e3a1' : '#f9e2af'};">${statusText}</span>`;
+    
+    let btnsDiv = document.createElement('div');
+    btnsDiv.style.display = 'flex';
+    btnsDiv.style.gap = '5px';
+
+    if (!isActive) {
+        let btnAct = document.createElement('button');
+        btnAct.className = 'action-btn';
+        btnAct.innerText = isDownloaded ? getTranslation('db_btn_activate') : getTranslation('db_btn_download');
+        btnAct.onclick = async () => {
+            let msgEl = document.getElementById('db-status-msg');
+            if (fileName === 'local') {
+                localStorage.setItem('active_db_name', 'local');
+                reloadAppLogic("Встроенная база активирована!");
+            } else if (isDownloaded) {
+                localStorage.setItem('active_db_name', fileName);
+                reloadAppLogic(`База ${fileName} активирована!`);
+            } else if (downloadUrl) {
+                msgEl.innerText = "Скачивание...";
+                try {
+                    let res = await fetch(downloadUrl + "?t=" + Date.now());
+                    let data = await res.json();
+                    
+                    let savedDbs = JSON.parse(localStorage.getItem('saved_dbs') || '{}');
+                    savedDbs[fileName] = data;
+                    localStorage.setItem('saved_dbs', JSON.stringify(savedDbs));
+                    localStorage.setItem('active_db_name', fileName);
+                    
+                    reloadAppLogic(`База скачана и активирована!`);
+                } catch (e) {
+                    msgEl.innerText = "Ошибка скачивания базы!";
+                    console.error(e);
+                }
+            }
+        };
+        btnsDiv.appendChild(btnAct);
+    }
+
+    if (isDownloaded && fileName !== 'local') {
+        let btnDel = document.createElement('button');
+        btnDel.className = 'action-btn';
+        btnDel.style.backgroundColor = '#f38ba8';
+        btnDel.style.color = '#11111b';
+        btnDel.innerText = getTranslation('db_btn_delete');
+        btnDel.onclick = () => {
+            let savedDbs = JSON.parse(localStorage.getItem('saved_dbs') || '{}');
+            delete savedDbs[fileName];
+            localStorage.setItem('saved_dbs', JSON.stringify(savedDbs));
+            
+            if (isActive) {
+                localStorage.setItem('active_db_name', 'local');
+                reloadAppLogic("Активная база удалена. Возврат на встроенную.");
+            } else {
+                renderDbList();
+            }
+        };
+        btnsDiv.appendChild(btnDel);
+    }
+
+    row.appendChild(infoDiv);
+    row.appendChild(btnsDiv);
+    return row;
+}
+
+async function reloadAppLogic(msg) {
+    let msgEl = document.getElementById('db-status-msg');
+    if (msgEl) msgEl.innerText = msg;
+    
+    if (bgWindow && bgWindow.marvelLogic) {
+        bgWindow.marvelLogic.isReady = false;
+        await bgWindow.marvelLogic.init();
+        renderDbList();
+        initData();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-rating', 'priority-first', 'favorites-first', 'clear-tray'].forEach(id => {
         let cb = document.getElementById(`setting-${id}`);
         let key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
-        cb.checked = localStorage.getItem(key) === 'tene';
+        cb.checked = localStorage.getItem(key) === 'true';
         cb.addEventListener('change', e => localStorage.setItem(key, e.target.checked));
     });
 
@@ -225,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
             updateManualCounterpicks();
             renderTierList();
             loadMdContent();
+            renderDbList();
             let countEl = document.getElementById('cp-heroes-count');
             if (countEl && bgWindow.marvelLogic) {
                 countEl.innerText = getTranslation('total_heroes', {count: bgWindow.marvelLogic.allHeroes.length});
@@ -234,10 +391,9 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
 
     applyTranslations();
 
-    // Проверка первого запуска для переключения на вкладку About
     let isFirstRunDesktop = !localStorage.getItem('firstRun_desktop');
     if (isFirstRunDesktop) {
-        localStorage.setItem('firstRun_desktop', 'tene');
+        localStorage.setItem('firstRun_desktop', 'true');
         let aboutBtn = document.querySelector('.tab-btn[onclick*="about"]');
         if (aboutBtn) openTab('about', aboutBtn);
     }
@@ -249,6 +405,29 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
     document.getElementById('header').addEventListener('mousedown', () => {
         overwolf.windows.getCurrentWindow((res) => overwolf.windows.dragMove(res.window.id));
     });
+
+    let btnCheckDb = document.getElementById('btn-check-db');
+    if (btnCheckDb) {
+        btnCheckDb.addEventListener('click', async () => {
+            let msgEl = document.getElementById('db-status-msg');
+            msgEl.innerText = "Ищем файлы в папке stats на GitHub...";
+            try {
+                let res = await fetch(DB_GITHUB_API + "&t=" + Date.now());
+                if (!res.ok) throw new Error("GitHub API Error");
+                let files = await res.json();
+                
+                let jsonFiles = files.filter(f => f.name.endsWith('.json'));
+                
+                msgEl.innerText = `Найдено баз: ${jsonFiles.length}`;
+                setTimeout(() => { if(msgEl.innerText.includes("Найдено")) msgEl.innerText = ""; }, 3000);
+                
+                renderDbList(jsonFiles);
+            } catch (e) {
+                msgEl.innerText = "Ошибка. Возможно, превышен лимит запросов GitHub API (60 в час).";
+                console.error(e);
+            }
+        });
+    }
 
     initData();
 });
