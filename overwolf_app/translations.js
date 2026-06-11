@@ -36,7 +36,10 @@ const TRANSLATIONS = {
         "db_status_available": "Доступна для скачивания",
         "db_btn_activate": "Активировать",
         "db_btn_download": "Скачать",
-        "db_btn_delete": "Удалить"
+        "db_btn_delete": "Удалить",
+        "overwolf_checking": "Проверка подключения к Overwolf...",
+        "overwolf_connected": "Overwolf: подключен",
+        "overwolf_disconnected": "Overwolf: отключен"
     },
     "en": {
         "tab_counterpicks": "Counter Picks",
@@ -75,7 +78,10 @@ const TRANSLATIONS = {
         "db_status_available": "Available for Download",
         "db_btn_activate": "Activate",
         "db_btn_download": "Download",
-        "db_btn_delete": "Delete"
+        "db_btn_delete": "Delete",
+        "overwolf_checking": "Checking Overwolf connection...",
+        "overwolf_connected": "Overwolf: connected",
+        "overwolf_disconnected": "Overwolf: disconnected"
     }
 };
 

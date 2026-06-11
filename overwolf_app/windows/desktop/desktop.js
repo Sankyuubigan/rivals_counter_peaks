@@ -227,12 +227,54 @@ function copyLogs() {
     });
 }
 
+// === СТАТУС ПОДКЛЮЧЕНИЯ К OVERWOLF ===
+function updateOverwolfStatusUI() {
+    try {
+        let status = bgWindow.overwolfStatus;
+        let dot = document.getElementById('overwolf-status-dot');
+        let text = document.getElementById('overwolf-status-text');
+        let errEl = document.getElementById('overwolf-status-error');
+        let container = document.getElementById('overwolf-status');
+
+        if (!dot || !text || !container) return;
+
+        if (!status) {
+            dot.style.background = '#f38ba8';
+            text.innerText = getTranslation('overwolf_checking');
+            if (errEl) errEl.style.display = 'none';
+            return;
+        }
+
+        if (status.connected) {
+            dot.style.background = '#a6e3a1';
+            dot.style.boxShadow = '0 0 6px #a6e3a1';
+            text.innerText = getTranslation('overwolf_connected');
+            container.style.borderColor = '#a6e3a1';
+            if (errEl) errEl.style.display = 'none';
+        } else {
+            dot.style.background = '#f38ba8';
+            dot.style.boxShadow = '0 0 6px #f38ba8';
+            text.innerText = getTranslation('overwolf_disconnected');
+            container.style.borderColor = '#f38ba8';
+            if (errEl) {
+                errEl.style.display = 'inline';
+                errEl.innerText = status.error || '';
+            }
+        }
+    } catch (e) {
+        console.error("Ошибка обновления статуса Overwolf:", e);
+    }
+}
+
+setInterval(updateOverwolfStatusUI, 5000);
+
 function openTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
     if (tabId === 'logs') refreshLogs();
+    if (tabId === 'settings') updateOverwolfStatusUI();
 }
 
 // --- ЛОГИКА ОБНОВЛЕНИЯ БАЗ ДАННЫХ ---

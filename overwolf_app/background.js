@@ -24,8 +24,97 @@ console.log = function() { formatLog('INFO', arguments); origLog.apply(console, 
 console.warn = function() { formatLog('WARN', arguments); origWarn.apply(console, arguments); };
 console.error = function() { formatLog('ERROR', arguments); origError.apply(console, arguments); };
 
+// === СТАТУС ПОДКЛЮЧЕНИЯ К OVERWOLF ===
+window.overwolfStatus = {
+    connected: false,
+    error: null,
+    gameEventsSubscribed: false,
+    lastCheckTime: null,
+    lastErrorTime: null,
+    errorCount: 0
+};
+
+function updateOverwolfStatus(connected, errorMsg) {
+    window.overwolfStatus.connected = connected;
+    window.overwolfStatus.error = errorMsg;
+    window.overwolfStatus.lastCheckTime = new Date().toISOString();
+    if (errorMsg) {
+        window.overwolfStatus.lastErrorTime = new Date().toISOString();
+        window.overwolfStatus.errorCount++;
+        console.error("[OVERWOLF_STATUS] Статус: ОТКЛЮЧЕН. Ошибка:", errorMsg);
+    } else {
+        console.log("[OVERWOLF_STATUS] Статус: ПОДКЛЮЧЕН");
+    }
+}
+
+function checkOverwolfConnection() {
+    try {
+        if (typeof overwolf === 'undefined') {
+            updateOverwolfStatus(false, "Overwolf API не найден (overwolf === undefined)");
+            return;
+        }
+        if (!overwolf.games || !overwolf.games.events) {
+            updateOverwolfStatus(false, "overwolf.games.events не доступен");
+            return;
+        }
+        overwolf.games.events.getInfo(function(info) {
+            if (info && info.success !== false) {
+                if (!window.overwolfStatus.connected) {
+                    console.log("[OVERWOLF_CHECK] getInfo успешен, соединение восстановлено");
+                }
+                updateOverwolfStatus(true, null);
+            } else {
+                let errMsg = info && info.error ? info.error : (info && info.status ? info.status : "getInfo вернул пустой результат");
+                updateOverwolfStatus(false, "getInfo: " + errMsg);
+            }
+        });
+    } catch (e) {
+        updateOverwolfStatus(false, "Исключение при проверке: " + (e.message || e));
+    }
+}
+
 // === ОСНОВНАЯ ЛОГИКА ===
 const REQUIRED_FEATURES =['match_info', 'game_info'];
+let gameEventsSetupAttempts = 0;
+const MAX_SETUP_ATTEMPTS = 10;
+
+function setupGameEvents() {
+    gameEventsSetupAttempts++;
+    console.log("[OVERWOLF] Попытка #" + gameEventsSetupAttempts + " подписки на игровые события (setRequiredFeatures)...");
+    overwolf.games.events.setRequiredFeatures(REQUIRED_FEATURES, function(result) {
+        if (result && result.success) {
+            console.log("[OVERWOLF] Игровые события успешно подписаны! Попытка #" + gameEventsSetupAttempts);
+            window.overwolfStatus.gameEventsSubscribed = true;
+            updateOverwolfStatus(true, null);
+            gameEventsSetupAttempts = 0;
+
+            overwolf.games.events.onInfoUpdates2.addListener(function(info) {
+                if (info && info.info && info.info.match_info && info.info.match_info.hasOwnProperty('banned_characters')) {
+                    console.log("[EVENT] Обновление банов через onInfoUpdates2:", info.info.match_info.banned_characters);
+                }
+                if (updateStateFromInfo(info.info)) processGameData();
+            });
+
+            setInterval(function() {
+                overwolf.games.events.getInfo(function(info) {
+                    if (info && info.res && updateStateFromInfo(info.res)) processGameData();
+                });
+            }, 5000);
+        } else {
+            let errMsg = result && result.error ? result.error : "Неизвестная ошибка setRequiredFeatures";
+            console.error("[OVERWOLF] ОШИБКА подписки на игровые события (попытка #" + gameEventsSetupAttempts + "):", errMsg);
+            updateOverwolfStatus(false, "setRequiredFeatures: " + errMsg);
+
+            if (gameEventsSetupAttempts < MAX_SETUP_ATTEMPTS) {
+                let delay = Math.min(5000 * gameEventsSetupAttempts, 30000);
+                console.log("[OVERWOLF] Повторная попытка через " + delay + "ms...");
+                setTimeout(setupGameEvents, delay);
+            } else {
+                console.error("[OVERWOLF] Исчерпаны все попытки подписки на игровые события (" + MAX_SETUP_ATTEMPTS + ")");
+            }
+        }
+    });
+}
 
 window.marvelLogic = new CounterpickLogic();
 window.latestData = {
@@ -225,19 +314,8 @@ function processGameData() {
                     counter_scores: {},
                     effective_team:[]
                 };
-            } else {
-                let tierScores = window.marvelLogic.calculateTierListScoresWithMap(finalMapName);
-                window.latestData = {
-                    map: finalMapName,
-                    is_map_effective: isMapEffective,
-                    enemy_heroes: [],
-                    ally_heroes:[],
-                    banned_heroes: bannedHeroes,
-                    counter_scores: tierScores,
-                    effective_team:[]
-                };
+                overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             }
-            overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             return;
         }
 
@@ -362,6 +440,11 @@ overwolf.games.onGameInfoUpdated.addListener((event) => {
         if (gameRunning && classId === 24890) {
             isOurGameRunning = true;
             console.log("[GAME] Игра запущена. Прячем десктопное окно и показываем уведомление.");
+            console.log("[OVERWOLF] Игра запущена - переподписываемся на игровые события...");
+            if (!window.overwolfStatus.gameEventsSubscribed) {
+                console.log("[OVERWOLF] События не были подписаны ранее, вызываем setupGameEvents()...");
+                setupGameEvents();
+            }
             overwolf.windows.obtainDeclaredWindow("desktop", (res) => {
                 if (res && res.window && res.window.stateEx !== "hidden" && res.window.stateEx !== "closed") {
                     overwolf.windows.hide(res.window.id);
@@ -402,21 +485,18 @@ overwolf.games.getRunningGameInfo((gameInfo) => {
             overwolf.windows.restore(res.window.id);
         });
     }
+
+    // После получения статуса игры запускаем подписку на события
+    console.log("[OVERWOLF] Стартуем подписку на игровые события...");
+    setupGameEvents();
 });
 
-overwolf.games.events.setRequiredFeatures(REQUIRED_FEATURES, (result) => {
-    if (result.success) {
-        overwolf.games.events.onInfoUpdates2.addListener((info) => {
-            if (info && info.info && info.info.match_info && info.info.match_info.hasOwnProperty('banned_characters')) {
-                console.log("[EVENT] Обновление банов через onInfoUpdates2:", info.info.match_info.banned_characters);
-            }
-            if (updateStateFromInfo(info.info)) processGameData();
-        });
-        
-        setInterval(() => {
-            overwolf.games.events.getInfo((info) => {
-                if (info && info.res && updateStateFromInfo(info.res)) processGameData();
-            });
-        }, 5000);
-    }
-});
+// === ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА OVERWOLF ===
+setInterval(checkOverwolfConnection, 15000);
+console.log("[OVERWOLF] Запущен периодический мониторинг соединения (интервал: 15с)");
+
+// === ПЕРВАЯ ПРОВЕРКА ЧЕРЕЗ 3 СЕКУНДЫ ===
+setTimeout(function() {
+    console.log("[OVERWOLF] Первая плановая проверка соединения...");
+    checkOverwolfConnection();
+}, 3000);
