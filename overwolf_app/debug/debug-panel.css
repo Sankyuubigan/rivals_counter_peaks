@@ -1,0 +1,75 @@
+/* Стили панели отладки (только для debug-режима) */
+/* Панель идёт в обычном потоке СНИЗУ окна. */
+#debug-panel {
+    background: #11111b;
+    border-top: 2px solid #89dceb;
+    color: #cdd6f4;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    padding: 6px 10px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+}
+
+.dbg-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.dbg-panel-header strong { color: #89dceb; }
+.dbg-hint { color: #a6adc8; font-size: 11px; }
+.dbg-btn {
+    background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+    border-radius: 3px; padding: 4px 10px; cursor: pointer;
+}
+.dbg-btn:hover { background: #45475a; }
+#dbg-toggle {
+    background: #89dceb; color: #11111b; border: 1px solid #89dceb;
+    font-weight: bold; min-width: 70px;
+}
+#dbg-toggle:hover { background: #94e2eb; }
+
+.dbg-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.dbg-col { flex: 1; min-width: 0; }
+.dbg-col-map { flex: 0 0 160px; }
+.dbg-col-title { font-weight: bold; margin-bottom: 4px; font-size: 11px; }
+.dbg-count { margin-top: 4px; font-size: 10px; color: #a6adc8; min-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dbg-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    max-height: 120px;
+    overflow-y: auto;
+    background: #181825;
+    border: 1px solid #45475a;
+    padding: 4px;
+}
+.dbg-hero-btn {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background-size: cover;
+    background-color: #313244;
+    border: 2px solid #45475a;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0.65;
+    position: relative;
+    padding: 0;
+}
+.dbg-hero-btn:hover { opacity: 1; }
+.dbg-hero-btn.dbg-selected {
+    opacity: 1;
+    box-shadow: 0 0 8px currentColor, 0 0 2px currentColor;
+    transform: scale(1.06);
+}
+.dbg-hero-btn.dbg-selected::after {
+    content: '✓';
+    position: absolute; bottom: 0; right: 2px;
+    color: #fff; font-size: 12px; font-weight: bold;
+    text-shadow: 0 0 3px #000;
+}
+.dbg-check { display: block; margin-top: 4px; font-size: 11px; color: #a6adc8; }
+#dbg-map-select, #dbg-lang { width: 100%; background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 3px; padding: 3px; }
+#debug-panel select { margin-bottom: 4px; }

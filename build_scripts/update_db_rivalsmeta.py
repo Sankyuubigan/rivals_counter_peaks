@@ -85,40 +85,80 @@ def safe_goto(page, url):
         logger.error(f"Ошибка перехода: {e}")
         return False
 
-def get_teamups_data(page):
-    """Получает данные о тим апах."""
+def select_season(page, season, selector='#season_filter'):
+    """Выбирает сезон в выпадающем списке (по подстроке в тексте опции)."""
+    season_select = page.query_selector(selector)
+    if not season_select:
+        # Fallback: любой <select> в блоке фильтра Season
+        for sel in page.query_selector_all('select'):
+            label = sel.evaluate("el => { const l = el.closest('.filter'); return l ? l.textContent : ''; }")
+            if 'season' in (label or '').lower():
+                season_select = sel
+                break
+    if not season_select:
+        return False
+
+    options = season_select.query_selector_all('option')
+    season_value = None
+    for option in options:
+        if season in option.text_content().strip():
+            season_value = option.get_attribute('value')
+            break
+
+    if season_value:
+        season_select.select_option(value=season_value)
+        logger.info(f"Сезон {season} выбран. Ждем обновления...")
+        time.sleep(3)
+        return True
+    return False
+
+
+def get_teamups_data(page, season="1"):
+    """Получает данные о тим апах (разметка сезона 9+: .teamup-grid > article.teamup-card)."""
     logger.info("--- Сбор Team-Ups ---")
-    if not safe_goto(page, "https://rivalsmeta.com/tier-list/team-ups"):
+    if not safe_goto(page, "https://rivalsmeta.com/team-ups"):
         return []
 
     try:
-        # Ждем именно контент
-        page.wait_for_selector('.tier', timeout=15000)
-        
+        if not page.wait_for_selector('.teamup-grid', timeout=15000):
+            logger.warning("Контейнер .teamup-grid не найден.")
+            return []
+
+        # Выбираем нужный сезон (Season 9 и т.д.)
+        select_season(page, season)
+        page.wait_for_selector('.teamup-grid', timeout=15000)
+
         teamups_data = page.evaluate('''() => {
             const teamups = [];
-            const tierBlocks = document.querySelectorAll('.tier');
-            tierBlocks.forEach(tierBlock => {
-                const tierName = tierBlock.querySelector('.t-name')?.textContent.trim() || 'Unknown';
-                const contentElement = tierBlock.querySelector('.content.teamup');
-                if (!contentElement) return;
-                
-                const teamupElements = contentElement.querySelectorAll(':scope > .teamup');
-                teamupElements.forEach(teamupElement => {
-                    const winRateElement = teamupElement.querySelector('.win-rate');
-                    const teamupHeroesElement = teamupElement.querySelector('.teamup-heroes');
-                    
-                    if (!winRateElement || !teamupHeroesElement) return;
-                    
-                    const winRate = winRateElement.textContent.trim();
-                    const heroes = Array.from(teamupElement.querySelectorAll('.teamup-heroes .cha img'))
-                        .map(img => img.getAttribute('alt')?.trim())
-                        .filter(name => name);
-                    
-                    if (heroes.length >= 2) {
-                        teamups.push({ heroes, win_rate: winRate, tier: tierName });
-                    }
-                });
+            const cards = document.querySelectorAll('.teamup-grid > article.teamup-card');
+            cards.forEach(card => {
+                const nameEl = card.querySelector('.card-head .name');
+                if (!nameEl) return;
+                const name = nameEl.textContent.trim();
+
+                // Тир: из класса tier-X или из .tier-letter
+                let tier = 'Unknown';
+                const tierClass = Array.from(card.classList).find(c => c.startsWith('tier-') && c !== 'teamup-card');
+                if (tierClass) tier = tierClass.replace('tier-', '').toUpperCase();
+                const tierLetterEl = card.querySelector('.tier-letter');
+                if (tierLetterEl && tier === 'Unknown') tier = tierLetterEl.textContent.trim().toUpperCase();
+
+                // Win Rate
+                const wrEl = card.querySelector('.card-stats .val.wr');
+                const win_rate = wrEl ? wrEl.textContent.trim() : '';
+
+                // Герои (slug из href ссылок a.v-hero)
+                const heroSlugs = Array.from(card.querySelectorAll('.v-heroes a.v-hero'))
+                    .map(a => {
+                        const href = a.getAttribute('href') || '';
+                        const parts = href.split('/').filter(Boolean);
+                        return parts[parts.length - 1] || '';
+                    })
+                    .filter(Boolean);
+
+                if (heroSlugs.length >= 1) {
+                    teamups.push({ name, tier, win_rate, heroes: heroSlugs });
+                }
             });
             return teamups;
         }''')
@@ -154,7 +194,7 @@ def get_heroes_list(page, season="1"):
                 time.sleep(3)
                 page.wait_for_selector('table') # Ждем перерисовки
         
-        heroes_data = page.evaluate('''() => {
+        heroes_data = page.evaluate(r'''() => {
             const heroes = [];
             const table = document.querySelector('table');
             if (!table) return heroes;
@@ -216,7 +256,7 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                 logger.warning(f"Матчапы {hero_url_name} - 404")
             else:
                 page.wait_for_selector('table', timeout=5000)
-                matchups = page.evaluate('''() => {
+                matchups = page.evaluate(r'''() => {
                     const allMatchups = [];
                     const tables = document.querySelectorAll('table');
                     for (const table of tables) {
@@ -260,7 +300,7 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                 logger.warning(f"Карты {hero_url_name} - 404")
             else:
                 page.wait_for_selector('table', timeout=5000)
-                maps_data = page.evaluate('''() => {
+                maps_data = page.evaluate(r'''() => {
                     const allMaps = [];
                     const tables = document.querySelectorAll('table');
                     for (const table of tables) {
@@ -311,7 +351,7 @@ def main(season="1"):
     
     try:
         # 1. Тим апы
-        teamups = get_teamups_data(page)
+        teamups = get_teamups_data(page, season)
         time.sleep(2)
         
         # 2. Список героев
@@ -320,6 +360,21 @@ def main(season="1"):
         if not heroes:
             logger.error("Герои не найдены. Выход.")
             return
+
+        # Индекс: slug героя -> список тим-апов, где он участвует.
+        # Нормализуем slug (убираем &, схлопываем дефисы), т.к. url_name героя
+        # ("cloak & dagger" -> "cloak--dagger") и slug сайта ("cloak-dagger") могут различаться.
+        def norm_slug(s):
+            return re.sub(r'-+', '-', s.lower().replace('&', '').replace(' ', '-')).strip('-')
+
+        teamups_by_hero = {}
+        for tu in teamups:
+            for slug in tu.get("heroes", []):
+                teamups_by_hero.setdefault(norm_slug(slug), []).append({
+                    "name": tu["name"],
+                    "tier": tu["tier"],
+                    "win_rate": tu["win_rate"]
+                })
 
         all_data = {'teamups': teamups, 'heroes': {}}
         
@@ -337,7 +392,8 @@ def main(season="1"):
                 "role": hero["role"],
                 "tier": hero["tier"],
                 "opponents": matchups,
-                "maps": maps
+                "maps": maps,
+                "teamups": teamups_by_hero.get(norm_slug(hero["url_name"]), [])
             }
             
             # Пауза, чтобы не забанили
@@ -354,4 +410,4 @@ def main(season="1"):
         playwright.stop()
 
 if __name__ == "__main__":
-    main(season="8.0")
+    main(season="9.0")

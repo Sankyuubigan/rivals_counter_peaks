@@ -1,0 +1,121 @@
+﻿{
+  "manifest_version": 2,
+  "type": "WebApp",
+  "meta": {
+    "name": "Marvel Rivals Counter Picks",
+    "version": "26.04.09",
+    "minimum-overwolf-version": "0.200.0.0",
+    "author": "Sankyuubigan",
+    "description": "Counter Picks Overlay for Marvel Rivals",
+    "icon": "IconMouseNormal.png",
+    "launcher_icon": "launcher_icon.ico",
+    "window_icon": "IconMouseOver.png"
+  },
+  "permissions":[
+    "GameInfo",
+    "GameEvents",
+    "Hotkeys"
+  ],
+  "data": {
+    "start_window": "background",
+    "windows": {
+      "background": {
+        "file": "background.html",
+        "is_background_page": true
+      },
+      "desktop": {
+        "file": "windows/desktop/desktop.html",
+        "transparent": true,
+        "resizable": true,
+        "topmost": true,
+        "size": { "width": 1000, "height": 950 }
+      },
+      "desktop_in_game": {
+        "file": "windows/desktop/desktop.html",
+        "transparent": true,
+        "resizable": true,
+        "topmost": true,
+        "in_game_only": false,
+        "grab_keyboard_focus": true,
+        "focus_game_takeover": "ReleaseOnHidden",
+        "focus_game_takeover_release_hotkey": "toggle_desktop",
+        "size": { "width": 1000, "height": 950 }
+      },
+      "in_game": {
+        "file": "windows/in_game/in_game.html",
+        "transparent": true,
+        "resizable": false,
+        "topmost": true,
+        "size": { "width": 800, "height": 180 },
+        "in_game_only": false,
+        "disable_rightclick": true
+      },
+      "notification": {
+        "file": "windows/notification/notification.html",
+        "transparent": true,
+        "resizable": false,
+        "topmost": true,
+        "in_game_only": false,
+        "size": { "width": 200, "height": 60 }
+      }
+    },
+    "launch_events":[
+      {
+        "event": "LaunchWithOverwolf",
+        "event_data": {
+          "game_ids": [24890]
+        }
+      }
+    ],
+    "hotkeys": {
+      "show_tray": {
+        "title": "Show Counter Picks Tray",
+        "action-type": "custom",
+        "default": "Tab",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_left": {
+        "title": "Move Tray Left (hold Tab + Left)",
+        "action-type": "custom",
+        "default": "Left",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_up": {
+        "title": "Move Tray Up (hold Tab + Up)",
+        "action-type": "custom",
+        "default": "Up",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_right": {
+        "title": "Move Tray Right (hold Tab + Right)",
+        "action-type": "custom",
+        "default": "Right",
+        "hold": true,
+        "passthrough": true
+      },
+      "move_tray_down": {
+        "title": "Move Tray Down (hold Tab + Down)",
+        "action-type": "custom",
+        "default": "Down",
+        "hold": true,
+        "passthrough": true
+      },
+      "toggle_desktop": {
+        "title": "Show/Hide Main Menu",
+        "action-type": "custom",
+        "default": "Alt+G",
+        "passthrough": false
+      }
+    },
+    "game_targeting": {
+      "type": "dedicated",
+      "game_ids": [24890]
+    },
+    "game_events": [
+      24890
+    ]
+  }
+}
