@@ -2,10 +2,15 @@ let bgWindow = overwolf.windows.getMainWindow();
 let manualSelectedEnemies =[];
 
 function getLogStore() {
-    if (bgWindow && bgWindow.appLogs) return bgWindow.appLogs;
     if (!window.appLogs) window.appLogs = [];
-    if (bgWindow && !bgWindow.appLogs) {
+    // В debug-режиме bgWindow === window, поэтому синхронизируем явно,
+    // чтобы логгер (desktop-debug.html) и refreshLogs смотрели в один массив.
+    if (bgWindow && bgWindow !== window && !bgWindow.appLogs) {
         try { bgWindow.appLogs = window.appLogs; } catch (_) {}
+    }
+    if (bgWindow && bgWindow.appLogs && bgWindow.appLogs !== window.appLogs) {
+        // отдаём тот же массив, что наполняет логгер
+        window.appLogs = bgWindow.appLogs;
     }
     return window.appLogs;
 }
@@ -49,7 +54,7 @@ const imageCache = {};
 
 function applyHeroImage(element, heroName) {
     if (!heroName) return;
-    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().replace(/[- ]/g, '_'));
+    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().trim().replace(/\s*\&\s*/g, ' ').replace(/\(([^)]+)\)/g, ' $1').replace(/[^\w-]+/g, ' ').trim().replace(/[\s-]+/g, '_'));
     let localUrl = `../../resources/heroes_icons/${formatted}.png`;
     let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}.png`;
 
@@ -219,30 +224,161 @@ function renderList(container, scores, effectiveTeam) {
     });
 }
 
+function heroKeyNorm(s) {
+    // приводим имена к сравнимому виду: убираем &, пробелы, дефисы, подчёркивания,
+    // скобки и прочие не-буквы -> остаются только буквы в lower-case.
+    // "Cloak & Dagger" -> "cloakdagger", "cloak-dagger" -> "cloakdagger" (совпадает)
+    return String(s).toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
+}
+
+function getHeroRoleSafe(heroName) {
+    if (!heroName || !bgWindow.marvelLogic) return null;
+    let logic = bgWindow.marvelLogic;
+    let n = heroKeyNorm(heroName);
+
+    // 1. по heroRoles (имена с пробелами/скобками)
+    let roles = logic.heroRoles;
+    if (roles) {
+        for (let role in roles) {
+            if ((roles[role] || []).some(h => heroKeyNorm(h) === n)) return role;
+        }
+    }
+    // 2. напрямую по statsData (ключи совпадают с именами heroRoles)
+    let stats = logic.statsData;
+    if (stats) {
+        if (stats[heroName] && stats[heroName].role) return stats[heroName].role;
+        for (let h in stats) {
+            if (heroKeyNorm(h) === n && stats[h] && stats[h].role) return stats[h].role;
+        }
+    }
+    return null;
+}
+
 function renderFavoritesGrid() {
     let grid = document.getElementById('favorites-grid');
     grid.innerHTML = '';
-    let savedFavorites = JSON.parse(localStorage.getItem('favoriteHeroes') || '[]');
+    if (!bgWindow.marvelLogic || !bgWindow.marvelLogic.teamupsData) return;
 
-    bgWindow.marvelLogic.allHeroes.forEach(hero => {
-        let btn = document.createElement('button');
-        btn.className = 'grid-btn';
-        applyHeroImage(btn, hero);
-        btn.title = hero;
-        if (savedFavorites.includes(hero)) btn.classList.add('selected');
+    let savedFavorites = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
 
-        btn.onclick = () => {
-            btn.classList.toggle('selected');
-            let currentFavs = JSON.parse(localStorage.getItem('favoriteHeroes') || '[]');
-            if (btn.classList.contains('selected')) {
-                if (!currentFavs.includes(hero)) currentFavs.push(hero);
-            } else {
-                currentFavs = currentFavs.filter(h => h !== hero);
-            }
-            localStorage.setItem('favoriteHeroes', JSON.stringify(currentFavs));
-        };
-        grid.appendChild(btn);
+    let tierOrder = { 'S': 0, 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+    let roleColumns = [
+        { role: 'Vanguard', title: 'Авангарды' },
+        { role: 'Duelist', title: 'Дуэлисты' },
+        { role: 'Strategist', title: 'Стратегисты' }
+    ];
+    let knownRoles = roleColumns.map(c => c.role);
+
+    let teamups = bgWindow.marvelLogic.teamupsData;
+
+    // группируем тимапы по герою-получателю (heroes[0])
+    let byHero = {};
+    teamups.forEach(tu => {
+        let receiver = tu.heroes && tu.heroes[0];
+        if (!receiver) return;
+        if (!byHero[receiver]) byHero[receiver] = [];
+        byHero[receiver].push(tu);
     });
+
+    let receivers = Object.keys(byHero);
+
+    // диагностика (пишем напрямую, чтобы попало в логи даже при ошибках console)
+    try {
+        let diag = receivers.map(h => `${h}=${getHeroRoleSafe(h) || 'NO_ROLE'}`);
+        let store = (bgWindow && bgWindow.appLogs) ? bgWindow.appLogs : (window.appLogs || (window.appLogs = []));
+        let hr = bgWindow.marvelLogic.heroRoles || {};
+        let hrSample = Object.keys(hr).map(r => `${r}:[${(hr[r] || []).slice(0, 3).join(',')}...]`).join(' | ');
+        store.push(`[${new Date().toLocaleTimeString()}][DIAG] receivers: ${receivers.length}, heroRoles keys: ${Object.keys(hr).join(',')}`);
+        store.push(`[${new Date().toLocaleTimeString()}][DIAG] heroRoles sample: ${hrSample}`);
+        store.push(`[${new Date().toLocaleTimeString()}][DIAG] allHeroes[0..4]: ${(bgWindow.marvelLogic.allHeroes || []).slice(0, 5).join(',')}`);
+        store.push(`[${new Date().toLocaleTimeString()}][DIAG] roles: ${diag.join('; ')}`);
+    } catch (e) { /* ignore */ }
+
+    receivers.sort((a, b) => {
+        // внутри роли: по максимальному тиру тимапов (S вверху)
+        let bestA = Math.min(...byHero[a].map(t => tierOrder[t.tier] ?? 99));
+        let bestB = Math.min(...byHero[b].map(t => tierOrder[t.tier] ?? 99));
+        if (bestA !== bestB) return bestA - bestB;
+        return a.localeCompare(b);
+    });
+
+    function makeCard(hero) {
+        let card = document.createElement('div');
+        card.className = 'teamup-card';
+
+        let main = document.createElement('div');
+        main.className = 'teamup-main';
+        applyHeroImage(main, hero);
+        main.title = hero;
+        card.appendChild(main);
+
+        let minis = document.createElement('div');
+        minis.className = 'teamup-minis';
+
+        byHero[hero].forEach(tu => {
+            let giver = tu.heroes[1];
+            let mini = document.createElement('div');
+            mini.className = 'teamup-mini';
+            applyHeroImage(mini, giver);
+            mini.title = `${tu.name} (${tu.heroes[0]} + ${giver})`;
+            if (savedFavorites.includes(tu.name)) mini.classList.add('selected');
+
+            mini.onclick = () => {
+                mini.classList.toggle('selected');
+                let current = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
+                if (mini.classList.contains('selected')) {
+                    if (!current.includes(tu.name)) current.push(tu.name);
+                } else {
+                    current = current.filter(n => n !== tu.name);
+                }
+                localStorage.setItem('favoriteTeamups', JSON.stringify(current));
+            };
+            minis.appendChild(mini);
+        });
+
+        card.appendChild(minis);
+        return card;
+    }
+
+    // карточки без известной роли не теряем — складываем в отдельную колонку
+    let unknownWrap = null;
+    let unknownCount = 0;
+
+    roleColumns.forEach(col => {
+        let colWrap = document.createElement('div');
+        colWrap.className = 'favorites-col';
+
+        let title = document.createElement('div');
+        title.className = 'favorites-col-title';
+        title.textContent = col.title;
+        colWrap.appendChild(title);
+
+        receivers.forEach(hero => {
+            let role = getHeroRoleSafe(hero);
+            if (role && role !== col.role) return;
+            if (!role) {
+                // без роли — откладываем в колонку "Прочие"
+                unknownCount++;
+                return;
+            }
+            colWrap.appendChild(makeCard(hero));
+        });
+
+        grid.appendChild(colWrap);
+    });
+
+    if (unknownCount > 0) {
+        unknownWrap = document.createElement('div');
+        unknownWrap.className = 'favorites-col';
+        let ut = document.createElement('div');
+        ut.className = 'favorites-col-title';
+        ut.textContent = `Прочие (${unknownCount})`;
+        unknownWrap.appendChild(ut);
+        receivers.forEach(hero => {
+            if (!getHeroRoleSafe(hero)) unknownWrap.appendChild(makeCard(hero));
+        });
+        grid.appendChild(unknownWrap);
+    }
 }
 
 function appLog(...args) {
@@ -312,12 +448,16 @@ function updateOverwolfStatusUI() {
 
 setInterval(updateOverwolfStatusUI, 5000);
 
+let _logsTimer = null;
 function openTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
-    if (tabId === 'logs') refreshLogs();
+    if (tabId === 'logs') {
+        refreshLogs();
+        if (!_logsTimer) _logsTimer = setInterval(() => { if (document.getElementById('logs').classList.contains('active')) refreshLogs(); }, 1500);
+    }
     if (tabId === 'settings') updateOverwolfStatusUI();
 }
 

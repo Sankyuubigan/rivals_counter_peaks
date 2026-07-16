@@ -223,7 +223,7 @@
         applyMatch();
     }
 
-    let panelCollapsed = false;
+    let panelCollapsed = true;
     function togglePanel() {
         panelCollapsed = !panelCollapsed;
         const body = document.getElementById('dbg-body');
@@ -235,6 +235,13 @@
 
     ensureReady().then(() => {
         renderPanel();
+        // Стартуем со свёрнутой панелью отладки
+        const body = document.getElementById('dbg-body');
+        const btn = document.getElementById('dbg-toggle');
+        if (body && btn) {
+            body.style.display = 'none';
+            btn.innerText = '▸ DEBUG';
+        }
         const st = document.getElementById('dbg-status');
         if (st) {
             if (window.marvelLogic && window.marvelLogic.isReady) {

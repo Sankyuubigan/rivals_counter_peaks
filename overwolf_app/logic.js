@@ -122,7 +122,7 @@ class CounterpickLogic {
         formatted = formatted.replace(/\s*\&\s*/g, ' ');
         formatted = formatted.replace(/\(([^)]+)\)/g, ' $1');
         formatted = formatted.replace(/[^\w-]+/g, ' ').trim();
-        formatted = formatted.replace(/\s+/g, '_');
+        formatted = formatted.replace(/[\s-]+/g, '_');
         return formatted;
     }
 

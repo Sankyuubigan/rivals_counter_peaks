@@ -36,7 +36,7 @@
             cursor: pointer; outline: none; margin-bottom: -1px;
         }
         .tab-btn.active { border: 1px solid #45475a; border-bottom: 1px solid #1e1e2e; background-color: #1e1e2e; }
-        .tab-content { flex: 1; padding: 10px; overflow-y: hidden; display: none; }
+        .tab-content { flex: 1; padding: 10px; overflow-y: hidden; display: none; position: relative; }
         .tab-content.active { display: block; }
         .md-content { 
             margin-top: 15px; padding: 10px; background: #181825; border: 1px solid #45475a; 
@@ -85,6 +85,106 @@
             z-index: 10;
         }
 
+        /* Избранные тимапы */
+        #favorites-inner {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            flex: 1;
+            min-height: 0;
+            padding-right: 4px;
+        }
+        .favorites-col {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .favorites-col-title {
+            position: sticky;
+            top: 0;
+            background: #1e1e2e;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #fab387;
+            border-bottom: 1px solid #45475a;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            text-align: center;
+            z-index: 5;
+        }
+        .teamup-card {
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            margin-bottom: 10px;
+        }
+        .teamup-main {
+            width: 48px; height: 48px; flex-shrink: 0;
+            background-size: cover; background-color: #823619;
+            border-radius: 5px; position: relative;
+        }
+        .teamup-main .hero-fallback-text { font-size: 9px; }
+        .teamup-minis {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex: 1;
+        }
+        .teamup-mini {
+            position: relative;
+            width: 30px; height: 30px;
+            background-size: cover; background-color: #823619;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .teamup-mini:hover {
+            opacity: 0.85;
+            transform: translateY(-2px);
+        }
+        .teamup-mini .hero-fallback-text { font-size: 8px; }
+        .teamup-mini.selected {
+            opacity: 1;
+            border-color: #89dceb;
+            box-shadow: 0 0 10px #89dceb, 0 0 3px #89dceb;
+        }
+        .teamup-mini.selected::after {
+            content: '✓';
+            position: absolute;
+            top: -7px; right: -7px;
+            width: 18px; height: 18px;
+            background: #4ade80;
+            color: #11111b;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 18px;
+            text-align: center;
+            box-shadow: 0 0 6px #4ade80;
+            z-index: 10;
+        }
+
         .hero-fallback-text {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -119,7 +219,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="openTab('counterpicks', this)" data-i18n="tab_counterpicks">Контрпики</button>
             <button class="tab-btn" onclick="openTab('tier-list', this)" data-i18n="tab_tier_list">Тир-лист</button>
-            <button class="tab-btn" onclick="openTab('favorites', this)" data-i18n="tab_favorites">Избранные герои</button>
+            <button class="tab-btn" onclick="openTab('favorites', this)" data-i18n="tab_favorites">Избранные тимапы</button>
             <button class="tab-btn" onclick="openTab('settings', this)" data-i18n="tab_settings">Настройки</button>
             <button class="tab-btn" onclick="openTab('logs', this)" data-i18n="tab_logs">Логи</button>
             <button class="tab-btn" onclick="openTab('about', this)" data-i18n="tab_about">О программе</button>
@@ -152,9 +252,11 @@
 
         <!-- Вкладка Избранное -->
         <div id="favorites" class="tab-content">
-            <h3 data-i18n="favorites_title">Избранные герои</h3>
-            <p class="hint" data-i18n="favorites_hint">Выберите героев, за которых вы любите играть. Они будут отображаться первыми в трее.</p>
-            <div class="heroes-grid" id="favorites-grid" style="grid-template-columns: repeat(8, auto); justify-content: center; gap: 12px;"></div>
+            <div id="favorites-inner">
+                <h3 data-i18n="favorites_title">Избранные тимапы</h3>
+                <p class="hint" data-i18n="favorites_hint">Выберите тимапы, которые вы хотите видеть в трее. Кликните по маленькой иконке союзника, чтобы добавить тимап в избранное.</p>
+                <div id="favorites-grid"></div>
+            </div>
         </div>
 
         <!-- Вкладка Настройки -->

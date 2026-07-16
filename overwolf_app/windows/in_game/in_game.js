@@ -10,7 +10,7 @@ const imageCache = {};
 
 function applyHeroImage(element, heroName) {
     if (!heroName) return;
-    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().replace(/[- ]/g, '_'));
+    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().trim().replace(/\s*\&\s*/g, ' ').replace(/\(([^)]+)\)/g, ' $1').replace(/[^\w-]+/g, ' ').trim().replace(/[\s-]+/g, '_'));
     let localUrl = `../../resources/heroes_icons/${formatted}.png`;
     let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}.png`;
 
@@ -165,7 +165,15 @@ function renderUI(data) {
     let hideAllies = localStorage.getItem('hideAllies') === 'true';
     let priorityFirst = localStorage.getItem('priorityFirst') === 'true';
     let favoritesFirst = localStorage.getItem('favoritesFirst') === 'true';
-    let favorites = JSON.parse(localStorage.getItem('favoriteHeroes') || '[]');
+    let favoriteTeamups = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
+    let favorites = [];
+    if (bgWindow.marvelLogic && bgWindow.marvelLogic.teamupsData) {
+        bgWindow.marvelLogic.teamupsData.forEach(tu => {
+            if (favoriteTeamups.includes(tu.name) && tu.heroes && tu.heroes[0]) {
+                if (!favorites.includes(tu.heroes[0])) favorites.push(tu.heroes[0]);
+            }
+        });
+    }
 
     let counters = Object.entries(data.counter_scores).sort((a, b) => b[1] - a[1]);
     
