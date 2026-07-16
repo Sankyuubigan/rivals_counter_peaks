@@ -1,5 +1,6 @@
 // === КАСТОМНЫЙ ЛОГГЕР ДЛЯ ВКЛАДКИ "ЛОГИ" ===
 window.appLogs =[];
+window.__appLoggerInstalled = true;
 const origLog = console.log;
 const origWarn = console.warn;
 const origError = console.error;
@@ -23,6 +24,15 @@ function formatLog(type, args) {
 console.log = function() { formatLog('INFO', arguments); origLog.apply(console, arguments); };
 console.warn = function() { formatLog('WARN', arguments); origWarn.apply(console, arguments); };
 console.error = function() { formatLog('ERROR', arguments); origError.apply(console, arguments); };
+
+window.addEventListener('error', function(ev) {
+    formatLog('JS_ERROR', [`${ev.message} @ ${ev.filename}:${ev.lineno}:${ev.colno}`]);
+});
+window.addEventListener('unhandledrejection', function(ev) {
+    let reason = ev.reason;
+    let msg = (reason && reason.stack) ? reason.stack : (reason && reason.message ? reason.message : String(reason));
+    formatLog('PROMISE_REJECT', [msg]);
+});
 
 // === СТАТУС ПОДКЛЮЧЕНИЯ К OVERWOLF ===
 window.overwolfStatus = {

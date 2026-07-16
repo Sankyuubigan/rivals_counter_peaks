@@ -10,9 +10,9 @@ const imageCache = {};
 
 function applyHeroImage(element, heroName) {
     if (!heroName) return;
-    let formatted = heroName.toLowerCase().replace(/[- ]/g, '_');
-    let localUrl = `../../resources/heroes_icons/${formatted}_1.png`;
-    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}_1.png`;
+    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().replace(/[- ]/g, '_'));
+    let localUrl = `../../resources/heroes_icons/${formatted}.png`;
+    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}.png`;
 
     function setFallback() {
         element.style.backgroundImage = 'none';

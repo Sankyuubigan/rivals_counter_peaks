@@ -116,6 +116,16 @@ class CounterpickLogic {
         return found || capitalized || name;
     }
 
+    heroIconName(heroName) {
+        if (!heroName) return "";
+        let formatted = heroName.toLowerCase().trim();
+        formatted = formatted.replace(/\s*\&\s*/g, ' ');
+        formatted = formatted.replace(/\(([^)]+)\)/g, ' $1');
+        formatted = formatted.replace(/[^\w-]+/g, ' ').trim();
+        formatted = formatted.replace(/\s+/g, '_');
+        return formatted;
+    }
+
     doesMapAffectScores(mapName) {
         if (!mapName) return false;
         let lowerMap = mapName.toLowerCase();

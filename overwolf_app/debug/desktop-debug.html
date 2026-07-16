@@ -54,7 +54,7 @@
             display: flex; align-items: center; background: #313244; border: 1px solid #45475a;
             margin-bottom: 3px; padding: 3px; border-radius: 3px;
         }
-        .hero-icon { width: 35px; height: 35px; background-size: cover; background-color: #313244; border-radius: 3px; margin-right: 10px; position: relative; }
+        .hero-icon { width: 35px; height: 35px; background-size: cover; background-color: #823619; border-radius: 3px; margin-right: 10px; position: relative; }
 
         .heroes-grid {
             display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
@@ -62,7 +62,7 @@
             min-height: 0;
         }
         .grid-btn {
-            width: 40px; height: 40px; background-size: cover; background-color: #313244; border: 2px solid transparent;
+            width: 40px; height: 40px; background-size: cover; background-color: #823619; border: 2px solid transparent;
             cursor: pointer; border-radius: 3px; opacity: 0.7; transition: opacity 0.15s, border-color 0.15s, box-shadow 0.15s;
             position: relative;
         }
@@ -218,12 +218,41 @@
     <script src="../../translations.js"></script>
     <!-- Мок Overwolf ДО логики/окон -->
     <script src="overwolf-mock.js"></script>
+
+    <!-- DEBUG: логгер ДО logic.js, чтобы логи из init() (загрузка/ошибка БД) не терялись -->
+    <script>
+        window.appLogs = [];
+        window.__appLoggerInstalled = true;
+        (function () {
+            const origLog = console.log.bind(console);
+            const origWarn = console.warn.bind(console);
+            const origError = console.error.bind(console);
+            function fmt(level, args) {
+                const text = Array.from(args).map(a => {
+                    if (typeof a === 'object' && a !== null) { try { return JSON.stringify(a); } catch (_) { return String(a); } }
+                    return String(a);
+                }).join(' ');
+                window.appLogs.push(`[${new Date().toLocaleTimeString()}][${level}] ${text}`);
+                if (window.appLogs.length > 1000) window.appLogs.shift();
+            }
+            console.log = function () { origLog(...arguments); fmt('INFO', arguments); };
+            console.warn = function () { origWarn(...arguments); fmt('WARN', arguments); };
+            console.error = function () { origError(...arguments); fmt('ERROR', arguments); };
+            window.addEventListener('error', function (ev) {
+                fmt('JS_ERROR', [`${ev.message} @ ${ev.filename}:${ev.lineno}:${ev.colno}`]);
+            });
+            window.addEventListener('unhandledrejection', function (ev) {
+                let r = ev.reason;
+                fmt('PROMISE_REJECT', [(r && r.stack) ? r.stack : (r && r.message ? r.message : String(r))]);
+            });
+        })();
+    </script>
+
     <!-- Логика расчётов (CounterpickLogic) -->
     <script src="../../logic.js"></script>
 
     <!-- Инициализация debug-окружения: создаём marvelLogic / overwolfStatus как в background.js -->
     <script>
-        window.appLogs = [];
         window.overwolfStatus = { connected: false, error: 'DEBUG: Overwolf отсутствует (тестовый режим)', gameEventsSubscribed: false };
         window.marvelLogic = new CounterpickLogic();
         window.latestData = {

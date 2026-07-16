@@ -1,21 +1,57 @@
 let bgWindow = overwolf.windows.getMainWindow();
 let manualSelectedEnemies =[];
 
-const origDesktopLog = console.log;
-console.log = function(...args) {
-    origDesktopLog.apply(console, args);
-    if (bgWindow && bgWindow.appLogs) {
-        bgWindow.appLogs.push(`[${new Date().toLocaleTimeString()}][UI_LOG] ` + args.join(' '));
+function getLogStore() {
+    if (bgWindow && bgWindow.appLogs) return bgWindow.appLogs;
+    if (!window.appLogs) window.appLogs = [];
+    if (bgWindow && !bgWindow.appLogs) {
+        try { bgWindow.appLogs = window.appLogs; } catch (_) {}
     }
-};
+    return window.appLogs;
+}
+
+// Устанавливаем перехват console только если он ещё не установлен
+// (в debug-режиме логгер уже поднят в desktop-debug.html до logic.js).
+if (!window.__appLoggerInstalled) {
+    window.__appLoggerInstalled = true;
+
+    const origDesktopLog = console.log.bind(console);
+    const origDesktopWarn = console.warn.bind(console);
+    const origDesktopError = console.error.bind(console);
+
+    const writeToLogStore = function(level, args) {
+        const text = Array.from(args).map(a => {
+            if (typeof a === 'object' && a !== null) {
+                try { return JSON.stringify(a); } catch (_) { return String(a); }
+            }
+            return String(a);
+        }).join(' ');
+        const store = getLogStore();
+        store.push(`[${new Date().toLocaleTimeString()}][${level}] ${text}`);
+        if (store.length > 1000) store.shift();
+    };
+
+    console.log = function(...args) { origDesktopLog(...args); writeToLogStore('UI_LOG', args); };
+    console.warn = function(...args) { origDesktopWarn(...args); writeToLogStore('UI_WARN', args); };
+    console.error = function(...args) { origDesktopError(...args); writeToLogStore('UI_ERROR', args); };
+
+    window.addEventListener('error', function(ev) {
+        writeToLogStore('JS_ERROR', [`${ev.message} @ ${ev.filename}:${ev.lineno}:${ev.colno}`]);
+    });
+    window.addEventListener('unhandledrejection', function(ev) {
+        let reason = ev.reason;
+        let msg = (reason && reason.stack) ? reason.stack : (reason && reason.message ? reason.message : String(reason));
+        writeToLogStore('PROMISE_REJECT', [msg]);
+    });
+}
 
 const imageCache = {};
 
 function applyHeroImage(element, heroName) {
     if (!heroName) return;
-    let formatted = heroName.toLowerCase().replace(/[- ]/g, '_');
-    let localUrl = `../../resources/heroes_icons/${formatted}_1.png`;
-    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}_1.png`;
+    let formatted = (bgWindow && bgWindow.marvelLogic ? bgWindow.marvelLogic.heroIconName(heroName) : heroName.toLowerCase().replace(/[- ]/g, '_'));
+    let localUrl = `../../resources/heroes_icons/${formatted}.png`;
+    let githubUrl = `https://raw.githubusercontent.com/Sankyuubigan/rivals_counter_peaks/master/overwolf_app/resources/heroes_icons/${formatted}.png`;
 
     function setFallback() {
         element.style.backgroundImage = 'none';
@@ -209,12 +245,20 @@ function renderFavoritesGrid() {
     });
 }
 
+function appLog(...args) {
+    console.log('[DESKTOP]', ...args);
+}
+
+function appLogError(...args) {
+    console.error('[DESKTOP]', ...args);
+}
+
 function refreshLogs() {
-    if (bgWindow && bgWindow.appLogs) {
-        let ta = document.getElementById('logs-area');
-        ta.value = bgWindow.appLogs.join('\n');
-        ta.scrollTop = ta.scrollHeight;
-    }
+    let logs = getLogStore();
+    let ta = document.getElementById('logs-area');
+    if (!ta) return;
+    ta.value = logs.join('\n');
+    ta.scrollTop = ta.scrollHeight;
 }
 
 function copyLogs() {
@@ -337,19 +381,52 @@ function createDbRowItem(displayName, fileName, downloadUrl, isActive, isDownloa
                 reloadAppLogic(`База ${fileName} активирована!`);
             } else if (downloadUrl) {
                 msgEl.innerText = "Скачивание...";
+                const url = downloadUrl + "?t=" + Date.now();
+                appLog(`Скачивание базы "${fileName}" с ${url}`);
                 try {
-                    let res = await fetch(downloadUrl + "?t=" + Date.now());
-                    let data = await res.json();
-                    
+                    let res;
+                    try {
+                        res = await fetch(url);
+                    } catch (netErr) {
+                        throw new Error(`Сетевая ошибка при запросе к ${url}: ${netErr && netErr.message ? netErr.message : netErr}`);
+                    }
+
+                    appLog(`Ответ сервера: HTTP ${res.status} ${res.statusText}`);
+
+                    if (!res.ok) {
+                        let bodyText = '';
+                        try { bodyText = await res.text(); } catch (_) {}
+                        throw new Error(`HTTP ${res.status} ${res.statusText}. Тело ответа: ${bodyText.slice(0, 500)}`);
+                    }
+
+                    let rawText = await res.text();
+                    let data;
+                    try {
+                        data = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        throw new Error(`Не удалось распарсить JSON (${parseErr.message}). Начало ответа: ${rawText.slice(0, 300)}`);
+                    }
+
+                    if (!data || (typeof data === 'object' && !data.heroes && !data.teamups)) {
+                        throw new Error(`Скачанный файл не похож на базу данных (нет полей heroes/teamups). Ключи: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data}`);
+                    }
+
                     let savedDbs = JSON.parse(localStorage.getItem('saved_dbs') || '{}');
                     savedDbs[fileName] = data;
-                    localStorage.setItem('saved_dbs', JSON.stringify(savedDbs));
+                    try {
+                        localStorage.setItem('saved_dbs', JSON.stringify(savedDbs));
+                    } catch (storageErr) {
+                        throw new Error(`Не удалось сохранить в localStorage (возможно, превышен лимит): ${storageErr.message}`);
+                    }
                     localStorage.setItem('active_db_name', fileName);
-                    
+
+                    appLog(`База "${fileName}" успешно скачана и сохранена.`);
                     reloadAppLogic(`База скачана и активирована!`);
                 } catch (e) {
-                    msgEl.innerText = "Ошибка скачивания базы!";
-                    console.error(e);
+                    let details = e && e.message ? e.message : String(e);
+                    msgEl.innerText = "Ошибка скачивания базы: " + details;
+                    appLogError(`Ошибка скачивания базы "${fileName}": ${details}`);
+                    if (e && e.stack) appLogError(`Stack: ${e.stack}`);
                 }
             }
         };
@@ -453,20 +530,38 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
         btnCheckDb.addEventListener('click', async () => {
             let msgEl = document.getElementById('db-status-msg');
             msgEl.innerText = "Ищем файлы в папке stats на GitHub...";
+            const apiUrl = DB_GITHUB_API + "&t=" + Date.now();
+            appLog(`Запрос списка баз: ${apiUrl}`);
             try {
-                let res = await fetch(DB_GITHUB_API + "&t=" + Date.now());
-                if (!res.ok) throw new Error("GitHub API Error");
+                let res;
+                try {
+                    res = await fetch(apiUrl);
+                } catch (netErr) {
+                    throw new Error(`Сетевая ошибка (возможно CORS) при запросе к GitHub API: ${netErr && netErr.message ? netErr.message : netErr}`);
+                }
+                appLog(`Ответ GitHub API: HTTP ${res.status} ${res.statusText}`);
+                if (!res.ok) {
+                    let bodyText = '';
+                    try { bodyText = await res.text(); } catch (_) {}
+                    throw new Error(`GitHub API HTTP ${res.status} ${res.statusText}. Тело: ${bodyText.slice(0, 500)}`);
+                }
                 let files = await res.json();
-                
+                if (!Array.isArray(files)) {
+                    throw new Error(`GitHub API вернул не массив. Ответ: ${JSON.stringify(files).slice(0, 500)}`);
+                }
+
                 let jsonFiles = files.filter(f => f.name.endsWith('.json'));
-                
+                appLog(`Найдено .json файлов: ${jsonFiles.length} (${jsonFiles.map(f => f.name).join(', ')})`);
+
                 msgEl.innerText = `Найдено баз: ${jsonFiles.length}`;
                 setTimeout(() => { if(msgEl.innerText.includes("Найдено")) msgEl.innerText = ""; }, 3000);
-                
+
                 renderDbList(jsonFiles);
             } catch (e) {
-                msgEl.innerText = "Ошибка. Возможно, превышен лимит запросов GitHub API (60 в час).";
-                console.error(e);
+                let details = e && e.message ? e.message : String(e);
+                msgEl.innerText = "Ошибка получения списка баз: " + details;
+                appLogError(`Ошибка получения списка баз с GitHub: ${details}`);
+                if (e && e.stack) appLogError(`Stack: ${e.stack}`);
             }
         });
     }
