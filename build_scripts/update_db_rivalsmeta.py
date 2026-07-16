@@ -266,13 +266,29 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                             for (const row of rows) {
                                 const cells = row.querySelectorAll('td');
                                 if (cells.length < 4) continue;
-                                
-                                let opponentName = cells[0].textContent.trim().replace(/^\\d+\\s*W\\s*/, '').replace(/\\s*VS.*$/, '');
+
+                                // Имя оппонента хранится в alt первой <img> внутри блока .matchup .cha
+                                // (левая, не .active сторона). Текст ячейки — это только "1288W VS1759W".
+                                let opponentName = '';
+                                const matchupEl = cells[0].querySelector('.matchup');
+                                if (matchupEl) {
+                                    const chaEls = matchupEl.querySelectorAll('.cha');
+                                    // первая .cha — оппонент, .active .cha — текущий герой
+                                    let oppCha = null;
+                                    for (const cha of chaEls) {
+                                        if (!cha.classList.contains('active')) { oppCha = cha; break; }
+                                    }
+                                    if (!oppCha && chaEls.length > 0) oppCha = chaEls[0];
+                                    if (oppCha) {
+                                        const img = oppCha.querySelector('img');
+                                        if (img) opponentName = img.getAttribute('alt') || '';
+                                    }
+                                }
                                 if (!opponentName) {
                                     const img = cells[0].querySelector('img');
-                                    if (img) opponentName = img.alt || '';
+                                    if (img) opponentName = img.getAttribute('alt') || '';
                                 }
-                                opponentName = opponentName.trim();
+                                opponentName = (opponentName || '').trim();
                                 if (opponentName) {
                                     allMatchups.push({
                                         opponent: opponentName,

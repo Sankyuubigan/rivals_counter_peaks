@@ -166,16 +166,16 @@ function renderUI(data) {
     let priorityFirst = localStorage.getItem('priorityFirst') === 'true';
     let favoritesFirst = localStorage.getItem('favoritesFirst') === 'true';
     let favoriteTeamups = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
-    let favorites = [];
-    if (bgWindow.marvelLogic && bgWindow.marvelLogic.teamupsData) {
-        bgWindow.marvelLogic.teamupsData.forEach(tu => {
-            if (favoriteTeamups.includes(tu.name) && tu.heroes && tu.heroes[0]) {
-                if (!favorites.includes(tu.heroes[0])) favorites.push(tu.heroes[0]);
-            }
-        });
+
+    let countersScores = Object.assign({}, data.counter_scores);
+
+    if (favoritesFirst && bgWindow.marvelLogic && bgWindow.marvelLogic.applyFavoriteTeamupBonus) {
+        countersScores = bgWindow.marvelLogic.applyFavoriteTeamupBonus(
+            countersScores, data.ally_heroes, favoriteTeamups
+        );
     }
 
-    let counters = Object.entries(data.counter_scores).sort((a, b) => b[1] - a[1]);
+    let counters = Object.entries(countersScores).sort((a, b) => b[1] - a[1]);
     
     if (hideAllies) {
         counters = counters.filter(([hero, score]) => !data.ally_heroes.includes(hero));
@@ -190,14 +190,6 @@ function renderUI(data) {
             let aPrior = data.effective_team.includes(a[0]) ? 1 : 0;
             let bPrior = data.effective_team.includes(b[0]) ? 1 : 0;
             return bPrior - aPrior;
-        });
-    }
-
-    if (favoritesFirst) {
-        counters.sort((a, b) => {
-            let aFav = favorites.includes(a[0]) ? 1 : 0;
-            let bFav = favorites.includes(b[0]) ? 1 : 0;
-            return bFav - aFav;
         });
     }
 

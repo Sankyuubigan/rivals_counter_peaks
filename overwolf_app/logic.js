@@ -9,6 +9,7 @@ class CounterpickLogic {
         this.allHeroes =[];
         this.availableMaps =[];
         this.SYNERGY_BONUS = 10.0;
+        this.FAVORITE_TEAMUP_BONUS = 25.0;
         this.isReady = false;
     }
 
@@ -356,6 +357,32 @@ class CounterpickLogic {
 
         let optimalTeam = this.selectOptimalTeam(finalScores);
         return { scores: finalScores, optimalTeam: optimalTeam };
+    }
+
+    applyFavoriteTeamupBonus(scores, allyHeroes = [], favoriteTeamupNames = []) {
+        if (!favoriteTeamupNames || favoriteTeamupNames.length === 0) return scores;
+        if (!this.teamupsData || this.teamupsData.length === 0) return scores;
+
+        let bonus = parseFloat(localStorage.getItem('favTeamupBonus'));
+        if (isNaN(bonus)) bonus = this.FAVORITE_TEAMUP_BONUS;
+        let allySet = new Set((allyHeroes || []).map(h => h.toLowerCase()));
+
+        for (let tu of this.teamupsData) {
+            if (!favoriteTeamupNames.includes(tu.name)) continue;
+            let heroes = tu.heroes || [];
+            if (heroes.length < 2) continue;
+
+            let receiver = heroes[0];
+            let ally = heroes[1];
+
+            // Тимап активен только если нужный союзник уже в нашей команде
+            if (!allySet.has(ally.toLowerCase())) continue;
+
+            if (scores[receiver] === undefined) scores[receiver] = 0;
+            scores[receiver] += bonus;
+        }
+
+        return scores;
     }
 
     calculateTierListScores() {

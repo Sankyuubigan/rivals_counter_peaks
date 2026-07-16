@@ -183,6 +183,11 @@
             result.optimalTeam = allyHeroes.length > 0 ? logic.getRecommendedHeroes(result.scores, allyHeroes, bannedHeroes) : [];
         }
 
+        if (localStorage.getItem('favoritesFirst') === 'true' && logic.applyFavoriteTeamupBonus) {
+            let favoriteTeamups = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
+            result.scores = logic.applyFavoriteTeamupBonus(result.scores, allyHeroes, favoriteTeamups);
+        }
+
         window.latestData = {
             map: finalMapName,
             is_map_effective: isMapEffective,

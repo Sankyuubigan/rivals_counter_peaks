@@ -186,7 +186,7 @@ function updateManualCounterpicks() {
     }
 
     let result = bgWindow.marvelLogic.calculateCounterScoresForTeam(manualSelectedEnemies, map);
-    renderList(container, result.scores, result.optimalTeam);
+    renderList(container, result.scores, result.optimalTeam, []);
 }
 
 function clearManualSelection() {
@@ -199,11 +199,18 @@ function renderTierList() {
     let container = document.getElementById('tl-results');
     let map = document.getElementById('tl-map-select').value;
     let scores = bgWindow.marvelLogic.calculateTierListScoresWithMap(map);
-    renderList(container, scores,[]);
+    renderList(container, scores, [], []);
 }
 
-function renderList(container, scores, effectiveTeam) {
+function renderList(container, scores, effectiveTeam, allyHeroes = []) {
     container.innerHTML = '';
+
+    let favoriteTeamups = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
+    let favoritesFirst = localStorage.getItem('favoritesFirst') === 'true';
+    if (favoritesFirst && bgWindow.marvelLogic && bgWindow.marvelLogic.applyFavoriteTeamupBonus) {
+        scores = bgWindow.marvelLogic.applyFavoriteTeamupBonus(scores, allyHeroes, favoriteTeamups);
+    }
+
     let sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     
     sorted.forEach(([hero, score], index) => {
@@ -628,6 +635,18 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
         overwolf.windows.obtainDeclaredWindow("in_game", res => {
             overwolf.windows.changeSize(res.window.id, parseInt(e.target.value), 180);
         });
+    });
+
+    let favBonusInput = document.getElementById('setting-fav-bonus');
+    favBonusInput.value = localStorage.getItem('favTeamupBonus') || 25;
+    favBonusInput.addEventListener('change', e => {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val)) val = 25;
+        val = Math.max(0, Math.min(100, val));
+        localStorage.setItem('favTeamupBonus', String(val));
+        if (bgWindow && bgWindow.marvelLogic) bgWindow.marvelLogic.FAVORITE_TEAMUP_BONUS = val;
+        updateManualCounterpicks();
+        renderTierList();
     });
 
     let langSelect = document.getElementById('setting-language');

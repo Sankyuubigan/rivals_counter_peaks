@@ -45,15 +45,19 @@ window.overwolfStatus = {
 };
 
 function updateOverwolfStatus(connected, errorMsg) {
+    let prevConnected = window.overwolfStatus.connected;
     window.overwolfStatus.connected = connected;
     window.overwolfStatus.error = errorMsg;
     window.overwolfStatus.lastCheckTime = new Date().toISOString();
     if (errorMsg) {
         window.overwolfStatus.lastErrorTime = new Date().toISOString();
         window.overwolfStatus.errorCount++;
-        console.error("[OVERWOLF_STATUS] Статус: ОТКЛЮЧЕН. Ошибка:", errorMsg);
-    } else {
+    }
+    // Логируем только при реальной смене состояния, чтобы не спамить.
+    if (connected && !prevConnected) {
         console.log("[OVERWOLF_STATUS] Статус: ПОДКЛЮЧЕН");
+    } else if (!connected && prevConnected) {
+        console.error("[OVERWOLF_STATUS] Статус: ОТКЛЮЧЕН. Ошибка:", errorMsg);
     }
 }
 
@@ -99,14 +103,40 @@ function setupGameEvents() {
             gameEventsSetupAttempts = 0;
 
             overwolf.games.events.onInfoUpdates2.addListener(function(info) {
-                if (info && info.info && info.info.match_info && info.info.match_info.hasOwnProperty('banned_characters')) {
-                    console.log("[EVENT] Обновление банов через onInfoUpdates2:", info.info.match_info.banned_characters);
+                if (info && info.info && info.info.match_info) {
+                    let mi = info.info.match_info;
+                    if (mi.hasOwnProperty('banned_characters')) {
+                        console.log("[EVENT] Обновление банов через onInfoUpdates2:", mi.banned_characters);
+                    }
+                    if (mi.hasOwnProperty('game_type')) console.log("[DIAG] game_type:", mi.game_type);
+                    if (mi.hasOwnProperty('game_mode')) console.log("[DIAG] game_mode:", mi.game_mode);
+                    for (let key in mi) {
+                        if (key.startsWith('roster_')) {
+                            console.log("[DIAG] roster событие (onInfoUpdates2):", key, "=>", mi[key]);
+                        }
+                        if (key === 'selected_character') {
+                            console.log("[DIAG] selected_character (onInfoUpdates2):", mi[key]);
+                        }
+                    }
                 }
                 if (updateStateFromInfo(info.info)) processGameData();
             });
 
             setInterval(function() {
                 overwolf.games.events.getInfo(function(info) {
+                    if (info && info.res && info.res.match_info) {
+                        let mi = info.res.match_info;
+                        if (mi.hasOwnProperty('game_type')) console.log("[DIAG] game_type:", mi.game_type);
+                        if (mi.hasOwnProperty('game_mode')) console.log("[DIAG] game_mode:", mi.game_mode);
+                        for (let key in mi) {
+                            if (key.startsWith('roster_')) {
+                                console.log("[DIAG] roster снимок (getInfo):", key, "=>", mi[key]);
+                            }
+                            if (key === 'selected_character') {
+                                console.log("[DIAG] selected_character (getInfo):", mi[key]);
+                            }
+                        }
+                    }
                     if (info && info.res && updateStateFromInfo(info.res)) processGameData();
                 });
             }, 5000);
@@ -150,6 +180,19 @@ let isOurGameRunning = false;
 window.marvelLogic.init().then(() => {
     console.log("База данных успешно загружена. Героев:", window.marvelLogic.allHeroes.length);
     overwolf.games.events.getInfo((info) => {
+        if (info && info.res && info.res.match_info) {
+            let mi = info.res.match_info;
+            console.log("[DIAG] game_type:", mi.game_type);
+            console.log("[DIAG] game_mode:", mi.game_mode);
+            for (let key in mi) {
+                if (key.startsWith('roster_')) {
+                    console.log("[DIAG] roster снимок (init getInfo):", key, "=>", mi[key]);
+                }
+                if (key === 'selected_character') {
+                    console.log("[DIAG] selected_character (init getInfo):", mi[key]);
+                }
+            }
+        }
         if (info && info.res) updateStateFromInfo(info.res);
         processGameData();
     });
@@ -259,8 +302,18 @@ function processGameData() {
         
         for (let key in matchState.rosters) {
             let r = matchState.rosters[key];
-            if (r && r.character_name) {
-                let normName = window.marvelLogic.normalizeHeroName(r.character_name);
+            if (!r) continue;
+            // Overwolf иногда шлёт character_name:null, но character_id заполнен (особенно у врагов в фазе лока).
+            // Резолвим имя из ID через gameEntities.heroes, если имя пустое.
+            let resolvedName = r.character_name;
+            if ((!resolvedName || resolvedName === "UNKNOWN" || resolvedName === "null") && r.character_id != null) {
+                let idKey = String(r.character_id);
+                let byId = window.marvelLogic.gameEntities && window.marvelLogic.gameEntities.heroes
+                    ? window.marvelLogic.gameEntities.heroes[idKey] : null;
+                if (byId) resolvedName = byId;
+            }
+            if (resolvedName && resolvedName !== "UNKNOWN" && resolvedName !== "null") {
+                let normName = window.marvelLogic.normalizeHeroName(resolvedName);
                 if (r.is_teammate === false) enemyHeroes.push(normName);
                 else if (r.is_teammate === true) allyHeroes.push(normName);
             }
@@ -312,6 +365,7 @@ function processGameData() {
         let isMatchEmpty = (enemyHeroes.length === 0 && allyHeroes.length === 0);
         
         if (isMatchEmpty) {
+            console.log("[DIAG] processGameData: isMatchEmpty=true (enemy=0, ally=0). Трей не обновляется (clearTray=" + (localStorage.getItem('clearTray') === 'true') + ").");
             let clearTrayOnEnd = localStorage.getItem('clearTray') === 'true';
             
             if (clearTrayOnEnd) {
@@ -320,9 +374,9 @@ function processGameData() {
                     is_map_effective: false,
                     enemy_heroes: [],
                     ally_heroes: [],
-                    banned_heroes:[],
+                    banned_heroes: [],
                     counter_scores: {},
-                    effective_team:[]
+                    effective_team: []
                 };
                 overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
             }
@@ -352,6 +406,14 @@ function processGameData() {
             counter_scores: result.scores,
             effective_team: result.optimalTeam
         };
+
+        console.log("[DIAG] processGameData -> latestData:",
+            "enemy:", JSON.stringify(enemyHeroes),
+            "ally:", JSON.stringify(allyHeroes),
+            "banned:", JSON.stringify(bannedHeroes),
+            "scores_count:", Object.keys(result.scores).length,
+            "scores_top5:", JSON.stringify(Object.entries(result.scores).sort((a,b)=>b[1]-a[1]).slice(0,5)),
+            "effective_team:", JSON.stringify(result.optimalTeam));
 
         overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
     } catch (e) {
