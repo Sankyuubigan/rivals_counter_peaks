@@ -210,9 +210,11 @@ function renderUI(data) {
         let isEffective = data.effective_team.includes(hero);
         
         if (score > 0 || isEffective || isAlly) {
-            countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly, boostedMap[hero]));
+            let teamupAlly = boostedMap[hero] || (bgWindow.marvelLogic && bgWindow.marvelLogic.normalizeHeroName ? boostedMap[bgWindow.marvelLogic.normalizeHeroName(hero)] : null);
+            countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly, teamupAlly));
         }
     });
+    scheduleFit();
 }
 
 if (bgWindow && bgWindow.latestData) {
@@ -220,8 +222,20 @@ if (bgWindow && bgWindow.latestData) {
 }
 
 let tw = parseInt(localStorage.getItem('trayWidth')) || 800;
-overwolf.windows.getCurrentWindow(res => {
-    if (res.window.width !== tw) {
-        overwolf.windows.changeSize(res.window.id, tw, 180);
-    }
-});
+
+function fitTrayHeight() {
+    let container = document.getElementById('tray-container');
+    if (!container) return;
+    let h = Math.ceil(container.getBoundingClientRect().height) + 2;
+    overwolf.windows.getCurrentWindow(res => {
+        if (res.window.width !== tw || res.window.height !== h) {
+            overwolf.windows.changeSize(res.window.id, tw, h);
+        }
+    });
+}
+
+let _fitTimer = null;
+function scheduleFit() {
+    if (_fitTimer) clearTimeout(_fitTimer);
+    _fitTimer = setTimeout(fitTrayHeight, 50);
+}

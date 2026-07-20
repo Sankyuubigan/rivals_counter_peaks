@@ -74,14 +74,16 @@
         .grid-btn.selected::after {
             content: '✓';
             position: absolute;
-            bottom: 1px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #4ade80;
-            font-size: 14px;
+            top: -7px; right: -7px;
+            width: 18px; height: 18px;
+            background: #4ade80;
+            color: #11111b;
+            border-radius: 50%;
+            font-size: 12px;
             font-weight: bold;
-            text-shadow: 0 0 4px #000, 0 0 2px #000;
-            pointer-events: none;
+            line-height: 18px;
+            text-align: center;
+            box-shadow: 0 0 6px #4ade80;
             z-index: 10;
         }
 

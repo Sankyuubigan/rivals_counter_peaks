@@ -270,9 +270,9 @@ function renderFavoritesGrid() {
 
     let tierOrder = { 'S': 0, 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
     let roleColumns = [
-        { role: 'Vanguard', title: 'Авангарды' },
-        { role: 'Duelist', title: 'Дуэлисты' },
-        { role: 'Strategist', title: 'Стратегисты' }
+        { role: 'Vanguard', title: getTranslation('role_vanguard') },
+        { role: 'Duelist', title: getTranslation('role_duelist') },
+        { role: 'Strategist', title: getTranslation('role_strategist') }
     ];
     let knownRoles = roleColumns.map(c => c.role);
 
@@ -367,7 +367,7 @@ function renderFavoritesGrid() {
         unknownWrap.className = 'favorites-col';
         let ut = document.createElement('div');
         ut.className = 'favorites-col-title';
-        ut.textContent = `Прочие (${unknownCount})`;
+        ut.textContent = getTranslation('role_other', { count: unknownCount });
         unknownWrap.appendChild(ut);
         receivers.forEach(hero => {
             if (!getHeroRoleSafe(hero)) unknownWrap.appendChild(makeCard(hero));
@@ -646,6 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
             localStorage.setItem('language', e.target.value);
             applyTranslations();
             updateMapsOptions();
+            renderFavoritesGrid();
             updateManualCounterpicks();
             renderTierList();
             loadMdContent();

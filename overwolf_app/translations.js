@@ -41,7 +41,11 @@ const TRANSLATIONS = {
         "db_btn_delete": "Удалить",
         "overwolf_checking": "Проверка подключения к Overwolf...",
         "overwolf_connected": "Overwolf: подключен",
-        "overwolf_disconnected": "Overwolf: отключен"
+        "overwolf_disconnected": "Overwolf: отключен",
+        "role_vanguard": "Авангарды",
+        "role_duelist": "Дуэлисты",
+        "role_strategist": "Стратегисты",
+        "role_other": "Прочие ({count})"
     },
     "en": {
         "tab_counterpicks": "Counter Picks",
@@ -85,7 +89,11 @@ const TRANSLATIONS = {
         "db_btn_delete": "Delete",
         "overwolf_checking": "Checking Overwolf connection...",
         "overwolf_connected": "Overwolf: connected",
-        "overwolf_disconnected": "Overwolf: disconnected"
+        "overwolf_disconnected": "Overwolf: disconnected",
+        "role_vanguard": "Vanguards",
+        "role_duelist": "Duelists",
+        "role_strategist": "Strategists",
+        "role_other": "Other ({count})"
     }
 };
 
