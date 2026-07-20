@@ -27,7 +27,6 @@ body, html {
 }
 
 .bottom-row {
-    flex-grow: 1;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -176,4 +175,28 @@ body, html {
     padding: 1px 3px;
     border-radius: 3px;
     z-index: 10;
+}
+
+/* Мини-иконка союзника из активного избранного тимапа (слева-внизу под контрпиком) */
+.teamup-mini-icon {
+    position: absolute;
+    bottom: -30px;
+    left: -3px;
+    width: 25px;
+    height: 25px;
+    border-radius: 3px;
+    background-size: cover;
+    background-color: #823619;
+    background-position: center;
+    border: 1px solid #ffd700;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+    z-index: 11;
+    box-sizing: border-box;
+}
+
+/* Чтобы мини-иконка слева и цифра рейтинга справа не перекрывались */
+.hero-icon.role-vanguard .rating-badge,
+.hero-icon.role-duelist .rating-badge,
+.hero-icon.role-strategist .rating-badge {
+    bottom: -2px;
 }

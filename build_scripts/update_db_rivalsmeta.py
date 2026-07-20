@@ -71,19 +71,22 @@ def init_browser(playwright):
     return browser, context, page
 
 def safe_goto(page, url):
-    """Переходит по URL, игнорируя зависание на рекламе."""
+    """Переходит по URL, игнорируя зависание на рекламе.
+
+    Возвращает код ответа (int) или None при сбое сети.
+    """
     try:
         logger.info(f"Переход на {url}")
         # wait_until='commit' ждет только соединения, а не загрузки всей тяжелой рекламы
-        page.goto(url, wait_until='commit', timeout=30000)
-        
+        response = page.goto(url, wait_until='commit', timeout=30000)
+
         # Небольшая пауза и скролл, чтобы инициировать загрузку контента
         time.sleep(1)
         page.evaluate("window.scrollTo(0, 300)")
-        return True
+        return response.status if response else None
     except Exception as e:
         logger.error(f"Ошибка перехода: {e}")
-        return False
+        return None
 
 def select_season(page, season, selector='#season_filter'):
     """Выбирает сезон в выпадающем списке (по подстроке в тексте опции)."""
@@ -206,7 +209,23 @@ def get_heroes_list(page, season="1"):
                 
                 if (cells.length >= 7) {
                     let heroName = cells[0].textContent.trim().replace(/\\s+/g, ' ').trim();
-                    let urlName = heroName.toLowerCase().replace(/[^a-z0-9\\s-]/g, '').replace(/\\s+/g, '-').replace(/^-+|-+$/g, '');
+
+                    // Берём РЕАЛЬНЫЙ slug из ссылки на героя в таблице,
+                    // а не генерируем из имени. Сайт сам знает правильный
+                    // URL (например /characters/peni-parker), и генерация
+                    // из имени ломалась (давала "peniparker") -> 500 ошибка.
+                    let urlName = '';
+                    const heroLink = cells[0].querySelector('a');
+                    if (heroLink) {
+                        const href = heroLink.getAttribute('href') || '';
+                        const parts = href.split('/').filter(Boolean);
+                        // последний сегмент пути и есть slug
+                        urlName = parts[parts.length - 1] || '';
+                    }
+                    if (!urlName) {
+                        // Fallback: генерация из имени, если ссылки нет
+                        urlName = heroName.toLowerCase().replace(/[^a-z0-9\\s-]/g, '').replace(/\\s+/g, '-').replace(/^-+|-+$/g, '');
+                    }
                     
                     let role = '';
                     const roleImg = cells[1].querySelector('img.hero-class');
@@ -243,19 +262,59 @@ def get_heroes_list(page, season="1"):
         logger.error(f"Ошибка парсинга героев: {e}")
         return []
 
+def wait_for_table(page, timeout=15000, retries=2):
+    """Ждёт появления таблицы, с повторными попытками при неудаче.
+
+    Возвращает True, если таблица появилась, иначе False.
+    """
+    for attempt in range(retries + 1):
+        try:
+            page.wait_for_selector('table', timeout=timeout, state='attached')
+            return True
+        except Exception as e:
+            if attempt < retries:
+                logger.warning(f"Таблица не найдена (попытка {attempt+1}/{retries+1}), повторяем...")
+                time.sleep(2)
+            else:
+                logger.warning(f"Таблица так и не появилась: {e}")
+    return False
+
+
 def get_matchups_and_maps(page, hero_url_name, season="1"):
-    """Собирает матчапы и карты для одного героя."""
-    
+    """Собирает матчапы и карты для одного героя.
+
+    При 500/таймауте делает reload и повторяет попытки. Если после всех
+    попыток данные не собраны — возвращает ok=False (вызывающий код обязан
+    остановиться, НЕ записывая битый файл).
+    """
+    ok = True
+
     # 1. MATCHUPS
     matchups = []
     url_matchups = f"https://rivalsmeta.com/characters/{hero_url_name}/matchups"
-    if safe_goto(page, url_matchups):
+    status = safe_goto(page, url_matchups)
+    if status is None:
+        logger.error(f"Матчапы {hero_url_name} - сбой сети при переходе")
+        ok = False
+    elif status >= 400:
+        # Сервер вернул ошибку (напр. 500). Пробуем reload несколько раз.
+        logger.warning(f"Матчапы {hero_url_name} - сервер вернул {status}, повторяем...")
+        recovered = False
+        for attempt in range(3):
+            time.sleep(3)
+            status = safe_goto(page, url_matchups)
+            if status and status < 400:
+                recovered = True
+                break
+        if not recovered:
+            logger.error(f"Матчапы {hero_url_name} - сервер стабильно возвращает ошибку, данные не получены")
+            ok = False
+    if ok:
         try:
-            # Проверяем 404
-            if "404" in page.title():
-                logger.warning(f"Матчапы {hero_url_name} - 404")
+            if not wait_for_table(page):
+                logger.error(f"Матчапы {hero_url_name} - таблица не загрузилась, данные не получены")
+                ok = False
             else:
-                page.wait_for_selector('table', timeout=5000)
                 matchups = page.evaluate(r'''() => {
                     const allMatchups = [];
                     const tables = document.querySelectorAll('table');
@@ -302,20 +361,38 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                     }
                     return allMatchups;
                 }''')
-        except Exception:
-            pass # Если не нашли таблицу, возвращаем пустой список
+        except Exception as e:
+            logger.error(f"Ошибка парсинга матчапов {hero_url_name}: {e}")
+            ok = False
 
     time.sleep(1)
 
     # 2. MAPS — сохраняем img_map_xxx как map_name
     maps_data = []
     url_maps = f"https://rivalsmeta.com/characters/{hero_url_name}/maps"
-    if safe_goto(page, url_maps):
+    status = safe_goto(page, url_maps)
+    if status is None:
+        logger.error(f"Карты {hero_url_name} - сбой сети при переходе")
+        ok = False
+    elif status >= 400:
+        logger.warning(f"Карты {hero_url_name} - сервер вернул {status}, повторяем...")
+        recovered = False
+        for attempt in range(3):
+            time.sleep(3)
+            status = safe_goto(page, url_maps)
+            if status and status < 400:
+                recovered = True
+                break
+        if not recovered:
+            logger.error(f"Карты {hero_url_name} - сервер стабильно возвращает ошибку, данные не получены")
+            ok = False
+    if ok:
         try:
-            if "404" in page.title():
-                logger.warning(f"Карты {hero_url_name} - 404")
+            if not wait_for_table(page):
+                # Сайт может не иметь статистики карт для героя (новые герои
+                # сезона) — это не провал сбора, matchups всё равно есть.
+                logger.warning(f"Карты {hero_url_name} - таблица карт отсутствует (возможно, сайт не даёт данные по картам для этого героя)")
             else:
-                page.wait_for_selector('table', timeout=5000)
                 maps_data = page.evaluate(r'''() => {
                     const allMaps = [];
                     const tables = document.querySelectorAll('table');
@@ -347,17 +424,42 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                     }
                     return allMaps;
                 }''')
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Ошибка парсинга карт {hero_url_name}: {e}")
+            ok = False
 
-    return matchups, maps_data
+    # Герой считается собранным, если хотя бы один источник вернул данные.
+    # Сайт может не отдавать карты для некоторых героев (новые герои сезона)
+    # — это не провал, matchups всё равно используются алгоритмом.
+    ok = bool(matchups) or bool(maps_data)
+    if not ok:
+        logger.error(f"{hero_url_name} - НЕ собрано НИ матчапов, НИ карт (реальный провал)")
+    return matchups, maps_data, ok
 
-def save_to_json(data):
+def save_to_json(data, suffix=""):
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    filename = f"marvel_rivals_stats_{timestamp}.json"
-    with open(filename, 'w', encoding='utf-8') as f:
+    filename = f"marvel_rivals_stats_{timestamp}{suffix}.json"
+    # Сохраняем сразу в целевую папку БД (overwolf_app/database/stats/)
+    out_dir = os.path.join(PROJECT_ROOT, "overwolf_app", "database", "stats")
+    os.makedirs(out_dir, exist_ok=True)
+    filepath = os.path.join(out_dir, filename)
+    with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    logger.info(f"Сохранено в {filename}")
+    logger.info(f"Сохранено в {filepath}")
+    return filepath
+
+
+def write_latest_index(filename):
+    """Пишет database/stats/latest.json с именем самого свежего файла.
+
+    Приложение (logic.js) читает этот индекс, чтобы автоматически
+    подхватывать самую свежую базу без правки имён вручную.
+    """
+    out_dir = os.path.join(PROJECT_ROOT, "overwolf_app", "database", "stats")
+    index_path = os.path.join(out_dir, "latest.json")
+    with open(index_path, 'w', encoding='utf-8') as f:
+        json.dump({"current": filename}, f, ensure_ascii=False, indent=2)
+    logger.info(f"Индекс latest.json обновлён: {filename}")
 
 def main(season="1"):
     logger.info(f"=== ЗАПУСК СКРИПТА (СЕЗОН {season}) ===")
@@ -393,13 +495,28 @@ def main(season="1"):
                 })
 
         all_data = {'teamups': teamups, 'heroes': {}}
-        
+        failed_heroes = []   # герои, по которым НЕ собрано ВООБЩЕ ничего (провал)
+        no_maps_heroes = []  # герои, у которых нет карт, но есть матчапы (ок, сайт не даёт)
+
         # 3. Проход по каждому герою
         for i, hero in enumerate(heroes):
             logger.info(f"[{i+1}/{len(heroes)}] Обработка: {hero['display_name']}")
-            
-            matchups, maps = get_matchups_and_maps(page, hero["url_name"], season)
-            
+
+            matchups, maps, ok = get_matchups_and_maps(page, hero["url_name"], season)
+
+            # Провал только если вообще ничего не собрано (ни матчапов, ни карт).
+            # Отсутствие карт при наличии матчапов — допустимо (сайт не даёт
+            # данные по картам для некоторых героев), алгоритм это переварит.
+            has_data = bool(matchups) or bool(maps)
+            if not has_data:
+                failed_heroes.append(hero['display_name'])
+                logger.error(
+                    f"ДАННЫЕ НЕ СОБРАНЫ для {hero['display_name']} "
+                    f"(matchups={len(matchups)}, maps={len(maps)})"
+                )
+            elif not maps:
+                no_maps_heroes.append(hero['display_name'])
+
             all_data["heroes"][hero["display_name"]] = {
                 "win_rate": hero["win_rate"],
                 "pick_rate": hero["pick_rate"],
@@ -411,11 +528,44 @@ def main(season="1"):
                 "maps": maps,
                 "teamups": teamups_by_hero.get(norm_slug(hero["url_name"]), [])
             }
-            
+
             # Пауза, чтобы не забанили
             time.sleep(random.uniform(1.5, 3.0))
-            
-        save_to_json(all_data)
+
+        # 4. ВАЛИДАТОР ПЕРЕД СОХРАНЕНИЕМ
+        # Не допускаем запись битого файла: если слишком много героев ВООБЩЕ
+        # без данных (ни матчапов, ни карт) — это провал сбора, сохраняем в
+        # .incomplete и прерываем, чтобы мусор не попал в базу.
+        # Герои без карт, но с матчапами, — НЕ провал (сайт не даёт карты).
+        total = len(heroes)
+        failed = len(failed_heroes)
+        logger.info(f"Собрано: {total - failed}/{total} героев с данными, полностью пустых: {failed}")
+        if no_maps_heroes:
+            logger.info(f"Герои без данных по картам (сайт не даёт, матчапы есть): {no_maps_heroes}")
+        failure_ratio = (failed / total) if total else 1.0
+        MAX_FAILURE_RATIO = 0.05  # допустимо <=5% полностью пустых героев
+
+        if failed and failure_ratio > MAX_FAILURE_RATIO:
+            incomplete_path = save_to_json(all_data, suffix="_INCOMPLETE")
+            logger.error(
+                f"ВАЛИДАЦИЯ ПРОВАЛЕНА: {failed}/{total} героев ({failure_ratio:.0%}) "
+                f"ВООБЩЕ без данных. Превышен порог {MAX_FAILURE_RATIO:.0%}. "
+                f"Битый файл НЕ записан как валидный, сохранён как: {incomplete_path}"
+            )
+            raise RuntimeError(
+                f"Сбор данных неполный: {failed}/{total} героев совсем без данных. "
+                f"См. лог выше: {failed_heroes}"
+            )
+
+        if failed:
+            logger.warning(
+                f"Допустимое число полностью пустых героев ({failed}), в пределах "
+                f"порога {MAX_FAILURE_RATIO:.0%}. Проверь логи: {failed_heroes}"
+            )
+
+        saved_path = save_to_json(all_data)
+        filename = os.path.basename(saved_path)
+        write_latest_index(filename)
         logger.info("=== ГОТОВО ===")
         
     except Exception as e:

@@ -94,7 +94,7 @@ function getHeroRole(heroName) {
     return null;
 }
 
-function createHeroIcon(name, rating = null, isEffective = false, isAlly = false) {
+function createHeroIcon(name, rating = null, isEffective = false, isAlly = false, teamupAlly = null) {
     let div = document.createElement('div');
     div.className = 'hero-icon';
     
@@ -121,6 +121,15 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
         rBadge.className = 'rating-badge';
         rBadge.innerText = Math.round(rating);
         div.appendChild(rBadge);
+    }
+
+    // Мини-иконка союзника из активного избранного тимапа (слева-внизу)
+    if (teamupAlly) {
+        let mini = document.createElement('div');
+        mini.className = 'teamup-mini-icon';
+        applyHeroImage(mini, teamupAlly);
+        mini.title = 'Тимап с: ' + teamupAlly;
+        div.appendChild(mini);
     }
     return div;
 }
@@ -164,15 +173,18 @@ function renderUI(data) {
     
     let hideAllies = localStorage.getItem('hideAllies') === 'true';
     let priorityFirst = localStorage.getItem('priorityFirst') === 'true';
-    let favoritesFirst = localStorage.getItem('favoritesFirst') === 'true';
     let favoriteTeamups = JSON.parse(localStorage.getItem('favoriteTeamups') || '[]');
 
     let countersScores = Object.assign({}, data.counter_scores);
 
-    if (favoritesFirst && bgWindow.marvelLogic && bgWindow.marvelLogic.applyFavoriteTeamupBonus) {
+    let boostedMap = {};
+    if (favoriteTeamups.length > 0 && bgWindow.marvelLogic && bgWindow.marvelLogic.applyFavoriteTeamupBonus) {
         countersScores = bgWindow.marvelLogic.applyFavoriteTeamupBonus(
             countersScores, data.ally_heroes, favoriteTeamups
         );
+    }
+    if (favoriteTeamups.length > 0 && bgWindow.marvelLogic && bgWindow.marvelLogic.getFavoriteTeamupBoosts) {
+        boostedMap = bgWindow.marvelLogic.getFavoriteTeamupBoosts(data.ally_heroes, favoriteTeamups);
     }
 
     let counters = Object.entries(countersScores).sort((a, b) => b[1] - a[1]);
@@ -198,7 +210,7 @@ function renderUI(data) {
         let isEffective = data.effective_team.includes(hero);
         
         if (score > 0 || isEffective || isAlly) {
-            countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly));
+            countersList.appendChild(createHeroIcon(hero, score, isEffective, isAlly, boostedMap[hero]));
         }
     });
 }

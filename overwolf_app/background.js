@@ -108,34 +108,27 @@ function setupGameEvents() {
                     if (mi.hasOwnProperty('banned_characters')) {
                         console.log("[EVENT] Обновление банов через onInfoUpdates2:", mi.banned_characters);
                     }
-                    if (mi.hasOwnProperty('game_type')) console.log("[DIAG] game_type:", mi.game_type);
-                    if (mi.hasOwnProperty('game_mode')) console.log("[DIAG] game_mode:", mi.game_mode);
-                    for (let key in mi) {
-                        if (key.startsWith('roster_')) {
-                            console.log("[DIAG] roster событие (onInfoUpdates2):", key, "=>", mi[key]);
-                        }
-                        if (key === 'selected_character') {
-                            console.log("[DIAG] selected_character (onInfoUpdates2):", mi[key]);
+                }
+                if (updateStateFromInfo(info.info)) processGameData();
+            });
+
+            overwolf.games.events.onNewEvents.addListener(function(events) {
+                if (!events || !events.events) return;
+                for (let ev of events.events) {
+                    if (ev.name === 'match_start') {
+                        console.log("[EVENT] match_start получен.");
+                        // Если match_id ещё не пришёл — очищаем по самому факту старта матча.
+                        if (!matchState.matchId) {
+                            clearTrayForNewMatch('match_start_' + Date.now());
                         }
                     }
                 }
-                if (updateStateFromInfo(info.info)) processGameData();
             });
 
             setInterval(function() {
                 overwolf.games.events.getInfo(function(info) {
                     if (info && info.res && info.res.match_info) {
                         let mi = info.res.match_info;
-                        if (mi.hasOwnProperty('game_type')) console.log("[DIAG] game_type:", mi.game_type);
-                        if (mi.hasOwnProperty('game_mode')) console.log("[DIAG] game_mode:", mi.game_mode);
-                        for (let key in mi) {
-                            if (key.startsWith('roster_')) {
-                                console.log("[DIAG] roster снимок (getInfo):", key, "=>", mi[key]);
-                            }
-                            if (key === 'selected_character') {
-                                console.log("[DIAG] selected_character (getInfo):", mi[key]);
-                            }
-                        }
                     }
                     if (info && info.res && updateStateFromInfo(info.res)) processGameData();
                 });
@@ -170,10 +163,13 @@ window.latestData = {
 let matchState = { 
     rosters: {}, 
     map: null, 
+    matchId: null,
     bannedCharacters:[],
     lastRawBans: null,
     lastProcessedBans: null
 };
+// Гарантирует, что очистка трея происходит РОВНО 1 раз на каждый новый матч.
+let trayClearedForMatchId = null;
 let isTabHeld = false;
 let isOurGameRunning = false;
 
@@ -182,16 +178,6 @@ window.marvelLogic.init().then(() => {
     overwolf.games.events.getInfo((info) => {
         if (info && info.res && info.res.match_info) {
             let mi = info.res.match_info;
-            console.log("[DIAG] game_type:", mi.game_type);
-            console.log("[DIAG] game_mode:", mi.game_mode);
-            for (let key in mi) {
-                if (key.startsWith('roster_')) {
-                    console.log("[DIAG] roster снимок (init getInfo):", key, "=>", mi[key]);
-                }
-                if (key === 'selected_character') {
-                    console.log("[DIAG] selected_character (init getInfo):", mi[key]);
-                }
-            }
         }
         if (info && info.res) updateStateFromInfo(info.res);
         processGameData();
@@ -242,6 +228,20 @@ function updateStateFromInfo(info) {
     let mi = info.match_info;
     let changed = false;
 
+    // --- Обнаружение НОВОГО матча по match_id (надёжный триггер очистки) ---
+    if (mi.match_id !== undefined) {
+        let incomingMatchId = mi.match_id === "null" || mi.match_id === "" ? null : mi.match_id;
+        if (incomingMatchId !== matchState.matchId) {
+            console.log(`[MATCH] Смена match_id: '${matchState.matchId}' -> '${incomingMatchId}'`);
+            if (incomingMatchId !== null) {
+                // Новый матч начался — очищаем трей ровно 1 раз для этого match_id.
+                clearTrayForNewMatch(incomingMatchId);
+            }
+            matchState.matchId = incomingMatchId;
+            changed = true;
+        }
+    }
+
     if (mi.map !== undefined && matchState.map !== mi.map) {
         matchState.map = mi.map;
         changed = true;
@@ -276,22 +276,51 @@ function updateStateFromInfo(info) {
         if (key.startsWith('roster_')) {
             let val = mi[key];
             if (val === null || val === "null" || val === "") {
-                if (matchState.rosters[key]) {
-                    delete matchState.rosters[key];
-                    changed = true;
-                }
+                // [DIAG] Overwolf прислал пустой roster. НЕ удаляем последний
+                // достоверный состав, иначе союзники/враги частично исчезают из трея.
+                // Сброс ростеров происходит только при смене карты/матча (match_id).
+                console.log(`[DIAG] roster '${key}' пришёл пустым (null/""), оставляем старое значение. match_id=${matchState.matchId}`);
             } else {
                 try {
                     let parsedVal = typeof val === 'string' ? JSON.parse(val) : val;
                     if (JSON.stringify(matchState.rosters[key]) !== JSON.stringify(parsedVal)) {
                         matchState.rosters[key] = parsedVal;
                         changed = true;
+                        if (parsedVal && parsedVal.character_name) {
+                            console.log(`[DIAG] roster '${key}' обновлён: ${parsedVal.character_name} (teammate=${parsedVal.is_teammate})`);
+                        }
                     }
                 } catch(e) {}
             }
         }
     }
     return changed;
+}
+
+function clearTrayForNewMatch(newMatchId) {
+    if (trayClearedForMatchId === newMatchId) {
+        console.log(`[MATCH] Очистка для match_id='${newMatchId}' уже выполнена, пропускаем (ровно 1 раз).`);
+        return;
+    }
+    trayClearedForMatchId = newMatchId;
+
+    console.log(`[MATCH] НАЧАЛО НОВОГО МАТЧА (${newMatchId}) — очищаем трей 1 раз.`);
+    matchState.rosters = {};
+    matchState.map = null;
+    matchState.bannedCharacters = [];
+    matchState.lastProcessedBans = null;
+    matchState.lastRawBans = null;
+
+    window.latestData = {
+        map: null,
+        is_map_effective: false,
+        enemy_heroes: [],
+        ally_heroes: [],
+        banned_heroes: [],
+        counter_scores: {},
+        effective_team: []
+    };
+    overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
 }
 
 function processGameData() {
@@ -363,23 +392,13 @@ function processGameData() {
         }
 
         let isMatchEmpty = (enemyHeroes.length === 0 && allyHeroes.length === 0);
-        
+
         if (isMatchEmpty) {
-            console.log("[DIAG] processGameData: isMatchEmpty=true (enemy=0, ally=0). Трей не обновляется (clearTray=" + (localStorage.getItem('clearTray') === 'true') + ").");
-            let clearTrayOnEnd = localStorage.getItem('clearTray') === 'true';
-            
-            if (clearTrayOnEnd) {
-                window.latestData = {
-                    map: null,
-                    is_map_effective: false,
-                    enemy_heroes: [],
-                    ally_heroes: [],
-                    banned_heroes: [],
-                    counter_scores: {},
-                    effective_team: []
-                };
-                overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
-            }
+            // Матч ещё не начался / нет данных о ростерах.
+            // Очистка трея происходит РОВНО 1 раз в начале нового матча
+            // (см. clearTrayForNewMatch по match_id / match_start), а не здесь.
+            // Просто выходим, не трогая текущее состояние трея.
+            console.log("[LOGIC] Ростеры пусты — пропускаем пересчёт (очистка уже была при старте матча).");
             return;
         }
 
@@ -406,14 +425,6 @@ function processGameData() {
             counter_scores: result.scores,
             effective_team: result.optimalTeam
         };
-
-        console.log("[DIAG] processGameData -> latestData:",
-            "enemy:", JSON.stringify(enemyHeroes),
-            "ally:", JSON.stringify(allyHeroes),
-            "banned:", JSON.stringify(bannedHeroes),
-            "scores_count:", Object.keys(result.scores).length,
-            "scores_top5:", JSON.stringify(Object.entries(result.scores).sort((a,b)=>b[1]-a[1]).slice(0,5)),
-            "effective_team:", JSON.stringify(result.optimalTeam));
 
         overwolf.windows.sendMessage("in_game", "update_data", window.latestData, () => {});
     } catch (e) {

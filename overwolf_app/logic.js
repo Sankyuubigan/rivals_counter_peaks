@@ -31,11 +31,33 @@ class CounterpickLogic {
                 // Грузим пользовательскую скачанную базу
                 fullData = savedDbs[activeDbName];
                 console.log(`[DB] Загружена пользовательская база: ${activeDbName}`);
-            } else {
-                // Грузим дефолтную базу из коробки
-                const statsRes = await fetch(`database/stats/${defaultDbFileName}`);
+            }
+
+            // Если выбранная БД недоступна (имя из localStorage указывает на
+            // удалённый/нескачанный файл) — НЕ падаем, а грузим локальную
+            // свежую базу (latest.json). Иначе приложение показывало бы
+            // "базы нет" после удаления старого файла.
+            if (!fullData) {
+                // Грузим дефолтную базу из коробки.
+                // Сначала пытаемся взять индекс latest.json (туда скрипт
+                // сбора пишет имя самого свежего файла), иначе фолбэк на
+                // default_db_file из game_entities_dict.json.
+                let dbFileName = defaultDbFileName;
+                try {
+                    const latestRes = await fetch('database/stats/latest.json');
+                    if (latestRes.ok) {
+                        const latest = await latestRes.json();
+                        if (latest && latest.current) dbFileName = latest.current;
+                    }
+                } catch (e) {
+                    console.warn('[DB] latest.json недоступен, используем default_db_file');
+                }
+                const statsRes = await fetch(`database/stats/${dbFileName}`);
+                if (!statsRes.ok) {
+                    throw new Error(`Не удалось загрузить базу ${dbFileName} (HTTP ${statsRes.status})`);
+                }
                 fullData = await statsRes.json();
-                console.log(`[DB] Загружена база из коробки: ${defaultDbFileName}`);
+                console.log(`[DB] Загружена база из коробки: ${dbFileName}`);
             }
 
             this.statsData = fullData.heroes || {};
@@ -57,13 +79,14 @@ class CounterpickLogic {
             }
 
             let mapsSet = new Set();
-            if (this.allHeroes.length > 0) {
-                let firstHeroMaps = this.statsData[this.allHeroes[0]].maps ||[];
-                for (let m of firstHeroMaps) {
+            for (let hero of this.allHeroes) {
+                let heroMaps = this.statsData[hero].maps || [];
+                for (let m of heroMaps) {
                     if (m.map_name) mapsSet.add(this.resolveMapName(m.map_name));
                 }
             }
             this.availableMaps = Array.from(mapsSet).sort();
+            console.log(`[DB] Собрано уникальных карт: ${this.availableMaps.length}`, this.availableMaps);
             this.isReady = true;
         } catch (e) {
             console.error("Ошибка загрузки баз данных:", e);
@@ -372,17 +395,41 @@ class CounterpickLogic {
             let heroes = tu.heroes || [];
             if (heroes.length < 2) continue;
 
-            let receiver = heroes[0];
-            let ally = heroes[1];
+            let receiver = this.normalizeHeroName(heroes[0]);
+            let ally = this.normalizeHeroName(heroes[1]);
 
             // Тимап активен только если нужный союзник уже в нашей команде
             if (!allySet.has(ally.toLowerCase())) continue;
 
-            if (scores[receiver] === undefined) scores[receiver] = 0;
+            if (scores[receiver] === undefined) continue;
             scores[receiver] += bonus;
         }
 
         return scores;
+    }
+
+    getFavoriteTeamupBoosts(allyHeroes = [], favoriteTeamupNames = []) {
+        let boosts = {};
+        if (!favoriteTeamupNames || favoriteTeamupNames.length === 0) return boosts;
+        if (!this.teamupsData || this.teamupsData.length === 0) return boosts;
+
+        let allySet = new Set((allyHeroes || []).map(h => h.toLowerCase()));
+
+        for (let tu of this.teamupsData) {
+            if (!favoriteTeamupNames.includes(tu.name)) continue;
+            let heroes = tu.heroes || [];
+            if (heroes.length < 2) continue;
+
+            let receiver = this.normalizeHeroName(heroes[0]);
+            let ally = this.normalizeHeroName(heroes[1]);
+
+            // Тимап активен только если нужный союзник уже в нашей команде
+            if (!allySet.has(ally.toLowerCase())) continue;
+
+            boosts[receiver] = ally;
+        }
+
+        return boosts;
     }
 
     calculateTierListScores() {

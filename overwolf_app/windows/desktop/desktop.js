@@ -289,18 +289,6 @@ function renderFavoritesGrid() {
 
     let receivers = Object.keys(byHero);
 
-    // диагностика (пишем напрямую, чтобы попало в логи даже при ошибках console)
-    try {
-        let diag = receivers.map(h => `${h}=${getHeroRoleSafe(h) || 'NO_ROLE'}`);
-        let store = (bgWindow && bgWindow.appLogs) ? bgWindow.appLogs : (window.appLogs || (window.appLogs = []));
-        let hr = bgWindow.marvelLogic.heroRoles || {};
-        let hrSample = Object.keys(hr).map(r => `${r}:[${(hr[r] || []).slice(0, 3).join(',')}...]`).join(' | ');
-        store.push(`[${new Date().toLocaleTimeString()}][DIAG] receivers: ${receivers.length}, heroRoles keys: ${Object.keys(hr).join(',')}`);
-        store.push(`[${new Date().toLocaleTimeString()}][DIAG] heroRoles sample: ${hrSample}`);
-        store.push(`[${new Date().toLocaleTimeString()}][DIAG] allHeroes[0..4]: ${(bgWindow.marvelLogic.allHeroes || []).slice(0, 5).join(',')}`);
-        store.push(`[${new Date().toLocaleTimeString()}][DIAG] roles: ${diag.join('; ')}`);
-    } catch (e) { /* ignore */ }
-
     receivers.sort((a, b) => {
         // внутри роли: по максимальному тиру тимапов (S вверху)
         let bestA = Math.min(...byHero[a].map(t => tierOrder[t.tier] ?? 99));
@@ -638,16 +626,18 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
     });
 
     let favBonusInput = document.getElementById('setting-fav-bonus');
-    favBonusInput.value = localStorage.getItem('favTeamupBonus') || 25;
-    favBonusInput.addEventListener('change', e => {
-        let val = parseInt(e.target.value, 10);
-        if (isNaN(val)) val = 25;
-        val = Math.max(0, Math.min(100, val));
-        localStorage.setItem('favTeamupBonus', String(val));
-        if (bgWindow && bgWindow.marvelLogic) bgWindow.marvelLogic.FAVORITE_TEAMUP_BONUS = val;
-        updateManualCounterpicks();
-        renderTierList();
-    });
+    if (favBonusInput) {
+        favBonusInput.value = localStorage.getItem('favTeamupBonus') || 25;
+        favBonusInput.addEventListener('change', e => {
+            let val = parseInt(e.target.value, 10);
+            if (isNaN(val)) val = 25;
+            val = Math.max(0, Math.min(100, val));
+            localStorage.setItem('favTeamupBonus', String(val));
+            if (bgWindow && bgWindow.marvelLogic) bgWindow.marvelLogic.FAVORITE_TEAMUP_BONUS = val;
+            updateManualCounterpicks();
+            renderTierList();
+        });
+    }
 
     let langSelect = document.getElementById('setting-language');
     if (langSelect) {
