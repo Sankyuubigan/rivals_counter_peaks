@@ -20,3 +20,6 @@ __pycache__
 /scraper.log
 /app.log
 /build_scripts/scraper_icons.log
+/build_scripts/tiermaker_icons
+/scraper_tiermaker.log
+/scraper_icons.log

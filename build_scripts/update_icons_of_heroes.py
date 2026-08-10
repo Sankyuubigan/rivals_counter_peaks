@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import urllib.parse
 import logging
 import requests
 from playwright.sync_api import sync_playwright
@@ -184,4 +185,8 @@ def main(season="9.0"):
 
 
 if __name__ == "__main__":
-    main(season="9.0")
+    import argparse
+    parser = argparse.ArgumentParser(description="Загрузка иконок героев с rivalsmeta.com")
+    parser.add_argument("--season", default="9.0", help="сезон для rivalsmeta")
+    args = parser.parse_args()
+    main(season=args.season)

@@ -621,7 +621,15 @@ document.addEventListener('DOMContentLoaded', () => {['hide-allies', 'show-ratin
     twSlider.addEventListener('change', e => {
         localStorage.setItem('trayWidth', e.target.value);
         overwolf.windows.obtainDeclaredWindow("in_game", res => {
-            overwolf.windows.changeSize(res.window.id, parseInt(e.target.value), 180);
+            if (!res || !res.window) {
+                console.error("[API_ERROR] obtainDeclaredWindow('in_game') при изменении ширины трея:", res);
+                return;
+            }
+            overwolf.windows.changeSize(res.window.id, parseInt(e.target.value), 180, (cr) => {
+                if (cr && cr.success === false) {
+                    console.error("[API_ERROR] changeSize трея:", cr.error || JSON.stringify(cr));
+                }
+            });
         });
     });
 

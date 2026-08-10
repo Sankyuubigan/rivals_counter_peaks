@@ -1,5 +1,34 @@
 let bgWindow = overwolf.windows.getMainWindow();
 
+// Логгер окна трея: пишем в общий лог-стор (вкладка "Логи" в десктопе),
+// а не только в dev console.
+function owLog(level, args) {
+    let text = Array.from(args).map(a => {
+        if (typeof a === 'object' && a !== null) {
+            try { return JSON.stringify(a); } catch (e) { return String(a); }
+        }
+        return String(a);
+    }).join(' ');
+    try {
+        if (bgWindow && bgWindow.appLogs) {
+            bgWindow.appLogs.push(`[${new Date().toLocaleTimeString()}][${level}][IN_GAME] ${text}`);
+            if (bgWindow.appLogs.length > 1000) bgWindow.appLogs.shift();
+        }
+    } catch (e) {}
+    if (level === 'ERROR') console.error('[IN_GAME]', text);
+    else console.log('[IN_GAME]', text);
+}
+
+// Перехват JS-ошибок окна трея, чтобы краши рендера были видны в логах.
+window.addEventListener('error', function(ev) {
+    owLog('ERROR', ['JS_ERROR', `${ev.message} @ ${ev.filename}:${ev.lineno}:${ev.colno}`]);
+});
+window.addEventListener('unhandledrejection', function(ev) {
+    let reason = ev.reason;
+    let msg = (reason && reason.stack) ? reason.stack : (reason && reason.message ? reason.message : String(reason));
+    owLog('ERROR', ['PROMISE_REJECT', msg]);
+});
+
 overwolf.windows.onMessageReceived.addListener((message) => {
     if (message.id === "update_data") {
         renderUI(message.content);
@@ -135,6 +164,12 @@ function createHeroIcon(name, rating = null, isEffective = false, isAlly = false
 }
 
 function renderUI(data) {
+    owLog('INFO', ['Получены данные трея:', {
+        map: data.map,
+        enemies: (data.enemy_heroes || []).length,
+        allies: (data.ally_heroes || []).length,
+        banned: (data.banned_heroes || []).length
+    }]);
     document.getElementById('lbl-allies').innerText = getTranslation('tray_allies');
     document.getElementById('lbl-enemies').innerText = getTranslation('tray_enemies');
     
@@ -218,6 +253,7 @@ function renderUI(data) {
 }
 
 if (bgWindow && bgWindow.latestData) {
+    owLog('INFO', ['Инициализация с данными из background (окно создано после начала матча).']);
     renderUI(bgWindow.latestData);
 }
 
@@ -229,7 +265,11 @@ function fitTrayHeight() {
     let h = Math.ceil(container.getBoundingClientRect().height) + 2;
     overwolf.windows.getCurrentWindow(res => {
         if (res.window.width !== tw || res.window.height !== h) {
-            overwolf.windows.changeSize(res.window.id, tw, h);
+            overwolf.windows.changeSize(res.window.id, tw, h, (cr) => {
+                if (cr && cr.success === false) {
+                    owLog('ERROR', ['changeSize трея:', cr.error || JSON.stringify(cr)]);
+                }
+            });
         }
     });
 }

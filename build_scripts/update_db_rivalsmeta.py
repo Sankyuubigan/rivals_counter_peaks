@@ -576,4 +576,4 @@ def main(season="1"):
         playwright.stop()
 
 if __name__ == "__main__":
-    main(season="9.0")
+    main(season="9.5")
