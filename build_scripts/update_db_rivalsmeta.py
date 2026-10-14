@@ -201,62 +201,109 @@ def get_heroes_list(page, season="1"):
             const heroes = [];
             const table = document.querySelector('table');
             if (!table) return heroes;
-            
-            const rows = table.querySelectorAll('tbody tr');
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const cells = row.querySelectorAll('td');
-                
-                if (cells.length >= 7) {
-                    let heroName = cells[0].textContent.trim().replace(/\\s+/g, ' ').trim();
 
-                    // Берём РЕАЛЬНЫЙ slug из ссылки на героя в таблице,
-                    // а не генерируем из имени. Сайт сам знает правильный
-                    // URL (например /characters/peni-parker), и генерация
-                    // из имени ломалась (давала "peniparker") -> 500 ошибка.
-                    let urlName = '';
-                    const heroLink = cells[0].querySelector('a');
-                    if (heroLink) {
-                        const href = heroLink.getAttribute('href') || '';
-                        const parts = href.split('/').filter(Boolean);
-                        // последний сегмент пути и есть slug
-                        urlName = parts[parts.length - 1] || '';
-                    }
-                    if (!urlName) {
-                        // Fallback: генерация из имени, если ссылки нет
-                        urlName = heroName.toLowerCase().replace(/[^a-z0-9\\s-]/g, '').replace(/\\s+/g, '-').replace(/^-+|-+$/g, '');
-                    }
-                    
-                    let role = '';
-                    const roleImg = cells[1].querySelector('img.hero-class');
-                    if (roleImg) {
-                        // Роль извлекаем из имени файла в src, т.к. alt содержит имя героя (баг сайта)
-                        // Пример: /images/vanguard.png -> vanguard
-                        const src = roleImg.getAttribute('src') || '';
-                        const match = src.match(/\/images\/([a-z_-]+)\.png/i);
-                        if (match) {
-                            role = match[1].charAt(0).toUpperCase() + match[1].slice(1);
-                        }
-                    }
-                    if (!role) role = cells[1].textContent.trim();
-                    
-                    heroes.push({
-                        display_name: heroName,
-                        url_name: urlName,
-                        role: role,
-                        tier: cells[2].textContent.trim(),
-                        win_rate: cells[3].textContent.trim(),
-                        pick_rate: cells[4].textContent.trim(),
-                        ban_rate: cells[5].textContent.trim(),
-                        matches: cells[6].textContent.trim(),
-                    });
+            const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+
+            // Колонки резолвим по ЗАГОЛОВКАМ, а не по жёстким индексам.
+            // Сайт регулярно добавляет колонки (напр. "#" с номером),
+            // и при фиксированных индексах всё молча съезжает на одну
+            // ячейку: имя героя превращается в "1", slug — в "1",
+            // и каждый запрос падает с 500.
+            const headerText = Array.from(table.querySelectorAll('thead th')).map(th => {
+                const clone = th.cloneNode(true);
+                clone.querySelectorAll('svg, .info-tip, .tip-body, script').forEach(n => n.remove());
+                return norm(clone.textContent).toLowerCase();
+            });
+            const findIdx = prefix => headerText.findIndex(h => h.startsWith(prefix));
+
+            const idx = {
+                hero:      findIdx('hero'),
+                tier:      findIdx('tier'),
+                win_rate:  findIdx('win rate'),
+                pick_rate: findIdx('pick rate'),
+                ban_rate:  findIdx('ban rate'),
+                matches:   findIdx('matches'),
+            };
+
+            const required = ['hero', 'win_rate', 'pick_rate', 'ban_rate', 'matches'];
+            if (required.some(k => idx[k] === -1)) {
+                console.warn('[rivalsmeta] Не распознаны заголовки таблицы героев:', headerText);
+                return heroes;
+            }
+
+            const rows = table.querySelectorAll('tbody tr');
+            for (const row of rows) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length <= idx.matches) continue;
+
+                const heroCell = cells[idx.hero];
+
+                // Имя героя: сначала вложенный блок, потом текст ячейки.
+                const nameEl = heroCell.querySelector('.meta .name') || heroCell.querySelector('.name');
+                const heroName = norm(nameEl ? nameEl.textContent : heroCell.textContent);
+                if (!heroName) continue;
+
+                // Берём РЕАЛЬНЫЙ slug из ссылки на героя в таблице,
+                // а не генерируем из имени. Сайт сам знает правильный
+                // URL (например /characters/peni-parker), и генерация
+                // из имени ломалась (давала "peniparker") -> 500 ошибка.
+                let urlName = '';
+                const heroLink = heroCell.querySelector('a[href*="/characters/"]');
+                if (heroLink) {
+                    const href = heroLink.getAttribute('href') || '';
+                    const parts = href.split('/').filter(Boolean);
+                    // последний сегмент пути и есть slug
+                    urlName = parts[parts.length - 1] || '';
                 }
+                if (!urlName) {
+                    // Fallback: генерация из имени, если ссылки нет
+                    urlName = heroName.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '');
+                }
+
+                let role = '';
+                const roleImg = heroCell.querySelector('img.hero-class');
+                if (roleImg) {
+                    // Роль извлекаем из имени файла в src, т.к. alt содержит имя героя (баг сайта)
+                    // Пример: /images/vanguard.png -> vanguard
+                    const src = roleImg.getAttribute('src') || '';
+                    const match = src.match(/\/images\/([a-z_-]+)\.png/i);
+                    if (match) {
+                        role = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+                    }
+                }
+                if (!role) role = heroCell.textContent.trim();
+
+                const txt = key => norm(cells[idx[key]].textContent);
+
+                heroes.push({
+                    display_name: heroName,
+                    url_name: urlName,
+                    role: role,
+                    tier: idx.tier !== -1 ? txt('tier') : '',
+                    win_rate: txt('win_rate'),
+                    pick_rate: txt('pick_rate'),
+                    ban_rate: txt('ban_rate'),
+                    matches: txt('matches'),
+                });
             }
             return heroes;
         }''')
-        
+
         valid_heroes = [h for h in heroes_data if h.get('display_name') and h['display_name'] != 'Hero']
-        logger.info(f"Найдено {len(valid_heroes)} героев.")
+
+        # Ловим съехавшую разметку ДО обхода героев, а не после 56 запросов
+        # по несуществующим слагам вида /characters/1/matchups.
+        SLUG_RE = re.compile(r'^[a-z0-9][a-z0-9-]*$')
+        broken = [h for h in valid_heroes if not SLUG_RE.match(h.get('url_name') or '')]
+        if broken:
+            logger.error(
+                "НЕВЕРНЫЕ slug'и — разметка сайта снова изменилась. "
+                f"Примеры: {[(h['display_name'], h['url_name']) for h in broken[:5]]}"
+            )
+            return []
+
+        logger.info(f"Найдено {len(valid_heroes)} героев. Первые 5: "
+                    f"{[(h['display_name'], h['url_name']) for h in valid_heroes[:5]]}")
         return valid_heroes
     except Exception as e:
         logger.error(f"Ошибка парсинга героев: {e}")
@@ -280,14 +327,55 @@ def wait_for_table(page, timeout=15000, retries=2):
     return False
 
 
+def extract_page_hero_name(page):
+    """Достаёт имя героя с ОТКРЫТОЙ страницы героя.
+
+    Приоритет: <h2 class="name"> в шапке героя, затем <h1> заголовок,
+    затем <title>. Возвращает '' если ничего не нашли.
+    """
+    try:
+        name = page.evaluate(r'''() => {
+            const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+
+            const h2 = document.querySelector('h2.name');
+            if (h2 && norm(h2.textContent)) return norm(h2.textContent);
+
+            const h1 = document.querySelector('h1');
+            if (h1) {
+                const span = h1.querySelector('span');
+                const text = norm(span ? span.textContent : h1.textContent);
+                if (text) return text.replace(/\s+(Counters and Matchups|Best Maps|Overview|Maps|Matchups)$/i, '');
+            }
+
+            const title = norm(document.title);
+            const m = title.match(/^Marvel Rivals\s+(.+?)\s+(Counters and Matchups|Best Maps|Overview|Maps|Matchups)$/i);
+            return m ? norm(m[1]) : '';
+        }''')
+        return name or ''
+    except Exception as e:
+        logger.warning(f"Не удалось извлечь имя героя со страницы: {e}")
+        return ''
+
+
 def get_matchups_and_maps(page, hero_url_name, season="1"):
     """Собирает матчапы и карты для одного героя.
+
+    Возвращает (matchups, maps_data, ok, hero_name_on_page).
+
+    Имя героя берётся САМОЙ страницы героя (<h2 class="name">), а не из
+    общей таблицы /characters: при смене сезона сайт перерисовывает
+    список, и в момент чтения имя и href в строке иногда принадлежат
+    разным героям ("Magik" -> gorr-the-god-butcher). Из-за этого в базу
+    попадали матчапы ОДНОГО героя под именем ДРУГОГО. Slug при этом
+    всегда корректный — мы по нему и переходим, поэтому он и остаётся
+    единственным источником правды о том, чью страницу мы открыли.
 
     При 500/таймауте делает reload и повторяет попытки. Если после всех
     попыток данные не собраны — возвращает ok=False (вызывающий код обязан
     остановиться, НЕ записывая битый файл).
     """
     ok = True
+    hero_name_on_page = ''
 
     # 1. MATCHUPS
     matchups = []
@@ -315,24 +403,61 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                 logger.error(f"Матчапы {hero_url_name} - таблица не загрузилась, данные не получены")
                 ok = False
             else:
+                # Достаём имя героя ОТКРЫТОЙ страницы — это достоверный
+                # источник, в отличие от строки в общем списке.
+                hero_name_on_page = extract_page_hero_name(page)
                 matchups = page.evaluate(r'''() => {
                     const allMatchups = [];
+                    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+
+                    // Как и в списке героев — колонки по заголовкам. Сайт
+                    // добавил колонку "Matchup" (полоска W/L), из-за чего
+                    // жёсткие cells[1..3] читали win_rate/difference/matches
+                    // с ЗАДАННЫМ СДВИГОМ: в difference попадал win_rate,
+                    // а по нему logic.js считает контрпики.
                     const tables = document.querySelectorAll('table');
                     for (const table of tables) {
-                        const headers = Array.from(table.querySelectorAll('th')).map(h => h.textContent.trim().toLowerCase());
-                        if (headers.includes('hero') && headers.includes('win rate')) {
-                            const rows = table.querySelectorAll('tbody tr');
-                            for (const row of rows) {
-                                const cells = row.querySelectorAll('td');
-                                if (cells.length < 4) continue;
+                        const headerText = Array.from(table.querySelectorAll('thead th')).map(th => {
+                            const clone = th.cloneNode(true);
+                            clone.querySelectorAll('svg, .info-tip, .tip-body, script').forEach(n => n.remove());
+                            return norm(clone.textContent).toLowerCase();
+                        });
+                        const findIdx = prefix => headerText.findIndex(h => h.startsWith(prefix));
 
-                                // Имя оппонента хранится в alt первой <img> внутри блока .matchup .cha
-                                // (левая, не .active сторона). Текст ячейки — это только "1288W VS1759W".
-                                let opponentName = '';
-                                const matchupEl = cells[0].querySelector('.matchup');
+                        const idx = {
+                            hero: findIdx('hero'),
+                            win_rate: findIdx('win rate'),
+                            difference: findIdx('difference'),
+                            matches: findIdx('matches'),
+                        };
+                        if (idx.hero === -1 || idx.win_rate === -1) continue;
+
+                        const rows = table.querySelectorAll('tbody tr');
+                        for (const row of rows) {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length <= idx.win_rate) continue;
+
+                            const heroCell = cells[idx.hero];
+
+                            let opponentName = '';
+
+                            // Текущая разметка: <a class="mu-hero"><img alt="Deadpool (Vanguard)">
+                            const muHero = heroCell.querySelector('a.mu-hero');
+                            if (muHero) {
+                                const img = muHero.querySelector('img');
+                                opponentName = (img ? img.getAttribute('alt') : '') || '';
+                                if (!opponentName) {
+                                    const nameEl = muHero.querySelector('.mu-name');
+                                    if (nameEl) opponentName = nameEl.textContent || '';
+                                }
+                            }
+
+                            // Старая разметка: .matchup > .cha, где первая
+                            // не-.active сторона — это оппонент.
+                            if (!opponentName) {
+                                const matchupEl = heroCell.querySelector('.matchup');
                                 if (matchupEl) {
                                     const chaEls = matchupEl.querySelectorAll('.cha');
-                                    // первая .cha — оппонент, .active .cha — текущий герой
                                     let oppCha = null;
                                     for (const cha of chaEls) {
                                         if (!cha.classList.contains('active')) { oppCha = cha; break; }
@@ -343,20 +468,20 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
                                         if (img) opponentName = img.getAttribute('alt') || '';
                                     }
                                 }
-                                if (!opponentName) {
-                                    const img = cells[0].querySelector('img');
-                                    if (img) opponentName = img.getAttribute('alt') || '';
-                                }
-                                opponentName = (opponentName || '').trim();
-                                if (opponentName) {
-                                    allMatchups.push({
-                                        opponent: opponentName,
-                                        win_rate: cells[1].textContent.trim(),
-                                        difference: cells[2].textContent.trim(),
-                                        matches: cells[3].textContent.trim()
-                                    });
-                                }
                             }
+                            if (!opponentName) {
+                                const img = heroCell.querySelector('img');
+                                if (img) opponentName = img.getAttribute('alt') || '';
+                            }
+                            opponentName = norm(opponentName);
+                            if (!opponentName) continue;
+
+                            allMatchups.push({
+                                opponent: opponentName,
+                                win_rate: norm(cells[idx.win_rate].textContent),
+                                difference: idx.difference !== -1 ? norm(cells[idx.difference].textContent) : '',
+                                matches: idx.matches !== -1 ? norm(cells[idx.matches].textContent) : '',
+                            });
                         }
                     }
                     return allMatchups;
@@ -395,31 +520,46 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
             else:
                 maps_data = page.evaluate(r'''() => {
                     const allMaps = [];
+                    const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+
+                    // Колонки по заголовкам + поиск картинки карты без
+                    // привязки к обёртке ".image" (её на сайте больше нет,
+                    // из-за чего map_name приходил пустым для ВСЕХ карт).
                     const tables = document.querySelectorAll('table');
                     for (const table of tables) {
-                        const headers = table.querySelectorAll('th');
-                        let hasMapHeader = false;
-                        for (const header of headers) {
-                            if (header.textContent.trim().toLowerCase() === 'map') hasMapHeader = true;
-                        }
-                        if (hasMapHeader) {
-                            const rows = table.querySelectorAll('tbody tr');
-                            for (const row of rows) {
-                                const nameEl = row.querySelector('td .name') || row.querySelector('td:first-child');
-                                const cells = row.querySelectorAll('td');
-                                if (nameEl && cells.length >= 3) {
-                                    const mapImg = cells[0].querySelector('.image img');
-                                    const imgSrc = mapImg ? (mapImg.getAttribute('src') || '') : '';
-                                    // Извлекаем img_map_xxx из src
-                                    const match = imgSrc.match(/images\/Map\/(img_map_\w+)\.png/);
-                                    const mapFilename = match ? match[1] : '';
-                                    allMaps.push({
-                                        map_name: mapFilename,
-                                        matches: cells[1].textContent.trim(),
-                                        win_rate: cells[2].textContent.trim()
-                                    });
-                                }
-                            }
+                        const headerText = Array.from(table.querySelectorAll('thead th')).map(th => {
+                            const clone = th.cloneNode(true);
+                            clone.querySelectorAll('svg, .info-tip, .tip-body, script').forEach(n => n.remove());
+                            return norm(clone.textContent).toLowerCase();
+                        });
+                        const findIdx = prefix => headerText.findIndex(h => h.startsWith(prefix));
+
+                        const idx = {
+                            map: findIdx('map'),
+                            matches: findIdx('matches'),
+                            win_rate: findIdx('win rate'),
+                        };
+                        if (idx.map === -1) continue;
+
+                        const rows = table.querySelectorAll('tbody tr');
+                        for (const row of rows) {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length <= idx.map) continue;
+
+                            const mapImg = cells[idx.map].querySelector('img');
+                            const imgSrc = mapImg ? (mapImg.getAttribute('src') || '') : '';
+                            // Извлекаем img_map_xxx из src
+                            const match = imgSrc.match(/images\/Map\/(img_map_\w+)\.png/);
+                            const mapFilename = match ? match[1] : '';
+                            // Мусорные записи с пустым map_name не пишем:
+                            // logic.js потом не сможет сопоставить карту с именем.
+                            if (!mapFilename) continue;
+
+                            allMaps.push({
+                                map_name: mapFilename,
+                                matches: idx.matches !== -1 ? norm(cells[idx.matches].textContent) : '',
+                                win_rate: idx.win_rate !== -1 ? norm(cells[idx.win_rate].textContent) : '',
+                            });
                         }
                     }
                     return allMaps;
@@ -434,7 +574,7 @@ def get_matchups_and_maps(page, hero_url_name, season="1"):
     ok = bool(matchups) or bool(maps_data)
     if not ok:
         logger.error(f"{hero_url_name} - НЕ собрано НИ матчапов, НИ карт (реальный провал)")
-    return matchups, maps_data, ok
+    return matchups, maps_data, ok, hero_name_on_page
 
 def save_to_json(data, suffix=""):
     timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -500,24 +640,37 @@ def main(season="1"):
 
         # 3. Проход по каждому герою
         for i, hero in enumerate(heroes):
-            logger.info(f"[{i+1}/{len(heroes)}] Обработка: {hero['display_name']}")
+            logger.info(f"[{i+1}/{len(heroes)}] Обработка: {hero['display_name']} ({hero['url_name']})")
 
-            matchups, maps, ok = get_matchups_and_maps(page, hero["url_name"], season)
+            matchups, maps, ok, hero_name_on_page = get_matchups_and_maps(page, hero["url_name"], season)
+
+            # Ключ в базе — имя с ОТКРЫТОЙ страницы героя. Имя из общего
+            # списка /characters в момент чтения может принадлежать другой
+            # строке, чем href, и тогда матчапы одного героя записались бы
+            # под именем другого. Slag всегда точен, страница — источник
+            # правды, поэтому сверяем и предупреждаем, если они разошлись.
+            hero_name = hero_name_on_page or hero['display_name']
+            if hero_name_on_page and hero_name_on_page != hero['display_name']:
+                logger.warning(
+                    f"Имя из списка и имя страницы разошлись: "
+                    f"список='{hero['display_name']}' -> страница='{hero_name_on_page}' "
+                    f"(slug='{hero['url_name']}'). Используем имя страницы."
+                )
 
             # Провал только если вообще ничего не собрано (ни матчапов, ни карт).
             # Отсутствие карт при наличии матчапов — допустимо (сайт не даёт
             # данные по картам для некоторых героев), алгоритм это переварит.
             has_data = bool(matchups) or bool(maps)
             if not has_data:
-                failed_heroes.append(hero['display_name'])
+                failed_heroes.append(hero_name)
                 logger.error(
-                    f"ДАННЫЕ НЕ СОБРАНЫ для {hero['display_name']} "
+                    f"ДАННЫЕ НЕ СОБРАНЫ для {hero_name} "
                     f"(matchups={len(matchups)}, maps={len(maps)})"
                 )
             elif not maps:
-                no_maps_heroes.append(hero['display_name'])
+                no_maps_heroes.append(hero_name)
 
-            all_data["heroes"][hero["display_name"]] = {
+            all_data["heroes"][hero_name] = {
                 "win_rate": hero["win_rate"],
                 "pick_rate": hero["pick_rate"],
                 "ban_rate": hero["ban_rate"],
@@ -545,6 +698,28 @@ def main(season="1"):
         failure_ratio = (failed / total) if total else 1.0
         MAX_FAILURE_RATIO = 0.05  # допустимо <=5% полностью пустых героев
 
+        # Проверка атрибуции данных: сайт ИСКЛЮЧАЕТ зеркальные матчапы,
+        # поэтому герой не должен встречаться в списке СВОИХ оппонентов.
+        # Если встречается — значит матчапы собраны со страницы другого
+        # героя и записаны не под тем именем.
+        mismatched = []
+        for hero_name, payload in all_data["heroes"].items():
+            target = hero_name.lower().strip()
+            for opp in payload.get("opponents") or []:
+                if (opp.get("opponent") or "").lower().strip() == target:
+                    mismatched.append(hero_name)
+                    break
+        if mismatched:
+            logger.error(
+                f"НАРУШЕНА АТРИБУЦИЯ: {len(mismatched)} героев встречаются "
+                f"в списке своих оппонентов (данные со страниц других героев): "
+                f"{mismatched[:10]}"
+            )
+            save_to_json(all_data, suffix="_INCOMPLETE")
+            raise RuntimeError(
+                f"Данные приписаны не тем героям ({len(mismatched)} шт.): {mismatched[:10]}"
+            )
+
         if failed and failure_ratio > MAX_FAILURE_RATIO:
             incomplete_path = save_to_json(all_data, suffix="_INCOMPLETE")
             logger.error(
@@ -571,9 +746,22 @@ def main(season="1"):
     except Exception as e:
         logger.exception("Критическая ошибка")
     finally:
-        context.close()
-        browser.close()
-        playwright.stop()
+        # Очистку оборачиваем в try/except: если драйвер Playwright уже
+        # отвалился, необработанное исключение из close() перебивает и
+        # маскирует настоящую ошибку сбора ("Connection closed while
+        # reading from the driver" вместо текста валидатора).
+        try:
+            context.close()
+        except Exception as e:
+            logger.warning(f"Не удалось закрыть контекст: {e}")
+        try:
+            browser.close()
+        except Exception as e:
+            logger.warning(f"Не удалось закрыть браузер: {e}")
+        try:
+            playwright.stop()
+        except Exception as e:
+            logger.warning(f"Не удалось остановить playwright: {e}")
 
 if __name__ == "__main__":
-    main(season="9.5")
+    main(season="10.5")

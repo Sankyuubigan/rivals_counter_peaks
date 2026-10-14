@@ -655,13 +655,10 @@ overwolf.games.onGameInfoUpdated.addListener((event) => {
                     winOpLogged("hide", res.window.id);
                 }
             });
-            // Восстанавливаем десктопное окно, чтобы приложение оставалось доступным.
-            obtainWindowLogged("desktop", (res) => {
-                if (res.window.stateEx === "hidden" || res.window.stateEx === "closed") {
-                    console.log("[UI] Игра закрыта — восстанавливаем десктопное окно.");
-                    winOpLogged("restore", res.window.id);
-                }
-            });
+            // Десктопное окно намеренно НЕ восстанавливаем: при старте игры
+            // мы его сами прячем, и авто-restore при закрытии игры выбрасывал
+            // окно пользователю на экран. Открыть его можно хоткеем
+            // toggle_desktop (Alt+G) или через лаунчер Overwolf.
         }
     }
 });
