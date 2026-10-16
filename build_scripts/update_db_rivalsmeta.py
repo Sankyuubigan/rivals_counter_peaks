@@ -4,6 +4,7 @@ import logging
 import random
 import re
 import os
+import sys
 from playwright.sync_api import sync_playwright
 
 # Настройка логирования
@@ -88,8 +89,70 @@ def safe_goto(page, url):
         logger.error(f"Ошибка перехода: {e}")
         return None
 
+def _season_version(label):
+    """Достаёт номер версии из подписи сезона: 'Season 10.5' -> '10.5'."""
+    match = re.search(r'(\d+(?:\.\d+)?)', label or '')
+    return match.group(1) if match else None
+
+
+def pick_latest_season(options):
+    """Выбирает самый свежий сезон из списка option'ов сайта.
+
+    options: список dict {'value': '21', 'label': 'Season 10.5'}.
+    У сайта value — монотонный целый номер, поэтому максимум = свежий сезон
+    (это надёжнее, чем брать последний <option> или полагаться на selected).
+
+    Возвращает (version, label); (None, None), если разобрать нечего.
+    """
+    if not options:
+        return None, None
+
+    def rank(opt):
+        value = str(opt.get('value', '')).strip()
+        return int(value) if value.isdigit() else -1
+
+    best = max(options, key=rank)
+    label = (best.get('label') or '').strip()
+    return _season_version(label), label
+
+
+def detect_latest_season(page):
+    """Определяет последний сезон на сайте. Возвращает версию ('10.5') или None."""
+    if not safe_goto(page, "https://rivalsmeta.com/characters"):
+        logger.error("Не удалось открыть /characters для определения сезона.")
+        return None
+
+    try:
+        page.wait_for_selector('#season_filter', timeout=20000)
+        options = page.evaluate('''() => Array.from(document.querySelectorAll('#season_filter option'))
+            .map(o => ({ value: o.value || '', label: (o.textContent || '').trim(), selected: !!o.selected }))''')
+    except Exception as e:
+        logger.error(f"Не удалось прочитать список сезонов: {e}")
+        return None
+
+    version, label = pick_latest_season(options)
+    if not version:
+        logger.error(f"Не удалось определить версию сезона из {options}")
+        return None
+
+    marked = [o['label'] for o in options if o.get('selected')]
+    logger.info(
+        f"Последний сезон на сайте: {label!r} (версия {version}). "
+        f"Помечен selected на сайте: {marked or '—'}."
+    )
+    if marked and marked[0].strip() != label:
+        logger.warning(
+            f"Похоже, свежий не всегда отмечен на сайте (selected={marked[0]!r}, "
+            f"максимальный value={label!r}). Используем максимальный."
+        )
+    return version
+
+
 def select_season(page, season, selector='#season_filter'):
-    """Выбирает сезон в выпадающем списке (по подстроке в тексте опции)."""
+    """Выбирает сезон в выпадающем списке по ТОЧНОМУ номеру версии.
+
+    Сравнение строгое: '1' не должен цеплять 'Season 1.5' или 'Season 10'.
+    """
     season_select = page.query_selector(selector)
     if not season_select:
         # Fallback: любой <select> в блоке фильтра Season
@@ -101,10 +164,11 @@ def select_season(page, season, selector='#season_filter'):
     if not season_select:
         return False
 
+    target = _season_version(str(season)) or str(season).strip()
     options = season_select.query_selector_all('option')
     season_value = None
     for option in options:
-        if season in option.text_content().strip():
+        if _season_version(option.text_content()) == target:
             season_value = option.get_attribute('value')
             break
 
@@ -113,6 +177,7 @@ def select_season(page, season, selector='#season_filter'):
         logger.info(f"Сезон {season} выбран. Ждем обновления...")
         time.sleep(3)
         return True
+    logger.warning(f"Сезон {season} не найден в списке на сайте.")
     return False
 
 
@@ -601,13 +666,43 @@ def write_latest_index(filename):
         json.dump({"current": filename}, f, ensure_ascii=False, indent=2)
     logger.info(f"Индекс latest.json обновлён: {filename}")
 
-def main(season="1"):
-    logger.info(f"=== ЗАПУСК СКРИПТА (СЕЗОН {season}) ===")
-    
+def build_meta(season):
+    """Метаданные базы: сезон + когда собрана. Кладутся первым ключом в JSON."""
+    now = time.localtime()
+    # %Z на Windows отдаёт мусор вида "RTZ 2 (мин)", поэтому берём %z
+    # и приводим к читаемому виду +03:00.
+    offset = time.strftime("%z", now)
+    if len(offset) == 5 and offset[0] in "+-":
+        offset = f"{offset[:3]}:{offset[3:]}"
+    return {
+        "season": str(season),
+        "season_label": f"Season {season}",
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S", now),
+        "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "utc_offset": offset,
+        "source": "https://rivalsmeta.com",
+        "scraper": os.path.basename(__file__),
+    }
+
+
+def main(season="auto"):
+    logger.info("=== ЗАПУСК СКРИПТА ===")
+
     playwright = sync_playwright().start()
     browser, context, page = init_browser(playwright)
-    
+
     try:
+        # 0. Сезон. По умолчанию берём самый свежий на сайте, чтобы не
+        #    вписывать его руками каждый раз. Конкретную версию всё ещё
+        #    можно передать аргументом: main(season="9.5").
+        if not season or str(season).lower() == "auto":
+            season = detect_latest_season(page)
+            if not season:
+                logger.error("Не удалось определить последний сезон. Выход.")
+                return
+            logger.info(f"Автоматически выбран последний сезон: {season}")
+        logger.info(f"Работаем с сезоном: {season}")
+
         # 1. Тим апы
         teamups = get_teamups_data(page, season)
         time.sleep(2)
@@ -634,7 +729,10 @@ def main(season="1"):
                     "win_rate": tu["win_rate"]
                 })
 
-        all_data = {'teamups': teamups, 'heroes': {}}
+        # meta идёт ПЕРВЫМ ключом — по нему сразу видно, какой сезон и
+        # когда собрана база. Приложение читает только 'heroes'/'teamups',
+        # лишний ключ ему не мешает (desktop.js проверяет их наличие).
+        all_data = {'meta': build_meta(season), 'teamups': teamups, 'heroes': {}}
         failed_heroes = []   # герои, по которым НЕ собрано ВООБЩЕ ничего (провал)
         no_maps_heroes = []  # герои, у которых нет карт, но есть матчапы (ок, сайт не даёт)
 
@@ -738,6 +836,15 @@ def main(season="1"):
                 f"порога {MAX_FAILURE_RATIO:.0%}. Проверь логи: {failed_heroes}"
             )
 
+        all_data["meta"].update({
+            "heroes_count": len(all_data["heroes"]),
+            "heroes_with_matchups": sum(1 for h in all_data["heroes"].values() if h.get("opponents")),
+            "heroes_with_maps": sum(1 for h in all_data["heroes"].values() if h.get("maps")),
+            "heroes_failed": failed,
+            "teamups_count": len(teamups),
+        })
+        logger.info(f"Метаданные базы: {all_data['meta']}")
+
         saved_path = save_to_json(all_data)
         filename = os.path.basename(saved_path)
         write_latest_index(filename)
@@ -764,4 +871,8 @@ def main(season="1"):
             logger.warning(f"Не удалось остановить playwright: {e}")
 
 if __name__ == "__main__":
-    main(season="10.5")
+    # По умолчанию season="auto" — скрипт сам находит последний сезон на
+    # сайте. Конкретный можно задать так:
+    #     python update_db_rivalsmeta.py 9.5
+    season_arg = sys.argv[1] if len(sys.argv) > 1 else "auto"
+    main(season=season_arg)
